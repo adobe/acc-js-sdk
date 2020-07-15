@@ -1,0 +1,23 @@
+{
+  "name": "@adobe/acc-js-sdk",
+  "version": "0.1.0",
+  "description": "ACC Javascript SDK",
+  "main": "src/index.js",
+  "homepage": "https://git.corp.adobe.com/Campaign/acc-js-sdk",
+  "license": "ISC",
+  "repository": "https://git.corp.adobe.com/Campaign/acc-js-sdk",
+  "directories": {
+    "test": "test"
+  },
+  "dependencies": {
+    "jsdom": "^16.2.0"
+  },
+  "devDependencies": {
+    "jest": "^25.1.0",
+    "jest-junit": "^10.0.0"
+  },
+  "author": "",
+  "scripts": {
+    "unit-tests": "jest --config test/jest.config.js --maxWorkers=2"
+  }
+}
