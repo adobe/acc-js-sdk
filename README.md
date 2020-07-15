@@ -1,4 +1,4 @@
-# ACC SDK in JavaScript
+# Adobe Campaign Classic (ACC) SDK in JavaScript (node.js and browser)
 
 This is a node.js SDK for Campaign API. It exposes the Campaign API exactly like it is used inside Campaign using the NLWS notation.
 
