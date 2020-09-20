@@ -374,4 +374,37 @@ describe('DomUtil', function() {
         });
     });
 
+
+    describe("https://github.com/adobe/acc-js-sdk/issues/1", () => {
+        it("Should parse empty collections", () => {
+            const xml = DomUtil.parse("<root-collection></root-collection>");
+            const json = DomUtil.toJSON(xml);
+            expect(JSON.stringify(json)).toBe("{}");
+        });
+
+        // Root node ends with "-collection" forces the result as an array
+        it("Should parse collections with exactly one element", () => {
+            const xml = DomUtil.parse("<root-collection><root id='1'/></root-collection>");
+            const json = DomUtil.toJSON(xml);
+            expect(JSON.stringify(json)).toBe('{"root":[{"@id":"1"}]}');
+        });
+
+        it("Should parse collections with more than one element", () => {
+            const xml = DomUtil.parse("<root-collection><root id='1'/><root id='2'/></root-collection>");
+            const json = DomUtil.toJSON(xml);
+            expect(JSON.stringify(json)).toBe('{"root":[{"@id":"1"},{"@id":"2"}]}');
+        });
+
+        it("Should parse non-collections with exactly one element", () => {
+            const xml = DomUtil.parse("<root-not-coll><root id='1'/></root-not-coll>");
+            const json = DomUtil.toJSON(xml);
+            expect(JSON.stringify(json)).toBe('{"root":{"@id":"1"}}');
+        });
+        it("Should parse non-collections with more than one element", () => {
+            const xml = DomUtil.parse("<root-not-coll><root id='1'/><root id='2'/></root-not-coll>");
+            const json = DomUtil.toJSON(xml);
+            expect(JSON.stringify(json)).toBe('{"root":[{"@id":"1"},{"@id":"2"}]}');
+        });
+    });
+
 });

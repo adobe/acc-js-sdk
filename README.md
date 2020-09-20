@@ -4,6 +4,11 @@ This is a node.js SDK for Campaign API. It exposes the Campaign API exactly like
 
 # Changelog
 
+### Version 0.1.1
+Bug fixes
+* Query in select mode should always return an array, even if result is empty or one one row (https://github.com/adobe/acc-js-sdk/issues/1)
+
+
 ### Version 0.1.0
 Initial version
 
