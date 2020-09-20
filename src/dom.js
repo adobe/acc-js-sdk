@@ -211,11 +211,16 @@ DomUtil.prototype._toJSON = function(xml, json) {
         }
     }
 
+    // Heuristic to determine if element is an object or an array
+    const isCollection = xml.tagName.length > 11 && xml.tagName.substr(xml.tagName.length-11) == '-collection';
+
     var child = xml.firstChild;
     while (child) {
         var childName = child.nodeName;
+        if (isCollection && (json[childName] === null || json[childName] === undefined))
+            json[childName] = [ ];
         var isArray = !!json[childName];
-        if (isArray && !json[childName].length)
+         if (isArray && (json[childName].length === undefined || json[childName].length === null))
             json[childName] = [ json[childName] ];
         if (child.nodeType == 1) {  // element
             const jsonChild = {};
