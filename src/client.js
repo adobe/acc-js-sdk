@@ -614,8 +614,25 @@ Client.prototype.callMethod = async function(schemaId, methodName, object, param
                         returnValue = soapCall.getNextDate();
                     else if (type == "DOMDocument") {
                         returnValue = soapCall.getNextDocument();
-                        if (that.representation == "json")
+                        if (that.representation == "json") {
                             returnValue = DomUtil.toJSON(returnValue);
+                            if (schemaId === "xtk:queryDef" && methodName === "ExecuteQuery" && paramName === "output") {
+                                // https://github.com/adobe/acc-js-sdk/issues/3
+                                // Check if query operation is "getIfExists". The "object" variable at this point
+                                // is always an XML, regardless of the xml/json representation
+                                const objectRoot = object.documentElement;
+                                const emptyResult = Object.keys(returnValue).length == 0;
+                                var operation = DomUtil.getAttributeAsString(objectRoot, "operation");
+                                if (operation == "getIfExists" && emptyResult)
+                                    returnValue = null;
+                                if (operation == "select" && emptyResult) {
+                                    const querySchemaId = DomUtil.getAttributeAsString(objectRoot, "schema");
+                                    const index = querySchemaId.indexOf(':');
+                                    const querySchemaName = querySchemaId.substr(index + 1);
+                                    returnValue[querySchemaName] = [];
+                                }
+                            }
+                        }
                         else if (that.representation != "xml")
                             throw new Error(`Unsupported representation '${that.representation}'`);
                     }

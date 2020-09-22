@@ -1145,4 +1145,141 @@ describe('ACC Client', function() {
 
     // Fails to use xtk:persist unless xtk:session loaded before
 
+    describe("Issue #3", async () => {
+
+        it("getIfExists with empty result", async () => {
+            const client = makeClient();
+            client.soapTransport.mockReturnValueOnce(LOGON_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+
+            client.soapTransport.mockReturnValueOnce(GET_XTK_QUERY_SCHEMA_RESPONSE);
+
+            client.soapTransport.mockReturnValueOnce(Promise.resolve(`<?xml version='1.0'?>
+            <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:xtk:queryDef' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
+            <SOAP-ENV:Body>
+            <ExecuteQueryResponse xmlns='urn:xtk:queryDef' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
+                <pdomOutput xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
+                <extAccount/>
+                </pdomOutput></ExecuteQueryResponse>
+            </SOAP-ENV:Body>
+            </SOAP-ENV:Envelope>`));
+
+            var queryDef = {
+                "@schema": "nms:extAccount",
+                "@operation": "getIfExists",
+                "select": {
+                    "node": [
+                        { "@expr": "@id" },
+                        { "@expr": "@name" }
+                    ]
+                }
+            };
+
+            // GetIfExists should return null
+            var query = client.NLWS.xtkQueryDef.create(queryDef);
+            var extAccount = await query.executeQuery();
+            expect(extAccount).toBeNull();
+        });
+
+        it("select with empty result", async () => {
+            const client = makeClient();
+            client.soapTransport.mockReturnValueOnce(LOGON_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+
+            client.soapTransport.mockReturnValueOnce(GET_XTK_QUERY_SCHEMA_RESPONSE);
+
+            client.soapTransport.mockReturnValueOnce(Promise.resolve(`<?xml version='1.0'?>
+            <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:xtk:queryDef' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
+            <SOAP-ENV:Body>
+            <ExecuteQueryResponse xmlns='urn:xtk:queryDef' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
+                <pdomOutput xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
+                <extAccount-collection/>
+                </pdomOutput></ExecuteQueryResponse>
+            </SOAP-ENV:Body>
+            </SOAP-ENV:Envelope>`));
+
+            var queryDef = {
+                "@schema": "nms:extAccount",
+                "@operation": "select",
+                "select": {
+                    "node": [
+                        { "@expr": "@id" },
+                        { "@expr": "@name" }
+                    ]
+                }
+            };
+
+            // Select should return empty array
+            query = client.NLWS.xtkQueryDef.create(queryDef);
+            extAccount = await query.executeQuery();
+            expect(extAccount).toEqual({ extAccount: [] });
+        });
+
+        it("getIfExists with a result of exactly one element", async () => {
+            const client = makeClient();
+            client.soapTransport.mockReturnValueOnce(LOGON_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+
+            client.soapTransport.mockReturnValueOnce(GET_XTK_QUERY_SCHEMA_RESPONSE);
+
+            client.soapTransport.mockReturnValueOnce(Promise.resolve(`<?xml version='1.0'?>
+            <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:xtk:queryDef' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
+            <SOAP-ENV:Body>
+            <ExecuteQueryResponse xmlns='urn:xtk:queryDef' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
+                <pdomOutput xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
+                <extAccount id="1"/>
+                </pdomOutput></ExecuteQueryResponse>
+            </SOAP-ENV:Body>
+            </SOAP-ENV:Envelope>`));
+
+            var queryDef = {
+                "@schema": "nms:extAccount",
+                "@operation": "getIfExists",
+                "select": {
+                    "node": [
+                        { "@expr": "@id" },
+                        { "@expr": "@name" }
+                    ]
+                }
+            };
+
+            // GetIfExists should return element
+            var query = client.NLWS.xtkQueryDef.create(queryDef);
+            var extAccount = await query.executeQuery();
+            expect(extAccount).toEqual({ "@id": "1" });
+        });
+
+        it("select with a result of exactly one element", async () => {
+            const client = makeClient();
+            client.soapTransport.mockReturnValueOnce(LOGON_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+
+            client.soapTransport.mockReturnValueOnce(GET_XTK_QUERY_SCHEMA_RESPONSE);
+
+            client.soapTransport.mockReturnValueOnce(Promise.resolve(`<?xml version='1.0'?>
+            <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:xtk:queryDef' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
+            <SOAP-ENV:Body>
+            <ExecuteQueryResponse xmlns='urn:xtk:queryDef' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
+                <pdomOutput xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
+                <extAccount-collection><extAccount id="1"/></extAccount-collection>
+                </pdomOutput></ExecuteQueryResponse>
+            </SOAP-ENV:Body>
+            </SOAP-ENV:Envelope>`));
+
+            var queryDef = {
+                "@schema": "nms:extAccount",
+                "@operation": "select",
+                "select": {
+                    "node": [
+                        { "@expr": "@id" },
+                        { "@expr": "@name" }
+                    ]
+                }
+            };
+
+            var query = client.NLWS.xtkQueryDef.create(queryDef);
+            var extAccount = await query.executeQuery();
+            expect(extAccount).toEqual({ extAccount: [ { "@id": "1" } ]});
+        });
+    })
 });
