@@ -4,6 +4,9 @@ This is a node.js SDK for Campaign API. It exposes the Campaign API exactly like
 
 # Changelog
 
+### Version 0.1.2
+* Use github action to automatically publish to npm when one pushes a commit with the message "Release 1.2.3"
+
 ### Version 0.1.1
 Bug fixes
 * Query in select mode should always return an array, even if result is empty or one one row (https://github.com/adobe/acc-js-sdk/issues/1)
@@ -11,6 +14,8 @@ Bug fixes
 
 ### Version 0.1.0
 Initial version
+
+
 
 
 # API Basics
@@ -623,6 +628,12 @@ To build this project, you need node and npm
 npm install
 ````
 
+## Deploy to npm
+
+To deploy to npm
+* Build and run tests locally
+* Increase version in `package.json`
+* Push a commit with message `Release 1.2.3`
 
 
 # Client-side SDK
