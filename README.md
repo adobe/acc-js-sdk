@@ -4,6 +4,9 @@ This is a node.js SDK for Campaign API. It exposes the Campaign API exactly like
 
 # Changelog
 
+### Version 0.1.4
+Another attempt to publish to npm from github action
+
 ### Version 0.1.3
 Bug fixes
 * Query returning empty result should return null when getIfExists operation, should fail when using get operation, and should return an empty array with select operation (https://github.com/adobe/acc-js-sdk/issues/3)

@@ -1,6 +1,6 @@
 {
   "name": "@adobe/acc-js-sdk",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "ACC Javascript SDK",
   "main": "src/index.js",
   "homepage": "https://git.corp.adobe.com/Campaign/acc-js-sdk",
