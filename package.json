@@ -1,11 +1,11 @@
 {
   "name": "@adobe/acc-js-sdk",
-  "version": "0.1.11",
+  "version": "0.1.14",
   "description": "ACC Javascript SDK",
   "main": "src/index.js",
-  "homepage": "https://git.corp.adobe.com/Campaign/acc-js-sdk",
+  "homepage": "https://github.com/adobe/acc-js-sdk#readme",
   "license": "ISC",
-  "repository": "https://git.corp.adobe.com/Campaign/acc-js-sdk",
+  "repository": "https://github.com/adobe/acc-js-sdk",
   "directories": {
     "test": "test"
   },
