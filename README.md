@@ -4,7 +4,7 @@ This is a node.js SDK for Campaign API. It exposes the Campaign API exactly like
 
 # Changelog
 
-### Version 0.1.4 - 0.1.18
+### Version 0.1.4 - 0.1.19
 Another attempt to publish to npm from github action
 
 ### Version 0.1.3
