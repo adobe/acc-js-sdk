@@ -521,7 +521,7 @@ describe('ACC Client', function() {
             });
         });
 
-        it('Should fail if logon does not return a session token', () => {
+        it('Should fail if logon does not return a session token', async () => {
             const client = makeClient();
             expect(async () => {
                 client.soapTransport.mockReturnValueOnce(LOGON_RESPONSE_NO_SESSIONTOKEN);
@@ -530,7 +530,7 @@ describe('ACC Client', function() {
             expect(client.isLogged()).toBe(false);
         });
 
-        it('Should fail if logon does not return a security token', () => {
+        it('Should fail if logon does not return a security token', async () => {
             const client = makeClient();
             expect(async () => {
                 client.soapTransport.mockReturnValueOnce(LOGON_RESPONSE_NO_SECURITYTOKEN);
@@ -1145,7 +1145,7 @@ describe('ACC Client', function() {
 
     // Fails to use xtk:persist unless xtk:session loaded before
 
-    describe("Issue #3", async () => {
+    describe("Issue #3", () => {
 
         it("getIfExists with empty result", async () => {
             const client = makeClient();

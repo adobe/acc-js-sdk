@@ -179,6 +179,7 @@ function Client(endpoint, user, password, rememberMe) {
     this.sessionInfo = undefined;
     this.sessionToken = undefined;
     this.securityToken = undefined;
+    this.installedPackages = {};     // package set (key and value = package id, ex: "nms:amp")
     
     this.secretKeyCipher = undefined;
     
@@ -263,7 +264,19 @@ Client.prototype.logon = function() {
     
     return this.makeSoapCall(soapCall).then(function() {
         sessionToken = soapCall.getNextString();
+        
         that.sessionInfo = soapCall.getNextDocument();
+        that.installedPackages = {};
+        const userInfo = DomUtil.findElement(that.sessionInfo, "userInfo");
+        if (userInfo) {
+          var pack = DomUtil.getFirstChildElement(userInfo, "installed-package");
+          while (pack) {
+            const name = `${DomUtil.getAttributeAsString(pack, "namespace")}:${DomUtil.getAttributeAsString(pack, "name")}`;
+            that.installedPackages[name] = name;
+            pack = DomUtil.getNextSiblingElement(pack);
+          }
+        }
+        
         securityToken = soapCall.getNextString();
         soapCall.checkNoMoreArgs();
         // Sanity check: we should have both a session token and a security token.
@@ -341,6 +354,19 @@ Client.prototype.clearAllCaches = function() {
     this.clearEntityCache();
     this.clearMethodCache();
     this.clearOptionCache();
+}
+
+/**
+ * Check if a package is installed
+ * @param {String} packageId the package identifier, for instance: "nms:amp"
+ * @param {String} optionalName if set, the first parameter will be interpreted as the namespace (ex: "nms") and the second as the name, ex: "amp"
+ */
+Client.prototype.hasPackage = function(packageId, optionalName) {
+  if (optionalName === undefined)
+    packageId = `${packageId}:${optionalName}`;
+  if (!this.isLogged())
+    throw new Error(`Cannot call hasPackage: session not connected`);
+  return this.installedPackages[packageId] !== undefined;
 }
 
 /**
