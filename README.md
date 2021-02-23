@@ -5,6 +5,9 @@ This is a node.js SDK for Campaign API. It exposes the Campaign API exactly like
 
 # Changelog
 
+## Version 0.1.22
+* Update node-notifier library (used by jest) to version 8.0.1 to fix a possible injection
+
 ### Version 0.1.20
 Add client.hasPackage function to test if a package is installed or an instance or not (https://github.com/adobe/acc-js-sdk/issues/5)
 
