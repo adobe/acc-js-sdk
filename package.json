@@ -1,6 +1,6 @@
 {
   "name": "@adobe/acc-js-sdk",
-  "version": "0.1.22",
+  "version": "0.1.23",
   "description": "ACC Javascript SDK",
   "main": "src/index.js",
   "homepage": "https://github.com/adobe/acc-js-sdk#readme",

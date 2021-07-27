@@ -21,7 +21,14 @@ const DomUtil = require('./dom.js').DomUtil;
 
 
 function MethodCache() {
+    // Key is schema id, value is a map whose key is a method name. Value is the DOM element
+    // corresponding to a method
     this.methodsBySchema = {};
+
+    // Key is schema id, value is a map whose key is a method name. Value is the SOAP action
+    // for the method. For interface method (ex: xtk:session#Write, the SOAP action is actually
+    // xtk:persist#Write, using the interface id, not the session id)
+    this.soapUrns = {};
 }
 
 /**
@@ -31,19 +38,33 @@ function MethodCache() {
 MethodCache.prototype.cache = function(schema) {
     var namespace = DomUtil.getAttributeAsString(schema, "namespace");
     var name = DomUtil.getAttributeAsString(schema, "name");
+    var impls = DomUtil.getAttributeAsString(schema, "implements");
     var root = DomUtil.getFirstChildElement(schema);
     while (root) {
-        var schemaId = undefined;
-        if (root.nodeName == "interface")
-            schemaId = namespace + ":" + DomUtil.getAttributeAsString(root, "name");
-        else if (root.nodeName == "methods")
-            schemaId = namespace + ":" + name;
+        if (root.nodeName == "interface") {
+            var itfName = namespace + ":" +  DomUtil.getAttributeAsString(root, "name");
+            if (impls && impls === itfName) {
+                var schemaId = namespace + ":" + name;
+                var soapUrn = itfName;
+            }
+        }
+        else if (root.nodeName == "methods") {
+            var schemaId = namespace + ":" + name;
+            var soapUrn = schemaId;
+        }
+
         if (schemaId) {
             this.methodsBySchema[schemaId] = this.methodsBySchema[schemaId] || {};
+            this.methodsBySchema[soapUrn] = this.methodsBySchema[soapUrn] || {};
+            this.soapUrns[schemaId] = this.soapUrns[schemaId] || {};
+            this.soapUrns[soapUrn] = this.soapUrns[soapUrn] || {};
             var child = DomUtil.getFirstChildElement(root, "method");
             while (child) {
                 const methodName = DomUtil.getAttributeAsString(child, "name");
                 this.methodsBySchema[schemaId][methodName] = child;
+                this.methodsBySchema[soapUrn][methodName] = child; /// version 0.1.23: cache the method in both the schema id and interface id form compatibility reasons
+                this.soapUrns[schemaId][methodName] = soapUrn;
+                this.soapUrns[soapUrn][methodName] = soapUrn;
                 child = DomUtil.getNextSiblingElement(child, "method");
             }
         }
@@ -56,6 +77,13 @@ MethodCache.prototype.get = function(schemaId, methodName) {
     if (dict) 
         dict = dict[methodName];
     return dict;
+}
+
+MethodCache.prototype.getSoapUrn = function(schemaId, methodName) {
+    var soapUrn = this.soapUrns[schemaId];
+    if (soapUrn) 
+        soapUrn = soapUrn[methodName];
+    return soapUrn;
 }
 
 MethodCache.prototype.clear = function() {
