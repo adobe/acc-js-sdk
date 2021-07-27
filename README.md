@@ -14,6 +14,7 @@ _2021/07/27_
   NLWS.xtkPersist.Write which would only work if the xtk:persist interface schema was cached before. As there's no xtk:schema entity for the interfaces, the only
   way to cache such an interface is to have previously called a method on xtk:session. This call will indirectly cache the xtk:session schema and its interfaces,
   hence xtk:persist. From SDK 0.1.23 on, while the previous (incorrect) syntax NLWS.xtkPersist.Write still works, it's recommended to use NLWS.xtkSession.Write
+* Upgrade 3rd parties (browserslist, hosted-git-info, lodash, ws) to fix vulnerabilities
 
 ## Version 0.1.22
 _2021/02/23_
