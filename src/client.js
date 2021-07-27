@@ -538,7 +538,8 @@ Client.prototype.callMethod = async function(schemaId, methodName, object, param
         throw new Error(`Method '${methodName}' of schema '${schemaId}' not found`);
     // console.log(method.toXMLString());
 
-    var soapCall = that.prepareSoapCall(schemaId, methodName);
+    var urn = that.methodCache.getSoapUrn(schemaId, methodName);
+    var soapCall = that.prepareSoapCall(urn, methodName);
 
     const isStatic = DomUtil.getAttributeAsBoolean(method, "static");
     if (!isStatic) {
@@ -634,6 +635,9 @@ Client.prototype.callMethod = async function(schemaId, methodName, object, param
                         returnValue = soapCall.getNextShort();
                     else if (type == "long")
                         returnValue = soapCall.getNextLong();
+                    else if (type == "int64")
+                        // int64 are represented as strings to make sure no precision is lost
+                        returnValue = soapCall.getNextInt64();
                     else if (type == "datetime")
                         returnValue = soapCall.getNextDateTime();
                     else if (type == "date")
