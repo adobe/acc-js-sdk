@@ -153,13 +153,24 @@ DomUtil.prototype.toXMLString = function(node) {
     return s;
 }
 
-DomUtil.prototype._fromJSON = function(doc, xmlRoot, jsonRoot) {
+DomUtil.prototype._fromJSON = function(doc, xmlRoot, jsonRoot, flavor) {
     for(var att in jsonRoot) {
         const value = jsonRoot[att];
+        if (value === null || value === undefined)
+            continue;
         const t = typeof value;
-        const isAtt = att[0] == '@';
+        var isAtt = att[0] == '@';
+        var attFirstIndex = 1;
+
+        if (flavor == "SimpleJson") {
+            if ((t == "string" || t == "number" || t == "boolean") && att[0] != '$') {
+                isAtt = true;
+                attFirstIndex = 0;
+            }
+        }
+
         if (isAtt) {
-            att = att.substr(1);
+            att = att.substr(attFirstIndex);
             if (t == "string")
                 xmlRoot.setAttribute(att, XtkCaster.asString(value));
             else if (t == "number")
@@ -173,17 +184,23 @@ DomUtil.prototype._fromJSON = function(doc, xmlRoot, jsonRoot) {
             if (att == "$") {
                 xmlRoot.textContent = value;
             }
+            else if (flavor == "SimpleJson" && att[0] == '$') {
+                att = att.substr(1);
+                var xmlElement = doc.createElement(att);
+                xmlElement.textContent = value;
+                xmlRoot.appendChild(xmlElement);
+            }
             else if (t == "object") {
-                if (value.length) {
+                if (value.length !== undefined && value.length !== null) {
                     for (var i=0; i<value.length; i++) {
                         var xmlElement = doc.createElement(att);
-                        this._fromJSON(doc, xmlElement, value[i]);    
+                        this._fromJSON(doc, xmlElement, value[i], flavor);
                         xmlRoot.appendChild(xmlElement);
                     }
                 }
                 else {
                     var xmlElement = doc.createElement(att);
-                    this._fromJSON(doc, xmlElement, value);
+                    this._fromJSON(doc, xmlElement, value, flavor);
                     xmlRoot.appendChild(xmlElement);
                 }
             }
@@ -194,20 +211,25 @@ DomUtil.prototype._fromJSON = function(doc, xmlRoot, jsonRoot) {
 
 }
 
-DomUtil.prototype.fromJSON = function(docName, json) {
+DomUtil.prototype.fromJSON = function(docName, json, flavor) {
+    flavor = flavor || "BadgerFish";
+    if (flavor != "SimpleJson" && flavor != "BadgerFish")
+        throw new Error(`Invalid JSON flavor '${flavor}'. Should be 'SimpleJson' or 'BadgerFish'`);
+    if (!docName)
+        throw new Error(`Cannot transform entity of flavor '${flavor}' to xml because no XML root name was given`);
     const doc = this.newDocument(docName);
     const root = doc.documentElement;
-    this._fromJSON(doc, root, json);
+    this._fromJSON(doc, root, json, flavor);
     return doc;
 }
 
-
-DomUtil.prototype._toJSON = function(xml, json) {
+DomUtil.prototype._toJSON = function(xml, json, flavor) {
     if (xml.hasAttributes()) {
         var attributes = xml.attributes;
         for (var i=0; i<attributes.length; i++) {
             var att = attributes[i];
-            json["@" + att.name] = att.value;
+            var attName = (flavor == "BadgerFish" ? "@" : "") + att.name;
+            json[attName] = att.value;
         }
     }
 
@@ -224,29 +246,37 @@ DomUtil.prototype._toJSON = function(xml, json) {
             json[childName] = [ json[childName] ];
         if (child.nodeType == 1) {  // element
             const jsonChild = {};
-            this._toJSON(child, jsonChild);
+            this._toJSON(child, jsonChild, flavor);
             if (isArray)
                 json[childName].push(jsonChild);
             else
                 json[childName] = jsonChild;
         }
         else if (child.nodeType === 3 || child.nodeType === 4) { // text and CDATA
-            var text = child.nodeValue;
-            if (json["$"] === undefined)
-                json["$"] = text;
-            else 
-                json["$"] = json["$"] + text;
+            if (flavor == "BadgerFish") {
+                var text = child.nodeValue;
+                if (json["$"] === undefined)
+                    json["$"] = text;
+                else 
+                    json["$"] = json["$"] + text;
+            }
+            else {
+
+            }
         }
         child = child.nextSibling;
     }
 }
 
-DomUtil.prototype.toJSON = function(xml) {
+DomUtil.prototype.toJSON = function(xml, flavor) {
     if (xml === null || xml === undefined) return xml;
+    flavor = flavor || "BadgerFish";
+    if (flavor != "SimpleJson" && flavor != "BadgerFish")
+        throw new Error(`Invalid JSON flavor '${flavor}'. Should be 'SimpleJson' or 'BadgerFish'`);
     if (xml.nodeType == 9)
         xml = xml.documentElement;
     var json = {};
-    this._toJSON(xml, json);
+    this._toJSON(xml, json, flavor);
     return json;
 }
 

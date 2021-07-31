@@ -185,5 +185,38 @@ describe('Caches', function() {
             assert.strictEqual(found.getAttribute("name"), "Write");
             assert.strictEqual(urn, "xtk:persist");
         });
+
+        it("Edge cases for getSoapUrn", () => {
+            const cache = new MethodCache();
+            var schema = DomUtil.parse("<schema namespace='xtk' name='session' implements='xtk:persist'><interface name='persist'><method name='Write' static='true'/></interface><methods><method name='Logon'/></methods></schema>");
+            cache.cache(schema.documentElement);
+
+            // Schema and method exist
+            var urn = cache.getSoapUrn("xtk:session", "Logon");
+            expect(urn).toBe("xtk:session");
+
+            // Schema exists but method doesn't
+            var urn = cache.getSoapUrn("xtk:session", "Dummy");
+            expect(urn).toBeUndefined();
+
+            // Neither schema nor method exist
+            var urn = cache.getSoapUrn("xtk:dummy", "Dummy");
+            expect(urn).toBeUndefined();
+        });
+
+        it("Schema has interfaces that do not match what schema implements", () => {
+            const cache = new MethodCache();
+            // Schema has xtk:persist interface but does not implement it
+            var schema = DomUtil.parse("<schema namespace='xtk' name='session'><interface name='persist'><method name='Write' static='true'/></interface><methods><method name='Logon'/></methods></schema>");
+            cache.cache(schema.documentElement);
+
+            // Logon method should be found in xtk:session and have the xtk:session URN (for SOAP action)
+            var found = cache.get("xtk:session", "Logon");
+            var urn = cache.getSoapUrn("xtk:session", "Logon");
+            assert.ok(found !== null && found !== undefined);
+            assert.strictEqual(found.nodeName, "method");
+            assert.strictEqual(found.getAttribute("name"), "Logon");
+            assert.strictEqual(urn, "xtk:session");
+        });
     });
 });

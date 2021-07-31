@@ -20,6 +20,7 @@ governing permissions and limitations under the License.
 const assert = require('assert');
 const { DomUtil } = require('../src/dom.js');
 const { isRegExp } = require('util');
+const exp = require('constants');
 
 
 describe('DomUtil', function() {
@@ -40,7 +41,7 @@ describe('DomUtil', function() {
         { xml: '<root int="-37"/>', json:'{"@int":-37}', altJSON:'{"@int":"-37"}'},
     ];
 
-    describe('toJSON', function() {
+    describe('toJSON (BadgerFish)', function() {
         test.each(ref) (
             "XML to JSON %p",
             (item) => {
@@ -91,9 +92,9 @@ describe('DomUtil', function() {
         });
     });
 
-    describe('fromJSON', function() {
+    describe('fromJSON (BadgerFish)', function() {
         test.each(ref) (
-            "JSON to XML %p",
+            "JSON (BadgerFish) to XML %p",
             (item) => {
                 var json = JSON.parse(item.json);
                 var xml = DomUtil.toXMLString(DomUtil.fromJSON("root", json));
@@ -109,14 +110,95 @@ describe('DomUtil', function() {
             });
         });
 
-            it("Should fail for unsupported element type", function() {
-                const json = { "hello": (x) => x+1 };            // value is an unsupported type "function"
-                assert.throws(() => {
-                    DomUtil.fromJSON("root", json)
-                });
+        it("Should fail for unsupported element type", function() {
+            const json = { "hello": (x) => x+1 };            // value is an unsupported type "function"
+            assert.throws(() => {
+                DomUtil.fromJSON("root", json)
             });
+        });
+
+    });
+
+    describe('fromJSON (errors)', function() {
+
+        it("Invalid flavor", () => {
+            expect(() => { DomUtil.fromJSON("root", {}, "Dummy"); }).toThrow("Invalid JSON flavor");
+            // in this function "json" is not a valid flavor, it should have been transformed
+            // to "BaderFish" by the caller
+            expect(() => { DomUtil.fromJSON("root", {}, "json"); }).toThrow("Invalid JSON flavor");
+            // XML is not a JSON flavor either
+            expect(() => { DomUtil.fromJSON("root", {}, "xml"); }).toThrow("Invalid JSON flavor");
+            expect(() => { DomUtil.fromJSON("root", {}, "Xml"); }).toThrow("Invalid JSON flavor");
+        });
+
+        it("No XML root", () => {
+            expect(() => { DomUtil.fromJSON("", {}, "BadgerFish"); }).toThrow("no XML root name was given");
+            expect(() => { DomUtil.fromJSON(null, {}, "BadgerFish"); }).toThrow("no XML root name was given");
+            expect(() => { DomUtil.fromJSON(undefined, {}, "BadgerFish"); }).toThrow("no XML root name was given");
+        });
         
     });
+
+    describe('fromJSON (SimpleJson)', function() {
+
+        function fromJSON(json) {
+            var xml = DomUtil.fromJSON("root", json, "SimpleJson");
+            return DomUtil.toXMLString(xml);
+        }
+
+        assert.strictEqual(fromJSON({}), '<root/>');
+        assert.strictEqual(fromJSON({ "a":2, "b":"zz", "c": true }), '<root a="2" b="zz" c="true"/>');
+        assert.strictEqual(fromJSON({ "a":{ x:3 } }), '<root><a x="3"/></root>');
+        assert.strictEqual(fromJSON({ "$": "Hello" }), '<root>Hello</root>');
+        assert.strictEqual(fromJSON({ "$a": "Hello" }), '<root><a>Hello</a></root>');
+        assert.strictEqual(fromJSON({ a: { "$": "Hello" } }), '<root><a>Hello</a></root>');
+        assert.strictEqual(fromJSON({ a: "World", "$a": "Hello" }), '<root a="World"><a>Hello</a></root>');
+        assert.strictEqual(fromJSON({ "a": [ { "i":1 }, { "i": 2 } ] }), '<root><a i="1"/><a i="2"/></root>');
+        assert.strictEqual(fromJSON({ "a": [ ] }), '<root/>');
+        assert.strictEqual(fromJSON({ "a": null }), '<root/>');
+        assert.strictEqual(fromJSON({ "a": undefined }), '<root/>');
+    });
+
+    describe('toJSON (SimpleJson)', function() {
+
+        function toJSON(xml) {
+            xml = DomUtil.parse(xml);
+            var json = DomUtil.toJSON(xml, "SimpleJson");
+            return json;
+        }
+
+        assert.deepStrictEqual(toJSON('<root/>'), {});
+        assert.deepStrictEqual(toJSON('<root a="1"/>'), { a:"1" });
+        assert.deepStrictEqual(toJSON('<root a="1" b="2"/>'), { a:"1", b:"2" });
+        assert.deepStrictEqual(toJSON('<root><a/></root>'), { a:{} });
+        assert.deepStrictEqual(toJSON('<root><a/><a/></root>'), { a:[{},{}] });
+    });
+
+    describe('fromJSON (invalid flavor)', function() {
+        try {
+            DomUtil.fromJSON("root", {}, "InvalidFlavor");
+            assert.fail("Should have failed");
+        } catch(ex) {
+            assert.ok(true);
+        }
+    });
+
+    describe('toJson (errors)', function() {
+
+        
+        it("Invalid flavor", () => {
+            var xml = DomUtil.parse('<root/>');
+            expect(() => { DomUtil.toJSON(xml, "Dummy"); }).toThrow("Invalid JSON flavor");
+            // in this function "json" is not a valid flavor, it should have been transformed
+            // to "BaderFish" by the caller
+            expect(() => { DomUtil.toJSON(xml, "json"); }).toThrow("Invalid JSON flavor");
+            // XML is not a JSON flavor either
+            expect(() => { DomUtil.toJSON(xml, "xml"); }).toThrow("Invalid JSON flavor");
+            expect(() => { DomUtil.toJSON(xml, "Xml"); }).toThrow("Invalid JSON flavor");
+        });
+        
+    });
+    
 
     describe('toXMLString', function() {
         test.each(ref) (

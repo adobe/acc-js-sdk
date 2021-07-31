@@ -5,6 +5,12 @@ This is a node.js SDK for Campaign API. It exposes the Campaign API exactly like
 
 # Changelog
 
+## Version 0.2.0
+_2021/07/29_
+* Support for a simpler flavor of JSON (see SimpleJson vs. BadgerFish below)
+* Finalize the implementation to support int64
+* Add 100% coverage for all tests
+
 ## Versin 0.1.23
 _2021/07/27_
 * Support for int64 type (represented as a string to avoid rounding errors)
@@ -49,6 +55,7 @@ In order to call the API, you need to create a `Client` object
 const sdk = require('./src/index.js');
 
 const client = await sdk.init("https://myInstance.campaign.adobe.com", "admin", "admin");
+client.representation = "SimpleJson";
 const NLWS = client.NLWS;
 ```
 
@@ -83,33 +90,81 @@ where
 
 ## Parameter types
 
-In Campaign, many method attributes are XML elements or documents, as well as many return types. It's not very easy to use in JavaScript, so the SDK supports automatic XML <=> JSON conversion. Of yourse, you can still use XML if you want.
-We're using Badgerfish convention (http://www.sklar.com/badgerfish/) for the translation.
+In Campaign, many method attributes are XML elements or documents, as well as many return types. It's not very easy to use in JavaScript, so the SDK supports automatic XML<=> JSON conversion. Of yourse, you can still use XML if you want.
 
-By default, JSON is used, but the representation can be changed as follow:
+We're supporting 2 flavors of JSON.
+* `BadgerFish` which is the default, but legacy flavor of JSON. It's a little bit complex and was deprecated in version 0.2.0 in favor of `SimpleJson` (http://www.sklar.com/badgerfish/) 
+* `SimpleJson` which is the recommeded representation
+* `xml` which can be use to perform no transformation: Campaign XML is returned directly.
+
+
+The representation can be changed as follow. It's recommended to set it to `SimpleJson`.
 ```js
-client.representation = "xml";
-client.representation = "json";
+client.representation = "SimpleJson";
 ```
 
-Here's an example of a queryDef in JSON
+Here's an example of a queryDef in SimpleJson). This query will return an array containing one item for each external account. Each item will contain the account id and name.
 
 ```
     const queryDef = {
-        "@schema": "nms:extAccount",
-        "@operation": "select",
-        "select": {
-            "node": [
-                { "@expr": "@id" },
-                { "@expr": "@name" }
+        schema: "nms:extAccount",
+        operation: "select",
+        select: {
+            node: [
+                { expr: "@id" },
+                { expr: "@name" }
             ]
         }
     };
 ```
 
+## SimpleJson format
+The Simple JSON format works like this:
+
+The XML root element tag is determined by the SDK as it's generating the XML, usually from the current schema name.
+
+* XML: `<root/>`
+* JSON: `{}`
+
+XML attributes are mapped to JSON attributes with the same name, whose litteral value can be a string, number, or boolean. There's no "@" sign in the JSON attribute name.
+
+* XML: `<root hello="world" count=3 ok=true/>`
+* JSON: `{ hello:"world", count:3, ok:true }`
+
+XML elements are mapped to JSON objects
+
+* XML: `<root><item id=1/></root>`
+* JSON: `{ item: { id:1 } }`
+
+If the parent element tag ends with `-collecion` children are always an array, even if there are no children, or if there is just one child
+
+* XML: `<root-collection><item id=1/></root>`
+* JSON: `{ item: [ { id:1 } ] }`
+
+When an XML element is repeated, an JSON array is used
+
+* XML: `<root><item id=1/><item id=2/></root>`
+* JSON: `{ item: [ { id:1 }, { id:2 } ] }`
+
+Text of XML element is handle with the `$` sign in the JSON attribute name, or with a child JSON object name `$`
+
+Text of the root element
+* XML: `<root>Hello</root>`
+* JSON: `{ $: "Hello" }`
+
+Text of a child element
+* XML: `<root><item>Hello</item></root>`
+* JSON: `{ $item: "Hello" }`
+* Alternative JSON: `{ item: { $: "Hello" } }`
+
+If an element contains both text, and children, you need to use the alternative `$` syntax
+* XML: `<root><item>Hello<child id="1"/></item></root>`
+* JSON: `{ item: { $: "Hello", child: { id:1 } }`
+
+
 ## Returning multiple values
 Campaign API can return one or multiple values. The SDK uses the following convention:
-* no return value -> returns `null``
+* no return value -> returns `null`
 * one return value -> returns the value directly
 * more that one return value -> returns an array of values
 
@@ -121,12 +176,12 @@ For instance, here's how one creates a QueryDef object.
 
 ```js
     const queryDef = {
-        "@schema": "nms:extAccount",
-        "@operation": "select",
-        "select": {
-            "node": [
-                { "@expr": "@id" },
-                { "@expr": "@name" }
+        schema: "nms:extAccount",
+        operation: "select",
+        select: {
+            node: [
+                { expr: "@id" },
+                { expr: "@name" }
             ]
         }
     };
@@ -141,10 +196,10 @@ The method can then be called directly on the object
 In this example, the result is as follows
 
 ```js
-{"extAccount":[
-    {"@id":"2523379","@name":"cda_snowflake_extaccount"},
-    {"@id":"1782","@name":"defaultPopAccount"},
-    {"@id":"3643548","@name":"v8"}
+{ extAccount:[
+    { id: "2523379", name: "cda_snowflake_extaccount" },
+    { id: "1782", name: "defaultPopAccount" },
+    { id: "3643548", name: "v8" }
 ]}
 ```
 
@@ -213,7 +268,9 @@ const DomUtil = sdk.DomUtil;
 
 Create DOM from XML string:
 ```js
-    const doc = DomUtil.parse("<root><one/></root>");
+    const doc = DomUtil.parse("<root>
+    <one/>
+</root>");
 ```
 
 Writes a DOM document or element as a string:
@@ -385,9 +442,34 @@ client.traceSOAPCalls = true;
 
 This is an example of the logs
 ````
-SOAP//request xtk:session#GetOption <SOAP-ENV:Envelope xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ns="http://xml.apache.org/xml-soap"><SOAP-ENV:Header><Cookie>__sessiontoken=___3033D619-6710-450D-9194-CEB718D9F57B</Cookie><X-Security-Token>@p4IgqV7etc_liq15zAq59iYRLcCh6_tQkRC5WHbhIA8RTHkFt6VIc9R9RYA4NPwFcqtGh9-LmvrdplXgiiLWNA==</X-Security-Token></SOAP-ENV:Header><SOAP-ENV:Body><m:GetOption xmlns:m="urn:xtk:session" SOAP-ENV:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"><sessiontoken xsi:type="xsd:string">___3033D619-6710-450D-9194-CEB718D9F57B</sessiontoken><name xsi:type="xsd:string">XtkDatabaseId</name></m:GetOption></SOAP-ENV:Body></SOAP-ENV:Envelope>
+SOAP//request xtk:session#GetOption <SOAP-ENV:Envelope xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/"
+xmlns:ns="http://xml.apache.org/xml-soap">
+<SOAP-ENV:Header>
+    <Cookie>__sessiontoken=___3033D619-6710-450D-9194-CEB718D9F57B</Cookie>
+    <X-Security-Token>@p4IgqV7etc_liq15zAq59iYRLcCh6_tQkRC5WHbhIA8RTHkFt6VIc9R9RYA4NPwFcqtGh9-LmvrdplXgiiLWNA==</X-Security-Token>
+</SOAP-ENV:Header>
+<SOAP-ENV:Body>
+    <m:GetOption xmlns:m="urn:xtk:session" SOAP-ENV:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">
+        <sessiontoken xsi:type="xsd:string">___3033D619-6710-450D-9194-CEB718D9F57B</sessiontoken>
+        <name xsi:type="xsd:string">XtkDatabaseId</name>
+    </m:GetOption>
+</SOAP-ENV:Body>
+</SOAP-ENV:Envelope>
 
-SOAP//response xtk:session#GetOption <?xml version='1.0'?><SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:xtk:session' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'><SOAP-ENV:Body><GetOptionResponse xmlns='urn:xtk:session' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'><pstrValue xsi:type='xsd:string'>uFE80000000000000F1FA913DD7CC7C4804BA419F</pstrValue><pbtType xsi:type='xsd:byte'>6</pbtType></GetOptionResponse></SOAP-ENV:Body></SOAP-ENV:Envelope>
+SOAP//response xtk:session#GetOption <?xml version='1.0'?>
+<SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema'
+xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance'
+xmlns:ns='urn:xtk:session'
+xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
+<SOAP-ENV:Body>
+    <GetOptionResponse xmlns='urn:xtk:session' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
+        <pstrValue xsi:type='xsd:string'>uFE80000000000000F1FA913DD7CC7C4804BA419F</pstrValue>
+        <pbtType xsi:type='xsd:byte'>6</pbtType>
+    </GetOptionResponse>
+</SOAP-ENV:Body>
+</SOAP-ENV:Envelope>
 `````
 
 
@@ -396,12 +478,12 @@ SOAP//response xtk:session#GetOption <?xml version='1.0'?><SOAP-ENV:Envelope xml
 List all accounts
 ````
     const queryDef = {
-        "@schema": "nms:extAccount",
-        "@operation": "select",
-        "select": {
-            "node": [
-                { "@expr": "@id" },
-                { "@expr": "@name" }
+        schema: "nms:extAccount",
+        operation: "select",
+        select: {
+            node: [
+                { expr: "@id" },
+                { expr: "@name" }
             ]
         }
     };
@@ -415,23 +497,23 @@ List all accounts
 Get a single record
 ```js
     var queryDef = {
-        "@schema": "nms:extAccount",
-        "@operation": "get",
-        "select": {
-            "node": [
-                { "@expr": "@id" },
-                { "@expr": "@name" },
-                { "@expr": "@label" },
-                { "@expr": "@type" },
-                { "@expr": "@account" },
-                { "@expr": "@password" },
-                { "@expr": "@server" },
-                { "@expr": "@provider" },
+        schema: "nms:extAccount",
+        operation: "get",
+        select: {
+            node: [
+                { expr: "@id" },
+                { expr: "@name" },
+                { expr: "@label" },
+                { expr: "@type" },
+                { expr: "@account" },
+                { expr: "@password" },
+                { expr: "@server" },
+                { expr: "@provider" },
             ]
         },
-        "where": {
-            "condition": [
-                { "@expr": "@name='ffda'" }
+        where: {
+            condition: [
+                { expr: "@name='ffda'" }
             ]
         }
     }
@@ -444,14 +526,14 @@ Results can be retrieved in different pages, using the `@lineCount` and `@startL
 
 ```js
     var queryDef = {
-        "@schema": "nms:recipient",
-        "@operation": "select",
-        "@lineCount": 2,
-        "@startLine": 2,
-        "select": {
-            "node": [
-                { "@expr": "@id" },
-                { "@expr": "@email" }
+        schema: "nms:recipient",
+        operation: "select",
+        lineCount: 2,
+        startLine: 2,
+        select: {
+            node: [
+                { expr: "@id" },
+                { expr: "@email" }
             ]
         }
     }
@@ -468,13 +550,13 @@ Creates an image (data is base64 encoded)
 ```js
 var data = "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAA9ElEQVQ4jaXTIUsFQRSG4eeKiBjEIBeDYDGoSUwGm81s8SdYtIhFhPMDbEaz/SIIZkGbWg1Gg0GwiIgYZPZuWBxn8bJvWXb2O+/scM70lAhjuMO1sF9IVaES61jFnjBbyLQKjurnJz6yr62CsI2t+m0gRhGERZw1Vk6zTFEQ+rjETOP3b7OqBr1G8SRusPYrc4I3LGCeapN37AqP443g8R/FiYNsZcgGSRCmq1ZxmEXa6Yt0hKh6/dAaLbOcd+H/XOGpi2AFU10EqWsTXQQ7wmsSPNdzP8DXCII0D41BSgxvXboHm1jCXDpnPbHfeME9znEh+AFoTyfEnWJgLQAAAABJRU5ErkJggg==";
 var doc = {
-    "@xtkschema": "xtk:image",
-    "@_operation": "insert",
-    "@namespace": "cus",
-    "@name": "test.png",
-    "@label": "Self test",
-    "@type": "png",
-    "data": { "$": data }
+    xtkschema: "xtk:image",
+    _operation: "insert",
+    namespace: "cus",
+    name: "test.png",
+    label: "Self test",
+    type: "png",
+    $data: data
 };
 await NLWS.xtkSession.write(doc);
 ````
@@ -482,16 +564,16 @@ await NLWS.xtkSession.write(doc);
 Creates a folder (with image previously created)
 ```js
 const folder = {
-    "@xtkschema": "xtk:folder",
-    "@_operation": "insert",
-    "@parent-id": 1167,
-    "@name": "testSDK",
-    "@label": "Test SDK",
-    "@entity": "xtk:folder",
-    "@schema": "xtk:folder",
-    "@model": "xtkFolder",
-    "@image-namespace": "cus",
-    "@image-name": "test.png"
+    xtkschema: "xtk:folder",
+    _operation: "insert",
+    parent-id: 1167,
+    name: "testSDK",
+    label: "Test SDK",
+    entity: "xtk:folder",
+    schema: "xtk:folder",
+    model: "xtkFolder",
+    "image-namespace": "cus",
+    "image-name": "test.png"
 };
 await NLWS.xtkSession.write(folder);
 ````
@@ -506,7 +588,7 @@ Start and stop wotkflows, passing either an id or workflow internal name
 
 A workflow can be started with parameters. Variables, are passed as attributes of the parameters document.
 ```js
-await NLWS.xtkWorkflow.startWithParameters(4900, { "@hello": "world" });
+await NLWS.xtkWorkflow.startWithParameters(4900, { hello: "world" });
 ```
 
 The variables can be used in the workflow as attributes of the `instance.vars` variable.
@@ -522,11 +604,11 @@ logInfo(instance.vars.hello);
 Create a recipient
 ```js
     var recipient = {
-        "@xtkschema": "nms:recipient",
-        "@_operation": "insert",
-        "@firstName": "Thomas",
-        "@lastName": "Jordy",
-        "@email": "jordy@adobe.com"
+        xtkschema: "nms:recipient",
+        _operation: "insert",
+        firstName: "Thomas",
+        lastName: "Jordy",
+        email: "jordy@adobe.com"
     };
     await NLWS.xtkSession.write(recipient);
 ```
@@ -534,19 +616,19 @@ Create a recipient
 Create multiple recipients
 ```js
     var recipients = {
-        "@xtkschema": "nms:recipient",
-        "recipient": [
+        xtkschema: "nms:recipient",
+        recipient: [
             {
-                "@_operation": "insert",
-                "@firstName": "Christophe",
-                "@lastName": "Protat",
-                "@email": "protat@adobe.com"
+                _operation: "insert",
+                firstName: "Christophe",
+                lastName: "Protat",
+                email: "protat@adobe.com"
             },
             {
-                "@_operation": "insert",
-                "@firstName": "Eric",
-                "@lastName": "Perrin",
-                "@email": "perrin@adobe.com"
+                _operation: "insert",
+                firstName: "Eric",
+                lastName: "Perrin",
+                email: "perrin@adobe.com"
             }
         ]
     };
@@ -556,19 +638,19 @@ Create multiple recipients
 List all recipients in Adobe
 ```js
     var queryDef = {
-        "@schema": "nms:recipient",
-        "@operation": "select",
-        "select": {
-            "node": [
-                { "@expr": "@id" },
-                { "@expr": "@firstName" },
-                { "@expr": "@lastName" },
-                { "@expr": "@email" }
+        schema: "nms:recipient",
+        operation: "select",
+        select: {
+            node: [
+                { expr: "@id" },
+                { expr: "@firstName" },
+                { expr: "@lastName" },
+                { expr: "@email" }
             ]
         },
-        "where": {
-            "condition": [
-                { "@expr": "GetEmailDomain(@email)='adobe.com'" }
+        where: {
+            condition: [
+                { expr: "GetEmailDomain(@email)='adobe.com'" }
             ]
         }
     }
@@ -580,23 +662,23 @@ List all recipients in Adobe
 Count total number of profiles
 ```js
     var queryDef = {
-        "@schema": "nms:recipient",
-        "@operation": "count"
+       schema: "nms:recipient",
+       operation: "count"
     }
     var query = NLWS.xtkQueryDef.create(queryDef);
     var count = await query.executeQuery();
-    count = XtkCaster.asLong(count["@count"]);
+    count = XtkCaster.asLong(count.count);
     console.log(count);
 ```
 
 Update a profile. In this case, use the "@email" attribute as a key. If the `@_key` attribute is not specified, the primary key will be used.
 ```js
     var recipient = {
-        "@xtkschema": "nms:recipient",
-        "@_key": "@email",
-        "@_operation": "update",
-        "@firstName": "Alexandre",
-        "@email": "amorin@adobe.com"
+        xtkschema: "nms:recipient",
+        _key: "@email",
+        _operation: "update",
+        firstName: "Alexandre",
+        email: "amorin@adobe.com"
     };
     await NLWS.xtkSession.write(recipient);
 ```
@@ -604,24 +686,20 @@ Update a profile. In this case, use the "@email" attribute as a key. If the `@_k
 Deletes a profile
 ```js
     var recipient = {
-        "@xtkschema": "nms:recipient",
-        "@_key": "@email",
-        "@_operation": "delete",
-        "@email": "amorin@adobe.com"
+        xtkschema: "nms:recipient",
+        _key: "@email",
+        _operation: "delete",
+        email: "amorin@adobe.com"
     };
     await NLWS.xtkSession.write(recipient);
 ```
 
 Deletes a set of profiles, based on condition. For instance delete everyone having an email address in adobe.com domain
 ```js
-    await NLWS.xtkSession.deleteCollection("nms:recipient", { condition: { "@expr": "GetEmailDomain(@email)='adobe.com'"} });
+    await NLWS.xtkSession.deleteCollection("nms:recipient", { condition: { expr: "GetEmailDomain(@email)='adobe.com'"} });
 ```
 
-## Subscriptions
 
-One can register a recipient to a service
-```js
-````
 
 
 
@@ -637,7 +715,7 @@ Reading schemas is a common operation in Campaign. The SDK provides a convenient
 A given representation can be forced
 ```js
     const xmlSchema = await client.getSchema("nms:recipient", "xml");
-    const jsonSchema = await client.getSchema("nms:recipient", "json");
+    const jsonSchema = await client.getSchema("nms:recipient", "SimpleJson");
 ```
 
 System enumerations can also be retreived with the fully qualified enumeration name

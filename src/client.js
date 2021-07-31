@@ -31,7 +31,6 @@ const OptionCache = require('./optionCache.js').OptionCache;
 const request = require('request-promise-native');
 
 
-
 /**
  * Java Script Proxy handler for XtkObject. An XTK object is one constructed with the following syntax:
  *      NLWS.xtkQueryDef.create(...)
@@ -186,7 +185,7 @@ function Client(endpoint, user, password, rememberMe) {
     this.entityCache = new XtkEntityCache();
     this.methodCache = new MethodCache();
     this.optionCache = new OptionCache();
-    this.representation = "json";                   // "xml" or "json"
+    this.representation = "BadgerFish";
     this.NLWS = new Proxy(this, clientHandler);
 
     this.soapTransport = request;
@@ -197,6 +196,63 @@ function Client(endpoint, user, password, rememberMe) {
     this.DomUtil = DomUtil;
     this.XtkCaster = XtkCaster;
 }
+
+/**
+ * Convert an XML object into the current representation
+ */
+Client.prototype.toRepresentation = function(xml, representation) {
+    representation = representation || this.representation;
+    if (!representation || representation == "json")
+        representation = "BadgerFish";
+    if (representation == "xml" || representation == "Xml")
+        return xml;
+    if (representation == "BadgerFish") {
+        var json = DomUtil.toJSON(xml);
+        return json;
+    }
+    if (representation == "SimpleJson") {
+        var json = DomUtil.toJSON(xml, representation);
+        return json;
+    }
+    throw new Error(`Unsupported representation '${this.representation}'`);
+}
+
+Client.prototype.fromRepresentation = function(rootName, entity, representation) {
+    representation = representation || this.representation;
+    if (!representation || representation == "json")
+        representation = "BadgerFish";
+    if (representation == "xml" || representation == "Xml")
+        return entity;
+    if (representation == "BadgerFish") {
+        var xml = DomUtil.fromJSON(rootName, entity);
+        return xml;
+    }
+    if (representation == "SimpleJson") {
+        var xml = DomUtil.fromJSON(rootName, entity, representation);
+        return xml;
+    }
+    throw new Error(`Unsupported representation '${this.representation}'`);
+}
+
+Client.prototype.convertToRepresentation = function(entity, fromRepresentation, toRepresentation) {
+    toRepresentation = toRepresentation || this.representation;
+    if (this.isSameRepresentation(fromRepresentation, toRepresentation))
+        return entity;
+    var xml = this.fromRepresentation("root", entity, fromRepresentation);
+    entity = this.toRepresentation(xml, toRepresentation);
+    return entity;
+}
+
+Client.prototype.isSameRepresentation = function(rep1, rep2) {
+    if (!rep1 || !rep2) throw new Error(`Undefined representation: cannot compare`);
+    if (rep1 == rep2) return true;
+    if (rep1 == "json") rep1 = "BadgerFish";
+    if (rep1 == "xml") rep1 = "Xml";
+    if (rep2 == "json") rep2 = "BadgerFish";
+    if (rep2 == "xml") rep2 = "Xml";
+    return rep1 == rep2;
+}
+ 
 
 /**
  * Is the client logged?
@@ -412,6 +468,10 @@ Client.prototype.getMidClient = async function(name) {
             ]
         }
     }
+
+    // Convert to current representation
+    queryDef = this.convertToRepresentation(queryDef, "BadgerFish");
+
     const query = that.NLWS.xtkQueryDef.create(queryDef);
     const extAccount = await query.executeQuery();
     const cipher = await that.getSecretKeyCipher();
@@ -443,7 +503,7 @@ Client.prototype.getEntityIfMoreRecent = function(entityType, fullName) {
 /**
  * Get a schema definition.
  * @param {string} shcemaId the schema id, such as "xtk:session", or "nms:recipient"
- * @param {string} representation an optional representation of the schema: "json" or "xml". If not set, we'll use the client default representation
+ * @param {string} representation an optional representation of the schema: "BadgerFish", "SimpleJson" or "xml". If not set, we'll use the client default representation
  * @returns {*} the schema definition, as either a DOM document or a JSON object
  */
 Client.prototype.getSchema = async function(shcemaId, representation) {
@@ -455,13 +515,10 @@ Client.prototype.getSchema = async function(shcemaId, representation) {
     if (entity)
         that.entityCache.put("xtk:schema", shcemaId, entity);
 
-    representation = representation || that.representation;
-    if (representation == "json")
-        entity = DomUtil.toJSON(entity);
-    else if (representation != "xml")
-        throw new Error(`Unsupported representation '${representation}'`);
+    entity = that.toRepresentation(entity, representation);
     return entity;
 }
+
 /**
  * Get the definition of a sys enum. Will be returned as JSON or XML depending on the client 'representation' attribute
  */
@@ -489,11 +546,20 @@ Client.prototype.getSysEnum = async function(enumName, optionalStartSchemaOrSche
     }
     var schema = optionalStartSchemaOrSchemaName; 
 
-    if (this.representation == "json") {
+    if (this.representation == "json" || this.representation == "BadgerFish") {
         if (schema.enumeration) {
             for (var i in schema.enumeration) {
                 var e = schema.enumeration[i];
                 if (e["@name"] == enumName)
+                    return e;
+            }
+        }
+    }
+    else if (this.representation == "SimpleJson") {
+        if (schema.enumeration) {
+            for (var i in schema.enumeration) {
+                var e = schema.enumeration[i];
+                if (e["name"] == enumName)
                     return e;
             }
         }
@@ -545,15 +611,10 @@ Client.prototype.callMethod = async function(schemaId, methodName, object, param
     if (!isStatic) {
         if (!object)
             throw new Error(`Cannot call non-static method '${methodName}' of schema '${schemaId}' : no object was specified`);
-        if (this.representation == "json") {
-            const rootName = schemaId.substr(schemaId.indexOf(':') + 1);
-            object = DomUtil.fromJSON(rootName, object);
-            soapCall.writeDocument("document", object);
-        }
-        else if (this.representation == "xml")
-            soapCall.writeDocument("document", object);
-        else
-            throw new Error(`Unsupported representation '${this.representation}'`);
+
+        const rootName = schemaId.substr(schemaId.indexOf(':') + 1);
+        object = that.fromRepresentation(rootName, object);
+        soapCall.writeDocument("document", object);
     }
 
     const parametersIsArray = (typeof parameters == "object") && parameters.length;
@@ -578,31 +639,29 @@ Client.prototype.callMethod = async function(schemaId, methodName, object, param
                     soapCall.writeShort(paramName, XtkCaster.asShort(paramValue));
                 else if (type == "long")
                     soapCall.writeLong(paramName, XtkCaster.asLong(paramValue));
+                else if (type == "int64")
+                    soapCall.writeInt64(paramName, XtkCaster.asInt64(paramValue));
                 else if (type == "datetime")
                     soapCall.writeTimestamp(paramName, XtkCaster.asTimestamp(paramValue));
                 else if (type == "date")
                     soapCall.writeDate(paramName, XtkCaster.asDate(paramValue));
                 else if (type == "DOMDocument" || type == "DOMElement") {
-                    var xmlValue = paramValue;
                     var docName = undefined;
                     // Hack for workflow API. The C++ code checks that the name of the XML element is <variables>. When
                     // using xml representation at the SDK level, it's ok since the SDK caller will set that. But this does
                     // not work when using "json" representation where we do not know the root element name.
                     if (schemaId == "xtk:workflow" && methodName == "StartWithParameters" && paramName == "parameters")
                         docName = "variables";
-                    if (that.representation == "json") {
-                        // Try to guess the document name. This is usually available in the xtkschema attribute
-                        const xtkschema = paramValue["@xtkschema"];
-                        if (xtkschema) {
-                            const index = xtkschema.indexOf(":");
-                            docName = xtkschema.substr(index+1);
-                        }
-                        if (!docName)
-                            throw new Error(`Cannot transform '${type}' parameter '${paramName}' to JSON: @xtkschema attribute not set`);
-                        xmlValue = DomUtil.fromJSON(docName, paramValue);
+                    // Try to guess the document name. This is usually available in the xtkschema attribute
+                    if (paramValue === undefined) {
+                        var x =  0;
                     }
-                    else if (that.representation !== "xml")
-                        throw new Error(`Unsupported representation '${that.representation}'`);
+                    const xtkschema = paramValue["@xtkschema"];
+                    if (xtkschema) {
+                        const index = xtkschema.indexOf(":");
+                        docName = xtkschema.substr(index+1);
+                    }
+                    var xmlValue = that.fromRepresentation(docName, paramValue);
                     if (type == "DOMDocument")
                         soapCall.writeDocument(paramName, xmlValue);
                     else
@@ -644,8 +703,8 @@ Client.prototype.callMethod = async function(schemaId, methodName, object, param
                         returnValue = soapCall.getNextDate();
                     else if (type == "DOMDocument") {
                         returnValue = soapCall.getNextDocument();
-                        if (that.representation == "json") {
-                            returnValue = DomUtil.toJSON(returnValue);
+                        returnValue = that.toRepresentation(returnValue);
+                        if (that.representation == "json" || that.representation == "BadgerFish" || that.representation == "SimpleJson") {
                             if (schemaId === "xtk:queryDef" && methodName === "ExecuteQuery" && paramName === "output") {
                                 // https://github.com/adobe/acc-js-sdk/issues/3
                                 // Check if query operation is "getIfExists". The "object" variable at this point
@@ -663,15 +722,10 @@ Client.prototype.callMethod = async function(schemaId, methodName, object, param
                                 }
                             }
                         }
-                        else if (that.representation != "xml")
-                            throw new Error(`Unsupported representation '${that.representation}'`);
                     }
                     else if (type == "DOMElement") {
                         returnValue = soapCall.getNextElement();
-                        if (that.representation == "json")
-                            returnValue = DomUtil.toJSON(returnValue);
-                        else if (that.representation != "xml")
-                            throw new Error(`Unsupported representation '${that.representation}'`);
+                        returnValue = that.toRepresentation(returnValue);
                     }
                     else {
                         // type can reference a schema element. The naming convension is that the type name
@@ -684,8 +738,7 @@ Client.prototype.callMethod = async function(schemaId, methodName, object, param
                                 if (element.getAttribute("name") == shortTypeName) {
                                     // Type found in schema: Process as a DOM element
                                     returnValue = soapCall.getNextElement();
-                                    if (that.representation == "json")
-                                        returnValue = DomUtil.toJSON(returnValue);
+                                    returnValue = that.toRepresentation(returnValue);
                                     break;
                                 }
                                 element = DomUtil.getNextSiblingElement(element, "element")

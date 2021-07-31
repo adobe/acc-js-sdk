@@ -43,7 +43,7 @@ MethodCache.prototype.cache = function(schema) {
     while (root) {
         if (root.nodeName == "interface") {
             var itfName = namespace + ":" +  DomUtil.getAttributeAsString(root, "name");
-            if (impls && impls === itfName) {
+            if (impls === itfName) {
                 var schemaId = namespace + ":" + name;
                 var soapUrn = itfName;
             }

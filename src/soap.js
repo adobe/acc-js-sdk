@@ -177,9 +177,19 @@ SoapMethodCall.prototype.writeShort = function(tag, value) {
  * @param {string} tag the parameter name
  * @param {*} value the parameter value, which will be casted to a int32 according to xtk rules
  */
-SoapMethodCall.prototype.writeLong = function(tag, value) {
+ SoapMethodCall.prototype.writeLong = function(tag, value) {
     value = XtkCaster.asLong(value);
     this._addNode(tag, "xsd:int", XtkCaster.asString(value), SOAP_ENCODING_NATIVE);
+}
+
+/**
+ * Sets a int64-type parameter
+ * @param {string} tag the parameter name
+ * @param {*} value the parameter value, which will be casted to a int64 according to xtk rules
+ */
+ SoapMethodCall.prototype.writeInt64 = function(tag, value) {
+    value = XtkCaster.asInt64(value);
+    this._addNode(tag, "xsd:long", XtkCaster.asString(value), SOAP_ENCODING_NATIVE);
 }
 
 /**

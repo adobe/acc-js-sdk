@@ -225,6 +225,21 @@ describe('SOAP', function() {
             }
         });
 
+        it('Should set int64 parameters', function() {
+            const call = makeSoapMethodCall("xtk:session", "Int64", "$session$", "$security$");
+            const values = [null, undefined, 0, 1, 2, -3, true, false, NaN, +7, 500, "12"];
+            const expected = [ "0", "0", "0", "1", "2", "-3", "1", "0", "0", "7", "500", "12"];
+            for (var i=0; i<values.length; i++)
+                call.writeInt64(`p${i}`, values[i]);
+            const request = call._createHTTPRequest(URL);
+            const env = DomUtil.parse(request.body).documentElement;
+            const body = hasChildElement(env, "SOAP-ENV:Body");
+            const method = hasChildElement(body, "m:Int64");
+            for (var i=0; i<values.length; i++) {
+                hasChildElement(method, `p${i}`, expected[i], "xsi:type", "xsd:long");
+            }
+        });
+
         it('Should set float parameters', function() {
             const call = makeSoapMethodCall("xtk:session", "Float", "$session$", "$security$");
             const values = [null, undefined, 0, 1, 2, -3, true, false, NaN, +7, 500, "12", "1.e2", 5.1, 5.9, -5.1, -5.9];
@@ -463,6 +478,7 @@ describe('SOAP', function() {
                     "p", "xsd:double", "6.28",
                     "p", "xsd:dateTime", "2020-12-31T12:34:56.789Z",
                     "p", "xsd:date", "2020-12-31T00:00:00.000Z",
+                    "p", "xsd:long", "1234567890123456789",
                 )); 
             };
             const call = makeSoapMethodCall("xtk:session", "Date", "$session$", "$security$", delegate);
@@ -498,6 +514,9 @@ describe('SOAP', function() {
                 expect(call.checkNoMoreArgs()).toBe(false);
 
                 expect(call.getNextDate().toISOString()).toBe("2020-12-31T00:00:00.000Z");
+                expect(call.checkNoMoreArgs()).toBe(false);
+
+                expect(call.getNextInt64()).toBe("1234567890123456789");
                 expect(call.checkNoMoreArgs()).toBe(true);
             });
         });

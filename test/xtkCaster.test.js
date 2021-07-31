@@ -19,8 +19,6 @@ governing permissions and limitations under the License.
 
 const XtkCaster = require('../src/xtkCaster.js').XtkCaster;
 const assert = require('assert');
-const { isRegExp } = require('util');
-
 
 
 assert.myEquals = function(actual, expected) {
@@ -276,6 +274,67 @@ describe('XtkCaster', function() {
         }
     }),
 
+    describe('#asInt64', function() {
+        const expectedValues = [
+            // (value)   ==  expected
+            [ undefined,                     "0"   ],
+            [ null,                          "0"   ],
+            [ "",                            "0"   ],
+            [ "1.",                          "0"   ],
+            [ ".5",                          "0"   ],
+            [ 1,                             "1"   ],
+            [ 12.4,                         "0"   ],
+            [ -2.3,                         "0"   ],
+            [ "1",                           "1"   ],
+            [ "12.4",                       "0"   ],
+            [ "-2.3",                       "0"   ],
+            [ "--2.3",                       "0"   ],
+            [ "dummy",                       "0"   ],
+            [ "  1",                         "1"   ],
+            [ "  12.4",                     "0"   ],
+            [ "  -2.3",                     "0"   ],
+            [ "1  ",                         "1"   ],
+            [ "12.4  ",                     "0"   ],
+            [ "-2.3  ",                     "0"  ],
+            [ {},                            "0"   ],
+            [ NaN,                           "0"   ],
+            [ Number.POSITIVE_INFINITY,      "0"   ],
+            [ Number.NEGATIVE_INFINITY,      "0"   ],
+            [ new Date(),                    "0"   ],
+            [ new Date("hello"),             "0"   ],
+
+            // Rounding
+            [ "1.4",                         "0"   ],
+            [ "1.5",                         "0"   ],
+            [ "1.6",                         "0"   ],
+            [ "2147483647",                     "2147483647" ],
+            [ "2147483648",                     "2147483648" ],
+            [ "2147483649",                     "2147483649" ],
+            [ "-1.4",                       "0"   ],
+            [ "-1.5",                       "0"   ],
+            [ "-1.6",                       "0"   ],
+            [ "-2147483647",                   "-2147483647" ],
+            [ "-2147483648",                   "-2147483648" ],
+            [ "-2147483649",                   "-2147483649" ],
+        ];
+
+        function testOne(i) {
+            const expected = expectedValues[i];
+            const value = expected[0];
+            const expectedResult = expected[1];
+            it('Should return the value casted as a int64 ("' + value + '")', function() {
+                assert.myEquals(XtkCaster.asInt64(value), expectedResult);
+            });
+            it('Should return the value casted as type int64', function() {
+                assert.myEquals(XtkCaster.as(value, 'int64'), expectedResult);
+            });
+        }
+
+        for (var i=0; i<expectedValues.length; i++) {
+            testOne(i);
+        }
+    }),
+    
     describe('#asString', function() {
         const expectedValues = [
             // (value)   ==  expected

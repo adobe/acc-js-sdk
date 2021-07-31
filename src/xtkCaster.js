@@ -51,6 +51,9 @@ XtkCaster.prototype.as = function(value, type) {
         case "long": {
             return this.asLong(value);
         }
+        case "int64": {
+            return this.asInt64(value);
+        }
         case 4:             // FIELD_FLOAT
         case 5:             // FIELD_DOUBLE
         case "float":
@@ -154,6 +157,23 @@ XtkCaster.prototype.asLong = function(value) {
         if( number < -2147483648) number = -2147483648;
         if( number > 2147483647) number = 2147483647;
     }
+    return number;
+}
+
+/**
+ * Convert a raw value into a non-null int64 number. As JavaScript does not have support
+ * for int64, this is actually represented as a string
+ * @param {*} value is the raw value to convert
+ * @return a string value representing the number
+ */
+XtkCaster.prototype.asInt64 = function(value) {
+    if (value === null || value === undefined || value === "") return "0";
+    if (isNaN(value) || value === Number.POSITIVE_INFINITY || value === Number.NEGATIVE_INFINITY) return "0";
+    if ((typeof value) == "object") return "0";
+    if ((typeof value) == "boolean") return value ? "1" : "0";
+    var number = String(value).trim();
+    if (number.indexOf(".") != -1) return "0";
+    if (number == "") return "0";
     return number;
 }
 
