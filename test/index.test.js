@@ -55,7 +55,7 @@ describe('ACC SDK', function() {
 
         it('Should get a DomUtil', async () => {
             const DomUtil = sdk.DomUtil;
-            expect(DomUtil.toJSON(DomUtil.parse("<root att='hello'/>"))["@att"]).toBe("hello");
+            expect(DomUtil.toJSON(DomUtil.parse("<root att='hello'/>"))["att"]).toBe("hello");
         });
     });
 

@@ -280,6 +280,7 @@ describe('XtkCaster', function() {
             [ undefined,                     "0"   ],
             [ null,                          "0"   ],
             [ "",                            "0"   ],
+            [ " ",                           "0"   ],
             [ "1.",                          "0"   ],
             [ ".5",                          "0"   ],
             [ 1,                             "1"   ],

@@ -46,10 +46,10 @@ describe('DomUtil', function() {
             "XML to JSON %p",
             (item) => {
                 var xml = DomUtil.parse(item.xml);
-                var json = JSON.stringify(DomUtil.toJSON(xml));
+                var json = JSON.stringify(DomUtil.toJSON(xml, "BadgerFish"));
                 if (item.altXML) {
                     var xml = DomUtil.parse(item.altXML);
-                    var json = JSON.stringify(DomUtil.toJSON(xml));
+                    var json = JSON.stringify(DomUtil.toJSON(xml, "BadgerFish"));
                 }
                 var expected = item.altJSON || item.json;
                 assert.equal(json, expected);
@@ -58,37 +58,37 @@ describe('DomUtil', function() {
 
             it("Should convert text nodes", function() {
                 var xml = DomUtil.parse("<root>Hello</root>");
-                assert.equal(DomUtil.toJSON(xml)["$"], "Hello");
+                assert.equal(DomUtil.toJSON(xml, "BadgerFish")["$"], "Hello");
                 xml = DomUtil.parse("<root>Hello<child> cruel</child> World</root>");
-                assert.equal(DomUtil.toJSON(xml)["$"], "Hello World");
+                assert.equal(DomUtil.toJSON(xml, "BadgerFish")["$"], "Hello World");
           });
 
           it("Should convert CDATA nodes", function() {
             var xml = DomUtil.parse("<root>Hello</root>");
-            assert.equal(DomUtil.toJSON(xml)["$"], "Hello");
+            assert.equal(DomUtil.toJSON(xml, "BadgerFish")["$"], "Hello");
             xml = DomUtil.parse("<root>Hello<child></child> cruel<![CDATA[ <World>]]></root>");
-            assert.equal(DomUtil.toJSON(xml)["$"], "Hello cruel <World>");
+            assert.equal(DomUtil.toJSON(xml, "BadgerFish")["$"], "Hello cruel <World>");
         });
 
         it("Should support empty CDATA nodes", function() {
             var xml = DomUtil.parse("<root><![CDATA[]]></root>");
-            assert.equal(DomUtil.toJSON(xml)["$"], "");
+            assert.equal(DomUtil.toJSON(xml, "BadgerFish")["$"], "");
         });
 
         it("Should support elements", function() {
             const xml = DomUtil.parse("<root>Hello<main test='1'></main>World</root>");
             const main = DomUtil.findElement(xml.documentElement, "main");
-            assert.equal(DomUtil.toJSON(main)["@test"], "1");
+            assert.equal(DomUtil.toJSON(main, "BadgerFish")["@test"], "1");
         });
 
         it("Should skip comments", function() {
             const xml = DomUtil.parse("<root>Hello<!-- cruel --> World</root>");
-            assert.equal(DomUtil.toJSON(xml)["$"], "Hello World");
+            assert.equal(DomUtil.toJSON(xml, "BadgerFish")["$"], "Hello World");
         });
 
         it("Should support nulls", function() {
-            expect(DomUtil.toJSON(null)).toBeNull();
-            expect(DomUtil.toJSON(undefined)).toBeUndefined();
+            expect(DomUtil.toJSON(null, "BadgerFish")).toBeNull();
+            expect(DomUtil.toJSON(undefined, "BadgerFish")).toBeUndefined();
         });
     });
 
@@ -97,7 +97,7 @@ describe('DomUtil', function() {
             "JSON (BadgerFish) to XML %p",
             (item) => {
                 var json = JSON.parse(item.json);
-                var xml = DomUtil.toXMLString(DomUtil.fromJSON("root", json));
+                var xml = DomUtil.toXMLString(DomUtil.fromJSON("root", json, "BadgerFish"));
                 var expected = item.altXML || item.xml;
                 assert.equal(xml, expected);
             }
@@ -106,14 +106,14 @@ describe('DomUtil', function() {
           it("Should fail for unsupported attribute type", function() {
             const json = { "@hello": new Error("failed") };            // value is an unsupported type "Error"
             assert.throws(() => {
-                DomUtil.fromJSON("root", json)
+                DomUtil.fromJSON("root", json, "BadgerFish")
             });
         });
 
         it("Should fail for unsupported element type", function() {
             const json = { "hello": (x) => x+1 };            // value is an unsupported type "function"
             assert.throws(() => {
-                DomUtil.fromJSON("root", json)
+                DomUtil.fromJSON("root", json, "BadgerFish")
             });
         });
 
@@ -143,6 +143,26 @@ describe('DomUtil', function() {
 
         function fromJSON(json) {
             var xml = DomUtil.fromJSON("root", json, "SimpleJson");
+            return DomUtil.toXMLString(xml);
+        }
+
+        assert.strictEqual(fromJSON({}), '<root/>');
+        assert.strictEqual(fromJSON({ "a":2, "b":"zz", "c": true }), '<root a="2" b="zz" c="true"/>');
+        assert.strictEqual(fromJSON({ "a":{ x:3 } }), '<root><a x="3"/></root>');
+        assert.strictEqual(fromJSON({ "$": "Hello" }), '<root>Hello</root>');
+        assert.strictEqual(fromJSON({ "$a": "Hello" }), '<root><a>Hello</a></root>');
+        assert.strictEqual(fromJSON({ a: { "$": "Hello" } }), '<root><a>Hello</a></root>');
+        assert.strictEqual(fromJSON({ a: "World", "$a": "Hello" }), '<root a="World"><a>Hello</a></root>');
+        assert.strictEqual(fromJSON({ "a": [ { "i":1 }, { "i": 2 } ] }), '<root><a i="1"/><a i="2"/></root>');
+        assert.strictEqual(fromJSON({ "a": [ ] }), '<root/>');
+        assert.strictEqual(fromJSON({ "a": null }), '<root/>');
+        assert.strictEqual(fromJSON({ "a": undefined }), '<root/>');
+    });
+
+    describe('fromJSON (default)', function() {
+
+        function fromJSON(json) {
+            var xml = DomUtil.fromJSON("root", json);
             return DomUtil.toXMLString(xml);
         }
 
@@ -468,24 +488,24 @@ describe('DomUtil', function() {
         it("Should parse collections with exactly one element", () => {
             const xml = DomUtil.parse("<root-collection><root id='1'/></root-collection>");
             const json = DomUtil.toJSON(xml);
-            expect(JSON.stringify(json)).toBe('{"root":[{"@id":"1"}]}');
+            expect(JSON.stringify(json)).toBe('{"root":[{"id":"1"}]}');
         });
 
         it("Should parse collections with more than one element", () => {
             const xml = DomUtil.parse("<root-collection><root id='1'/><root id='2'/></root-collection>");
             const json = DomUtil.toJSON(xml);
-            expect(JSON.stringify(json)).toBe('{"root":[{"@id":"1"},{"@id":"2"}]}');
+            expect(JSON.stringify(json)).toBe('{"root":[{"id":"1"},{"id":"2"}]}');
         });
 
         it("Should parse non-collections with exactly one element", () => {
             const xml = DomUtil.parse("<root-not-coll><root id='1'/></root-not-coll>");
             const json = DomUtil.toJSON(xml);
-            expect(JSON.stringify(json)).toBe('{"root":{"@id":"1"}}');
+            expect(JSON.stringify(json)).toBe('{"root":{"id":"1"}}');
         });
         it("Should parse non-collections with more than one element", () => {
             const xml = DomUtil.parse("<root-not-coll><root id='1'/><root id='2'/></root-not-coll>");
             const json = DomUtil.toJSON(xml);
-            expect(JSON.stringify(json)).toBe('{"root":[{"@id":"1"},{"@id":"2"}]}');
+            expect(JSON.stringify(json)).toBe('{"root":[{"id":"1"},{"id":"2"}]}');
         });
     });
 

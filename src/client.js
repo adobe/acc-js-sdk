@@ -85,7 +85,7 @@ const clientHandler = {
                     const methodNameLC = methodName.toLowerCase();
                     methodName = methodName.substr(0, 1).toUpperCase() + methodName.substr(1);
                     if (namespace == "xtkSession" && methodNameLC == "logon")
-                        return callContext.client.logon();
+                        return callContext.client.logon(argumentsList[0]);
                     else if (namespace == "xtkSession" && methodNameLC == "logoff")
                         return callContext.client.logoff();
                     else if (namespace == "xtkSession" && methodNameLC == "getoption") {
@@ -95,7 +95,7 @@ const clientHandler = {
                             if (optionAndValue && optionAndValue[1] != 0)
                                 value = XtkCaster.as(optionAndValue[0], optionAndValue[1]);
                             const optionName = argumentsList[0];
-                            client.optionCache.cache(optionName, value);    
+                            client._optionCache.cache(optionName, value);    
                             return optionAndValue;
                         });
                     }
@@ -126,8 +126,8 @@ const clientHandler = {
  * and returning a promise. When resolved, the promise returns the request result
  */
 function transportWrapper(transport) {
-    const browser = !!this.browser;
-    const traceSOAPCalls = !!this.traceSOAPCalls;
+    const browser = !!this._browser;
+    const traceSOAPCalls = !!this._traceSOAPCalls;
     return (options) => {
         if (traceSOAPCalls) {
             if (browser) {
@@ -167,30 +167,48 @@ function transportWrapper(transport) {
  * @param {String} endpoint endpoint to connect to, for instance: https://myinstance.campaign.adobe.com
  * @param {String} user user name, for instance admin
  * @param {String} password the user password
- * @param {boolean} rememberMe 
+ * @param {boolean} options an options object to configure the client
+ *                      {string} representation indicates how data is represented, i.e. Xml or Json. Default is SimpleJson
  */
-function Client(endpoint, user, password, rememberMe) {
-    this.endpoint = endpoint;
-    this.user = user;
-    this.password = password;       // ## TODO security concern (password kept in memory)
-    this.rememberMe = rememberMe;
+function Client(endpoint, user, password, options) {
 
-    this.sessionInfo = undefined;
-    this.sessionToken = undefined;
-    this.securityToken = undefined;
-    this.installedPackages = {};     // package set (key and value = package id, ex: "nms:amp")
+    // Default value
+    if (options === undefined || options === null)
+        options = { };
+    if (options.representation === undefined || options.representation === null)
+        options.representation = "SimpleJson";
+
+    // Before version 1.0.0, the 4th parameter could be a boolean for the 'rememberMe' option.
+    // Passing a boolean is not supported any more in 1.0.0. The Client constructor takes an
+    // option object. The rememberMe parameter can be passed directly to the logon function
+    if (typeof options  != "object")
+        throw new Error(`Invalid options parameter (type '${typeof options}'). An object litteral is expected`);
+
+    this._options = options;
+    this._representation = options.representation;
+
+    if (this._representation != "xml" && this._representation != "BadgerFish" && this._representation != "SimpleJson")
+        throw new Error(`Invalid representation '${this._representation}'. Cannot create client object`);
+
+    this._endpoint = endpoint;
+    this._user = user;
+    this._password = password;       // ## TODO security concern (password kept in memory)
+
+    this._sessionInfo = undefined;
+    this._sessionToken = undefined;
+    this._securityToken = undefined;
+    this._installedPackages = {};     // package set (key and value = package id, ex: "nms:amp")
     
-    this.secretKeyCipher = undefined;
+    this._secretKeyCipher = undefined;
     
-    this.entityCache = new XtkEntityCache();
-    this.methodCache = new MethodCache();
-    this.optionCache = new OptionCache();
-    this.representation = "BadgerFish";
+    this._entityCache = new XtkEntityCache();
+    this._methodCache = new MethodCache();
+    this._optionCache = new OptionCache();
     this.NLWS = new Proxy(this, clientHandler);
 
-    this.soapTransport = request;
-    this.traceSOAPCalls = false;
-    this.browser = typeof window !== 'undefined';
+    this._soapTransport = request;
+    this._traceSOAPCalls = false;
+    this._browser = typeof window !== 'undefined';
 
     // expose utilities
     this.DomUtil = DomUtil;
@@ -198,44 +216,49 @@ function Client(endpoint, user, password, rememberMe) {
 }
 
 /**
- * Convert an XML object into the current representation
+ * Convert an XML object into a representation
+ * @param {DOMElement} xml the XML DOM element to convert
+ * @param {string} representation the expected representation ('xml', 'BadgerFish', or 'SimpleJson'). If not set, will use the current representation
+ * @returns {DOMElement|JSON} the object converted in the requested representation
  */
 Client.prototype.toRepresentation = function(xml, representation) {
-    representation = representation || this.representation;
-    if (!representation || representation == "json")
-        representation = "BadgerFish";
-    if (representation == "xml" || representation == "Xml")
+    representation = representation || this._representation;
+    if (representation == "xml")
         return xml;
-    if (representation == "BadgerFish") {
-        var json = DomUtil.toJSON(xml);
-        return json;
-    }
-    if (representation == "SimpleJson") {
+    if (representation == "BadgerFish" || representation == "SimpleJson") {
         var json = DomUtil.toJSON(xml, representation);
         return json;
     }
-    throw new Error(`Unsupported representation '${this.representation}'`);
+    throw new Error(`Unsupported representation '${this._representation}'`);
 }
 
-Client.prototype.fromRepresentation = function(rootName, entity, representation) {
-    representation = representation || this.representation;
-    if (!representation || representation == "json")
-        representation = "BadgerFish";
-    if (representation == "xml" || representation == "Xml")
+/**
+ * Convert to an XML object from a representation
+ * @param {string} rootName the name of the root XML element
+ * @param {DOMElement|JSON} entity the object to convert
+ * @param {string} representation the expected representation ('xml', 'BadgerFish', or 'SimpleJson'). If not set, will use the current representation
+ * @returns {DOMElement} the object converted to XML
+ */
+ Client.prototype.fromRepresentation = function(rootName, entity, representation) {
+    representation = representation || this._representation;
+    if (representation == "xml")
         return entity;
-    if (representation == "BadgerFish") {
-        var xml = DomUtil.fromJSON(rootName, entity);
-        return xml;
-    }
-    if (representation == "SimpleJson") {
+    if (representation == "BadgerFish" || representation == "SimpleJson") {
         var xml = DomUtil.fromJSON(rootName, entity, representation);
         return xml;
     }
-    throw new Error(`Unsupported representation '${this.representation}'`);
+    throw new Error(`Unsupported representation '${this._representation}'`);
 }
 
+/**
+ * Convert between 2 representations
+ * @param {DOMElement|JSON} entity the object to convert
+ * @param {string} fromRepresentation the source representation ('xml', 'BadgerFish', or 'SimpleJson').
+ * @param {string} toRepresentation the target representation ('xml', 'BadgerFish', or 'SimpleJson'). If not set, will use the current representation
+ * @returns {DOMElement} the converted object
+ */
 Client.prototype.convertToRepresentation = function(entity, fromRepresentation, toRepresentation) {
-    toRepresentation = toRepresentation || this.representation;
+    toRepresentation = toRepresentation || this._representation;
     if (this.isSameRepresentation(fromRepresentation, toRepresentation))
         return entity;
     var xml = this.fromRepresentation("root", entity, fromRepresentation);
@@ -243,28 +266,39 @@ Client.prototype.convertToRepresentation = function(entity, fromRepresentation, 
     return entity;
 }
 
+/**
+ * Compare two representations
+ * @param {string} rep1 the first representation ('xml', 'BadgerFish', or 'SimpleJson')
+ * @param {string} rep2 the second representation ('xml', 'BadgerFish', or 'SimpleJson')
+ * @returns a boolean indicating if the 2 representations are the same or not
+ */
 Client.prototype.isSameRepresentation = function(rep1, rep2) {
     if (!rep1 || !rep2) throw new Error(`Undefined representation: cannot compare`);
+    if (rep1 != "xml" && rep1 != "SimpleJson" && rep1 != "BadgerFish") throw new Error(`Invalid representation '${rep1}': cannot compare`);
+    if (rep2 != "xml" && rep2 != "SimpleJson" && rep2 != "BadgerFish") throw new Error(`Invalid representation '${rep2}': cannot compare`);
     if (rep1 == rep2) return true;
-    if (rep1 == "json") rep1 = "BadgerFish";
-    if (rep1 == "xml") rep1 = "Xml";
-    if (rep2 == "json") rep2 = "BadgerFish";
-    if (rep2 == "xml") rep2 = "Xml";
     return rep1 == rep2;
 }
- 
+
+/**
+ * Activate / deactivate tracing of SOAP calls
+ * @param {boolean} trace indicates whether to activate tracing or not
+ */
+Client.prototype.traceSOAPCalls = function(trace) {
+    this._traceSOAPCalls = trace;
+}
 
 /**
  * Is the client logged?
  * @returns {boolean} a boolean indicating if the client is logged or not
  */
 Client.prototype.isLogged = function() {
-    return this.sessionToken !== null && 
-           this.sessionToken !== undefined && 
-           this.sessionToken !== "" &&
-           this.securityToken !== null && 
-           this.securityToken !== undefined && 
-           this.securityToken !== "";
+    return this._sessionToken !== null && 
+           this._sessionToken !== undefined && 
+           this._sessionToken !== "" &&
+           this._securityToken !== null && 
+           this._securityToken !== undefined && 
+           this._securityToken !== "";
 }
 
 /**
@@ -275,8 +309,8 @@ Client.prototype.isLogged = function() {
  * parameters should be set
  */
 Client.prototype.prepareSoapCall = function(urn, method) {
-    const soapCall = new SoapMethodCall(urn, method, this.sessionToken, this.securityToken);
-    soapCall.transport = transportWrapper.call(this, this.soapTransport);
+    const soapCall = new SoapMethodCall(urn, method, this._sessionToken, this._securityToken);
+    soapCall.transport = transportWrapper.call(this, this._soapTransport);
     return soapCall;
 }
 
@@ -290,18 +324,20 @@ Client.prototype.makeSoapCall = function(soapCall) {
     const requiresLogon = !(soapCall.urn === "xtk:session" && soapCall.methodName === "Logon");
     if (requiresLogon && !this.isLogged())
         throw new Error(`Cannot execute SOAP call ${soapCall.urn}#${soapCall.methodName}: you are not logged in. Use the Logon function first`);
-    var soapEndpoint = this.endpoint + "/nl/jsp/soaprouter.jsp";
+    var soapEndpoint = this._endpoint + "/nl/jsp/soaprouter.jsp";
     return soapCall.execute(soapEndpoint);
 }
 
 /**
  * Login to an instance
+ * @param {boolean} rememberMe 
  */
-Client.prototype.logon = function() {
+Client.prototype.logon = function(rememberMe) {
     const that = this;
+    rememberMe = !!rememberMe;
 
-    this.sessionToken = "";
-    this.securityToken = "";
+    this._sessionToken = "";
+    this._securityToken = "";
 
     // Clear session token cookie to ensure we're not inheriting an expired cookie. See NEO-26589
     if (typeof document != "undefined") {
@@ -309,10 +345,10 @@ Client.prototype.logon = function() {
     }
 
     const soapCall = this.prepareSoapCall("xtk:session", "Logon");
-    soapCall.writeString("login", that.user);
-    soapCall.writeString("password", that.password);
+    soapCall.writeString("login", that._user);
+    soapCall.writeString("password", that._password);
     var parameters = null;
-    if (!!that.rememberMe) {
+    if (rememberMe) {
         parameters = soapCall.createElement("parameters");
         parameters.setAttribute("rememberMe", "true");
     }
@@ -321,14 +357,14 @@ Client.prototype.logon = function() {
     return this.makeSoapCall(soapCall).then(function() {
         sessionToken = soapCall.getNextString();
         
-        that.sessionInfo = soapCall.getNextDocument();
-        that.installedPackages = {};
-        const userInfo = DomUtil.findElement(that.sessionInfo, "userInfo");
+        that._sessionInfo = soapCall.getNextDocument();
+        that._installedPackages = {};
+        const userInfo = DomUtil.findElement(that._sessionInfo, "userInfo");
         if (userInfo) {
           var pack = DomUtil.getFirstChildElement(userInfo, "installed-package");
           while (pack) {
             const name = `${DomUtil.getAttributeAsString(pack, "namespace")}:${DomUtil.getAttributeAsString(pack, "name")}`;
-            that.installedPackages[name] = name;
+            that._installedPackages[name] = name;
             pack = DomUtil.getNextSiblingElement(pack);
           }
         }
@@ -341,9 +377,14 @@ Client.prototype.logon = function() {
         if (!securityToken)
             throw new Error(`Logon method succeeded, but no security token was returned`);
         // store member variables after all parameters are decode the ensure atomicity
-        that.sessionToken = sessionToken;
-        that.securityToken = securityToken;
+        that._sessionToken = sessionToken;
+        that._securityToken = securityToken;
     });
+}
+
+Client.prototype.getSessionInfo = function(representation) {
+    representation = representation || this._representation;
+    return this.toRepresentation(this._sessionInfo, representation);
 }
 
 /**
@@ -354,9 +395,9 @@ Client.prototype.logoff = function() {
     if (!that.isLogged()) return;
     var soapCall = that.prepareSoapCall("xtk:session", "Logoff");
         return this.makeSoapCall(soapCall).then(function() {
-        that.endpoint = "";
-        that.sessionToken = "";
-        that.securityToken = "";
+        that._endpoint = "";
+        that._sessionToken = "";
+        that._securityToken = "";
         soapCall.checkNoMoreArgs();
     });
 }
@@ -370,14 +411,14 @@ Client.prototype.logoff = function() {
 Client.prototype.getOption = async function(name, useCache = true) {
     var value = undefined;
     if (useCache)
-        value = this.optionCache.get(name);
+        value = this._optionCache.get(name);
     if (value === undefined) {
         var option = await this.NLWS.xtkSession.getOption(name);
         if (!option || option[1] == 0)
             value = null;
         else
             value = XtkCaster.as(option[0], option[1]);
-        this.optionCache.cache(name, value);
+        this._optionCache.cache(name, value);
     }
     return value;
 }
@@ -386,21 +427,21 @@ Client.prototype.getOption = async function(name, useCache = true) {
  * Clears the options cache
  */
 Client.prototype.clearOptionCache = function() {
-    this.optionCache.clear();
+    this._optionCache.clear();
 }
 
 /**
  * Clears the method cache
  */
 Client.prototype.clearMethodCache = function() {
-    this.methodCache.clear();
+    this._methodCache.clear();
 }
 
 /**
  * Clears the entity cache
  */
 Client.prototype.clearEntityCache = function() {
-    this.entityCache.clear();
+    this._entityCache.clear();
 }
 
 /**
@@ -422,7 +463,7 @@ Client.prototype.hasPackage = function(packageId, optionalName) {
     packageId = `${packageId}:${optionalName}`;
   if (!this.isLogged())
     throw new Error(`Cannot call hasPackage: session not connected`);
-  return this.installedPackages[packageId] !== undefined;
+  return this._installedPackages[packageId] !== undefined;
 }
 
 /**
@@ -431,10 +472,10 @@ Client.prototype.hasPackage = function(packageId, optionalName) {
  */
 Client.prototype.getSecretKeyCipher = async function() {
     var that = this;
-    if (this.secretKeyCipher) return this.secretKeyCipher;
+    if (this._secretKeyCipher) return this._secretKeyCipher;
     return that.getOption("XtkSecretKey").then(function(secretKey) {
-        that.secretKeyCipher = new Cipher(secretKey);
-        return that.secretKeyCipher;
+        that._secretKeyCipher = new Cipher(secretKey);
+        return that._secretKeyCipher;
     });
 }
 
@@ -508,12 +549,12 @@ Client.prototype.getEntityIfMoreRecent = function(entityType, fullName) {
  */
 Client.prototype.getSchema = async function(shcemaId, representation) {
     var that = this;
-    var entity = that.entityCache.get("xtk:schema", shcemaId);
+    var entity = that._entityCache.get("xtk:schema", shcemaId);
     if (!entity) {
         entity = await that.getEntityIfMoreRecent("xtk:schema", shcemaId);
     }
     if (entity)
-        that.entityCache.put("xtk:schema", shcemaId, entity);
+        that._entityCache.put("xtk:schema", shcemaId, entity);
 
     entity = that.toRepresentation(entity, representation);
     return entity;
@@ -546,7 +587,7 @@ Client.prototype.getSysEnum = async function(enumName, optionalStartSchemaOrSche
     }
     var schema = optionalStartSchemaOrSchemaName; 
 
-    if (this.representation == "json" || this.representation == "BadgerFish") {
+    if (this._representation == "BadgerFish") {
         if (schema.enumeration) {
             for (var i in schema.enumeration) {
                 var e = schema.enumeration[i];
@@ -555,7 +596,7 @@ Client.prototype.getSysEnum = async function(enumName, optionalStartSchemaOrSche
             }
         }
     }
-    else if (this.representation == "SimpleJson") {
+    else if (this._representation == "SimpleJson") {
         if (schema.enumeration) {
             for (var i in schema.enumeration) {
                 var e = schema.enumeration[i];
@@ -564,7 +605,7 @@ Client.prototype.getSysEnum = async function(enumName, optionalStartSchemaOrSche
             }
         }
     }
-    else if (this.representation == "xml") {
+    else if (this._representation == "xml") {
         var enumNode = DomUtil.getFirstChildElement(schema, "enumeration");
         while (enumNode) {
             var name = DomUtil.getAttributeAsString(enumNode, "name");
@@ -575,7 +616,7 @@ Client.prototype.getSysEnum = async function(enumName, optionalStartSchemaOrSche
         return enumNode;
     }
     else
-        throw new Error(`Unsupported representation '${this.representation}'`);
+        throw new Error(`Unsupported representation '${this._representation}'`);
 }
 
 /**
@@ -595,16 +636,16 @@ Client.prototype.callMethod = async function(schemaId, methodName, object, param
     if (!schema)
         throw new Error(`Schema '${schemaId}' not found`);
     var schemaName = schema.getAttribute("name");
-    var method = that.methodCache.get(schemaId, methodName);
+    var method = that._methodCache.get(schemaId, methodName);
     if (!method) {
-        this.methodCache.cache(schema);
-        method = that.methodCache.get(schemaId, methodName);
+        this._methodCache.cache(schema);
+        method = that._methodCache.get(schemaId, methodName);
     }
     if (!method)
         throw new Error(`Method '${methodName}' of schema '${schemaId}' not found`);
     // console.log(method.toXMLString());
 
-    var urn = that.methodCache.getSoapUrn(schemaId, methodName);
+    var urn = that._methodCache.getSoapUrn(schemaId, methodName);
     var soapCall = that.prepareSoapCall(urn, methodName);
 
     const isStatic = DomUtil.getAttributeAsBoolean(method, "static");
@@ -649,13 +690,10 @@ Client.prototype.callMethod = async function(schemaId, methodName, object, param
                     var docName = undefined;
                     // Hack for workflow API. The C++ code checks that the name of the XML element is <variables>. When
                     // using xml representation at the SDK level, it's ok since the SDK caller will set that. But this does
-                    // not work when using "json" representation where we do not know the root element name.
+                    // not work when using "BadgerFish" representation where we do not know the root element name.
                     if (schemaId == "xtk:workflow" && methodName == "StartWithParameters" && paramName == "parameters")
                         docName = "variables";
                     // Try to guess the document name. This is usually available in the xtkschema attribute
-                    if (paramValue === undefined) {
-                        var x =  0;
-                    }
                     const xtkschema = paramValue["@xtkschema"];
                     if (xtkschema) {
                         const index = xtkschema.indexOf(":");
@@ -704,7 +742,7 @@ Client.prototype.callMethod = async function(schemaId, methodName, object, param
                     else if (type == "DOMDocument") {
                         returnValue = soapCall.getNextDocument();
                         returnValue = that.toRepresentation(returnValue);
-                        if (that.representation == "json" || that.representation == "BadgerFish" || that.representation == "SimpleJson") {
+                        if ( that._representation == "BadgerFish" || that._representation == "SimpleJson") {
                             if (schemaId === "xtk:queryDef" && methodName === "ExecuteQuery" && paramName === "output") {
                                 // https://github.com/adobe/acc-js-sdk/issues/3
                                 // Check if query operation is "getIfExists". The "object" variable at this point
@@ -747,7 +785,7 @@ Client.prototype.callMethod = async function(schemaId, methodName, object, param
                         }
 /*                    else if (type == "sessionUserInfo") {
                         returnValue = soapCall.getNextElement();
-                        if (that.representation == "json")
+                        if (that._representation == "BadgerFish")
                             returnValue = DomUtil.toJSON(returnValue);
                     }
                     */
@@ -765,6 +803,7 @@ Client.prototype.callMethod = async function(schemaId, methodName, object, param
         return result;
     });
 }
+
 
 
 /**

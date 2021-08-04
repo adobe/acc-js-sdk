@@ -5,11 +5,20 @@ This is a node.js SDK for Campaign API. It exposes the Campaign API exactly like
 
 # Changelog
 
-## Version 0.2.0
+## Version 1.0.0
 _2021/07/29_
 * Support for a simpler flavor of JSON (see SimpleJson vs. BadgerFish below)
 * Finalize the implementation to support int64
 * Add 100% coverage for all tests
+* Make some members of the Client object private
+* Fixed bug in JSON serialization for XML elments having an attribute named "length"
+
+_Breaking changes in 1.0.0_
+* The default representation is now `SimpleJson` instead of `BadgerFish`
+* The `sdk.init` and `Client` constructor method 4th parameter is now an object litteral containing configuration options for the client. Before it was a boolean indiating the value of the `rememberMe` parameter of the `Logon` call.
+* The `Logon` call now takes the `rememberMe` as a parameter
+* Client object members are now private: access to representation, etc. attributes is not allowed anymore except for `NLWS`, `XtkCaster`, and `DomUtil`
+* Access to the `sessionInfo` object after `logon` can be done via the new `getSessionInfo` call
 
 ## Versin 0.1.23
 _2021/07/27_
@@ -49,13 +58,12 @@ Initial version
 
 # API Basics
 
-In order to call the API, you need to create a `Client` object
+In order to call the API, you need to create a `Client` object.
 
 ```js
 const sdk = require('./src/index.js');
 
 const client = await sdk.init("https://myInstance.campaign.adobe.com", "admin", "admin");
-client.representation = "SimpleJson";
 const NLWS = client.NLWS;
 ```
 
@@ -66,21 +74,25 @@ You can get version information about the SDK
 console.log(sdk.getSDKVersion());
 ```
 
+Starting from version 1.0.0, the init function takes a 4th parameter which contains some options for the client. The `options` parameter is an object litteral with the following attributes.
+* `representation` (defaults to SimpleJson) indicates whether to use Xml or Json (and which flavor of Json)
+
+
 ## LogOn / LogOff
 ```js
-    await client.logon();
+await client.logon();
 ```
 
 ```js
-    await client.logoff();
+await client.logoff();
 ```
 
-## Calling static APIs
-Static APIs are the easiest to call. Once you have a `NLWS` object and logon to the server, call a static API as followed
+## Calling static methods
+Static methods are the easiest to call. Once you have a `NLWS` object and logon to the server, call a static mathod as followed
 
 ```js
-    result = await NLWS.xtkSession.getServerTime();
-    console.log(result);
+result = await NLWS.xtkSession.getServerTime();
+console.log(result);
 ```
 
 where
@@ -93,29 +105,29 @@ where
 In Campaign, many method attributes are XML elements or documents, as well as many return types. It's not very easy to use in JavaScript, so the SDK supports automatic XML<=> JSON conversion. Of yourse, you can still use XML if you want.
 
 We're supporting 2 flavors of JSON.
-* `BadgerFish` which is the default, but legacy flavor of JSON. It's a little bit complex and was deprecated in version 0.2.0 in favor of `SimpleJson` (http://www.sklar.com/badgerfish/) 
-* `SimpleJson` which is the recommeded representation
-* `xml` which can be use to perform no transformation: Campaign XML is returned directly.
+* `SimpleJson` which is the recommeded and default representation
+* `BadgerFish` which was the only and default before 1.0.0, and is now a legacy flavor of JSON. It's a little bit complex and was deprecated in favor of `SimpleJson` (http://www.sklar.com/badgerfish/) 
+* `xml` which can be use to perform no transformation: Campaign XML is returned directly without any transformations.
 
 
-The representation can be changed as follow. It's recommended to set it to `SimpleJson`.
+The representation can set when creating a client. It's recommended to set it to `SimpleJson`.
 ```js
-client.representation = "SimpleJson";
+const client = await sdk.init("https://myInstance.campaign.adobe.com", "admin", "admin", { representation: "SimpleJson" });
 ```
 
-Here's an example of a queryDef in SimpleJson). This query will return an array containing one item for each external account. Each item will contain the account id and name.
+Here's an example of a queryDef in SimpleJson). This query will return an array containing one item for each external account in the Campaign database. Each item will contain the account id and name.
 
 ```
-    const queryDef = {
-        schema: "nms:extAccount",
-        operation: "select",
-        select: {
-            node: [
-                { expr: "@id" },
-                { expr: "@name" }
-            ]
-        }
-    };
+const queryDef = {
+    schema: "nms:extAccount",
+    operation: "select",
+    select: {
+        node: [
+            { expr: "@id" },
+            { expr: "@name" }
+        ]
+    }
+};
 ```
 
 ## SimpleJson format
@@ -127,6 +139,8 @@ The XML root element tag is determined by the SDK as it's generating the XML, us
 * JSON: `{}`
 
 XML attributes are mapped to JSON attributes with the same name, whose litteral value can be a string, number, or boolean. There's no "@" sign in the JSON attribute name.
+Values in JSON attributes can be indifferently typed (ex: number, boolean), or strings (ex: "3" instead of just 3) depending if the conversion could determine the attribute type or not. 
+API users should expect and handle both value and use the `XtkCaster` object to ensure proper conversion when using.
 
 * XML: `<root hello="world" count=3 ok=true/>`
 * JSON: `{ hello:"world", count:3, ok:true }`
@@ -136,7 +150,7 @@ XML elements are mapped to JSON objects
 * XML: `<root><item id=1/></root>`
 * JSON: `{ item: { id:1 } }`
 
-If the parent element tag ends with `-collecion` children are always an array, even if there are no children, or if there is just one child
+If the parent element tag ends with `-collecion` children are always an array, even if there are no children, or if there is just one child. The rationale is that XML/JSON conversion is ambigous : XML can have multiple elements with the same tag and when there's only one such element, it's not possible to determine if it should be represented as a JSON object or JSON array unless we have additional metadata. 
 
 * XML: `<root-collection><item id=1/></root>`
 * JSON: `{ item: [ { id:1 } ] }`
@@ -163,7 +177,7 @@ If an element contains both text, and children, you need to use the alternative 
 
 
 ## Returning multiple values
-Campaign API can return one or multiple values. The SDK uses the following convention:
+Campaign APIs can return one or multiple values. The SDK uses the following convention:
 * no return value -> returns `null`
 * one return value -> returns the value directly
 * more that one return value -> returns an array of values
@@ -175,22 +189,22 @@ To call a non-static API, you need an object to call the API on. You create an o
 For instance, here's how one creates a QueryDef object.
 
 ```js
-    const queryDef = {
-        schema: "nms:extAccount",
-        operation: "select",
-        select: {
-            node: [
-                { expr: "@id" },
-                { expr: "@name" }
-            ]
-        }
-    };
-    const query = NLWS.xtkQueryDef.create(queryDef);
+const queryDef = {
+    schema: "nms:extAccount",
+    operation: "select",
+    select: {
+        node: [
+            { expr: "@id" },
+            { expr: "@name" }
+        ]
+    }
+};
+const query = NLWS.xtkQueryDef.create(queryDef);
 ```
 
 The method can then be called directly on the object
 ```js
-    const extAccounts = await query.executeQuery();
+const extAccounts = await query.executeQuery();
 ```
 
 In this example, the result is as follows
@@ -198,7 +212,7 @@ In this example, the result is as follows
 ```js
 { extAccount:[
     { id: "2523379", name: "cda_snowflake_extaccount" },
-    { id: "1782", name: "defaultPopAccount" },
+    { id: "1782",    name: "defaultPopAccount" },
     { id: "3643548", name: "v8" }
 ]}
 ```
@@ -221,6 +235,7 @@ Campaign uses a typed system with some specificities:
 |         byte |  1 |  number | signed integer in the [-128, 128[ range. Never null, defaults to 0 |
 |        short |  2 |  number | signed 16 bits integer in the [-32768, 32768[ range. Never null, defaults to 0 |
 |         long |  3 |  number | signed 32 bits integer. Never null, defaults to 0 |
+|        int64 |    | string  | signed 64 bits integer. As JavaScript handles all numbers as doubles, it's not possible to properly represent an int64 as a number, and it's therefore represented as a string.
 |        float |  4 |  number | single-percision numeric value. Never null, defaults to 0 |
 |       double |  5 |  number | single-percision numeric value. Never null, defaults to 0 |
 |     datetime |  7 |    Date | UTC timestamp with second precision. Can be null |
@@ -268,67 +283,73 @@ const DomUtil = sdk.DomUtil;
 
 Create DOM from XML string:
 ```js
-    const doc = DomUtil.parse("<root>
-    <one/>
-</root>");
+const doc = DomUtil.parse(`<root>
+      <one/>
+    </root>`);
 ```
 
 Writes a DOM document or element as a string:
 ```js
-    const s = DomUtil.toXMLString(docOrElement);
+const s = DomUtil.toXMLString(docOrElement);
 ```
 
 Creates a new document
 ```js
-    const queryDoc = DomUtil.newDocument("queryDef");
+const queryDoc = DomUtil.newDocument("queryDef");
 ```
 
 Escape text value
 ```js
-    const escaped = DomUtil.escapeXmlString(value);
+const escaped = DomUtil.escapeXmlString(value);
 ```
 
 Find element by name (finds the first)
 ```js
-    const el = DomUtil.findElement(parentElement, elementName, shouldThrow);
+const el = DomUtil.findElement(parentElement, elementName, shouldThrow);
 ```
 
 Get the text value of an elemenbt
 ```js
-    const text = DomUtil.elementValue(element);
+const text = DomUtil.elementValue(element);
 ```
 
 Iterates over child elements
 ```js
-    var child = DomUtil.getFirstChildElement(parentElement);
-    while (child) {
-        ...
-        child = DomUtil.getNextSiblingElement(child);
-    }
+var child = DomUtil.getFirstChildElement(parentElement);
+while (child) {
+    ...
+    child = DomUtil.getNextSiblingElement(child);
+}
 ```
 
 Iterates over child elements of a given type
 ```js
-    var methodChild = DomUtil.getFirstChildElement(parentElement, "method");
-    while (methodChild) {
-        ...
-        methodChild = DomUtil.getNextSiblingElement(methodChild, "method");
-    }
+var methodChild = DomUtil.getFirstChildElement(parentElement, "method");
+while (methodChild) {
+    ...
+    methodChild = DomUtil.getNextSiblingElement(methodChild, "method");
+}
 ```
 
 Get typed attribute values
 ```js
-    const stringValue = DomUtil.getAttributeAsString(element, attributeName)
-    const byteValue = DomUtil.getAttributeAsByte(element, attributeName)
-    const booleanValue = DomUtil.getAttributeAsBoolean(element, attributeName)
-    const shortValue = DomUtil.getAttributeAsShort(element, attributeName)
-    const longValue = DomUtil.getAttributeAsLong(element, attributeName)
+const stringValue = DomUtil.getAttributeAsString(element, attributeName)
+const byteValue = DomUtil.getAttributeAsByte(element, attributeName)
+const booleanValue = DomUtil.getAttributeAsBoolean(element, attributeName)
+const shortValue = DomUtil.getAttributeAsShort(element, attributeName)
+const longValue = DomUtil.getAttributeAsLong(element, attributeName)
 ```
 
-JSON to XML conversion (badger fish)
+JSON to XML conversion (SimpleJson)
 ```js
-    const document = DomUtil.fromJSON(json);
-    const json = DomUtil.toJSON(documentOrElement);
+const document = DomUtil.fromJSON(json);
+const json = DomUtil.toJSON(documentOrElement);
+```
+
+BadgerFish can be forced as well
+```js
+const document = DomUtil.fromJSON(json, "BadgerFish");
+const json = DomUtil.toJSON(documentOrElement, "BadgerFish");
 ```
 
 
@@ -342,14 +363,14 @@ The following caches are manage by the SDK
 
 Caches can be cleared at any time
 ```js
-    client.clearOptionCache();
-    client.clearMethodCache();
-    client.clearEntityCache();
+client.clearOptionCache();
+client.clearMethodCache();
+client.clearEntityCache();
 ```
 
 or 
 ```js
-    client.clearAllCaches();
+client.clearAllCaches();
 ```
 
 
@@ -358,8 +379,8 @@ or
 External account passwords can be decrypted using a Cipher.
 
 ```js
-    const cipher = await client.getSecretKeyCipher();
-    const password = cipher.decryptPassword(encryptedPassword);
+const cipher = await client.getSecretKeyCipher();
+const password = cipher.decryptPassword(encryptedPassword);
 ````
 
 
@@ -370,34 +391,34 @@ External account passwords can be decrypted using a Cipher.
 
 A convenience function is provided, which returns a typed option value.
 ```js
-    var value = await client.getOption("XtkDatabaseId");
+var value = await client.getOption("XtkDatabaseId");
 ```
 
 Options are cached because they are often used. It's possible to force the reload of an option:
 ```js
-    var value = await client.getOption("XtkDatabaseId", false);
+var value = await client.getOption("XtkDatabaseId", false);
 ```
 
 It's also possible to call the API directly.
 Use the `xtk:session:GetOption` method to return an option value and it's type. This call will not use the option cache for returning the option value, but will still cache the result.
 
 ```js
-    const optionValueAndType = await NLWS.xtkSession.getOption("XtkDatabaseId");
-    console.log("Marketing datbaseId: " + optionValueAndType);
+const optionValueAndType = await NLWS.xtkSession.getOption("XtkDatabaseId");
+console.log("Marketing datbaseId: " + optionValueAndType);
 
-    Marketing datbaseId: u7F00010100B52BDE,6
+Marketing datbaseId: u7F00010100B52BDE,6
 ```
 
 If the option does not exist, it will return [ "", 0 ]
 
 ```js
-    var datbaseId = await client.getOption("XtkDatabaseId");
-    console.log(datbaseId);
+var datbaseId = await client.getOption("XtkDatabaseId");
+console.log(datbaseId);
 ```
 
 The cache can be cleared
 ```js
-    client.clearOptionCache();
+client.clearOptionCache();
 ```
 
 
@@ -407,12 +428,12 @@ The cache can be cleared
 * Test if a package is installed. Expects to be connected to an instance
 
 ```js
-    var hasAmp = client.hasPackage("nms:amp");
+var hasAmp = client.hasPackage("nms:amp");
 ```
 
 or
 ```js
-    var hasAmp = client.hasPackage("nms", "amp");
+var hasAmp = client.hasPackage("nms", "amp");
 ```
 
 
@@ -420,14 +441,14 @@ or
 From a marketing client connection, one can get a client to a mid server
 
 ```js
-    console.log("Connecting to mid server...");
-    const midClient = await client.getMidClient();
-    await midClient.client.logon();
-    const datbaseId = await midClient.getOption("XtkDatabaseId");
-    console.log("Mid datbaseId: " + datbaseId);
-    await midClient.NLWS.xtkSession.testCnx();
-    console.log("Disconnecting from mid");
-    await midClient.client.logoff();
+console.log("Connecting to mid server...");
+const midClient = await client.getMidClient();
+await midClient.client.logon();
+const datbaseId = await midClient.getOption("XtkDatabaseId");
+console.log("Mid datbaseId: " + datbaseId);
+await midClient.NLWS.xtkSession.testCnx();
+console.log("Disconnecting from mid");
+await midClient.client.logoff();
 ```
 
 # Configuration
@@ -477,69 +498,69 @@ xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
 
 List all accounts
 ````
-    const queryDef = {
-        schema: "nms:extAccount",
-        operation: "select",
-        select: {
-            node: [
-                { expr: "@id" },
-                { expr: "@name" }
-            ]
-        }
-    };
-    const query = NLWS.xtkQueryDef.create(queryDef);
+const queryDef = {
+    schema: "nms:extAccount",
+    operation: "select",
+    select: {
+        node: [
+            { expr: "@id" },
+            { expr: "@name" }
+        ]
+    }
+};
+const query = NLWS.xtkQueryDef.create(queryDef);
 
-    console.log(query);
-    const extAccounts = await query.executeQuery();
-    console.log(JSON.stringify(extAccounts));
+console.log(query);
+const extAccounts = await query.executeQuery();
+console.log(JSON.stringify(extAccounts));
 ````
 
 Get a single record
 ```js
-    var queryDef = {
-        schema: "nms:extAccount",
-        operation: "get",
-        select: {
-            node: [
-                { expr: "@id" },
-                { expr: "@name" },
-                { expr: "@label" },
-                { expr: "@type" },
-                { expr: "@account" },
-                { expr: "@password" },
-                { expr: "@server" },
-                { expr: "@provider" },
-            ]
-        },
-        where: {
-            condition: [
-                { expr: "@name='ffda'" }
-            ]
-        }
+var queryDef = {
+    schema: "nms:extAccount",
+    operation: "get",
+    select: {
+        node: [
+            { expr: "@id" },
+            { expr: "@name" },
+            { expr: "@label" },
+            { expr: "@type" },
+            { expr: "@account" },
+            { expr: "@password" },
+            { expr: "@server" },
+            { expr: "@provider" },
+        ]
+    },
+    where: {
+        condition: [
+            { expr: "@name='ffda'" }
+        ]
     }
-    const query = NLWS.xtkQueryDef.create(queryDef);
-    const extAccount = await query.executeQuery();
+}
+const query = NLWS.xtkQueryDef.create(queryDef);
+const extAccount = await query.executeQuery();
 ```
 
 ## Pagination
 Results can be retrieved in different pages, using the `@lineCount` and `@startLine` attributes. For instance, retrieves profiles 3 and 4 (skip 1 and 2)
 
 ```js
-    var queryDef = {
-        schema: "nms:recipient",
-        operation: "select",
-        lineCount: 2,
-        startLine: 2,
-        select: {
-            node: [
-                { expr: "@id" },
-                { expr: "@email" }
-            ]
-        }
+var queryDef = {
+    schema: "nms:recipient",
+    operation: "select",
+    lineCount: 2,
+    startLine: 2,
+    select: {
+        node: [
+            { expr: "@id" },
+            { expr: "@email" }
+        ]
     }
-    var query = NLWS.xtkQueryDef.create(queryDef);
-    var recipients = await query.executeQuery();
-    console.log(JSON.stringify(recipients));
+}
+var query = NLWS.xtkQueryDef.create(queryDef);
+var recipients = await query.executeQuery();
+console.log(JSON.stringify(recipients));
 ```
 
 
@@ -582,8 +603,8 @@ await NLWS.xtkSession.write(folder);
 
 Start and stop wotkflows, passing either an id or workflow internal name
 ```js
-    await NLWS.xtkWorkflow.stop(4900);
-    await NLWS.xtkWorkflow.start(4900);
+await NLWS.xtkWorkflow.stop(4900);
+await NLWS.xtkWorkflow.start(4900);
 ```
 
 A workflow can be started with parameters. Variables, are passed as attributes of the parameters document.
@@ -603,100 +624,100 @@ logInfo(instance.vars.hello);
 
 Create a recipient
 ```js
-    var recipient = {
-        xtkschema: "nms:recipient",
-        _operation: "insert",
-        firstName: "Thomas",
-        lastName: "Jordy",
-        email: "jordy@adobe.com"
-    };
-    await NLWS.xtkSession.write(recipient);
+var recipient = {
+    xtkschema: "nms:recipient",
+    _operation: "insert",
+    firstName: "Thomas",
+    lastName: "Jordy",
+    email: "jordy@adobe.com"
+};
+await NLWS.xtkSession.write(recipient);
 ```
 
 Create multiple recipients
 ```js
-    var recipients = {
-        xtkschema: "nms:recipient",
-        recipient: [
-            {
-                _operation: "insert",
-                firstName: "Christophe",
-                lastName: "Protat",
-                email: "protat@adobe.com"
-            },
-            {
-                _operation: "insert",
-                firstName: "Eric",
-                lastName: "Perrin",
-                email: "perrin@adobe.com"
-            }
-        ]
-    };
-    await NLWS.xtkSession.writeCollection(recipients);
+var recipients = {
+    xtkschema: "nms:recipient",
+    recipient: [
+        {
+            _operation: "insert",
+            firstName: "Christophe",
+            lastName: "Protat",
+            email: "protat@adobe.com"
+        },
+        {
+            _operation: "insert",
+            firstName: "Eric",
+            lastName: "Perrin",
+            email: "perrin@adobe.com"
+        }
+    ]
+};
+await NLWS.xtkSession.writeCollection(recipients);
 ```
 
 List all recipients in Adobe
 ```js
-    var queryDef = {
-        schema: "nms:recipient",
-        operation: "select",
-        select: {
-            node: [
-                { expr: "@id" },
-                { expr: "@firstName" },
-                { expr: "@lastName" },
-                { expr: "@email" }
-            ]
-        },
-        where: {
-            condition: [
-                { expr: "GetEmailDomain(@email)='adobe.com'" }
-            ]
-        }
+var queryDef = {
+    schema: "nms:recipient",
+    operation: "select",
+    select: {
+        node: [
+            { expr: "@id" },
+            { expr: "@firstName" },
+            { expr: "@lastName" },
+            { expr: "@email" }
+        ]
+    },
+    where: {
+        condition: [
+            { expr: "GetEmailDomain(@email)='adobe.com'" }
+        ]
     }
-    const query = NLWS.xtkQueryDef.create(queryDef);
-    var recipients = await query.executeQuery();
-    console.log(JSON.stringify(recipients));
+}
+const query = NLWS.xtkQueryDef.create(queryDef);
+var recipients = await query.executeQuery();
+console.log(JSON.stringify(recipients));
 ```
 
 Count total number of profiles
 ```js
-    var queryDef = {
-       schema: "nms:recipient",
-       operation: "count"
-    }
-    var query = NLWS.xtkQueryDef.create(queryDef);
-    var count = await query.executeQuery();
-    count = XtkCaster.asLong(count.count);
-    console.log(count);
+var queryDef = {
+    schema: "nms:recipient",
+    operation: "count"
+}
+var query = NLWS.xtkQueryDef.create(queryDef);
+var count = await query.executeQuery();
+count = XtkCaster.asLong(count.count);
+console.log(count);
 ```
 
 Update a profile. In this case, use the "@email" attribute as a key. If the `@_key` attribute is not specified, the primary key will be used.
 ```js
-    var recipient = {
-        xtkschema: "nms:recipient",
-        _key: "@email",
-        _operation: "update",
-        firstName: "Alexandre",
-        email: "amorin@adobe.com"
-    };
-    await NLWS.xtkSession.write(recipient);
+var recipient = {
+    xtkschema: "nms:recipient",
+    _key: "@email",
+    _operation: "update",
+    firstName: "Alexandre",
+    email: "amorin@adobe.com"
+};
+await NLWS.xtkSession.write(recipient);
 ```
 
 Deletes a profile
 ```js
-    var recipient = {
-        xtkschema: "nms:recipient",
-        _key: "@email",
-        _operation: "delete",
-        email: "amorin@adobe.com"
-    };
-    await NLWS.xtkSession.write(recipient);
+var recipient = {
+    xtkschema: "nms:recipient",
+    _key: "@email",
+    _operation: "delete",
+    email: "amorin@adobe.com"
+};
+await NLWS.xtkSession.write(recipient);
 ```
 
 Deletes a set of profiles, based on condition. For instance delete everyone having an email address in adobe.com domain
 ```js
-    await NLWS.xtkSession.deleteCollection("nms:recipient", { condition: { expr: "GetEmailDomain(@email)='adobe.com'"} });
+await NLWS.xtkSession.deleteCollection("nms:recipient", { condition: { expr: "GetEmailDomain(@email)='adobe.com'"} });
 ```
 
 
@@ -708,31 +729,31 @@ Deletes a set of profiles, based on condition. For instance delete everyone havi
 Reading schemas is a common operation in Campaign. The SDK provides a convenient function as well as caching for efficient use of schemas.
 
 ```js
-    const schema = await client.getSchema("nms:recipient");
-    console.log(JSON.stringify(schema));
+const schema = await client.getSchema("nms:recipient");
+console.log(JSON.stringify(schema));
 ```
 
 A given representation can be forced
 ```js
-    const xmlSchema = await client.getSchema("nms:recipient", "xml");
-    const jsonSchema = await client.getSchema("nms:recipient", "SimpleJson");
+const xmlSchema = await client.getSchema("nms:recipient", "xml");
+const jsonSchema = await client.getSchema("nms:recipient", "SimpleJson");
 ```
 
 System enumerations can also be retreived with the fully qualified enumeration name
 ```js
-    const sysEnum = await client.getSysEnum("nms:extAccount:encryptionType");
+const sysEnum = await client.getSysEnum("nms:extAccount:encryptionType");
 ```
 
 or from a schema
 ```js
-    const schema = await client.getSchema("nms:extAccount");
-    const sysEnum = await client.getSysEnum("encryptionType", schema);
+const schema = await client.getSchema("nms:extAccount");
+const sysEnum = await client.getSysEnum("encryptionType", schema);
 ```
 
 Get a source schema
 ```js
-    var srcSchema = await NLWS.xtkPersist.getEntityIfMoreRecent("xtk:srcSchema|nms:recipient", "", false);
-    console.log(JSON.stringify(srcSchema));
+var srcSchema = await NLWS.xtkPersist.getEntityIfMoreRecent("xtk:srcSchema|nms:recipient", "", false);
+console.log(JSON.stringify(srcSchema));
 ```
 
 # Build & Run

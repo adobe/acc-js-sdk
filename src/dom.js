@@ -20,6 +20,25 @@ governing permissions and limitations under the License.
 const JSDOM = require("jsdom").JSDOM;
 const XtkCaster = require('./xtkCaster.js').XtkCaster;
 
+/**
+ * Test if a object is an array
+ * @param {*} o the object to test
+ * @returns {boolean} indicates if the object is an array
+ */
+function _isArray(o) {
+    if (o === null || o === undefined) return false;
+    // JavaScript arrays are objects
+    if (typeof o != "object") return false;
+    // They also have a length property. But checking the length is not enough
+    // since, it can also be an object litteral with a "length" property. Campaign
+    // schema attributes typically have a "length" attribute and are not arrays
+    if (o.length === undefined || o.length === null) return false;
+    // So check for a "push" function
+    if (o.push === undefined || o.push === null) return false;
+    if (typeof o.push != "function") return false;
+    return true;
+}
+
 function DomUtil() {
 }
 
@@ -212,7 +231,7 @@ DomUtil.prototype._fromJSON = function(doc, xmlRoot, jsonRoot, flavor) {
 }
 
 DomUtil.prototype.fromJSON = function(docName, json, flavor) {
-    flavor = flavor || "BadgerFish";
+    flavor = flavor || "SimpleJson";
     if (flavor != "SimpleJson" && flavor != "BadgerFish")
         throw new Error(`Invalid JSON flavor '${flavor}'. Should be 'SimpleJson' or 'BadgerFish'`);
     if (!docName)
@@ -242,12 +261,12 @@ DomUtil.prototype._toJSON = function(xml, json, flavor) {
         if (isCollection && (json[childName] === null || json[childName] === undefined))
             json[childName] = [ ];
         var isArray = !!json[childName];
-         if (isArray && (json[childName].length === undefined || json[childName].length === null))
+         if (isArray && !_isArray(json[childName]))
             json[childName] = [ json[childName] ];
         if (child.nodeType == 1) {  // element
             const jsonChild = {};
             this._toJSON(child, jsonChild, flavor);
-            if (isArray)
+            if (isArray) 
                 json[childName].push(jsonChild);
             else
                 json[childName] = jsonChild;
@@ -270,7 +289,7 @@ DomUtil.prototype._toJSON = function(xml, json, flavor) {
 
 DomUtil.prototype.toJSON = function(xml, flavor) {
     if (xml === null || xml === undefined) return xml;
-    flavor = flavor || "BadgerFish";
+    flavor = flavor || "SimpleJson";
     if (flavor != "SimpleJson" && flavor != "BadgerFish")
         throw new Error(`Invalid JSON flavor '${flavor}'. Should be 'SimpleJson' or 'BadgerFish'`);
     if (xml.nodeType == 9)
