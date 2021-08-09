@@ -2,76 +2,36 @@
 
 This is a node.js SDK for Campaign API. It exposes the Campaign API exactly like it is used inside Campaign using the NLWS notation.
 
+# Change log
 
-# Changelog
+See the [Change log](./CHANGELOG.md) for more information about the different versions, changes, etc.
 
-## Version 1.0.0
-_2021/07/29_
-* Support for a simpler flavor of JSON (see SimpleJson vs. BadgerFish below)
-* Finalize the implementation to support int64
-* Add 100% coverage for all tests
-* Make some members of the Client object private
-* Fixed bug in JSON serialization for XML elments having an attribute named "length"
+# Overview
 
-_Breaking changes in 1.0.0_
-* The default representation is now `SimpleJson` instead of `BadgerFish`
-* The `sdk.init` and `Client` constructor method 4th parameter is now an object litteral containing configuration options for the client. Before it was a boolean indiating the value of the `rememberMe` parameter of the `Logon` call.
-* The `Logon` call now takes the `rememberMe` as a parameter
-* Client object members are now private: access to representation, etc. attributes is not allowed anymore except for `NLWS`, `XtkCaster`, and `DomUtil`
-* Access to the `sessionInfo` object after `logon` can be done via the new `getSessionInfo` call
+The ACC JavaScript SDK is a JavaScript SDK which allows you to simply call Campaign APIs in a simple, expressive and JavaScript idiomatic way. It hides away the Campaign complexities associated with having to make SOAP calls, XML to JSON conversion, type formatting, etc.
 
-## Versin 0.1.23
-_2021/07/27_
-* Support for int64 type (represented as a string to avoid rounding errors)
-* Fix issue with the SoapAction header for interface methods. When calling a method which is defined on an interface (for instance xtk:persist), the SoapAction
-  header must use the interface id and not the schema id. For instance, when one calls the xtk:session Write method, one should call NLWS.xtkSession.Write, but
-  the SoapAction header must be "xtk:persist#Write" and not "xtk:session#Write" for the call to complete successfully. In older SDK versions, one had to call
-  NLWS.xtkPersist.Write which would only work if the xtk:persist interface schema was cached before. As there's no xtk:schema entity for the interfaces, the only
-  way to cache such an interface is to have previously called a method on xtk:session. This call will indirectly cache the xtk:session schema and its interfaces,
-  hence xtk:persist. From SDK 0.1.23 on, while the previous (incorrect) syntax NLWS.xtkPersist.Write still works, it's recommended to use NLWS.xtkSession.Write
-* Upgrade 3rd parties (browserslist, hosted-git-info, lodash, ws) to fix vulnerabilities
+The API is fully asynchronous using promises and works as well on the server side than on the client side in the browser.
 
-## Version 0.1.22
-_2021/02/23_
-* Update node-notifier library (used by jest) to version 8.0.1 to fix a possible injection
+The SDK entrypoint is the `sdk` object from which everything else can be created.
 
-### Version 0.1.20
-Add client.hasPackage function to test if a package is installed or an instance or not (https://github.com/adobe/acc-js-sdk/issues/5)
+```js
+const sdk = require('./src/index.js');
+```
 
-### Version 0.1.3
-Bug fixes
-* Query returning empty result should return null when getIfExists operation, should fail when using get operation, and should return an empty array with select operation (https://github.com/adobe/acc-js-sdk/issues/3)
-
-### Version 0.1.2
-* Use github action to automatically publish to npm when one pushes a commit with the message "Release 1.2.3"
-
-### Version 0.1.1
-Bug fixes
-* Query in select mode should always return an array, even if result is empty or one one row (https://github.com/adobe/acc-js-sdk/issues/1)
-
-
-### Version 0.1.0
-Initial version
-
+You can get version information about the SDK
+```js
+console.log(sdk.getSDKVersion());
+```
 
 
 
 # API Basics
 
-In order to call the API, you need to create a `Client` object.
+In order to call any Campaign  API, you need to create a `Client` object first. You pass it the Campaign URL, as well as your credentials. 
 
 ```js
 const sdk = require('./src/index.js');
-
 const client = await sdk.init("https://myInstance.campaign.adobe.com", "admin", "admin");
-const NLWS = client.NLWS;
-```
-
-The NLWS object allows to dynamically perform SOAP calls on the targetted Campaign instance.
-
-You can get version information about the SDK
-```js
-console.log(sdk.getSDKVersion());
 ```
 
 Starting from version 1.0.0, the init function takes a 4th parameter which contains some options for the client. The `options` parameter is an object litteral with the following attributes.
@@ -79,6 +39,9 @@ Starting from version 1.0.0, the init function takes a 4th parameter which conta
 
 
 ## LogOn / LogOff
+
+The `sdk.init` call will not actually connect to Campaign, you can call the `logon` method for this.
+
 ```js
 await client.logon();
 ```
@@ -87,30 +50,38 @@ await client.logon();
 await client.logoff();
 ```
 
-## Calling static methods
-Static methods are the easiest to call. Once you have a `NLWS` object and logon to the server, call a static mathod as followed
+## Calling static SOAP methods
+
+The NLWS object allows to dynamically perform SOAP calls on the targetted Campaign instance.
+```js
+const NLWS = client.NLWS;
+```
+
+Static SOAP methods are the easiest to call. Once you have a `NLWS` object and have logged on to the server, call a static mathod as followed. This example will use the `xtk:session#GetServerTime` method to displayt the current timestamp on the server.
+
 
 ```js
+const NLWS = client.NLWS;
 result = await NLWS.xtkSession.getServerTime();
 console.log(result);
 ```
 
 where
 * `xtkSession` is made of the namespace and entity to which the API applies. For instance `xtk:session` -> `xtkSession`
-* `getServerTime` is the method name. In ACC, method names start with an upper case letter, but in JS SDK you can put it in lower case too.
+* `getServerTime` is the method name. In ACC, method names start with an upper case letter, but in JS SDK you can put it in lower case too (which is preferred for JavaScript code).
 
 
 ## Parameter types
 
 In Campaign, many method attributes are XML elements or documents, as well as many return types. It's not very easy to use in JavaScript, so the SDK supports automatic XML<=> JSON conversion. Of yourse, you can still use XML if you want.
 
-We're supporting 2 flavors of JSON.
+We're supporting 2 flavors of JSON in addition to XML.
 * `SimpleJson` which is the recommeded and default representation
 * `BadgerFish` which was the only and default before 1.0.0, and is now a legacy flavor of JSON. It's a little bit complex and was deprecated in favor of `SimpleJson` (http://www.sklar.com/badgerfish/) 
 * `xml` which can be use to perform no transformation: Campaign XML is returned directly without any transformations.
 
 
-The representation can set when creating a client. It's recommended to set it to `SimpleJson`.
+The representation can set when creating a client. It's recommended to keep it to `SimpleJson`.
 ```js
 const client = await sdk.init("https://myInstance.campaign.adobe.com", "admin", "admin", { representation: "SimpleJson" });
 ```
@@ -253,6 +224,11 @@ You get a static `XtkCaster` object like this
 const XtkCaster = sdk.XtkCaster;
 ```
 
+or directly from the client for convenience
+```js
+const XtkCaster = client.XtkCaster;
+```
+
 To convert a Campaign value into a given type, use one of the following.
 ```js
 stringValue = XtkCaster.asString(anyValue);
@@ -281,6 +257,13 @@ DOM manipulation is sometimes a bit painful. The `DomUtil` helper provides a few
 const DomUtil = sdk.DomUtil;
 ```
 
+or
+
+```js
+const DomUtil = client.DomUtil;
+```
+
+
 Create DOM from XML string:
 ```js
 const doc = DomUtil.parse(`<root>
@@ -303,12 +286,12 @@ Escape text value
 const escaped = DomUtil.escapeXmlString(value);
 ```
 
-Find element by name (finds the first)
+Find element by name (finds the first element with given tag). This is a very common operation when manipulating Campaign XML documents
 ```js
 const el = DomUtil.findElement(parentElement, elementName, shouldThrow);
 ```
 
-Get the text value of an elemenbt
+Get the text value of an elemennt. This will accomodate text elements, cdata elements, as well has having multiple text child element (which is ususally not the case in Campaign)
 ```js
 const text = DomUtil.elementValue(element);
 ```
@@ -331,7 +314,7 @@ while (methodChild) {
 }
 ```
 
-Get typed attribute values
+Get typed attribute values, with automatic conversion to the corresponding xtk type, and handling default values
 ```js
 const stringValue = DomUtil.getAttributeAsString(element, attributeName)
 const byteValue = DomUtil.getAttributeAsByte(element, attributeName)
@@ -340,7 +323,7 @@ const shortValue = DomUtil.getAttributeAsShort(element, attributeName)
 const longValue = DomUtil.getAttributeAsLong(element, attributeName)
 ```
 
-JSON to XML conversion (SimpleJson)
+JSON to XML conversion (SimpleJson by default)
 ```js
 const document = DomUtil.fromJSON(json);
 const json = DomUtil.toJSON(documentOrElement);
@@ -376,7 +359,7 @@ client.clearAllCaches();
 
 ## Passwords
 
-External account passwords can be decrypted using a Cipher.
+External account passwords can be decrypted using a Cipher. This function is deprecated since version 1.0.0 since it's not guaranteed to work in future versions of Campaign (V8 and above)
 
 ```js
 const cipher = await client.getSecretKeyCipher();
@@ -420,6 +403,7 @@ The cache can be cleared
 ```js
 client.clearOptionCache();
 ```
+
 
 
 
@@ -541,6 +525,39 @@ var queryDef = {
 const query = NLWS.xtkQueryDef.create(queryDef);
 const extAccount = await query.executeQuery();
 ```
+
+## Escaping
+It's common to use variables in query conditions. For instance, in the above example, you'll want to query an account by name instead of using the hardcoded "ffda" name. The `expr` attribute takes an XTK expression as a parameter, and 'ffda' is a string litteral in an xtk expression.
+
+To prevent xtk ingestions vulnerabilities, you should not concatenate strings and write code such as expr: "@name = '" + name + "'": if the value of the name 
+parameter contains single quotes, your code will not work, but could also cause vulnerabilities.
+
+The `sdk.escapeXtk` can be used to properly escape string litterals in xtk expressions. The function will also surround the escaped value with single quotes.
+
+You can use string concatenation like this. Note the lack of single quotes around the value.
+```
+    { expr: "@name=" + sdk.escapeXtk(name) }
+```
+
+or a template litteral
+```
+    `{ expr: "@name=${sdk.escapeXtk(name)}" }`
+```
+
+The `xtkEscape` function can also be used to create tagged string litterals. This leads to a much shorter syntax. Note that with this syntax, only the parameter values of the template litteral are escaped
+```
+    sdk.xtkEscape`{ expr: "@name=${name}" }`
+```
+
+This can also be used to escape other data types such as timestamps
+
+```
+    sdk.xtkEscape`{ expr: "@lastModified > = ${yesterday}" }`
+```
+
+will return `{ expr: "@lastModified > = #2021-07-07T10:03:33.332Z# }`
+
+
 
 ## Pagination
 Results can be retrieved in different pages, using the `@lineCount` and `@startLine` attributes. For instance, retrieves profiles 3 and 4 (skip 1 and 2)
@@ -755,6 +772,44 @@ Get a source schema
 var srcSchema = await NLWS.xtkPersist.getEntityIfMoreRecent("xtk:srcSchema|nms:recipient", "", false);
 console.log(JSON.stringify(srcSchema));
 ```
+
+## NodeDef
+It's very common to manipulate schemas in ACC code. Dealing with XML and even with JSON is a bit awkward.
+
+Schema (also includes all NodeDef functions)
+| C++ | JS (internal) | JS SDK | Description |
+|-----|-----|---|-------------|
+|     || name   |  |
+|     || label   |  |
+|     || img  |  |
+| Type()  |  | type   |  |
+| Size() || length   |  |
+|     | |ref   |  |
+| Schema() || schema |  |
+| ParentDef() || parent |  |
+|     | |children |  |
+| FindChildDef(name) || findChildDef(name) | Get a child node by name |
+| ChildExists(name) | N/A | hasChild(name) | Is there a child with given name. Follows references |
+| ChildCount() | childrenCount | childrenCount | Get number of child nodes |
+| ChildFromIndex(i) || childFromIndex() | Get child node
+| IsRootNodeDef() | isRoot | isRoot | Is this the root node of a schema? |
+| HasRefTarget() || hasRefTarget() | Is this a reference? |
+| RefTarget() || refTarget() | Is node is a reference, follow the reference |
+| IsAttribute() || isAttribute() | Is the node an attribute node? |
+| FindNodeDef(path) || findNode(path) | Find a node def by path
+
+NodeDef
+| C++ | JS (internal) | JS SDK | Description |
+|-----|--------|-------|------|
+|   | id | id | Schema id, such as "nms:recipient"
+|   | isLibrary | isLibrary | Schema is a library, i.e. reusable schema elements
+|   | labelSingular | labelSingular | 
+|   | mappingType | mappingType | 
+|     | namespace   | Node namespace |
+| FindRootDef() | root | root | Get the root node of a schema
+| | toDocument() | toDocument() | Converts the schema into an XML document form.
+
+
 
 # Build & Run
 

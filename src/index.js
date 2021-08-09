@@ -31,11 +31,11 @@ const Client = require('./client.js').Client;
  * @param {String} endpoint endpoint to connect to, for instance: https://myinstance.campaign.adobe.com
  * @param {String} user user name, for instance admin
  * @param {String} password the user password
- * @param {boolean} rememberMe 
+ * @param {boolean} options an options object to configure the client
  * @return {Promise<Client>}
  */
-async function init (endpoint, user, password, rememberMe) {
-    const client = new Client(endpoint, user, password, rememberMe);
+async function init (endpoint, user, password, options) {
+    const client = new Client(this, endpoint, user, password, options);
     return client;
 }
 
@@ -50,10 +50,33 @@ function getSDKVersion() {
     }
 }
 
+/** Escapes string contained in Xtk expressions */
+function escapeXtk(p1, ...p2)
+{
+    // first syntax: only one parameter which is a string => returns the escaped string.
+    // that's how the Campaign function in common.js behaves
+    if (p1 === undefined || p1 === null)
+        return "''";
+    if (typeof p1 === 'string') {
+        return "'" + String(p1).replace(/\\/g, "\\\\").replace(/'/g,  "\\'") + "'";
+    }
+
+    // Second syntax: for use in tagged template litterals
+    // instead of writing:  { expr: "@name = " + escapeXtk(userName) }
+    // you write { expr: escapeXtk`@name = {userName}` }
+    if (p1.length == 0) return "''";
+    var str = p1[0];
+    for (var i=1; i<p1.length; i++) {
+        str = str + escapeXtk(p2[i-1]) + p1[i];
+    }
+    return str;
+}
+
 
 module.exports = {
     init: init,
     getSDKVersion: getSDKVersion,
+    escapeXtk: escapeXtk,
     XtkCaster: XtkCaster,
     DomUtil: DomUtil
 };

@@ -689,4 +689,33 @@ describe('XtkCaster', function() {
         assert.equal(XtkCaster.asNumber("Invalid"), 0);     // will parse as "NaN"
         assert.equal(XtkCaster.asNumber(NaN), 0);           // real "NaN"
     });
+
+    it("variantStorageAttribute should return the field name where to store a variant value (for example in the xtk:option table)", () => {
+        expect(XtkCaster.variantStorageAttribute(null)).toBe(null);
+        expect(XtkCaster.variantStorageAttribute(undefined)).toBe(null);
+        expect(XtkCaster.variantStorageAttribute(0)).toBe(null);
+        expect(XtkCaster.variantStorageAttribute("")).toBe(null);
+        expect(XtkCaster.variantStorageAttribute(6)).toBe("stringValue");
+        expect(XtkCaster.variantStorageAttribute("string")).toBe("stringValue");
+        expect(XtkCaster.variantStorageAttribute("int64")).toBe("stringValue");
+        expect(XtkCaster.variantStorageAttribute(12)).toBe("memoValue");
+        expect(XtkCaster.variantStorageAttribute(13)).toBe("memoValue");
+        expect(XtkCaster.variantStorageAttribute("memo")).toBe("memoValue");
+        expect(XtkCaster.variantStorageAttribute("CDATA")).toBe("memoValue");
+        expect(XtkCaster.variantStorageAttribute(1)).toBe("longValue");
+        expect(XtkCaster.variantStorageAttribute(2)).toBe("longValue");
+        expect(XtkCaster.variantStorageAttribute(3)).toBe("longValue");
+        expect(XtkCaster.variantStorageAttribute(15)).toBe("longValue");
+        expect(XtkCaster.variantStorageAttribute(4)).toBe("doubleValue");
+        expect(XtkCaster.variantStorageAttribute(5)).toBe("doubleValue");
+        expect(XtkCaster.variantStorageAttribute("float")).toBe("doubleValue");
+        expect(XtkCaster.variantStorageAttribute("double")).toBe("doubleValue");
+        expect(XtkCaster.variantStorageAttribute(7)).toBe("timeStampValue");
+        expect(XtkCaster.variantStorageAttribute(10)).toBe("timeStampValue");
+        expect(XtkCaster.variantStorageAttribute("datetime")).toBe("timeStampValue");
+        expect(XtkCaster.variantStorageAttribute("datetimetz")).toBe("timeStampValue");
+        expect(XtkCaster.variantStorageAttribute("datetimenotz")).toBe("timeStampValue");
+        expect(XtkCaster.variantStorageAttribute("date")).toBe("timeStampValue");
+        expect(() => { XtkCaster.variantStorageAttribute(777); }).toThrow("Cannot get variant storage");
+    });
 });

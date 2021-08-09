@@ -20,6 +20,49 @@ governing permissions and limitations under the License.
 function XtkCaster() {
 }
 
+// See "variant" element in xtk:common srcSchema
+XtkCaster.prototype.variantStorageAttribute = function(type) {
+    if (type === null || type === undefined) return null;
+    switch(type) {
+        case 0:             // FIELD_NONE
+        case "":
+            return null;
+        case 6:             // FIELD_SZ
+        case "string":
+        case "int64":
+            return "stringValue";
+        case 12:            // FIELD_MEMO
+        case 13:            // FIELD_MEMOSHORT
+        case "memo":
+        case "CDATA": 
+                return "memoValue";
+        case 1:             // FIELD_BYTE
+        case "byte":
+        case 2:             // FIELD_SHORT
+        case "short": 
+        case 3:             // FIELD_LONG
+        case "long":
+        case 15:            // FIELD_BOOLEAN
+        case "boolean":
+                return "longValue";
+        case 4:             // FIELD_FLOAT
+        case 5:             // FIELD_DOUBLE
+        case "float":
+        case "double":
+            return "doubleValue";
+        case 7:             // FIELD_DATETIME
+        case "datetime": 
+        case "datetimetz": 
+        case "datetimenotz": 
+        case 10:            // FIELD_DATE
+        case "date": 
+            return "timeStampValue"
+        default: {
+            throw new Error(`Cannot get variant storage attribute name for type '${type}'`);
+        }
+    }
+}
+
 /**
  * Cast with given type
  * @param {*} value 
@@ -75,7 +118,7 @@ XtkCaster.prototype.as = function(value, type) {
             return this.asDate(value);
         }
         default: {
-            throw new Error("Cannot convert value type='" + type + "', value=" + value);
+            throw new Error(`Cannot convert value type='${type}', value='${value}'`);
         }
     }
 }

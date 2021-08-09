@@ -20,12 +20,15 @@ governing permissions and limitations under the License.
 const JSDOM = require("jsdom").JSDOM;
 const XtkCaster = require('./xtkCaster.js').XtkCaster;
 
+function DomUtil() {
+}
+
 /**
  * Test if a object is an array
  * @param {*} o the object to test
  * @returns {boolean} indicates if the object is an array
  */
-function _isArray(o) {
+DomUtil.prototype.isArray = function(o) {
     if (o === null || o === undefined) return false;
     // JavaScript arrays are objects
     if (typeof o != "object") return false;
@@ -35,11 +38,9 @@ function _isArray(o) {
     if (o.length === undefined || o.length === null) return false;
     // So check for a "push" function
     if (o.push === undefined || o.push === null) return false;
-    if (typeof o.push != "function") return false;
+    if (typeof o.push != "function") 
+        return false;
     return true;
-}
-
-function DomUtil() {
 }
 
 /**
@@ -261,7 +262,7 @@ DomUtil.prototype._toJSON = function(xml, json, flavor) {
         if (isCollection && (json[childName] === null || json[childName] === undefined))
             json[childName] = [ ];
         var isArray = !!json[childName];
-         if (isArray && !_isArray(json[childName]))
+         if (isArray && !this.isArray(json[childName]))
             json[childName] = [ json[childName] ];
         if (child.nodeType == 1) {  // element
             const jsonChild = {};

@@ -16,22 +16,41 @@ governing permissions and limitations under the License.
  * A cache for option values
  * 
  *********************************************************************************/
+const XtkCaster = require('./xtkCaster.js').XtkCaster;
 
 function OptionCache() {
-    this.optionsByName = {};
+    this._optionsByName = {};
 }
 
-OptionCache.prototype.cache = function(name, value) {
-    this.optionsByName[name] = value;
-}
-
-OptionCache.prototype.get = function(name) {
-    var value = this.optionsByName[name];
+/**
+ * Cache an option and its value
+ * @param {string} name is the option name
+ */
+OptionCache.prototype.cache = function(name, rawValueAndtype) {
+    var value = null;
+    var type = 0;
+    var rawValue = undefined;
+    if (rawValueAndtype && rawValueAndtype[1] != 0) {
+        rawValue = rawValueAndtype[0];
+        type = rawValueAndtype[1];
+        value = XtkCaster.as(rawValue, type);
+    }
+    this._optionsByName[name] = { value:value, type:type, rawValue:rawValue };
     return value;
 }
 
+OptionCache.prototype.get = function(name) {
+    const option = this._optionsByName[name];
+    return option ? option.value : undefined;
+}
+
+OptionCache.prototype.getOption = function(name) {
+    const option = this._optionsByName[name];
+    return option;
+}
+
 OptionCache.prototype.clear = function() {
-    this.optionsByName = {};
+    this._optionsByName = {};
 }
 
 exports.OptionCache = OptionCache;

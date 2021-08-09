@@ -509,4 +509,18 @@ describe('DomUtil', function() {
         });
     });
 
+    it("Should test if object is an array", () => {
+        expect(DomUtil.isArray(null)).toBe(false);
+        expect(DomUtil.isArray(undefined)).toBe(false);
+        expect(DomUtil.isArray(0)).toBe(false);
+        expect(DomUtil.isArray("nope")).toBe(false);
+        expect(DomUtil.isArray({})).toBe(false);
+        expect(DomUtil.isArray({ length: 1 })).toBe(false);
+        expect(DomUtil.isArray({ length: 1, push: null })).toBe(false);
+        expect(DomUtil.isArray({ length: 1, push: "string" })).toBe(false);
+
+        expect(DomUtil.isArray([])).toBe(true);
+        expect(DomUtil.isArray([ 1 ])).toBe(true);
+    });
+
 });

@@ -55,38 +55,46 @@ describe('Caches', function() {
 
         it("Should cache value", function() {
             const cache = new OptionCache();
-            assert.equal(cache.get("hello"), undefined);
-            cache.cache("hello", "world");
-            assert.equal(cache.get("hello"), "world");
+            expect(cache.get("hello")).toBeUndefined();
+            cache.cache("hello", ["world", 6]);
+            expect(cache.get("hello")).toBe("world");
+            expect(cache.getOption("hello")).toEqual({"rawValue": "world", "type": 6, "value": "world"});
         });
 
         it("Should cache multiple value", function() {
             const cache = new OptionCache();
-            cache.cache("hello", "world");
-            cache.cache("foo", "bar");
-            assert.equal(cache.get("hello"), "world");
-            assert.equal(cache.get("foo"), "bar");
+            cache.cache("hello", ["world", 6]);
+            cache.cache("foo", ["bar", 6]);
+            expect(cache.get("hello")).toBe("world");
+            expect(cache.getOption("hello")).toEqual({"rawValue": "world", "type": 6, "value": "world"});
+            expect(cache.get("foo")).toBe("bar");
+            expect(cache.getOption("foo")).toEqual({"rawValue": "bar", "type": 6, "value": "bar"});
         });
 
         it("Should overwrite cached value", function() {
             const cache = new OptionCache();
-            cache.cache("hello", "world");
-            assert.equal(cache.get("hello"), "world");
-            cache.cache("hello", "cruel world");
-            assert.equal(cache.get("hello"), "cruel world");
+            cache.cache("hello", ["world", 6]);
+            expect(cache.get("hello")).toBe( "world");
+            expect(cache.getOption("hello")).toEqual({"rawValue": "world", "type": 6, "value": "world"});
+            cache.cache("hello", ["cruel world", 6]);
+            expect(cache.get("hello")).toBe("cruel world");
+            expect(cache.getOption("hello")).toEqual({"rawValue": "cruel world", "type": 6, "value": "cruel world"});
         });
 
         it("Should clear cache", function() {
             const cache = new OptionCache();
-            cache.cache("hello", "world");
-            assert.equal(cache.get("hello"), "world");
+            cache.cache("hello", ["world", 6]);
+            expect(cache.get("hello")).toBe("world");
+            expect(cache.getOption("hello")).toEqual({"rawValue": "world", "type": 6, "value": "world"});
             cache.clear();
-            assert.equal(cache.get("hello"), undefined);
+            expect(cache.get("hello")).toBeUndefined();
+            expect(cache.getOption("hello")).toBeUndefined();
         });
 
         if("Should not find", function() {
             const cache = new OptionCache();
-            assert.equal(cache.get("hello"), undefined);
+            epxect(cache.get("hello")).toBeUndefined();
+            epxect(cache.getOption("hello")).toBeUndefined();
         });
 
     });

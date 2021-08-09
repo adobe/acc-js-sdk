@@ -17,480 +17,18 @@ governing permissions and limitations under the License.
  * 
  *********************************************************************************/
 
- const Client = require('../src/client.js').Client;
- const DomUtil = require('../src/dom.js').DomUtil;
+const sdk = require('../src/index.js');
+const Client = require('../src/client.js').Client;
+const DomUtil = require('../src/dom.js').DomUtil;
+const Mock = require('./mock.js').Mock;
 
 
-function makeClient(options) {
-    const client = new Client("http://acc-sdk:8080", "admin", "admin", options);
-    client._soapTransport = jest.fn();
-    client.setRepresentation = function(representation) {
-        // Access private member for unit tests only
-        this._representation = representation;
-    }
-    return client;
-}
+describe('ACC Client', function () {
 
-const LOGON_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
-    <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:xtk:session' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
-    <SOAP-ENV:Body>
-        <LogonResponse xmlns='urn:xtk:session' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
-            <pstrSessionToken xsi:type='xsd:string'>___C8B4A541-48DC-4C97-95AD-066930FD3892</pstrSessionToken>
-            <pSessionInfo xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
-            <sessionInfo>
-                <serverInfo advisedClientBuildNumber="0" allowSQL="false" buildNumber="9219" commitId="f5f3ec3" databaseId="uFE80000000000000F1FA913DD7CC7C480041161C" defaultNameSpace="cus" fohVersion="2" instanceName="ffdamkt" majNumber="6" minClientBuildNumber="8969" minNumber="7" minNumberTechnical="0" releaseName="20.3" securityTimeOut="86400" serverDate="2020-07-05 14:11:31.986Z" servicePack="0" sessionTimeOut="86400" useVault="false"/>
-                    <userInfo datakitInDatabase="true" homeDir="" instanceLocale="en" locale="en" login="admin" loginCS="Administrator (admin)" loginId="1059" noConsoleCnx="false" orgUnitId="0" theme="" timezone="Europe/Paris">
-                        <login-group id="1060"/>
-                        <login-right right="admin"/>
-                        <installed-package name="campaign" namespace="nms"/>
-                        <installed-package name="core" namespace="nms"/>
-                    </userInfo>
-                </sessionInfo>
-            </pSessionInfo>
-            <pstrSecurityToken xsi:type='xsd:string'>@mMBSMLXIpQd56agsZ5X7OGXWz8Q476qMq6FimwqCdT1wByRDq3pQtaYSY4uJnAbCgXIvpXA5TrxHu-3YjUad5g==</pstrSecurityToken>
-        </LogonResponse>
-    </SOAP-ENV:Body>
-    </SOAP-ENV:Envelope>`);
+    describe('Init', function () {
 
-const LOGON_RESPONSE_NO_SESSIONTOKEN = Promise.resolve(`<?xml version='1.0'?>
-    <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:xtk:session' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
-    <SOAP-ENV:Body>
-        <LogonResponse xmlns='urn:xtk:session' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
-            <pstrSessionToken xsi:type='xsd:string'></pstrSessionToken>
-            <pSessionInfo xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
-            <sessionInfo>
-                <serverInfo advisedClientBuildNumber="0" allowSQL="false" buildNumber="9219" commitId="f5f3ec3" databaseId="uFE80000000000000F1FA913DD7CC7C480041161C" defaultNameSpace="cus" fohVersion="2" instanceName="ffdamkt" majNumber="6" minClientBuildNumber="8969" minNumber="7" minNumberTechnical="0" releaseName="20.3" securityTimeOut="86400" serverDate="2020-07-05 14:11:31.986Z" servicePack="0" sessionTimeOut="86400" useVault="false"/>
-                    <userInfo datakitInDatabase="true" homeDir="" instanceLocale="en" locale="en" login="admin" loginCS="Administrator (admin)" loginId="1059" noConsoleCnx="false" orgUnitId="0" theme="" timezone="Europe/Paris">
-                        <login-group id="1060"/>
-                        <login-right right="admin"/>
-                        <installed-package name="campaign" namespace="nms"/>
-                        <installed-package name="core" namespace="nms"/>
-                    </userInfo>
-                </sessionInfo>
-            </pSessionInfo>
-            <pstrSecurityToken xsi:type='xsd:string'>@mMBSMLXIpQd56agsZ5X7OGXWz8Q476qMq6FimwqCdT1wByRDq3pQtaYSY4uJnAbCgXIvpXA5TrxHu-3YjUad5g==</pstrSecurityToken>
-        </LogonResponse>
-    </SOAP-ENV:Body>
-    </SOAP-ENV:Envelope>`);
-
-const LOGON_RESPONSE_NO_SECURITYTOKEN = Promise.resolve(`<?xml version='1.0'?>
-    <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:xtk:session' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
-    <SOAP-ENV:Body>
-        <LogonResponse xmlns='urn:xtk:session' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
-            <pstrSessionToken xsi:type='xsd:string'>___C8B4A541-48DC-4C97-95AD-066930FD3892</pstrSessionToken>
-            <pSessionInfo xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
-            <sessionInfo>
-                <serverInfo advisedClientBuildNumber="0" allowSQL="false" buildNumber="9219" commitId="f5f3ec3" databaseId="uFE80000000000000F1FA913DD7CC7C480041161C" defaultNameSpace="cus" fohVersion="2" instanceName="ffdamkt" majNumber="6" minClientBuildNumber="8969" minNumber="7" minNumberTechnical="0" releaseName="20.3" securityTimeOut="86400" serverDate="2020-07-05 14:11:31.986Z" servicePack="0" sessionTimeOut="86400" useVault="false"/>
-                    <userInfo datakitInDatabase="true" homeDir="" instanceLocale="en" locale="en" login="admin" loginCS="Administrator (admin)" loginId="1059" noConsoleCnx="false" orgUnitId="0" theme="" timezone="Europe/Paris">
-                        <login-group id="1060"/>
-                        <login-right right="admin"/>
-                        <installed-package name="campaign" namespace="nms"/>
-                        <installed-package name="core" namespace="nms"/>
-                    </userInfo>
-                </sessionInfo>
-            </pSessionInfo>
-            <pstrSecurityToken xsi:type='xsd:string'></pstrSecurityToken>
-        </LogonResponse>
-    </SOAP-ENV:Body>
-    </SOAP-ENV:Envelope>`);
-
-const LOGOFF_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
-    <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:xtk:session' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
-    <SOAP-ENV:Body>
-        <LogoffResponse xmlns='urn:xtk:session' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
-        </LogoffResponse>
-    </SOAP-ENV:Body>
-    </SOAP-ENV:Envelope>`);
-
-const GET_XTK_SESSION_SCHEMA_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
-    <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:wpp:default' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
-    <SOAP-ENV:Body>
-        <GetEntityIfMoreRecentResponse xmlns='urn:wpp:default' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
-            <pdomDoc xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
-            <schema namespace="xtk" name="session" implements="xtk:persist">
-                <interface name="persist">
-                    <method name="Write" static="true">
-                        <parameters>
-                            <param name="doc" type="DOMDocument"/>
-                        </parameters>
-                    </method>
-                    <method name="GetDocument" static="true">
-                        <parameters>
-                            <param inout="out" name="doc" type="DOMDocument"/>
-                        </parameters>
-                    </method>
-                    <method name="GetElement" static="true">
-                        <parameters>
-                            <param inout="out" name="doc" type="DOMElement"/>
-                        </parameters>
-                    </method>
-                    <method name="SetDocument" static="true">
-                        <parameters>
-                            <param name="doc" type="DOMDocument"/>
-                        </parameters>
-                    </method>
-                    <method name="SetElement" static="true">
-                        <parameters>
-                            <param name="doc" type="DOMElement"/>
-                        </parameters>
-                    </method>
-                </interface>
-                <element name="sessionInfo"/>
-                <element name="userInfo" label="Parameters" desc="Information on current session">
-                    <attribute name="loginId" type="long"/>
-                </element>
-                <element name="session"></element>
-                <methods>
-                    <method name="GetOption" static="true">
-                        <parameters>
-                            <param name="name" type="string"/>
-                            <param inout="out" name="value" type="string"/> 
-                            <param inout="out" name="type" type="byte"/>
-                        </parameters>
-                    </method> 
-                    <method name="GetUserInfo" static="true">
-                        <parameters>
-                            <param name="userInfo" type="sessionUserInfo" inout="out"/>
-                        </parameters>
-                    </method>
-                    <method name="NonStatic"></method>
-                    <method name="TestCnx" static="true"></method>
-                    </methods>
-            </schema>
-            </pdomDoc>
-        </GetEntityIfMoreRecentResponse>
-    </SOAP-ENV:Body>
-    </SOAP-ENV:Envelope>`)
-
-const GET_DATABASEID_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
-    <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:xtk:session' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
-    <SOAP-ENV:Body>
-        <GetOptionResponse xmlns='urn:xtk:session' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
-            <pstrValue xsi:type='xsd:string'>uFE80000000000000F1FA913DD7CC7C480041161C</pstrValue>
-            <pbtType xsi:type='xsd:byte'>6</pbtType>
-        </GetOptionResponse>
-    </SOAP-ENV:Body>
-    </SOAP-ENV:Envelope>`);
-
-const GET_OPTION_NOTFOUND_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
-    <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:xtk:session' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
-    <SOAP-ENV:Body>
-        <GetOptionResponse xmlns='urn:xtk:session' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
-            <pstrValue xsi:type='xsd:string'></pstrValue>
-            <pbtType xsi:type='xsd:byte'>0</pbtType>
-        </GetOptionResponse>
-    </SOAP-ENV:Body>
-    </SOAP-ENV:Envelope>`);
-
-// forged getOption response where the resulting values are missinf
-const GET_OPTION_MISSING_DATA_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
-    <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:xtk:session' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
-    <SOAP-ENV:Body>
-        <GetOptionResponse xmlns='urn:xtk:session' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
-        </GetOptionResponse>
-    </SOAP-ENV:Body>
-    </SOAP-ENV:Envelope>`);
-
-const GET_XTK_QUERY_SCHEMA_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
-    <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:wpp:default' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
-    <SOAP-ENV:Body>
-        <GetEntityIfMoreRecentResponse xmlns='urn:wpp:default' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
-            <pdomDoc xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
-                <schema name="queryDef" namespace="xtk">
-                    <element name="queryDef"></element>
-                    <methods>
-                        <method const="true" name="ExecuteQuery">
-                            <parameters>
-                                <param desc="Output XML document" inout="out" name="output" type="DOMDocument"/>
-                            </parameters> 
-                        </method>
-                    </methods>
-                </schema>
-            </pdomDoc>
-        </GetEntityIfMoreRecentResponse>
-    </SOAP-ENV:Body>
-    </SOAP-ENV:Envelope>`);
-
-const GET_MID_EXT_ACCOUNT_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
-    <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:xtk:queryDef' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
-    <SOAP-ENV:Body>
-        <ExecuteQueryResponse xmlns='urn:xtk:queryDef' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
-            <pdomOutput xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
-                <extAccount account="mid" id="2088" name="defaultEmailMid" password="@57QS5VHMb9BCsojLVrKI/Q==" server="http://ffdamid:8080" type="3"/>
-            </pdomOutput>
-        </ExecuteQueryResponse>
-    </SOAP-ENV:Body>
-    </SOAP-ENV:Envelope>`);
-
-const GET_SECRET_KEY_OPTION_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
-    <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:xtk:session' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
-    <SOAP-ENV:Body>
-        <GetOptionResponse xmlns='urn:xtk:session' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
-            <pstrValue xsi:type='xsd:string'>HMLmn6uvWr8wu1Akt8UORr07YbC64u1FVW7ENAxNjpo=</pstrValue>
-            <pbtType xsi:type='xsd:byte'>6</pbtType>
-        </GetOptionResponse>
-    </SOAP-ENV:Body>
-    </SOAP-ENV:Envelope>`);
-
-const GET_LOGON_MID_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
-    <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:xtk:session' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
-    <SOAP-ENV:Body>
-        <LogonResponse xmlns='urn:xtk:session' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
-            <pstrSessionToken xsi:type='xsd:string'>___46FCE345-D052-4DF3-B659-C794CA98B9AA</pstrSessionToken>
-            <pSessionInfo xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
-            <sessionInfo>
-                <serverInfo advisedClientBuildNumber="0" allowSQL="false" buildNumber="9219" commitId="f5f3ec3" databaseId="uFE80000000000000F1FA913DD7CC7C480CC4AAEE" defaultNameSpace="cus" fohVersion="2" instanceName="ffdamid" majNumber="6" minClientBuildNumber="8969" minNumber="7" minNumberTechnical="0" releaseName="20.3" securityTimeOut="86400" serverDate="2020-07-05 15:09:23.320Z" servicePack="0" sessionTimeOut="86400" useVault="false"/>
-            </sessionInfo>
-            </pSessionInfo>
-            <pstrSecurityToken xsi:type='xsd:string'>@ZqisVeI1MYcIYZUso5mcI6Q77KDrRIFuYDjvZ4FMEWJqygmN6P23vns46ayOg-nAofiSyzVbvCFcnXOmwKg1Kw==</pstrSecurityToken>
-        </LogonResponse>
-    </SOAP-ENV:Body>
-    </SOAP-ENV:Envelope>`);
-    
-const GET_TSTCNX_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
-    <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:xtk:session' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
-    <SOAP-ENV:Body>
-        <TestCnxResponse xmlns='urn:xtk:session' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
-        </TestCnxResponse>
-    </SOAP-ENV:Body>
-    </SOAP-ENV:Envelope>`);
-
-const GET_NMS_EXTACCOUNT_SCHEMA_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
-    <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:wpp:default' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
-    <SOAP-ENV:Body>
-        <GetEntityIfMoreRecentResponse xmlns='urn:wpp:default' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
-            <pdomDoc xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
-                <schema name="extAccount" namespace="nms" xtkschema="xtk:schema">
-                    <enumeration basetype="byte" default="delivery" name="type">
-                        <value name="bounces" value="0"/>
-                        <value name="hdfs" value="17"/>
-                    </enumeration>
-                    <enumeration basetype="byte" default="none" name="encryptionType">
-                        <value name="none" value="0"/>
-                        <value name="ssl" value="1"/>
-                    </enumeration>
-                    <element name="extAccount"></element>
-                </schema>
-            </pdomDoc>
-        </GetEntityIfMoreRecentResponse>
-    </SOAP-ENV:Body>
-    </SOAP-ENV:Envelope>`);
-
-const GET_XTK_ALL_SCHEMA_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
-    <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:wpp:default' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
-    <SOAP-ENV:Body>
-        <GetEntityIfMoreRecentResponse xmlns='urn:wpp:default' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
-            <pdomDoc xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
-                <schema name="all" namespace="xtk" xtkschema="xtk:schema">
-                    <element name="all"></element>
-                    <methods>
-                        <method name="AllTypes" static="true">
-                            <parameters>
-                            <param inout="in" name="string" type="string"/>
-                            <param inout="in" name="boolean" type="boolean"/>
-                            <param inout="in" name="byte" type="byte"/>
-                            <param inout="in" name="short" type="short"/>
-                            <param inout="in" name="long" type="long"/>
-                            <param inout="in" name="int64" type="int64"/>
-                            <param inout="in" name="datetime" type="datetime"/>
-                            <param inout="in" name="date" type="date"/>
-                            <param inout="out" name="string" type="string"/>
-                            <param inout="out" name="boolean" type="boolean"/>
-                            <param inout="out" name="byte" type="byte"/>
-                            <param inout="out" name="short" type="short"/>
-                            <param inout="out" name="long" type="long"/>
-                            <param inout="out" name="int64" type="int64"/>
-                            <param inout="out" name="datetime" type="datetime"/>
-                            <param inout="out" name="date" type="date"/>
-                            <param inout="in" name="element" type="DOMElement"/>
-                            <param inout="out" name="element" type="DOMElement"/>
-                            <param inout="in" name="element" type="DOMDocument"/>
-                            <param inout="out" name="element" type="DOMDocument"/>
-                            </parameters> 
-                        </method>
-                        <method name="Unsupported" static="true">
-                            <parameters>
-                            <param inout="out" name="unsupported" type="unsupported"/>
-                            </parameters> 
-                        </method>
-                        <method name="UnsupportedInput" static="true">
-                            <parameters>
-                            <param inout="in" name="unsupported" type="unsupported"/>
-                            </parameters> 
-                        </method>
-                    </methods>
-                </schema>
-            </pdomDoc>
-        </GetEntityIfMoreRecentResponse>
-    </SOAP-ENV:Body>
-    </SOAP-ENV:Envelope>`);
-    
-const GET_XTK_ALL_TYPES_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
-    <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:wpp:default' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
-    <SOAP-ENV:Body>
-        <AllTypesResponse xmlns='urn:wpp:default' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
-            <dummy xsi:type='xsd:string'>Hello World</dummy>
-            <dummy xsi:type='xsd:boolean'>true</dummy>
-            <dummy xsi:type='xsd:byte'>1</dummy>
-            <dummy xsi:type='xsd:short'>1000</dummy>
-            <dummy xsi:type='xsd:int'>100000</dummy>
-            <dummy xsi:type='xsd:long'>100000</dummy>
-            <dummy xsi:type='xsd:dateTime'>2020-12-31T12:34:56.789Z</dummy>
-            <dummy xsi:type='xsd:date'>2020-12-31</dummy>
-            <dummy xsi:type='ns:Element'><root type='element' result='true'/></dummy>
-            <dummy xsi:type=''><root type='document' result='true'/></dummy>
-        </AllTypesResponse>
-    </SOAP-ENV:Body>
-    </SOAP-ENV:Envelope>`);
-
-const GET_XTK_TYPE_UNSUPPORTED_TYPE_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
-    <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:wpp:default' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
-    <SOAP-ENV:Body>
-        <Unsupported xmlns='urn:wpp:default' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
-            <dummy xsi:type='unsupported'>Hello World</dummy>
-        </Unsupported>
-    </SOAP-ENV:Body>
-    </SOAP-ENV:Envelope>`);
-
-
-const GET_USER_INFO_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
-    <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:wpp:default' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
-    <SOAP-ENV:Body>
-    <GetUserInfoResponse xmlns='urn:xtk:session' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
-        <pUserInfo xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
-            <userInfo datakitInDatabase="true" homeDir="" instanceLocale="en" locale="en" login="admin" loginCS="Administrator (admin)" loginId="1059" noConsoleCnx="false" orgUnitId="0" theme="" timezone="Europe/Paris">
-                <login-group id="1060"/>
-                <login-right right="admin"/>
-            </userInfo>
-        </pUserInfo>
-    </GetUserInfoResponse>
-    </SOAP-ENV:Body>
-    </SOAP-ENV:Envelope>`); 
-
-const GET_MISSING_SCHEMA_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
-    <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:wpp:default' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
-    <SOAP-ENV:Body>
-        <GetEntityIfMoreRecentResponse xmlns='urn:wpp:default' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
-            <pdomDoc xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
-            </pdomDoc>
-        </GetEntityIfMoreRecentResponse>
-    </SOAP-ENV:Body>
-    </SOAP-ENV:Envelope>`); 
-   
-const GET_XTK_WORKFLOW_SCHEMA_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
-    <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:wpp:default' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
-    <SOAP-ENV:Body>
-        <GetEntityIfMoreRecentResponse xmlns='urn:wpp:default' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
-            <pdomDoc xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
-            <schema namespace="xtk" name="workflow">
-                <element name="workflow"></element>
-                <methods>
-                    <method name="StartWithParameters" static="true">
-                        <parameters>
-                            <param name="workflowId" type="string" inout="in" />
-                            <param name="parameters" type="DOMElement" inout="in"></param>
-                        </parameters>
-                    </method>
-                </methods>
-            </schema>
-            </pdomDoc>
-        </GetEntityIfMoreRecentResponse>
-    </SOAP-ENV:Body>
-    </SOAP-ENV:Envelope>`);
-
-const GET_QUERY_EXECUTE_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
-    <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:xtk:queryDef' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
-    <SOAP-ENV:Body>
-    <ExecuteQueryResponse xmlns='urn:xtk:queryDef' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
-        <pdomOutput xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
-        <extAccount-collection>
-            <extAccount id="1816" name="defaultPopAccount"/>
-            <extAccount id="1818" name="defaultOther"/>
-            <extAccount id="1849" name="billingReport"/>
-            <extAccount id="12070" name="TST_EXT_ACCOUNT_POSTGRESQL"/>
-            <extAccount id="1817" name="defaultEmailBulk"/>
-            <extAccount id="2087" name="ffda"/>
-            <extAccount id="2088" name="defaultEmailMid"/>
-        </extAccount-collection>
-        </pdomOutput></ExecuteQueryResponse>
-    </SOAP-ENV:Body>
-    </SOAP-ENV:Envelope>`);
-
-const GET_GETDOCUMENT_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
-    <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:xtk:persist' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
-    <SOAP-ENV:Body>
-    <GetDocumentResponse xmlns='urn:xtk:persist' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
-        <pdomOutput xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
-        </pdomOutput></GetDocumentResponse>
-    </SOAP-ENV:Body>
-    </SOAP-ENV:Envelope>`);
-
-const GET_GETELEMENT_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
-    <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:xtk:persist' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
-    <SOAP-ENV:Body>
-    <GetElementResponse xmlns='urn:xtk:persist' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
-        <pdomOutput xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
-        </pdomOutput></GetElementResponse>
-    </SOAP-ENV:Body>
-    </SOAP-ENV:Envelope>`);
-
-
-const GET_SETDOCUMENT_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
-    <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:xtk:persist' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
-    <SOAP-ENV:Body>
-    <SetDocumentResponse xmlns='urn:xtk:persist' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
-        <pdomOutput xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
-        </pdomOutput></SetDocumentResponse>
-    </SOAP-ENV:Body>
-    </SOAP-ENV:Envelope>`);
-
-const GET_SETELEMENT_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
-    <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:xtk:persist' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
-    <SOAP-ENV:Body>
-    <SetElementResponse xmlns='urn:xtk:persist' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
-        <pdomOutput xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
-        </pdomOutput></SetElementResponse>
-    </SOAP-ENV:Body>
-    </SOAP-ENV:Envelope>`);
-
-
-const GET_GETSCHEMA_HELLO_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
-    <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:wpp:default' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
-    <SOAP-ENV:Body>
-        <GetEntityIfMoreRecentResponse xmlns='urn:wpp:default' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
-            <pdomDoc xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
-                <schema name="hello" namespace="xtk">
-                    <element name="hello"></element>
-                    <methods>
-                        <method const="true" name="World" static="true">
-                            <parameters>
-                                <param desc="Output XML document" inout="out" name="output" type="DOMDocument"/>
-                            </parameters> 
-                        </method>
-                    </methods>
-                </schema>
-            </pdomDoc>
-        </GetEntityIfMoreRecentResponse>
-    </SOAP-ENV:Body>
-    </SOAP-ENV:Envelope>`);
-
-const GET_HELLO_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
-    <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:xtk:session' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
-    <SOAP-ENV:Body>
-        <WorldResponse xmlns='urn:xtk:session' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
-            <pdomDoc xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
-                <hello world="cruel"/>
-            </pdomDoc>
-        </WorldResponse>
-    </SOAP-ENV:Body>
-    </SOAP-ENV:Envelope>`);
-
-describe('ACC Client', function() {
-
-    describe('Init', function() {
-
-        it('Should create client', function() {
-            const client = makeClient();
+        it('Should create client', async function () {
+            const client = await Mock.makeClient();
             const NLWS = client.NLWS;
             expect(NLWS).toBeTruthy();
             expect(client.isLogged()).toBe(false);
@@ -498,23 +36,23 @@ describe('ACC Client', function() {
 
         it('Create client with invalid parameters', () => {
             // No 4th parameter should be ok
-            expect(new Client("http://acc-sdk:8080", "admin", "admin")).not.toBeFalsy();
+            expect(new Client(sdk, "http://acc-sdk:8080", "admin", "admin")).not.toBeFalsy();
             // Object litteral is ok too
-            expect(new Client("http://acc-sdk:8080", "admin", "admin", {})).not.toBeFalsy();
-            expect(new Client("http://acc-sdk:8080", "admin", "admin", { representation: "BadgerFish" })).not.toBeFalsy();
-            expect(new Client("http://acc-sdk:8080", "admin", "admin", { dummy: 1 })).not.toBeFalsy();
+            expect(new Client(sdk, "http://acc-sdk:8080", "admin", "admin", {})).not.toBeFalsy();
+            expect(new Client(sdk, "http://acc-sdk:8080", "admin", "admin", { representation: "BadgerFish" })).not.toBeFalsy();
+            expect(new Client(sdk, "http://acc-sdk:8080", "admin", "admin", { dummy: 1 })).not.toBeFalsy();
             // Boolean is not ok
-            expect(() => { new Client("http://acc-sdk:8080", "admin", "admin", true); }).toThrow("An object litteral is expected");
-            expect(() => { new Client("http://acc-sdk:8080", "admin", "admin", false); }).toThrow("An object litteral is expected");
-            expect(() => { new Client("http://acc-sdk:8080", "admin", "admin", "BadgerFish"); }).toThrow("An object litteral is expected");
+            expect(() => { new Client(sdk, "http://acc-sdk:8080", "admin", "admin", true); }).toThrow("An object litteral is expected");
+            expect(() => { new Client(sdk, "http://acc-sdk:8080", "admin", "admin", false); }).toThrow("An object litteral is expected");
+            expect(() => { new Client(sdk, "http://acc-sdk:8080", "admin", "admin", "BadgerFish"); }).toThrow("An object litteral is expected");
             // Invalid representation is not ok
-            expect(() => { new Client("http://acc-sdk:8080", "admin", "admin",  { representation: "Hello" }); }).toThrow("Invalid representation");
+            expect(() => { new Client(sdk, "http://acc-sdk:8080", "admin", "admin", { representation: "Hello" }); }).toThrow("Invalid representation");
         });
 
         it('Should logon and logoff', async () => {
-            const client = makeClient();
-            client._soapTransport.mockReturnValueOnce(LOGON_RESPONSE);
-            client._soapTransport.mockReturnValueOnce(LOGOFF_RESPONSE);
+            const client = await Mock.makeClient();
+            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            client._soapTransport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
             await client.NLWS.xtkSession.logon();
             expect(client.isLogged()).toBe(true);
             var sessionInfoXml = client.getSessionInfo("xml");
@@ -524,10 +62,10 @@ describe('ACC Client', function() {
         });
 
         it('Should logon and logoff with traces', async () => {
-            const client = makeClient();
+            const client = await Mock.makeClient();
             client.traceSOAPCalls(true);
-            client._soapTransport.mockReturnValueOnce(LOGON_RESPONSE);
-            client._soapTransport.mockReturnValueOnce(LOGOFF_RESPONSE);
+            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            client._soapTransport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
             await client.NLWS.xtkSession.logon();
             expect(client.isLogged()).toBe(true);
             var sessionInfoXml = client.getSessionInfo("xml");
@@ -537,11 +75,11 @@ describe('ACC Client', function() {
         });
 
         it('Should logon and logoff with traces (as if in browser)', async () => {
-            const client = makeClient();
+            const client = await Mock.makeClient();
             client.traceSOAPCalls(true);
             client._browser = true;
-            client._soapTransport.mockReturnValueOnce(LOGON_RESPONSE);
-            client._soapTransport.mockReturnValueOnce(LOGOFF_RESPONSE);
+            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            client._soapTransport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
             await client.NLWS.xtkSession.logon();
             expect(client.isLogged()).toBe(true);
             var sessionInfoXml = client.getSessionInfo("xml");
@@ -551,21 +89,21 @@ describe('ACC Client', function() {
         });
 
         it('Should logon and logoff (remember me)', async () => {
-            const client = makeClient();
+            const client = await Mock.makeClient();
 
-            client._soapTransport.mockReturnValueOnce(LOGON_RESPONSE);
+            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon(true);
             expect(client.isLogged()).toBe(true);
             var sessionInfoXml = client.getSessionInfo("xml");
             expect(DomUtil.findElement(sessionInfoXml, "serverInfo", true).getAttribute("buildNumber")).toBe("9219");
 
-            client._soapTransport.mockReturnValueOnce(LOGOFF_RESPONSE);
+            client._soapTransport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
             await client.NLWS.xtkSession.logoff();
             expect(client.isLogged()).toBe(false);
         });
 
         it("Should support multiple logoff", async () => {
-            const client = makeClient();
+            const client = await Mock.makeClient();
             await client.NLWS.xtkSession.logoff();
             expect(client.isLogged()).toBe(false);
             await client.NLWS.xtkSession.logoff();
@@ -573,25 +111,25 @@ describe('ACC Client', function() {
         });
 
         it('Should fail to call if unlogged', async () => {
-            const client = makeClient();
+            const client = await Mock.makeClient();
             await client.getSchema("nms:recipient").catch(e => {
                 expect(e.name).toMatch('Error');
             });
         });
 
         it('Should fail if logon does not return a session token', async () => {
-            const client = makeClient();
+            const client = await Mock.makeClient();
             expect(async () => {
-                client._soapTransport.mockReturnValueOnce(LOGON_RESPONSE_NO_SESSIONTOKEN);
+                client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE_NO_SESSIONTOKEN);
                 await client.NLWS.xtkSession.logon();
             }).rejects.toThrow();
             expect(client.isLogged()).toBe(false);
         });
 
         it('Should fail if logon does not return a security token', async () => {
-            const client = makeClient();
+            const client = await Mock.makeClient();
             expect(async () => {
-                client._soapTransport.mockReturnValueOnce(LOGON_RESPONSE_NO_SECURITYTOKEN);
+                client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE_NO_SECURITYTOKEN);
                 await client.NLWS.xtkSession.logon();
             }).rejects.toThrow();
             expect(client.isLogged()).toBe(false);
@@ -600,32 +138,39 @@ describe('ACC Client', function() {
 
         it('Should logon with dummy cookie', async () => {
             document = {};
-            const client = makeClient();
-            client._soapTransport.mockReturnValueOnce(LOGON_RESPONSE);
+            const client = await Mock.makeClient();
+            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
             expect(client.isLogged()).toBe(true);
             var sessionInfoXml = client.getSessionInfo("xml");
             expect(DomUtil.findElement(sessionInfoXml, "serverInfo", true).getAttribute("buildNumber")).toBe("9219");
-            client._soapTransport.mockReturnValueOnce(LOGOFF_RESPONSE);
+            client._soapTransport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
             await client.NLWS.xtkSession.logoff();
             expect(client.isLogged()).toBe(false);
             document = undefined;
         });
+
+        it('Should fail if Logon does not return an UserInfo struture', async () => {
+            const client = await Mock.makeClient();
+            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE_NO_USERINFO);
+            await expect(client.NLWS.xtkSession.logon()).rejects.toThrow("userInfo structure missing");
+            expect(client.isLogged()).toBe(false);
+        });
     });
 
-    describe("Get session Info", async () => {
+    describe("Get session Info", () => {
 
         it('Should get session info with default representation', async () => {
-            const client = makeClient();
-            client._soapTransport.mockReturnValueOnce(LOGON_RESPONSE);
+            const client = await Mock.makeClient();
+            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon(true);
             var sessionInfo = client.getSessionInfo();
             expect(sessionInfo.serverInfo.buildNumber).toBe("9219");
         });
 
         it('Should get session info with BadgerFish representation', async () => {
-            const client = makeClient();
-            client._soapTransport.mockReturnValueOnce(LOGON_RESPONSE);
+            const client = await Mock.makeClient();
+            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon(true);
             var sessionInfo = client.getSessionInfo("BadgerFish");
             expect(sessionInfo.serverInfo['@buildNumber']).toBe("9219");
@@ -633,12 +178,12 @@ describe('ACC Client', function() {
 
     })
 
-    describe('API calls', async () => {
-        it('Should getEntityIfMoreRecent', async() => {
-            const client = makeClient();
-            client._soapTransport.mockReturnValueOnce(LOGON_RESPONSE);
-            client._soapTransport.mockReturnValueOnce(GET_XTK_SESSION_SCHEMA_RESPONSE);
-            client._soapTransport.mockReturnValueOnce(LOGOFF_RESPONSE);
+    describe('API calls', () => {
+        it('Should getEntityIfMoreRecent', async () => {
+            const client = await Mock.makeClient({ representation: "xml" });
+            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            client._soapTransport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
+            client._soapTransport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
             await client.NLWS.xtkSession.logon();
             const schema = await client.getEntityIfMoreRecent("xtk:schema", "xtk:session");
             var element = DomUtil.getFirstChildElement(schema);
@@ -656,19 +201,18 @@ describe('ACC Client', function() {
             await client.NLWS.xtkSession.logoff();
         });
 
-        it('Should getOption', async() => {
-            const client = makeClient();
-            client._soapTransport.mockReturnValueOnce(LOGON_RESPONSE);
-            client._soapTransport.mockReturnValueOnce(GET_XTK_SESSION_SCHEMA_RESPONSE);
+        it('Should getOption', async () => {
+            const client = await Mock.makeClient();
+            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            client._soapTransport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
             await client.NLWS.xtkSession.logon();
 
             // Method 1: convenience function
-            client._soapTransport.mockReturnValueOnce(GET_DATABASEID_RESPONSE);
-            
+            client._soapTransport.mockReturnValueOnce(Mock.GET_DATABASEID_RESPONSE);
             var databaseId = await client.getOption("XtkDatabaseId");
             expect(databaseId).toBe("uFE80000000000000F1FA913DD7CC7C480041161C");
             // Method 2 : SOAP call - will not use cache to get, but will cache result
-            client._soapTransport.mockReturnValueOnce(GET_DATABASEID_RESPONSE);
+            client._soapTransport.mockReturnValueOnce(Mock.GET_DATABASEID_RESPONSE);
             var option = await client.NLWS.xtkSession.getOption("XtkDatabaseId");
             expect(option[0]).toBe("uFE80000000000000F1FA913DD7CC7C480041161C");
             expect(option[1]).toBe(6);
@@ -677,12 +221,12 @@ describe('ACC Client', function() {
             var databaseId = await client.getOption("XtkDatabaseId");
             expect(databaseId).toBe("uFE80000000000000F1FA913DD7CC7C480041161C");
             // Force not using cache
-            client._soapTransport.mockReturnValueOnce(GET_DATABASEID_RESPONSE);
+            client._soapTransport.mockReturnValueOnce(Mock.GET_DATABASEID_RESPONSE);
             var databaseId = await client.getOption("XtkDatabaseId", false);
             expect(databaseId).toBe("uFE80000000000000F1FA913DD7CC7C480041161C");
             // Clear cache
             client.clearOptionCache();
-            client._soapTransport.mockReturnValueOnce(GET_DATABASEID_RESPONSE);
+            client._soapTransport.mockReturnValueOnce(Mock.GET_DATABASEID_RESPONSE);
             var databaseId = await client.getOption("XtkDatabaseId");
             expect(databaseId).toBe("uFE80000000000000F1FA913DD7CC7C480041161C");
 
@@ -692,35 +236,118 @@ describe('ACC Client', function() {
             });
 
             // representations
-            client.setRepresentation("json");
-            client._soapTransport.mockReturnValueOnce(GET_DATABASEID_RESPONSE);
+            client._representation = "json";
+            client._soapTransport.mockReturnValueOnce(Mock.GET_DATABASEID_RESPONSE);
             option = await client.NLWS.xtkSession.getOption("XtkDatabaseId");
             expect(option[0]).toBe("uFE80000000000000F1FA913DD7CC7C480041161C");
             expect(option[1]).toBe(6);
 
-            client.setRepresentation("xml");
-            client._soapTransport.mockReturnValueOnce(GET_DATABASEID_RESPONSE);
+            client._representation = "xml";
+            client._soapTransport.mockReturnValueOnce(Mock.GET_DATABASEID_RESPONSE);
             option = await client.NLWS.xtkSession.getOption("XtkDatabaseId");
             expect(option[0]).toBe("uFE80000000000000F1FA913DD7CC7C480041161C");
             expect(option[1]).toBe(6);
 
-            client.setRepresentation("invalid");
+            client._representation = "invalid";
             option = await client.NLWS.xtkSession.getOption("XtkDatabaseId").catch(e => {
                 expect(e.name).toMatch('Error');
             });
 
-            client._soapTransport.mockReturnValueOnce(LOGOFF_RESPONSE);
+            client._soapTransport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
             await client.NLWS.xtkSession.logoff();
         });
 
+
+        describe("Should set option", () => {
+
+            it("Should set option when it does not exist", async () => {
+                const client = await Mock.makeClient();
+                client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+                client._soapTransport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
+                await client.NLWS.xtkSession.logon();
+    
+                // Setting an option for the first time will
+                // - try to read the option from the database (as it's not in cache yet): xtk:session#GetOption
+                // - use a writer to write the result to the database
+                client._soapTransport.mockReturnValueOnce(Mock.GET_OPTION_NOTFOUND_RESPONSE);
+                client._soapTransport.mockReturnValueOnce(Promise.resolve(`<?xml version='1.0'?>
+                            <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:wpp:default' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
+                            <SOAP-ENV:Body>
+                            <WriteResponse xmlns='urn:wpp:default' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
+                            </WriteResponse>
+                            </SOAP-ENV:Body>
+                            </SOAP-ENV:Envelope>`));
+                await client.setOption("XtkDatabaseId", "ABC");
+                // Reading the option should not make any database access and read from the cache
+                var databaseId = await client.getOption("XtkDatabaseId");
+                expect(databaseId).toBe("ABC");
+            })
+
+            it("Should set option with description", async () => {
+                const client = await Mock.makeClient();
+                client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+                client._soapTransport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
+                await client.NLWS.xtkSession.logon();
+    
+                // Setting an option for the first time will
+                // - try to read the option from the database (as it's not in cache yet): xtk:session#GetOption
+                // - use a writer to write the result to the database
+                client._soapTransport.mockReturnValueOnce(Mock.GET_OPTION_NOTFOUND_RESPONSE);
+                client._soapTransport.mockReturnValueOnce(Promise.resolve(`<?xml version='1.0'?>
+                            <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:wpp:default' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
+                            <SOAP-ENV:Body>
+                            <WriteResponse xmlns='urn:wpp:default' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
+                            </WriteResponse>
+                            </SOAP-ENV:Body>
+                            </SOAP-ENV:Envelope>`));
+                await client.setOption("XtkDatabaseId", "ABC", "This is my desc");
+                // Reading the option should not make any database access and read from the cache
+                var databaseId = await client.getOption("XtkDatabaseId");
+                expect(databaseId).toBe("ABC");
+            })
+
+            it("Should set existing option with type", async () => {
+                const client = await Mock.makeClient();
+                client.traceSOAPCalls(true);
+                client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+                client._soapTransport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
+                await client.NLWS.xtkSession.logon();
+    
+                // Setting an option for the first time will
+                // - try to read the option from the database (as it's not in cache yet): xtk:session#GetOption. In this case, it will return a numeric option
+                // - use a writer to write the result to the database
+                client._soapTransport.mockReturnValueOnce(Promise.resolve(`<?xml version='1.0'?>
+                        <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:xtk:session' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
+                        <SOAP-ENV:Body>
+                            <GetOptionResponse xmlns='urn:xtk:session' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
+                                <pstrValue xsi:type='xsd:string'>-123</pstrValue>
+                                <pbtType xsi:type='xsd:byte'>3</pbtType>
+                            </GetOptionResponse>
+                        </SOAP-ENV:Body>
+                        </SOAP-ENV:Envelope>`));
+                client._soapTransport.mockReturnValueOnce(Promise.resolve(`<?xml version='1.0'?>
+                            <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:wpp:default' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
+                            <SOAP-ENV:Body>
+                            <WriteResponse xmlns='urn:wpp:default' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
+                            </WriteResponse>
+                            </SOAP-ENV:Body>
+                            </SOAP-ENV:Envelope>`));
+                await client.setOption("XtkDatabaseId", "7");
+                // Reading the option should not make any database access and read from the cache
+                var databaseId = await client.getOption("XtkDatabaseId");
+                expect(databaseId).toBe(7);
+            })
+
+        })
+
         it("Should return missing options", async () => {
-            const client = makeClient();
-            client._soapTransport.mockReturnValueOnce(LOGON_RESPONSE);
+            const client = await Mock.makeClient();
+            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
 
             // Get missing option
-            client._soapTransport.mockReturnValueOnce(GET_XTK_SESSION_SCHEMA_RESPONSE);
-            client._soapTransport.mockReturnValueOnce(GET_OPTION_NOTFOUND_RESPONSE);
+            client._soapTransport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
+            client._soapTransport.mockReturnValueOnce(Mock.GET_OPTION_NOTFOUND_RESPONSE);
             var value = await client.getOption("ZZ");
             expect(value).toBeNull();
 
@@ -730,18 +357,18 @@ describe('ACC Client', function() {
 
             // Defense case where resulting parameters are missing. This is a forged answer, should not happen
             // in reality
-            client._soapTransport.mockReturnValueOnce(GET_OPTION_MISSING_DATA_RESPONSE);
+            client._soapTransport.mockReturnValueOnce(Mock.GET_OPTION_MISSING_DATA_RESPONSE);
             await client.getOption("YY").catch(e => {
                 expect(e.name).toMatch('Error');
             });
         });
 
         it("Should return schema definition", async () => {
-            const client = makeClient();
-            client._soapTransport.mockReturnValueOnce(LOGON_RESPONSE);
+            const client = await Mock.makeClient();
+            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
 
-            client._soapTransport.mockReturnValueOnce(GET_NMS_EXTACCOUNT_SCHEMA_RESPONSE);
+            client._soapTransport.mockReturnValueOnce(Mock.GET_NMS_EXTACCOUNT_SCHEMA_RESPONSE);
             var schema = await client.getSchema("nms:extAccount");
             expect(schema["namespace"]).toBe("nms");
             expect(schema["name"]).toBe("extAccount");
@@ -753,7 +380,7 @@ describe('ACC Client', function() {
 
             // Clear cache and ask again
             client.clearEntityCache();
-            client._soapTransport.mockReturnValueOnce(GET_NMS_EXTACCOUNT_SCHEMA_RESPONSE);
+            client._soapTransport.mockReturnValueOnce(Mock.GET_NMS_EXTACCOUNT_SCHEMA_RESPONSE);
             var schema = await client.getSchema("nms:extAccount");
             expect(schema["namespace"]).toBe("nms");
             expect(schema["name"]).toBe("extAccount");
@@ -773,24 +400,24 @@ describe('ACC Client', function() {
 
             // Get missing schema
             client.clearAllCaches();
-            client._soapTransport.mockReturnValueOnce(GET_MISSING_SCHEMA_RESPONSE);
+            client._soapTransport.mockReturnValueOnce(Mock.GET_MISSING_SCHEMA_RESPONSE);
             var schema = await client.getSchema("nms:dummy", "BadgerFish");
             expect(schema).toBeNull();
             client.clearAllCaches();
-            client._soapTransport.mockReturnValueOnce(GET_MISSING_SCHEMA_RESPONSE);
+            client._soapTransport.mockReturnValueOnce(Mock.GET_MISSING_SCHEMA_RESPONSE);
             var schema = await client.getSchema("nms:dummy", "xml");
             expect(schema).toBeNull();
 
-            client._soapTransport.mockReturnValueOnce(LOGOFF_RESPONSE);
+            client._soapTransport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
             await client.NLWS.xtkSession.logoff();
         });
 
         it("Should return sys enum definition", async () => {
-            const client = makeClient({ representation: "BadgerFish" });
-            client._soapTransport.mockReturnValueOnce(LOGON_RESPONSE);
+            const client = await Mock.makeClient({ representation: "BadgerFish" });
+            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
 
-            client._soapTransport.mockReturnValueOnce(GET_NMS_EXTACCOUNT_SCHEMA_RESPONSE);
+            client._soapTransport.mockReturnValueOnce(Mock.GET_NMS_EXTACCOUNT_SCHEMA_RESPONSE);
             var sysEnum = await client.getSysEnum("nms:extAccount:encryptionType");
             expect(sysEnum["@basetype"]).toBe("byte");
             expect(sysEnum["@name"]).toBe("encryptionType");
@@ -825,64 +452,64 @@ describe('ACC Client', function() {
             expect(sysEnum).toBeUndefined();
 
             // Get cached XML representation
-            client.setRepresentation("xml");
+            client._representation = "xml";
             var sysEnum = await client.getSysEnum("nms:extAccount:encryptionType");
             expect(sysEnum.getAttribute("basetype")).toBe("byte");
 
             // Invalid representation
             const startSchema = await client.getSchema("nms:extAccount");
-            client.setRepresentation("invalid");
+            client._representation = "invalid";
             await client.getSysEnum("encryptionType", startSchema).catch(e => {
                 expect(e.name).toMatch('Error');
             });
-            client.setRepresentation("xml");
+            client._representation = "xml";
 
             // Get non-cached XML representation 
             client.clearAllCaches();
-            client._soapTransport.mockReturnValueOnce(GET_NMS_EXTACCOUNT_SCHEMA_RESPONSE);
+            client._soapTransport.mockReturnValueOnce(Mock.GET_NMS_EXTACCOUNT_SCHEMA_RESPONSE);
             var sysEnum = await client.getSysEnum("nms:extAccount:encryptionType");
             expect(sysEnum.getAttribute("basetype")).toBe("byte");
 
             // Schema does not exist
             client.clearAllCaches();
-            client._soapTransport.mockReturnValueOnce(GET_MISSING_SCHEMA_RESPONSE);
+            client._soapTransport.mockReturnValueOnce(Mock.GET_MISSING_SCHEMA_RESPONSE);
             await client.getSysEnum("nms:dummy:encryptionType").catch(e => {
                 expect(e.name).toMatch('Error');
             });
 
-            client._soapTransport.mockReturnValueOnce(LOGOFF_RESPONSE);
+            client._soapTransport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
             await client.NLWS.xtkSession.logoff();
         });
 
         it("getSysEnum should support schemas which do not have enumerations (BadgerFish representation)", async () => {
-            const client = makeClient();
-            client._soapTransport.mockReturnValueOnce(LOGON_RESPONSE);
+            const client = await Mock.makeClient();
+            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
 
-            client._soapTransport.mockReturnValueOnce(GET_XTK_ALL_SCHEMA_RESPONSE);
+            client._soapTransport.mockReturnValueOnce(Mock.GET_XTK_ALL_SCHEMA_RESPONSE);
             var sysEnum = await client.getSysEnum("xtk:all:encryptionType");
             expect(sysEnum).toBeUndefined();
         });
 
         it("getSysEnum should support schemas which do not have enumerations (SimpleJson representation)", async () => {
-            const client = makeClient();
-            client._soapTransport.mockReturnValueOnce(LOGON_RESPONSE);
+            const client = await Mock.makeClient();
+            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
 
-            client._soapTransport.mockReturnValueOnce(GET_XTK_ALL_SCHEMA_RESPONSE);
+            client._soapTransport.mockReturnValueOnce(Mock.GET_XTK_ALL_SCHEMA_RESPONSE);
             var sysEnum = await client.getSysEnum("xtk:all:encryptionType");
             expect(sysEnum).toBeUndefined();
         });
 
     });
 
-    describe("Should return sys enum definition with the right representation", async () => {
+    describe("Should return sys enum definition with the right representation", () => {
         it("Should return sys enum definition with the default representation", async () => {
-            const client = makeClient();
-            client._soapTransport.mockReturnValueOnce(LOGON_RESPONSE);
+            const client = await Mock.makeClient();
+            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
 
-            client._soapTransport.mockReturnValueOnce(GET_NMS_EXTACCOUNT_SCHEMA_RESPONSE);
+            client._soapTransport.mockReturnValueOnce(Mock.GET_NMS_EXTACCOUNT_SCHEMA_RESPONSE);
             var sysEnum = await client.getSysEnum("nms:extAccount:encryptionType");
             expect(sysEnum["basetype"]).toBe("byte");
             expect(sysEnum["name"]).toBe("encryptionType");
@@ -891,11 +518,11 @@ describe('ACC Client', function() {
         });
 
         it("Should return sys enum definition with the 'BadgerFish' representation", async () => {
-            const client = makeClient({ representation: "BadgerFish" });
-            client._soapTransport.mockReturnValueOnce(LOGON_RESPONSE);
+            const client = await Mock.makeClient({ representation: "BadgerFish" });
+            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
 
-            client._soapTransport.mockReturnValueOnce(GET_NMS_EXTACCOUNT_SCHEMA_RESPONSE);
+            client._soapTransport.mockReturnValueOnce(Mock.GET_NMS_EXTACCOUNT_SCHEMA_RESPONSE);
             var sysEnum = await client.getSysEnum("nms:extAccount:encryptionType");
             expect(sysEnum["@basetype"]).toBe("byte");
             expect(sysEnum["@name"]).toBe("encryptionType");
@@ -904,11 +531,11 @@ describe('ACC Client', function() {
         });
 
         it("Should return sys enum definition with the 'SimpleJson' representation", async () => {
-            const client = makeClient();
-            client._soapTransport.mockReturnValueOnce(LOGON_RESPONSE);
+            const client = await Mock.makeClient();
+            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
 
-            client._soapTransport.mockReturnValueOnce(GET_NMS_EXTACCOUNT_SCHEMA_RESPONSE);
+            client._soapTransport.mockReturnValueOnce(Mock.GET_NMS_EXTACCOUNT_SCHEMA_RESPONSE);
             var sysEnum = await client.getSysEnum("nms:extAccount:encryptionType");
             expect(sysEnum["basetype"]).toBe("byte");
             expect(sysEnum["@basetype"]).toBeUndefined();
@@ -918,11 +545,11 @@ describe('ACC Client', function() {
         });
 
         it("Should return sys enum definition with the 'xml' representation", async () => {
-            const client = makeClient({ representation: "xml" });
-            client._soapTransport.mockReturnValueOnce(LOGON_RESPONSE);
+            const client = await Mock.makeClient({ representation: "xml" });
+            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
 
-            client._soapTransport.mockReturnValueOnce(GET_NMS_EXTACCOUNT_SCHEMA_RESPONSE);
+            client._soapTransport.mockReturnValueOnce(Mock.GET_NMS_EXTACCOUNT_SCHEMA_RESPONSE);
             var sysEnum = await client.getSysEnum("nms:extAccount:encryptionType");
 
             console.log(DomUtil.toXMLString(sysEnum));
@@ -939,71 +566,71 @@ describe('ACC Client', function() {
     describe("Get Mid Client", () => {
 
         it("Should get mid connection", async () => {
-            const client = makeClient();
+            const client = await Mock.makeClient();
 
-            client._soapTransport.mockReturnValueOnce(LOGON_RESPONSE);
+            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
 
-            client._soapTransport.mockReturnValueOnce(GET_XTK_QUERY_SCHEMA_RESPONSE);
-            client._soapTransport.mockReturnValueOnce(GET_MID_EXT_ACCOUNT_RESPONSE);
-            client._soapTransport.mockReturnValueOnce(GET_XTK_SESSION_SCHEMA_RESPONSE);
-            client._soapTransport.mockReturnValueOnce(GET_SECRET_KEY_OPTION_RESPONSE);
+            client._soapTransport.mockReturnValueOnce(Mock.GET_XTK_QUERY_SCHEMA_RESPONSE);
+            client._soapTransport.mockReturnValueOnce(Mock.GET_MID_EXT_ACCOUNT_RESPONSE);
+            client._soapTransport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
+            client._soapTransport.mockReturnValueOnce(Mock.GET_SECRET_KEY_OPTION_RESPONSE);
             var midClient = await client.getMidClient();
             midClient._soapTransport = jest.fn();
-            
-            midClient._soapTransport.mockReturnValueOnce(GET_LOGON_MID_RESPONSE);
+
+            midClient._soapTransport.mockReturnValueOnce(Mock.GET_LOGON_MID_RESPONSE);
             await midClient.NLWS.xtkSession.logon();
 
-            midClient._soapTransport.mockReturnValueOnce(GET_XTK_SESSION_SCHEMA_RESPONSE);
-            midClient._soapTransport.mockReturnValueOnce(GET_TSTCNX_RESPONSE);
+            midClient._soapTransport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
+            midClient._soapTransport.mockReturnValueOnce(Mock.GET_TSTCNX_RESPONSE);
             await midClient.NLWS.xtkSession.testCnx();
-            
-            midClient._soapTransport.mockReturnValueOnce(LOGOFF_RESPONSE);
+
+            midClient._soapTransport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
             await midClient.NLWS.xtkSession.logoff();
-            client._soapTransport.mockReturnValueOnce(LOGOFF_RESPONSE);
+            client._soapTransport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
             await client.NLWS.xtkSession.logoff();
         });
 
         it("Should fail if invalid representation", async () => {
-            const client = makeClient();
+            const client = await Mock.makeClient();
 
-            client._soapTransport.mockReturnValueOnce(LOGON_RESPONSE);
+            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
 
-            client._soapTransport.mockReturnValueOnce(GET_XTK_QUERY_SCHEMA_RESPONSE);
-            client._soapTransport.mockReturnValueOnce(GET_MID_EXT_ACCOUNT_RESPONSE);
-            client._soapTransport.mockReturnValueOnce(GET_XTK_SESSION_SCHEMA_RESPONSE);
-            client._soapTransport.mockReturnValueOnce(GET_SECRET_KEY_OPTION_RESPONSE);
-            
+            client._soapTransport.mockReturnValueOnce(Mock.GET_XTK_QUERY_SCHEMA_RESPONSE);
+            client._soapTransport.mockReturnValueOnce(Mock.GET_MID_EXT_ACCOUNT_RESPONSE);
+            client._soapTransport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
+            client._soapTransport.mockReturnValueOnce(Mock.GET_SECRET_KEY_OPTION_RESPONSE);
+
             expect(async () => {
-                client.setRepresentation("Dummy");
-                 await client.getMidClient();
+                client._representation = "Dummy";
+                await client.getMidClient();
             }).rejects.toThrow();
         });
 
         // getMidClient internally uses an object encoded in BadgerFish
         // => explicitely test with another representation
         it("Should fail not fail with SimpleJson representation", async () => {
-            const client = makeClient();
+            const client = await Mock.makeClient();
 
-            client._soapTransport.mockReturnValueOnce(LOGON_RESPONSE);
+            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
 
-            client._soapTransport.mockReturnValueOnce(GET_XTK_QUERY_SCHEMA_RESPONSE);
-            client._soapTransport.mockReturnValueOnce(GET_MID_EXT_ACCOUNT_RESPONSE);
-            client._soapTransport.mockReturnValueOnce(GET_XTK_SESSION_SCHEMA_RESPONSE);
-            client._soapTransport.mockReturnValueOnce(GET_SECRET_KEY_OPTION_RESPONSE);
-            
+            client._soapTransport.mockReturnValueOnce(Mock.GET_XTK_QUERY_SCHEMA_RESPONSE);
+            client._soapTransport.mockReturnValueOnce(Mock.GET_MID_EXT_ACCOUNT_RESPONSE);
+            client._soapTransport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
+            client._soapTransport.mockReturnValueOnce(Mock.GET_SECRET_KEY_OPTION_RESPONSE);
+
             await client.getMidClient();
         });
 
         it("Should get cached cipher", async () => {
-            const client = makeClient();
-            client._soapTransport.mockReturnValueOnce(LOGON_RESPONSE);
+            const client = await Mock.makeClient();
+            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
 
-            client._soapTransport.mockReturnValueOnce(GET_XTK_SESSION_SCHEMA_RESPONSE);
-            client._soapTransport.mockReturnValueOnce(GET_SECRET_KEY_OPTION_RESPONSE);
+            client._soapTransport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
+            client._soapTransport.mockReturnValueOnce(Mock.GET_SECRET_KEY_OPTION_RESPONSE);
             var cipher = await client.getSecretKeyCipher();
             expect(cipher).not.toBeNull();
             expect(cipher.key).not.toBeNull();
@@ -1016,7 +643,7 @@ describe('ACC Client', function() {
             expect(cipher.key).not.toBeNull();
             expect(cipher.iv).not.toBeNull();
 
-            client._soapTransport.mockReturnValueOnce(LOGOFF_RESPONSE);
+            client._soapTransport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
             await client.NLWS.xtkSession.logoff();
         });
     });
@@ -1025,13 +652,13 @@ describe('ACC Client', function() {
     describe("SOAP call with all parameters and return types", () => {
 
         it("Should call with all parameter types", async () => {
-            const client = makeClient({ representation: "BadgerFish" });
+            const client = await Mock.makeClient({ representation: "BadgerFish" });
 
-            client._soapTransport.mockReturnValueOnce(LOGON_RESPONSE);
+            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
-            
-            client._soapTransport.mockReturnValueOnce(GET_XTK_ALL_SCHEMA_RESPONSE);
-            client._soapTransport.mockReturnValueOnce(GET_XTK_ALL_TYPES_RESPONSE);
+
+            client._soapTransport.mockReturnValueOnce(Mock.GET_XTK_ALL_SCHEMA_RESPONSE);
+            client._soapTransport.mockReturnValueOnce(Mock.GET_XTK_ALL_TYPES_RESPONSE);
 
             const element = { "@type": "element", "@xtkschema": "nms:recipient" };          // @xtkschema needed to determine root name
             const document = { "@type": "document", "@xtkschema": "nms:recipient" };
@@ -1052,18 +679,18 @@ describe('ACC Client', function() {
             expect(result[9]["@type"]).toBe("document");
             expect(result[9]["@result"]).toBe("true");
 
-            client._soapTransport.mockReturnValueOnce(LOGOFF_RESPONSE);
+            client._soapTransport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
             await client.NLWS.xtkSession.logoff();
         });
 
         it("Should check xtkschema attribute", async () => {
-            const client = makeClient();
+            const client = await Mock.makeClient();
 
-            client._soapTransport.mockReturnValueOnce(LOGON_RESPONSE);
+            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
-            
-            client._soapTransport.mockReturnValueOnce(GET_XTK_ALL_SCHEMA_RESPONSE);
-            client._soapTransport.mockReturnValueOnce(GET_XTK_ALL_TYPES_RESPONSE);
+
+            client._soapTransport.mockReturnValueOnce(Mock.GET_XTK_ALL_SCHEMA_RESPONSE);
+            client._soapTransport.mockReturnValueOnce(Mock.GET_XTK_ALL_TYPES_RESPONSE);
 
             const element = { "@type": "element" };          // @xtkschema needed to determine root name, missing on purpose
             const document = { "@type": "document", "@xtkschema": "nms:recipient" };
@@ -1072,15 +699,15 @@ describe('ACC Client', function() {
                 expect(e.name).toMatch('Error');
             });
 
-            client._soapTransport.mockReturnValueOnce(LOGOFF_RESPONSE);
+            client._soapTransport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
             await client.NLWS.xtkSession.logoff();
         });
         it("Should fail on unsupported type", async () => {
-            const client = makeClient();
-            client._soapTransport.mockReturnValueOnce(LOGON_RESPONSE);
+            const client = await Mock.makeClient();
+            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
-            
-            client._soapTransport.mockReturnValueOnce(GET_XTK_ALL_SCHEMA_RESPONSE);
+
+            client._soapTransport.mockReturnValueOnce(Mock.GET_XTK_ALL_SCHEMA_RESPONSE);
 
             // unsupported input parameter
             await client.NLWS.xtkAll.unsupportedInput().catch(e => {
@@ -1088,46 +715,46 @@ describe('ACC Client', function() {
             });
 
             // unsupported output parameter
-            client._soapTransport.mockReturnValueOnce(GET_XTK_TYPE_UNSUPPORTED_TYPE_RESPONSE);
+            client._soapTransport.mockReturnValueOnce(Mock.GET_XTK_TYPE_UNSUPPORTED_TYPE_RESPONSE);
             await client.NLWS.xtkAll.unsupported().catch(e => {
                 expect(e.name).toMatch('Error');
             });
 
-            client._soapTransport.mockReturnValueOnce(LOGOFF_RESPONSE);
+            client._soapTransport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
             await client.NLWS.xtkSession.logoff();
         });
 
-        it("Should support local return type", async() => {
-            const client = makeClient();
-            client._soapTransport.mockReturnValueOnce(LOGON_RESPONSE);
+        it("Should support local return type", async () => {
+            const client = await Mock.makeClient();
+            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
-            
-            client._soapTransport.mockReturnValueOnce(GET_XTK_SESSION_SCHEMA_RESPONSE);
-            client._soapTransport.mockReturnValueOnce(GET_USER_INFO_RESPONSE);
+
+            client._soapTransport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
+            client._soapTransport.mockReturnValueOnce(Mock.GET_USER_INFO_RESPONSE);
             const userInfo = await client.NLWS.xtkSession.getUserInfo();
             expect(userInfo["login"]).toBe("admin");
 
-            client._soapTransport.mockReturnValueOnce(LOGOFF_RESPONSE);
+            client._soapTransport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
             await client.NLWS.xtkSession.logoff();
         });
 
-        it("Should support XML representation", async() => {
-            const client = makeClient({ representation: "xml" });
-            client._soapTransport.mockReturnValueOnce(LOGON_RESPONSE);
+        it("Should support XML representation", async () => {
+            const client = await Mock.makeClient({ representation: "xml" });
+            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
-            
-            client._soapTransport.mockReturnValueOnce(GET_XTK_SESSION_SCHEMA_RESPONSE);
-            client._soapTransport.mockReturnValueOnce(GET_USER_INFO_RESPONSE);
+
+            client._soapTransport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
+            client._soapTransport.mockReturnValueOnce(Mock.GET_USER_INFO_RESPONSE);
             const userInfo = await client.NLWS.xtkSession.getUserInfo();
             expect(userInfo.getAttribute("login")).toBe("admin");
 
-            client._soapTransport.mockReturnValueOnce(LOGOFF_RESPONSE);
+            client._soapTransport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
             await client.NLWS.xtkSession.logoff();
         });
 
         it("Should fail if schema does not exist", async () => {
-            const client = makeClient();
-            client._soapTransport.mockReturnValueOnce(LOGON_RESPONSE);
+            const client = await Mock.makeClient();
+            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
 
             await client.NLWS.xtkNotFound.unsupported().catch(e => {
@@ -1135,49 +762,49 @@ describe('ACC Client', function() {
             });
 
             // Call directly
-            client._soapTransport.mockReturnValueOnce(GET_MISSING_SCHEMA_RESPONSE);
+            client._soapTransport.mockReturnValueOnce(Mock.GET_MISSING_SCHEMA_RESPONSE);
             await client.callMethod("xtk:notFound", "dummy", null).catch(e => {
                 expect(e.name).toMatch('Error');
             });
 
-            client._soapTransport.mockReturnValueOnce(LOGOFF_RESPONSE);
+            client._soapTransport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
             await client.NLWS.xtkSession.logoff();
         });
 
         it("Should fail if method does not exist", async () => {
-            const client = makeClient();
-            client._soapTransport.mockReturnValueOnce(LOGON_RESPONSE);
+            const client = await Mock.makeClient();
+            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
 
-            client._soapTransport.mockReturnValueOnce(GET_XTK_SESSION_SCHEMA_RESPONSE);
+            client._soapTransport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
             await client.NLWS.xtkSession.unsupported().catch(e => {
                 expect(e.name).toMatch('Error');
             });
 
-            client._soapTransport.mockReturnValueOnce(LOGOFF_RESPONSE);
+            client._soapTransport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
             await client.NLWS.xtkSession.logoff();
         });
 
         it("Should fail if calling non static function without object", async () => {
-            const client = makeClient();
-            client._soapTransport.mockReturnValueOnce(LOGON_RESPONSE);
+            const client = await Mock.makeClient();
+            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
 
-            client._soapTransport.mockReturnValueOnce(GET_XTK_SESSION_SCHEMA_RESPONSE);
+            client._soapTransport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
             await client.NLWS.xtkSession.nonStatic().catch(e => {
                 expect(e.name).toMatch('Error');
             });
 
-            client._soapTransport.mockReturnValueOnce(LOGOFF_RESPONSE);
+            client._soapTransport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
             await client.NLWS.xtkSession.logoff();
         });
 
         it("Should start workflow (hack)", async () => {
-            const client = makeClient();
-            client._soapTransport.mockReturnValueOnce(LOGON_RESPONSE);
+            const client = await Mock.makeClient();
+            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
 
-            client._soapTransport.mockReturnValueOnce(GET_XTK_WORKFLOW_SCHEMA_RESPONSE);
+            client._soapTransport.mockReturnValueOnce(Mock.GET_XTK_WORKFLOW_SCHEMA_RESPONSE);
             client._soapTransport.mockImplementationOnce(options => {
                 const doc = DomUtil.parse(options.body);
                 const body = DomUtil.findElement(doc.documentElement, "SOAP-ENV:Body");
@@ -1188,7 +815,7 @@ describe('ACC Client', function() {
                     throw new Error("Did not find 'variables' node");
                 if (variables.getAttribute("hello") != "world")
                     throw new Error("Did not find 'hello' variable");
-                
+
                 return Promise.resolve(`<?xml version='1.0'?>
                     <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:xtk:workflow' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
                         <SOAP-ENV:Body>
@@ -1199,17 +826,17 @@ describe('ACC Client', function() {
             });
             await client.NLWS.xtkWorkflow.startWithParameters(4900, { "hello": "world" });
 
-            client._soapTransport.mockReturnValueOnce(LOGOFF_RESPONSE);
+            client._soapTransport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
             await client.NLWS.xtkSession.logoff();
         });
 
         it("Should call non static method", async () => {
-            const client = makeClient();
-            client._soapTransport.mockReturnValueOnce(LOGON_RESPONSE);
+            const client = await Mock.makeClient();
+            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
 
-            client._soapTransport.mockReturnValueOnce(GET_XTK_QUERY_SCHEMA_RESPONSE);
-            client._soapTransport.mockReturnValueOnce(GET_QUERY_EXECUTE_RESPONSE);
+            client._soapTransport.mockReturnValueOnce(Mock.GET_XTK_QUERY_SCHEMA_RESPONSE);
+            client._soapTransport.mockReturnValueOnce(Mock.GET_QUERY_EXECUTE_RESPONSE);
             var queryDef = {
                 "schema": "nms:extAccount",
                 "operation": "select",
@@ -1229,106 +856,106 @@ describe('ACC Client', function() {
                         <node expr="@name"/>
                     </select>
                 </queryDef>`);
-            client.setRepresentation("xml");
-            client._soapTransport.mockReturnValueOnce(GET_QUERY_EXECUTE_RESPONSE);
+            client._representation = "xml";
+            client._soapTransport.mockReturnValueOnce(Mock.GET_QUERY_EXECUTE_RESPONSE);
             var query = client.NLWS.xtkQueryDef.create(queryDef);
             var extAccounts = await query.executeQuery();
 
-            client.setRepresentation("invalid");
+            client._representation = "invalid";
             client.NLWS.xtkQueryDef.create(queryDef)
             await query.executeQuery().catch(e => {
                 expect(e.name).toMatch('Error');
             });
 
-            client._soapTransport.mockReturnValueOnce(LOGOFF_RESPONSE);
+            client._soapTransport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
             await client.NLWS.xtkSession.logoff();
 
         });
 
         it("Should fail to return DOMDocument with unsupported representation", async () => {
-            const client = makeClient();
-            client._soapTransport.mockReturnValueOnce(LOGON_RESPONSE);
+            const client = await Mock.makeClient();
+            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
-            client._soapTransport.mockReturnValueOnce(GET_XTK_SESSION_SCHEMA_RESPONSE);
+            client._soapTransport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
 
-            client._soapTransport.mockReturnValueOnce(GET_GETDOCUMENT_RESPONSE);
-            client.setRepresentation("xml");
+            client._soapTransport.mockReturnValueOnce(Mock.GET_GETDOCUMENT_RESPONSE);
+            client._representation = "xml";
             var result = await client.NLWS.xtkPersist.getDocument();
 
-            client._soapTransport.mockReturnValueOnce(GET_GETDOCUMENT_RESPONSE);
-            client.setRepresentation("invalid");
+            client._soapTransport.mockReturnValueOnce(Mock.GET_GETDOCUMENT_RESPONSE);
+            client._representation = "invalid";
             await client.NLWS.xtkPersist.getDocument().catch(e => {
                 expect(e.name).toMatch('Error');
             });
 
-            client._soapTransport.mockReturnValueOnce(LOGOFF_RESPONSE);
+            client._soapTransport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
             await client.NLWS.xtkSession.logoff();
         });
 
         it("Should fail to return DOMElement with unsupported representation", async () => {
-            const client = makeClient();
-            client._soapTransport.mockReturnValueOnce(LOGON_RESPONSE);
+            const client = await Mock.makeClient();
+            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
-            client._soapTransport.mockReturnValueOnce(GET_XTK_SESSION_SCHEMA_RESPONSE);
+            client._soapTransport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
 
-            client._soapTransport.mockReturnValueOnce(GET_GETELEMENT_RESPONSE);
-            client.setRepresentation("xml");
+            client._soapTransport.mockReturnValueOnce(Mock.GET_GETELEMENT_RESPONSE);
+            client._representation = "xml";
             var result = await client.NLWS.xtkPersist.getElement();
 
-            client._soapTransport.mockReturnValueOnce(GET_GETELEMENT_RESPONSE);
-            client.setRepresentation("invalid");
+            client._soapTransport.mockReturnValueOnce(Mock.GET_GETELEMENT_RESPONSE);
+            client._representation = "invalid";
             await client.NLWS.xtkPersist.getElement().catch(e => {
                 expect(e.name).toMatch('Error');
             });
 
-            client._soapTransport.mockReturnValueOnce(LOGOFF_RESPONSE);
+            client._soapTransport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
             await client.NLWS.xtkSession.logoff();
         });
 
         it("Should fail to pass DOMDocument with unsupported representation", async () => {
-            const client = makeClient();
-            client._soapTransport.mockReturnValueOnce(LOGON_RESPONSE);
+            const client = await Mock.makeClient();
+            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
-            client._soapTransport.mockReturnValueOnce(GET_XTK_SESSION_SCHEMA_RESPONSE);
+            client._soapTransport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
 
             const document = DomUtil.parse("<root/>");
-            client._soapTransport.mockReturnValueOnce(GET_SETDOCUMENT_RESPONSE);
-            client.setRepresentation("xml");
+            client._soapTransport.mockReturnValueOnce(Mock.GET_SETDOCUMENT_RESPONSE);
+            client._representation = "xml";
             var result = await client.NLWS.xtkPersist.setDocument(document);
 
-            client._soapTransport.mockReturnValueOnce(GET_SETDOCUMENT_RESPONSE);
-            client.setRepresentation("invalid");
+            client._soapTransport.mockReturnValueOnce(Mock.GET_SETDOCUMENT_RESPONSE);
+            client._representation = "invalid";
             await client.NLWS.xtkPersist.setDocument(document).catch(e => {
                 expect(e.name).toMatch('Error');
             });
 
-            client._soapTransport.mockReturnValueOnce(LOGOFF_RESPONSE);
+            client._soapTransport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
             await client.NLWS.xtkSession.logoff();
         });
 
 
         it("Should fail to pass DOMElement with unsupported representation", async () => {
-            const client = makeClient();
-            client._soapTransport.mockReturnValueOnce(LOGON_RESPONSE);
+            const client = await Mock.makeClient();
+            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
-            client._soapTransport.mockReturnValueOnce(GET_XTK_SESSION_SCHEMA_RESPONSE);
+            client._soapTransport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
 
             const element = DomUtil.parse("<root/>").documentElement;
-            client._soapTransport.mockReturnValueOnce(GET_SETELEMENT_RESPONSE);
-            client.setRepresentation("xml");
+            client._soapTransport.mockReturnValueOnce(Mock.GET_SETELEMENT_RESPONSE);
+            client._representation = "xml";
             var result = await client.NLWS.xtkPersist.setElement(element);
 
-            client._soapTransport.mockReturnValueOnce(GET_SETELEMENT_RESPONSE);
-            client.setRepresentation("invalid");
+            client._soapTransport.mockReturnValueOnce(Mock.GET_SETELEMENT_RESPONSE);
+            client._representation = "invalid";
             await client.NLWS.xtkPersist.setElement(element).catch(e => {
                 expect(e.name).toMatch('Error');
             });
 
-            client._soapTransport.mockReturnValueOnce(LOGOFF_RESPONSE);
+            client._soapTransport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
             await client.NLWS.xtkSession.logoff();
         });
 
-        
+
     });
 
     // Fails to use xtk:persist unless xtk:session loaded before
@@ -1336,11 +963,11 @@ describe('ACC Client', function() {
     describe("Issue #3", () => {
 
         it("getIfExists with empty result", async () => {
-            const client = makeClient();
-            client._soapTransport.mockReturnValueOnce(LOGON_RESPONSE);
+            const client = await Mock.makeClient();
+            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
 
-            client._soapTransport.mockReturnValueOnce(GET_XTK_QUERY_SCHEMA_RESPONSE);
+            client._soapTransport.mockReturnValueOnce(Mock.GET_XTK_QUERY_SCHEMA_RESPONSE);
 
             client._soapTransport.mockReturnValueOnce(Promise.resolve(`<?xml version='1.0'?>
             <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:xtk:queryDef' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
@@ -1370,11 +997,11 @@ describe('ACC Client', function() {
         });
 
         it("select with empty result", async () => {
-            const client = makeClient();
-            client._soapTransport.mockReturnValueOnce(LOGON_RESPONSE);
+            const client = await Mock.makeClient();
+            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
 
-            client._soapTransport.mockReturnValueOnce(GET_XTK_QUERY_SCHEMA_RESPONSE);
+            client._soapTransport.mockReturnValueOnce(Mock.GET_XTK_QUERY_SCHEMA_RESPONSE);
 
             client._soapTransport.mockReturnValueOnce(Promise.resolve(`<?xml version='1.0'?>
             <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:xtk:queryDef' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
@@ -1404,11 +1031,11 @@ describe('ACC Client', function() {
         });
 
         it("getIfExists with a result of exactly one element", async () => {
-            const client = makeClient();
-            client._soapTransport.mockReturnValueOnce(LOGON_RESPONSE);
+            const client = await Mock.makeClient();
+            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
 
-            client._soapTransport.mockReturnValueOnce(GET_XTK_QUERY_SCHEMA_RESPONSE);
+            client._soapTransport.mockReturnValueOnce(Mock.GET_XTK_QUERY_SCHEMA_RESPONSE);
 
             client._soapTransport.mockReturnValueOnce(Promise.resolve(`<?xml version='1.0'?>
             <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:xtk:queryDef' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
@@ -1438,11 +1065,11 @@ describe('ACC Client', function() {
         });
 
         it("select with a result of exactly one element", async () => {
-            const client = makeClient();
-            client._soapTransport.mockReturnValueOnce(LOGON_RESPONSE);
+            const client = await Mock.makeClient();
+            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
 
-            client._soapTransport.mockReturnValueOnce(GET_XTK_QUERY_SCHEMA_RESPONSE);
+            client._soapTransport.mockReturnValueOnce(Mock.GET_XTK_QUERY_SCHEMA_RESPONSE);
 
             client._soapTransport.mockReturnValueOnce(Promise.resolve(`<?xml version='1.0'?>
             <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:xtk:queryDef' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
@@ -1467,45 +1094,45 @@ describe('ACC Client', function() {
 
             var query = client.NLWS.xtkQueryDef.create(queryDef);
             var extAccount = await query.executeQuery();
-            expect(extAccount).toEqual({ extAccount: [ { "id": "1" } ]});
+            expect(extAccount).toEqual({ extAccount: [{ "id": "1" }] });
         });
     })
 
     describe("Representations", () => {
-        
-        it("from default representation", () => {
-            const client = makeClient();
+
+        it("from default representation", async () => {
+            const client = await Mock.makeClient();
             var xml = DomUtil.toXMLString(client.fromRepresentation("root", {}));
             expect(xml).toBe("<root/>");
         })
-        
-        it("from SimpleJson representation", () => {
-            const client = makeClient();
+
+        it("from SimpleJson representation", async () => {
+            const client = await Mock.makeClient();
             var xml = DomUtil.toXMLString(client.fromRepresentation("root", {}, "SimpleJson"));
             expect(xml).toBe("<root/>");
         })
 
         describe("Convert across representations ", () => {
 
-            it("Should convert from BadgerFish to BadgerFish", () => {
-                const client = makeClient();
-                var from = { "@id":"1", "child":{} };
+            it("Should convert from BadgerFish to BadgerFish", async () => {
+                const client = await Mock.makeClient();
+                var from = { "@id": "1", "child": {} };
                 var to = client.convertToRepresentation(from, "BadgerFish", "BadgerFish");
                 expect(to).toStrictEqual(from);
             })
 
-            it("Should convert from BadgerFish to SimpleJson", () => {
-                const client = makeClient();
-                var from = { "@id":"1", "child":{} };
+            it("Should convert from BadgerFish to SimpleJson", async () => {
+                const client = await Mock.makeClient();
+                var from = { "@id": "1", "child": {} };
                 var to = client.convertToRepresentation(from, "BadgerFish", "SimpleJson");
-                expect(to).toStrictEqual({ id:"1", child:{} });
+                expect(to).toStrictEqual({ id: "1", child: {} });
             })
 
-            
+
         });
 
-        it("Compare representations", () => {
-            const client = makeClient();
+        it("Compare representations", async () => {
+            const client = await Mock.makeClient();
             expect(() => { client.isSameRepresentation("json", "json") }).toThrow("cannot compare");
             expect(() => { client.isSameRepresentation("json", "BadgerFish") }).toThrow("cannot compare");
             expect(() => { client.isSameRepresentation("BadgerFish", "json") }).toThrow("cannot compare");
@@ -1523,38 +1150,38 @@ describe('ACC Client', function() {
         })
     });
 
-    describe("Call which returns a single DOM document", async () => {
-        
+    describe("Call which returns a single DOM document", () => {
+
         it("Should work with SimpleJson representation", async () => {
-            const client = makeClient();
-            client._soapTransport.mockReturnValueOnce(LOGON_RESPONSE);
+            const client = await Mock.makeClient();
+            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
 
-            client._soapTransport.mockReturnValueOnce(GET_GETSCHEMA_HELLO_RESPONSE);
-            client._soapTransport.mockReturnValueOnce(GET_HELLO_RESPONSE);
+            client._soapTransport.mockReturnValueOnce(Mock.GET_GETSCHEMA_HELLO_RESPONSE);
+            client._soapTransport.mockReturnValueOnce(Mock.GET_HELLO_RESPONSE);
             var doc = await client.NLWS.xtkHello.world();
-            expect(doc).toEqual({world: "cruel"});
+            expect(doc).toEqual({ world: "cruel" });
         });
 
         it("Should fail with Xml representation", async () => {
-            const client = makeClient();
-            client._soapTransport.mockReturnValueOnce(LOGON_RESPONSE);
+            const client = await Mock.makeClient();
+            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
 
             // Make a successful call with "SimpleJson" first to make sure the schema
             // and method are cached. If not, getting the schema will fail when we
             // pass an incorrect representation and hence, we'll not reach the code
             // that should fail decodeing the DOM document returned by the "World" function
-            client._soapTransport.mockReturnValueOnce(GET_GETSCHEMA_HELLO_RESPONSE);
-            client._soapTransport.mockReturnValueOnce(GET_HELLO_RESPONSE);
+            client._soapTransport.mockReturnValueOnce(Mock.GET_GETSCHEMA_HELLO_RESPONSE);
+            client._soapTransport.mockReturnValueOnce(Mock.GET_HELLO_RESPONSE);
             var doc = await client.NLWS.xtkHello.world();
-            expect(doc).toEqual({world: "cruel"});
+            expect(doc).toEqual({ world: "cruel" });
 
             expect(async () => {
-                client.setRepresentation("Dummy");
-                client._soapTransport.mockReturnValueOnce(GET_HELLO_RESPONSE);
+                client._representation = "Dummy";
+                client._soapTransport.mockReturnValueOnce(Mock.GET_HELLO_RESPONSE);
                 var doc = await client.NLWS.xtkHello.world();
-                expect(doc).toEqual({world: "cruel"});    
+                expect(doc).toEqual({ world: "cruel" });
             }).rejects.toThrow("Dummy");
         });
     });

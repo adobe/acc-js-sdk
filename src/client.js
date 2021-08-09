@@ -29,6 +29,8 @@ const DomUtil = require('./dom.js').DomUtil;
 const MethodCache = require('./methodCache.js').MethodCache;
 const OptionCache = require('./optionCache.js').OptionCache;
 const request = require('request-promise-native');
+const Application = require('./application.js').Application;
+const EntityAccessor = require('./entityAccessor.js').EntityAccessor;
 
 
 /**
@@ -91,11 +93,8 @@ const clientHandler = {
                     else if (namespace == "xtkSession" && methodNameLC == "getoption") {
                         var promise = callContext.client.callMethod(schemaId, methodName, undefined, argumentsList);
                         return promise.then(function(optionAndValue) {
-                            var value = null;
-                            if (optionAndValue && optionAndValue[1] != 0)
-                                value = XtkCaster.as(optionAndValue[0], optionAndValue[1]);
                             const optionName = argumentsList[0];
-                            client._optionCache.cache(optionName, value);    
+                            client._optionCache.cache(optionName, optionAndValue);
                             return optionAndValue;
                         });
                     }
@@ -140,8 +139,15 @@ function transportWrapper(transport) {
             else 
                 console.log("SOAP//request", options.headers["SoapAction"], options.body);
         }
-                
-        var promise = transport(options).then((body) => {
+    
+
+        var promise = transport(options);
+
+        // If you fail here during a test, with "promise" being null or undefined, it means that the test execture SOAP calls which
+        // were not mocked => the promise to resolve is null. When this happens, run the test again with soap calls activated to
+        // display which SOAP calls are executed and their response. See Client.traceSOAPCalls(true);
+
+        promise.then((body) => {
             
             if (traceSOAPCalls) {
                 if (browser) {
@@ -161,16 +167,24 @@ function transportWrapper(transport) {
     }
 }
 
+
+
+// ========================================================================================
+// ACC Client
+// ========================================================================================
+
 /**
  * ACC API Client
  * 
+ * @param {*} sdk is the global sdk object used to create the client
  * @param {String} endpoint endpoint to connect to, for instance: https://myinstance.campaign.adobe.com
  * @param {String} user user name, for instance admin
  * @param {String} password the user password
  * @param {boolean} options an options object to configure the client
  *                      {string} representation indicates how data is represented, i.e. Xml or Json. Default is SimpleJson
  */
-function Client(endpoint, user, password, options) {
+function Client(sdk, endpoint, user, password, options) {
+    this.sdk = sdk;
 
     // Default value
     if (options === undefined || options === null)
@@ -213,6 +227,7 @@ function Client(endpoint, user, password, options) {
     // expose utilities
     this.DomUtil = DomUtil;
     this.XtkCaster = XtkCaster;
+    this.application = null;
 }
 
 /**
@@ -227,6 +242,8 @@ Client.prototype.toRepresentation = function(xml, representation) {
         return xml;
     if (representation == "BadgerFish" || representation == "SimpleJson") {
         var json = DomUtil.toJSON(xml, representation);
+        if (representation == "BadgerFish" && json)
+            json.__representation = "BadgerFish";
         return json;
     }
     throw new Error(`Unsupported representation '${this._representation}'`);
@@ -336,6 +353,7 @@ Client.prototype.logon = function(rememberMe) {
     const that = this;
     rememberMe = !!rememberMe;
 
+    this.application = null;
     this._sessionToken = "";
     this._securityToken = "";
 
@@ -360,13 +378,13 @@ Client.prototype.logon = function(rememberMe) {
         that._sessionInfo = soapCall.getNextDocument();
         that._installedPackages = {};
         const userInfo = DomUtil.findElement(that._sessionInfo, "userInfo");
-        if (userInfo) {
-          var pack = DomUtil.getFirstChildElement(userInfo, "installed-package");
-          while (pack) {
+        if (!userInfo)
+            throw new Error(`Invalid response for xtk:session#Logon API call: userInfo structure missing`);
+        var pack = DomUtil.getFirstChildElement(userInfo, "installed-package");
+        while (pack) {
             const name = `${DomUtil.getAttributeAsString(pack, "namespace")}:${DomUtil.getAttributeAsString(pack, "name")}`;
             that._installedPackages[name] = name;
             pack = DomUtil.getNextSiblingElement(pack);
-          }
         }
         
         securityToken = soapCall.getNextString();
@@ -379,6 +397,8 @@ Client.prototype.logon = function(rememberMe) {
         // store member variables after all parameters are decode the ensure atomicity
         that._sessionToken = sessionToken;
         that._securityToken = securityToken;
+
+        that.application = new Application(that);
     });
 }
 
@@ -398,6 +418,7 @@ Client.prototype.logoff = function() {
         that._endpoint = "";
         that._sessionToken = "";
         that._securityToken = "";
+        that.application = null;
         soapCall.checkNoMoreArgs();
     });
 }
@@ -413,14 +434,44 @@ Client.prototype.getOption = async function(name, useCache = true) {
     if (useCache)
         value = this._optionCache.get(name);
     if (value === undefined) {
-        var option = await this.NLWS.xtkSession.getOption(name);
-        if (!option || option[1] == 0)
-            value = null;
-        else
-            value = XtkCaster.as(option[0], option[1]);
-        this._optionCache.cache(name, value);
+        const option = await this.NLWS.xtkSession.getOption(name);
+        value = this._optionCache.cache(name, option);
+        this._optionCache.cache(name, option);
     }
     return value;
+}
+
+/**
+ * Set an option value. Creates the option if it does not exists. Update the option
+ * if it exists already
+ * @param {string} name the option name
+ * @param {*} rawValue the value to set
+ * @param {string} description the optional description of the option
+ * @returns 
+ */
+Client.prototype.setOption = async function(name, rawValue, description) {
+    // First, read the current option value to make sure we have the right type
+    await this.getOption(name, true);
+    const option = this._optionCache.getOption(name);
+    // Note: option is never null or undefined there: Campaign will return a value of type 0 and value ""
+    var type = option.type;
+    var value = XtkCaster.as(rawValue, type);
+
+    // Document attribute for value depends on value type
+    var attName = XtkCaster.variantStorageAttribute(type);
+    if (!attName) {
+        // could not infer the storage type of the attribute to use to store the value (when option did not exist before) => assume string
+        type = 6; 
+        attName = "stringValue";
+    }
+    var doc = { xtkschema: "xtk:option", _operation: "insertOrUpdate", _key: "@name", name: name, dataType: type };
+    if (description != null && description != undefined)
+        doc.description = description;
+    doc[attName] = value;
+    return this.NLWS.xtkSession.write(doc).then(() => {
+        // Once set, cache the value
+        this._optionCache.cache(name, [value, type]);
+    });
 }
 
 /**
@@ -469,6 +520,7 @@ Client.prototype.hasPackage = function(packageId, optionalName) {
 /**
  * Obtains a cipher that can be used to encrypt/decrypt passwords, using the database secret key.
  * This is used for example for mid-sourcing account. 
+ * @deprecated since version 1.0.0
  */
 Client.prototype.getSecretKeyCipher = async function() {
     var that = this;
@@ -489,37 +541,37 @@ Client.prototype.getMidClient = async function(name) {
     name = name || "defaultEmailMid";
 
     var queryDef = {
-        "@schema": "nms:extAccount",
-        "@operation": "get",
+        "schema": "nms:extAccount",
+        "operation": "get",
         "select": {
             "node": [
-                { "@expr": "@id" },
-                { "@expr": "@name" },
-                { "@expr": "@label" },
-                { "@expr": "@type" },
-                { "@expr": "@account" },
-                { "@expr": "@password" },
-                { "@expr": "@server" }
+                { "expr": "@id" },
+                { "expr": "@name" },
+                { "expr": "@label" },
+                { "expr": "@type" },
+                { "expr": "@account" },
+                { "expr": "@password" },
+                { "expr": "@server" }
             ]
         },
         "where": {
             "condition": [
-                { "@expr": "@name='" + name + "'" },
-                { "@expr": "@type=3" }
+                { "expr": that.sdk.escapeXtk`@name=${name}` },
+                { "expr": "@type=3" }
             ]
         }
     }
 
     // Convert to current representation
-    queryDef = this.convertToRepresentation(queryDef, "BadgerFish");
+    queryDef = this.convertToRepresentation(queryDef, "SimpleJson");
 
     const query = that.NLWS.xtkQueryDef.create(queryDef);
     const extAccount = await query.executeQuery();
     const cipher = await that.getSecretKeyCipher();
-    const endpoint = XtkCaster.asString(extAccount["@server"]);
-    const user = XtkCaster.asString(extAccount["@account"]);
-    const password = cipher.decryptPassword(XtkCaster.asString(extAccount["@password"]));
-    const midClient = new Client(endpoint, user, password);
+    const endpoint = EntityAccessor.getAttributeAsString(extAccount, "server");
+    const user = EntityAccessor.getAttributeAsString(extAccount, "account");
+    const password = cipher.decryptPassword(EntityAccessor.getAttributeAsString(extAccount, "password"));
+    const midClient = new Client(that.sdk, endpoint, user, password, that._options);
     return midClient;
 }
 
@@ -529,32 +581,34 @@ Client.prototype.getMidClient = async function(name) {
  * @param fullName is the fully qualified name of the entity (i.e. <namespace>:<name>)
  * @return A DOM representation of the entity, or null if the entity is not found
  */
-Client.prototype.getEntityIfMoreRecent = function(entityType, fullName) {
+Client.prototype.getEntityIfMoreRecent = function(entityType, fullName, representation) {
+    const that = this;
     const soapCall = this.prepareSoapCall("xtk:persist", "GetEntityIfMoreRecent");
     soapCall.writeString("pk", entityType + "|" + fullName);
     soapCall.writeString("md5", "");
     soapCall.writeBoolean("mustExist", false);
     return this.makeSoapCall(soapCall).then(function() {
-        const doc = soapCall.getNextDocument();
+        var doc = soapCall.getNextDocument();
         soapCall.checkNoMoreArgs();
+        doc = that.toRepresentation(doc, representation);
        return doc;
     });
 }
 
 /**
  * Get a schema definition.
- * @param {string} shcemaId the schema id, such as "xtk:session", or "nms:recipient"
+ * @param {string} schemaId the schema id, such as "xtk:session", or "nms:recipient"
  * @param {string} representation an optional representation of the schema: "BadgerFish", "SimpleJson" or "xml". If not set, we'll use the client default representation
  * @returns {*} the schema definition, as either a DOM document or a JSON object
  */
-Client.prototype.getSchema = async function(shcemaId, representation) {
+Client.prototype.getSchema = async function(schemaId, representation) {
     var that = this;
-    var entity = that._entityCache.get("xtk:schema", shcemaId);
+    var entity = that._entityCache.get("xtk:schema", schemaId);
     if (!entity) {
-        entity = await that.getEntityIfMoreRecent("xtk:schema", shcemaId);
+        entity = await that.getEntityIfMoreRecent("xtk:schema", schemaId, "xml");
     }
     if (entity)
-        that._entityCache.put("xtk:schema", shcemaId, entity);
+        that._entityCache.put("xtk:schema", schemaId, entity);
 
     entity = that.toRepresentation(entity, representation);
     return entity;
@@ -694,7 +748,8 @@ Client.prototype.callMethod = async function(schemaId, methodName, object, param
                     if (schemaId == "xtk:workflow" && methodName == "StartWithParameters" && paramName == "parameters")
                         docName = "variables";
                     // Try to guess the document name. This is usually available in the xtkschema attribute
-                    const xtkschema = paramValue["@xtkschema"];
+                    var xtkschema = EntityAccessor.getAttributeAsString(paramValue, "xtkschema");
+                    if (!xtkschema) xtkschema = paramValue["@xtkschema"];
                     if (xtkschema) {
                         const index = xtkschema.indexOf(":");
                         docName = xtkschema.substr(index+1);
@@ -809,6 +864,4 @@ Client.prototype.callMethod = async function(schemaId, methodName, object, param
 /**
  * Public exports
  */
-exports.Client = Client;
-
-
+ exports.Client = Client;
