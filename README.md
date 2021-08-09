@@ -366,6 +366,7 @@ const cipher = await client.getSecretKeyCipher();
 const password = cipher.decryptPassword(encryptedPassword);
 ````
 
+> **warning** This function is deprecated in version 1.0.0 of the SDK because it may break as we deploy Vault.
 
 
 # Core API
@@ -405,6 +406,17 @@ client.clearOptionCache();
 ```
 
 
+## Setting options
+
+It's also possible to set options with the `setOption` function.
+* It will create the option if necessary
+* If the option already exists, it will use the existing value to infer the data type of the option
+
+```js
+await client.setOption("MyOption", "My value");
+```
+
+This is really a convenience function. You can always force an option type by using a writer on the xtk:option table, and using getOption to read back and cache the result.
 
 
 ## Test if a package exists
@@ -739,11 +751,33 @@ await NLWS.xtkSession.deleteCollection("nms:recipient", { condition: { expr: "Ge
 
 
 
+# Application
 
+The `application` object can be obtained from a client, and will mimmic the Campaing `application` object (https://docs.adobe.com/content/help/en/campaign-classic/technicalresources/api/c-Application.html)
+
+| Attribute/Method | Description |
+|---|---|
+| buildNumber | The server build number
+| instanceName | The name of the Campaign instance
+| operator | Information about the current operator (i.e. logged user), of class `CurrentLogin`
+| packages | List of installed packages, as an array of strings
+| getSchema(schemaId) | Get a schema by id (see the Schemas section below)
+| hasPackage(name) | Tests if a package is installed or not
+
+
+The `CurrentLogin` object has the following attributes / functions
+
+| Attribute/Method | Description |
+|---|---|
+| id | the internal id (int32) of the operator
+| login | the login name of the operator
+| computeString | A human readable name for the operator
+| timezone | The timezone of the operator
+| rights | An array of strings describing the rights of the operators
 
 # Schemas
 
-Reading schemas is a common operation in Campaign. The SDK provides a convenient function as well as caching for efficient use of schemas.
+Reading schemas is a common operation in Campaign. The SDK provides a convenient functions as well as caching for efficient use of schemas.
 
 ```js
 const schema = await client.getSchema("nms:recipient");
@@ -773,42 +807,96 @@ var srcSchema = await NLWS.xtkPersist.getEntityIfMoreRecent("xtk:srcSchema|nms:r
 console.log(JSON.stringify(srcSchema));
 ```
 
-## NodeDef
-It's very common to manipulate schemas in ACC code. Dealing with XML and even with JSON is a bit awkward.
+## Schema API (aka XtkNodeDef)
+The Schema API is the Campaign API which allows to access schemas and the corresponding node hierarchy in a programmatic way. It's simpler to use this API than to manipulate XML or JSON. The name XtkNodeDef comes from "Xtk Node Definition", where an XtkNode is a generic node in a schema definition.
 
-Schema (also includes all NodeDef functions)
-| C++ | JS (internal) | JS SDK | Description |
-|-----|-----|---|-------------|
-|     || name   |  |
-|     || label   |  |
-|     || img  |  |
-| Type()  |  | type   |  |
-| Size() || length   |  |
-|     | |ref   |  |
-| Schema() || schema |  |
-| ParentDef() || parent |  |
-|     | |children |  |
-| FindChildDef(name) || findChildDef(name) | Get a child node by name |
-| ChildExists(name) | N/A | hasChild(name) | Is there a child with given name. Follows references |
-| ChildCount() | childrenCount | childrenCount | Get number of child nodes |
-| ChildFromIndex(i) || childFromIndex() | Get child node
-| IsRootNodeDef() | isRoot | isRoot | Is this the root node of a schema? |
-| HasRefTarget() || hasRefTarget() | Is this a reference? |
-| RefTarget() || refTarget() | Is node is a reference, follow the reference |
-| IsAttribute() || isAttribute() | Is the node an attribute node? |
-| FindNodeDef(path) || findNode(path) | Find a node def by path
+The Schema API closely mimmics the Campaign server side API : https://docs.adobe.com/content/help/en/campaign-classic/technicalresources/api/c-Schema.html with the following differences:
 
-NodeDef
-| C++ | JS (internal) | JS SDK | Description |
-|-----|--------|-------|------|
-|   | id | id | Schema id, such as "nms:recipient"
-|   | isLibrary | isLibrary | Schema is a library, i.e. reusable schema elements
-|   | labelSingular | labelSingular | 
-|   | mappingType | mappingType | 
-|     | namespace   | Node namespace |
-| FindRootDef() | root | root | Get the root node of a schema
-| | toDocument() | toDocument() | Converts the schema into an XML document form.
+* The `XtkSchema` and associated classes (`XtkSchemaNode`, `XtkSchemaKey`, `XtkEnumeration` and `XtkEnumerationValue`) are all immutable. There are currently no API to create schemas dynamically
+* Not all methods and functions are implemented
+* There could be slight differences in usage due to Campaign server side JavaScript using some E4X specific constructs to iterate over collections (ex: for each(...)) which are not available in standard JavaScript environments
 
+The entry point is the application object. Obtain a schema from its id:
+
+```js
+const application = client.application;
+const schema = application.getSchema("nms:recipient");
+```
+
+This return a schema object of class `XtkSchema`
+
+
+### XtkSchema / XtkSchemaNode
+
+| Attribute/Method | | Description |
+|---|---|---|
+| schema | | The schema to which this node belongs
+| id | schema | For schemas, the id of the schema. For instance "nms:recipient"
+| namespace | schema | For schemas, the namespace of the schema. For instance "nms"
+| name |  | The name of the node (internal name)
+| label | | The label (i.e. human readable, localised) name of the node.
+| labelSingular | schema | The singular label (i.e. human readable, localised) name of the schema. The label of a schema is typically a plural.
+| description | | A long, human readable, description of the node
+| img | | The name of the image (if any) corresponding to the node
+| type | | The data type of the node, for instance "string", "long", etc.
+| length | | For string nodes, the maximum length of the node value
+| ref | |
+| isAttribute | | Indicates if the node is an attribute (true) or an element (false)
+| children | | A map of children of the node, indexed by name. Names never contain the "@" sign, even attribute names
+| childrenCount | | Number of children nodes
+| parent | | The parent node. Will be null for schema nodes
+| isRoot | | Indicates if the node is the root node of a schema, i.e. the first child of the schema node, whose name matches the schema name
+| userDescription | |
+| keys | | A map of keys in this node, indexed by key name. Map values are of type `XtkSchemaKey`
+| nodePath  | | The absolute full path of the node
+| hasChild(name) | | Tests if the node has a child wih the given name
+| findNode(path) | Find a child node using a xpath
+| isLibrary | schema | For schemas, indicates if the schema is a library
+| mappingType | schema | Schema mapping type. Usually "sql"
+| xml | schema | The XML (DOM) corresponding to this schema
+| root | schema | The schema root node, if there is one. A reference to a `XtkSchemaNode`
+| enumerations | schema | Map of enumerations in this schema, indexed by enumeration name. Values are of type `XtkEnumeration`
+
+
+### XtkSchemaKey
+
+| Attribute/Method | Description |
+|---|---|
+| schema | The schema to which this key belongs
+| name |  The name of the key (internal name)
+| label | The label (i.e. human readable, localised) name of the key
+| description | A long, human readable, description of the key
+| isInternal |
+| allowEmptyPart |
+| fields | A map of key fields making up the key. Each value is a reference to a `XtkSchemaNode` 
+
+### XtkEnumeration
+
+| Attribute/Method | Description |
+|---|---|
+| name |  The name of the key (internal name)
+| label | The label (i.e. human readable, localised) name of the key
+| description | A long, human readable, description of the key
+| baseType | 
+| default |
+| hasImage |
+| values | A map of enumeration values, by name of value. Value is of type `XtkEnumerationValue`
+
+### XtkEnumerationValue
+
+| Attribute/Method | Description |
+|---|---|
+| name |  The name of the key (internal name)
+| label | The label (i.e. human readable, localised) name of the key
+| description | A long, human readable, description of the key
+| image |
+| enabledIf |
+| applicableIf |
+| value | The value of the enumeration (casted to the proper Javascript type)
+
+# Advanced Topics
+
+## The EntityAccessor
 
 
 # Build & Run

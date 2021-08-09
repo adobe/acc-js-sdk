@@ -458,7 +458,7 @@ Client.prototype.setOption = async function(name, rawValue, description) {
     var value = XtkCaster.as(rawValue, type);
 
     // Document attribute for value depends on value type
-    var attName = XtkCaster.variantStorageAttribute(type);
+    var attName = XtkCaster._variantStorageAttribute(type);
     if (!attName) {
         // could not infer the storage type of the attribute to use to store the value (when option did not exist before) => assume string
         type = 6; 

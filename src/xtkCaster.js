@@ -21,7 +21,7 @@ function XtkCaster() {
 }
 
 // See "variant" element in xtk:common srcSchema
-XtkCaster.prototype.variantStorageAttribute = function(type) {
+XtkCaster.prototype._variantStorageAttribute = function(type) {
     if (type === null || type === undefined) return null;
     switch(type) {
         case 0:             // FIELD_NONE

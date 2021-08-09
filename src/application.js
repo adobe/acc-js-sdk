@@ -298,14 +298,14 @@ XtkSchemaNode.prototype.findNode = function(path, strict, mustExist) {
         else if (element.isParent())
             childNode = node.parent;
         else
-            childNode = node.getChildDefAutoExpand(name, mustExist)
+            childNode = node._getChildDefAutoExpand(name, mustExist)
         node = childNode;
     }
     return node;
 }
 
 // See CXtkNodeDef::GetChildDefAutoExpand
-XtkSchemaNode.prototype.getChildDefAutoExpand = function(name, mustExist) {
+XtkSchemaNode.prototype._getChildDefAutoExpand = function(name, mustExist) {
     var child = this.children[name];
     if (child)
         return child;
