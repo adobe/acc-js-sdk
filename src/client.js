@@ -168,24 +168,59 @@ function transportWrapper(transport) {
 }
 
 
-
 // ========================================================================================
-// ACC Client
+// Campaign credentials
 // ========================================================================================
 
 /**
- * ACC API Client
- * 
- * @param {*} sdk is the global sdk object used to create the client
- * @param {String} endpoint endpoint to connect to, for instance: https://myinstance.campaign.adobe.com
- * @param {String} user user name, for instance admin
- * @param {String} password the user password
- * @param {boolean} options an options object to configure the client
- *                      {string} representation indicates how data is represented, i.e. Xml or Json. Default is SimpleJson
+ * Credentials to a Campaign instance. Encapsulats the various types of credentials
+ * @param {string} type the credentials type. Supported types are "UserPassword" and "ImsServiceToken"
+ * @param {string} sessionToken the session token. It's exact form depends on the credentials type. For instance it can be "user/passord" for the "UserPassword" credentials type
+ * @param {string} securityToken the security token. Will use an empty token if not specified
  */
-function Client(sdk, endpoint, user, password, options) {
-    this.sdk = sdk;
+function Credentials(type, sessionToken, securityToken) {
+    if (type != "UserPassword" && type != "ImsServiceToken")
+        throw new Error(`Invalid credentials type '${type}`);
+    this._type = type;
+    this._sessionToken = sessionToken;
+    this._securityToken = securityToken || "";
+}
 
+/**
+ * For "UserPassword" type credentials, return the user name
+ * @returns {string} the user name
+ */
+Credentials.prototype._getUser = function() {
+    if (this._type != "UserPassword")
+        throw new Error(`Cannot get user for Credentials of type '${this._type}'`);
+    const [ user, _ ] = this._sessionToken.split("/");
+    return user;
+}
+
+/**
+ * For "UserPassword" type credentials, return the user password
+ * @returns {string} the user password
+ */
+ Credentials.prototype._getPassword = function() {
+    if (this._type != "UserPassword")
+        throw new Error(`Cannot get password for Credentials of type '${this._type}'`);
+    const [ _, password ] = this._sessionToken.split("/");
+    return password;
+}
+
+
+// ========================================================================================
+// Campaign connection parameters
+// ========================================================================================
+
+/**
+ * Creates a connection parameters object which can be used to create a Client object
+ * to connect to a Campaign instance
+ * @param {string} endpoint The campaign endpoint (URL)
+ * @param {Credentials} credentials The credentials for the connection
+ * @param {*} options connection options. Currently only contains a "representation" attribute which controls what type of entities (xml or json) the SDK handles
+ */
+function ConnectionParameters(endpoint, credentials, options) {
     // Default value
     if (options === undefined || options === null)
         options = { };
@@ -198,15 +233,105 @@ function Client(sdk, endpoint, user, password, options) {
     if (typeof options  != "object")
         throw new Error(`Invalid options parameter (type '${typeof options}'). An object litteral is expected`);
 
-    this._options = options;
-    this._representation = options.representation;
+    if (options.representation != "xml" && options.representation != "BadgerFish" && options.representation != "SimpleJson")
+        throw new Error(`Invalid representation '${options.representation}'. Cannot create client object`);
 
-    if (this._representation != "xml" && this._representation != "BadgerFish" && this._representation != "SimpleJson")
-        throw new Error(`Invalid representation '${this._representation}'. Cannot create client object`);
+    // Defaults for rememberMe
+    options.rememberMe = !!options.rememberMe;
 
     this._endpoint = endpoint;
-    this._user = user;
-    this._password = password;       // ## TODO security concern (password kept in memory)
+    this._credentials = credentials;
+    this._options = options;
+}
+
+/**
+ * Creates connection parameters for a Campaign instance, using a user name and password
+ * @param {string} endpoint The campaign endpoint (URL)
+ * @param {string} user The user name
+ * @param {string} password The user password
+ * @param {*} options connection options
+ * @returns {ConnectionParameters} a ConnectionParameters object which can be used to create a Client
+ */
+ConnectionParameters.ofUserAndPassword = function(endpoint, user, password, options) {
+    const credentials = new Credentials("UserPassword", `${user}/${password}`, "");
+    return new ConnectionParameters(endpoint, credentials, options);
+}
+
+/**
+ * Creates connection parameters for a Campaign instance, using an IMS service token and a user name (the user to impersonate)
+ * @param {string} endpoint The campaign endpoint (URL)
+ * @param {string} user The user name
+ * @param {string} serviceToken The IMS service token
+ * @param {*} options connection options
+ * @returns {ConnectionParameters} a ConnectionParameters object which can be used to create a Client
+ */
+ConnectionParameters.ofUserAndServiceToken = function(endpoint, user, serviceToken, options) {
+    const credentials = new Credentials("ImsServiceToken", `_ims_/${user}/${serviceToken}`, "");
+    return new ConnectionParameters(endpoint, credentials, options);
+}
+
+/**
+ * Creates connection parameters for a Campaign instance, using an external account. This can be used to connect
+ * to a mid-sourcing instance, or to a message center instance. This function will lookup the external account,
+ * and use its credentials to get connection parameters to the corresponding Campaign instance
+ * @param {Client} client The Campaign Client from which to lookup the external account (normally, a connected client to the marketing instance)
+ * @param {string} extAccountName The name of the external account. Only mid-sourcing accounts (type 3) are supported
+ * @returns {ConnectionParameters} a ConnectionParameters object which can be used to create a Client
+ */
+ConnectionParameters.ofExternalAccount = async function(client, extAccountName) {
+    var queryDef = {
+        "schema": "nms:extAccount",
+        "operation": "get",
+        "select": {
+            "node": [
+                { "expr": "@id" },
+                { "expr": "@name" },
+                { "expr": "@label" },
+                { "expr": "@type" },
+                { "expr": "@account" },
+                { "expr": "@password" },
+                { "expr": "@server" }
+            ]
+        },
+        "where": {
+            "condition": [
+                { "expr": client.sdk.escapeXtk`@name=${extAccountName}` },
+                { "expr": "@type=3" }
+            ]
+        }
+    }
+    // Convert to current representation
+    queryDef = client.convertToRepresentation(queryDef, "SimpleJson");
+    const query = client.NLWS.xtkQueryDef.create(queryDef);
+    const extAccount = await query.executeQuery();
+
+    const cipher = await client._getSecretKeyCipher();
+    const type = EntityAccessor.getAttributeAsLong(extAccount, "type");
+    if (type == 3) {
+        // Mid-souring
+        const endpoint = EntityAccessor.getAttributeAsString(extAccount, "server");
+        const user = EntityAccessor.getAttributeAsString(extAccount, "account");
+        const password = cipher.decryptPassword(EntityAccessor.getAttributeAsString(extAccount, "password"));
+        return ConnectionParameters.ofUserAndPassword(endpoint, user, password, client._connectionParameters._options);
+    }
+    throw new Error(`Cannot created connection parameters for external account '${extAccountName}': account type ${type} not supported`);
+}
+
+
+// ========================================================================================
+// ACC Client
+// ========================================================================================
+
+/**
+ * ACC API Client
+ * 
+ * @param {SDK} sdk is the global sdk object used to create the client
+ * @param {ConnectionParameters} user user name, for instance admin
+ */
+function Client(sdk, connectionParameters) {
+    this.sdk = sdk;
+    this._connectionParameters = connectionParameters; // ## TODO security concern (password kept in memory)
+    this._representation = connectionParameters._options.representation;
 
     this._sessionInfo = undefined;
     this._sessionToken = undefined;
@@ -341,17 +466,15 @@ Client.prototype.makeSoapCall = function(soapCall) {
     const requiresLogon = !(soapCall.urn === "xtk:session" && soapCall.methodName === "Logon");
     if (requiresLogon && !this.isLogged())
         throw new Error(`Cannot execute SOAP call ${soapCall.urn}#${soapCall.methodName}: you are not logged in. Use the Logon function first`);
-    var soapEndpoint = this._endpoint + "/nl/jsp/soaprouter.jsp";
+    var soapEndpoint = this._connectionParameters._endpoint + "/nl/jsp/soaprouter.jsp";
     return soapCall.execute(soapEndpoint);
 }
 
 /**
  * Login to an instance
- * @param {boolean} rememberMe 
  */
-Client.prototype.logon = function(rememberMe) {
+Client.prototype.logon = function() {
     const that = this;
-    rememberMe = !!rememberMe;
 
     this.application = null;
     this._sessionToken = "";
@@ -362,44 +485,53 @@ Client.prototype.logon = function(rememberMe) {
         document.cookie = '__sessiontoken=;path=/;'
     }
 
-    const soapCall = this.prepareSoapCall("xtk:session", "Logon");
-    soapCall.writeString("login", that._user);
-    soapCall.writeString("password", that._password);
-    var parameters = null;
-    if (rememberMe) {
-        parameters = soapCall.createElement("parameters");
-        parameters.setAttribute("rememberMe", "true");
-    }
-    soapCall.writeElement("parameters", parameters);
-    
-    return this.makeSoapCall(soapCall).then(function() {
-        sessionToken = soapCall.getNextString();
-        
-        that._sessionInfo = soapCall.getNextDocument();
-        that._installedPackages = {};
-        const userInfo = DomUtil.findElement(that._sessionInfo, "userInfo");
-        if (!userInfo)
-            throw new Error(`Invalid response for xtk:session#Logon API call: userInfo structure missing`);
-        var pack = DomUtil.getFirstChildElement(userInfo, "installed-package");
-        while (pack) {
-            const name = `${DomUtil.getAttributeAsString(pack, "namespace")}:${DomUtil.getAttributeAsString(pack, "name")}`;
-            that._installedPackages[name] = name;
-            pack = DomUtil.getNextSiblingElement(pack);
-        }
-        
-        securityToken = soapCall.getNextString();
-        soapCall.checkNoMoreArgs();
-        // Sanity check: we should have both a session token and a security token.
-        if (!sessionToken)
-            throw new Error(`Logon method succeeded, but no session token was returned`);
-        if (!securityToken)
-            throw new Error(`Logon method succeeded, but no security token was returned`);
-        // store member variables after all parameters are decode the ensure atomicity
-        that._sessionToken = sessionToken;
-        that._securityToken = securityToken;
+    const credentials = this._connectionParameters._credentials;
+    if (credentials._type == "UserPassword") {
+        const user = credentials._getUser();
+        const password = credentials._getPassword();
 
-        that.application = new Application(that);
-    });
+        const soapCall = this.prepareSoapCall("xtk:session", "Logon");
+        soapCall.writeString("login", user);
+        soapCall.writeString("password", password);
+        var parameters = null;
+        if (!!this._connectionParameters._options.rememberMe) {
+            parameters = soapCall.createElement("parameters");
+            parameters.setAttribute("rememberMe", "true");
+        }
+        soapCall.writeElement("parameters", parameters);
+        
+        return this.makeSoapCall(soapCall).then(function() {
+            sessionToken = soapCall.getNextString();
+            
+            that._sessionInfo = soapCall.getNextDocument();
+            that._installedPackages = {};
+            const userInfo = DomUtil.findElement(that._sessionInfo, "userInfo");
+            if (!userInfo)
+                throw new Error(`Invalid response for xtk:session#Logon API call: userInfo structure missing`);
+            var pack = DomUtil.getFirstChildElement(userInfo, "installed-package");
+            while (pack) {
+                const name = `${DomUtil.getAttributeAsString(pack, "namespace")}:${DomUtil.getAttributeAsString(pack, "name")}`;
+                that._installedPackages[name] = name;
+                pack = DomUtil.getNextSiblingElement(pack);
+            }
+            
+            securityToken = soapCall.getNextString();
+            soapCall.checkNoMoreArgs();
+            // Sanity check: we should have both a session token and a security token.
+            if (!sessionToken)
+                throw new Error(`Logon method succeeded, but no session token was returned`);
+            if (!securityToken)
+                throw new Error(`Logon method succeeded, but no security token was returned`);
+            // store member variables after all parameters are decode the ensure atomicity
+            that._sessionToken = sessionToken;
+            that._securityToken = securityToken;
+
+            that.application = new Application(that);
+        });
+    }
+    else {
+        throw new Error(`Cannot logon: unsupported credentials type '${this.credentials._type}'`);
+    }
 }
 
 Client.prototype.getSessionInfo = function(representation) {
@@ -415,7 +547,6 @@ Client.prototype.logoff = function() {
     if (!that.isLogged()) return;
     var soapCall = that.prepareSoapCall("xtk:session", "Logoff");
         return this.makeSoapCall(soapCall).then(function() {
-        that._endpoint = "";
         that._sessionToken = "";
         that._securityToken = "";
         that.application = null;
@@ -522,57 +653,13 @@ Client.prototype.hasPackage = function(packageId, optionalName) {
  * This is used for example for mid-sourcing account. 
  * @deprecated since version 1.0.0
  */
-Client.prototype.getSecretKeyCipher = async function() {
+Client.prototype._getSecretKeyCipher = async function() {
     var that = this;
     if (this._secretKeyCipher) return this._secretKeyCipher;
     return that.getOption("XtkSecretKey").then(function(secretKey) {
         that._secretKeyCipher = new Cipher(secretKey);
         return that._secretKeyCipher;
     });
-}
-
-/**
- * Get the client for a mid-sourcing
- * @param {String} name is the mid external account name. If empty, will use the default "defaultMid" account
- * @return {Client} a Campaign client interface to the mid server (you still need to call logon on it)
- */
-Client.prototype.getMidClient = async function(name) {
-    var that = this;
-    name = name || "defaultEmailMid";
-
-    var queryDef = {
-        "schema": "nms:extAccount",
-        "operation": "get",
-        "select": {
-            "node": [
-                { "expr": "@id" },
-                { "expr": "@name" },
-                { "expr": "@label" },
-                { "expr": "@type" },
-                { "expr": "@account" },
-                { "expr": "@password" },
-                { "expr": "@server" }
-            ]
-        },
-        "where": {
-            "condition": [
-                { "expr": that.sdk.escapeXtk`@name=${name}` },
-                { "expr": "@type=3" }
-            ]
-        }
-    }
-
-    // Convert to current representation
-    queryDef = this.convertToRepresentation(queryDef, "SimpleJson");
-
-    const query = that.NLWS.xtkQueryDef.create(queryDef);
-    const extAccount = await query.executeQuery();
-    const cipher = await that.getSecretKeyCipher();
-    const endpoint = EntityAccessor.getAttributeAsString(extAccount, "server");
-    const user = EntityAccessor.getAttributeAsString(extAccount, "account");
-    const password = cipher.decryptPassword(EntityAccessor.getAttributeAsString(extAccount, "password"));
-    const midClient = new Client(that.sdk, endpoint, user, password, that._options);
-    return midClient;
 }
 
 /**
@@ -864,4 +951,6 @@ Client.prototype.callMethod = async function(schemaId, methodName, object, param
 /**
  * Public exports
  */
- exports.Client = Client;
+exports.Client = Client;
+exports.Credentials = Credentials;
+exports.ConnectionParameters = ConnectionParameters;

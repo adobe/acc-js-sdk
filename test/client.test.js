@@ -18,7 +18,7 @@ governing permissions and limitations under the License.
  *********************************************************************************/
 
 const sdk = require('../src/index.js');
-const Client = require('../src/client.js').Client;
+const { Client, ConnectionParameters } = require('../src/client.js');
 const DomUtil = require('../src/dom.js').DomUtil;
 const Mock = require('./mock.js').Mock;
 
@@ -36,17 +36,17 @@ describe('ACC Client', function () {
 
         it('Create client with invalid parameters', () => {
             // No 4th parameter should be ok
-            expect(new Client(sdk, "http://acc-sdk:8080", "admin", "admin")).not.toBeFalsy();
+            expect(new Client(sdk, ConnectionParameters.ofUserAndPassword("http://acc-sdk:8080", "admin", "admin"))).not.toBeFalsy();
             // Object litteral is ok too
-            expect(new Client(sdk, "http://acc-sdk:8080", "admin", "admin", {})).not.toBeFalsy();
-            expect(new Client(sdk, "http://acc-sdk:8080", "admin", "admin", { representation: "BadgerFish" })).not.toBeFalsy();
-            expect(new Client(sdk, "http://acc-sdk:8080", "admin", "admin", { dummy: 1 })).not.toBeFalsy();
+            expect(new Client(sdk, ConnectionParameters.ofUserAndPassword("http://acc-sdk:8080", "admin", "admin"), {})).not.toBeFalsy();
+            expect(new Client(sdk, ConnectionParameters.ofUserAndPassword("http://acc-sdk:8080", "admin", "admin"), { representation: "BadgerFish" })).not.toBeFalsy();
+            expect(new Client(sdk, ConnectionParameters.ofUserAndPassword("http://acc-sdk:8080", "admin", "admin"), { dummy: 1 })).not.toBeFalsy();
             // Boolean is not ok
-            expect(() => { new Client(sdk, "http://acc-sdk:8080", "admin", "admin", true); }).toThrow("An object litteral is expected");
-            expect(() => { new Client(sdk, "http://acc-sdk:8080", "admin", "admin", false); }).toThrow("An object litteral is expected");
-            expect(() => { new Client(sdk, "http://acc-sdk:8080", "admin", "admin", "BadgerFish"); }).toThrow("An object litteral is expected");
+            expect(() => { new Client(sdk, ConnectionParameters.ofUserAndPassword("http://acc-sdk:8080", "admin", "admin", true)); }).toThrow("An object litteral is expected");
+            expect(() => { new Client(sdk, ConnectionParameters.ofUserAndPassword("http://acc-sdk:8080", "admin", "admin", false)); }).toThrow("An object litteral is expected");
+            expect(() => { new Client(sdk, ConnectionParameters.ofUserAndPassword("http://acc-sdk:8080", "admin", "admin", "BadgerFish")); }).toThrow("An object litteral is expected");
             // Invalid representation is not ok
-            expect(() => { new Client(sdk, "http://acc-sdk:8080", "admin", "admin", { representation: "Hello" }); }).toThrow("Invalid representation");
+            expect(() => { new Client(sdk, ConnectionParameters.ofUserAndPassword("http://acc-sdk:8080", "admin", "admin", { representation: "Hello" })); }).toThrow("Invalid representation");
         });
 
         it('Should logon and logoff', async () => {
@@ -89,10 +89,10 @@ describe('ACC Client', function () {
         });
 
         it('Should logon and logoff (remember me)', async () => {
-            const client = await Mock.makeClient();
+            const client = await Mock.makeClient({ rememberMe: true });
 
             client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
-            await client.NLWS.xtkSession.logon(true);
+            await client.NLWS.xtkSession.logon();
             expect(client.isLogged()).toBe(true);
             var sessionInfoXml = client.getSessionInfo("xml");
             expect(DomUtil.findElement(sessionInfoXml, "serverInfo", true).getAttribute("buildNumber")).toBe("9219");
@@ -156,22 +156,28 @@ describe('ACC Client', function () {
             await expect(client.NLWS.xtkSession.logon()).rejects.toThrow("userInfo structure missing");
             expect(client.isLogged()).toBe(false);
         });
+
+        it('Should fail with invalid credentials type', async () => {
+            const client = await Mock.makeClient();
+            client._connectionParameters._credentials._type = "Dummy";
+            expect(async () => { return client.logon() }).rejects.toThrow("Cannot logon: unsupported credentials type 'Dummy'");
+        })
     });
 
     describe("Get session Info", () => {
 
         it('Should get session info with default representation', async () => {
-            const client = await Mock.makeClient();
+            const client = await Mock.makeClient({ rememberMe: true });
             client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
-            await client.NLWS.xtkSession.logon(true);
+            await client.NLWS.xtkSession.logon();
             var sessionInfo = client.getSessionInfo();
             expect(sessionInfo.serverInfo.buildNumber).toBe("9219");
         });
 
         it('Should get session info with BadgerFish representation', async () => {
-            const client = await Mock.makeClient();
+            const client = await Mock.makeClient({ rememberMe: true });
             client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
-            await client.NLWS.xtkSession.logon(true);
+            await client.NLWS.xtkSession.logon();
             var sessionInfo = client.getSessionInfo("BadgerFish");
             expect(sessionInfo.serverInfo['@buildNumber']).toBe("9219");
         });
@@ -567,7 +573,6 @@ describe('ACC Client', function () {
 
         it("Should get mid connection", async () => {
             const client = await Mock.makeClient();
-
             client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
 
@@ -575,7 +580,8 @@ describe('ACC Client', function () {
             client._soapTransport.mockReturnValueOnce(Mock.GET_MID_EXT_ACCOUNT_RESPONSE);
             client._soapTransport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
             client._soapTransport.mockReturnValueOnce(Mock.GET_SECRET_KEY_OPTION_RESPONSE);
-            var midClient = await client.getMidClient();
+            var connectionParameters = await sdk.ConnectionParameters.ofExternalAccount(client, "defaultEmailMid");
+            var midClient = await sdk.init(connectionParameters);
             midClient._soapTransport = jest.fn();
 
             midClient._soapTransport.mockReturnValueOnce(Mock.GET_LOGON_MID_RESPONSE);
@@ -591,6 +597,20 @@ describe('ACC Client', function () {
             await client.NLWS.xtkSession.logoff();
         });
 
+        it("Should fail to get connection for external account which is not a mid-sourcing account", async () => {
+            const client = await Mock.makeClient();
+            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+
+            client._soapTransport.mockReturnValueOnce(Mock.GET_XTK_QUERY_SCHEMA_RESPONSE);
+            client._soapTransport.mockReturnValueOnce(Mock.GET_BAD_EXT_ACCOUNT_RESPONSE);
+            client._soapTransport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
+            client._soapTransport.mockReturnValueOnce(Mock.GET_SECRET_KEY_OPTION_RESPONSE);
+            expect(async () => {
+                return sdk.ConnectionParameters.ofExternalAccount(client, "bad");
+            }).rejects.toThrow("account type 'bad' not supported");
+        })
+
         it("Should fail if invalid representation", async () => {
             const client = await Mock.makeClient();
 
@@ -604,7 +624,8 @@ describe('ACC Client', function () {
 
             expect(async () => {
                 client._representation = "Dummy";
-                await client.getMidClient();
+                var connectionParameters = await sdk.ConnectionParameters.ofExternalAccount(client, "defaultEmailMid");
+                await sdk.init(connectionParameters);
             }).rejects.toThrow();
         });
 
@@ -612,6 +633,7 @@ describe('ACC Client', function () {
         // => explicitely test with another representation
         it("Should fail not fail with SimpleJson representation", async () => {
             const client = await Mock.makeClient();
+            client._representation = "SimpleJson";
 
             client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
@@ -621,7 +643,8 @@ describe('ACC Client', function () {
             client._soapTransport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
             client._soapTransport.mockReturnValueOnce(Mock.GET_SECRET_KEY_OPTION_RESPONSE);
 
-            await client.getMidClient();
+            var connectionParameters = await sdk.ConnectionParameters.ofExternalAccount(client, "defaultEmailMid");
+            await sdk.init(connectionParameters);
         });
 
         it("Should get cached cipher", async () => {
@@ -631,14 +654,14 @@ describe('ACC Client', function () {
 
             client._soapTransport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
             client._soapTransport.mockReturnValueOnce(Mock.GET_SECRET_KEY_OPTION_RESPONSE);
-            var cipher = await client.getSecretKeyCipher();
+            var cipher = await client._getSecretKeyCipher();
             expect(cipher).not.toBeNull();
             expect(cipher.key).not.toBeNull();
             expect(cipher.iv).not.toBeNull();
 
             // Ask again, should be cached (no mock methods)
             client.clearAllCaches();
-            var cipher = await client.getSecretKeyCipher();
+            var cipher = await client._getSecretKeyCipher();
             expect(cipher).not.toBeNull();
             expect(cipher.key).not.toBeNull();
             expect(cipher.iv).not.toBeNull();

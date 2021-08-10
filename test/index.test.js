@@ -21,8 +21,9 @@ governing permissions and limitations under the License.
 
 
 
-async function makeClient(rememberMe) {
-    const client = await sdk.init("http://acc-sdk:8080", "admin", "admin", rememberMe);
+async function makeClient(options) {
+    const connectionParameters = sdk.ConnectionParameters.ofUserAndPassword("http://acc-sdk:8080", "admin", "admin", options);
+    const client = await sdk.init(connectionParameters);
     client.soapTransport = jest.fn();
     return client;
 }

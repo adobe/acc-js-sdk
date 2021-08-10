@@ -17,12 +17,12 @@ governing permissions and limitations under the License.
  * 
  *********************************************************************************/
 
- const Client = require('../src/client.js').Client;
- const DomUtil = require('../src/dom.js').DomUtil;
+ const sdk = require('../src/index.js');
 
 
-function makeClient(rememberMe) {
-    const client = new Client("http://acc-sdk:8080", "admin", "admin", rememberMe);
+async function makeClient(options) {
+    const connectionParameters = sdk.ConnectionParameters.ofUserAndPassword("http://acc-sdk:8080", "admin", "admin", options);
+    const client = await sdk.init(connectionParameters);
     client._soapTransport = jest.fn();
     return client;
 }
@@ -52,7 +52,7 @@ const LOGON_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
 describe('ACC Client (has package)', () => {
 
   it('should find packages', async () => {
-    const client = makeClient();
+    const client = await makeClient();
     client._soapTransport.mockReturnValueOnce(LOGON_RESPONSE);
     await client.NLWS.xtkSession.logon();
 
@@ -64,8 +64,8 @@ describe('ACC Client (has package)', () => {
     expect(client.hasPackage("nms", "core"));
   });
 
-  it('should fail when unlogged', () => {
-    const client = makeClient();
+  it('should fail when unlogged', async () => {
+    const client = await makeClient();
     expect( () => { client.hasPackage("nms:campaign"); }).toThrow(Error);
   });
 

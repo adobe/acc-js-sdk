@@ -7,18 +7,18 @@ This is a node.js SDK for Campaign API. It exposes the Campaign API exactly like
 
 ## Version 1.0.0
 _2021/07/29_
-* Support for a simpler flavor of JSON (see SimpleJson vs. BadgerFish)
+* Support for a simpler flavor of JSON (see SimpleJson vs. BadgerFish) which is now the default
 * Finalize the implementation to support int64
 * Add 100% coverage for all tests
-* Make some members of the Client object private
-* Fixed bug in JSON serialization for XML elments having an attribute named "length"
+* Make some members of the Client object private to clarify what is the public API
+* Fixed bug in JSON serialization for XML elments having an attribute named "length" (see `DomUtil.isArray`)
 * New `application` object to mimic the public SDK (can be accessed via `client.application`)
 * New schema API (`application.getSchema`) to easily navigate schemas
 * New Campaign enumeration constants (`campaign.js`) for better readability of code using numerical enumeration values
 * BadgerFish objects now have a `__representation = "BadgerFish"` attribute to easily distinguish between BadgerFish & SimpleJson
 * Logon will fail if server returns a payload which does not contain a `userInfo` object
 * New `setOption` function which allows to set (and cache) an option value
-* Deprecated the `getSecretKeyCipher` function which may fail on instances where Vault is setup
+* Deprecated the `getSecretKeyCipher` function which may fail on instances where Vault is setup. Use `ConnectionParameters.ofExternalAccount` instead
 * `getEntityIfMoreRecent` now takes an additional parameter which allows to specify and force a representation (xml, json...)
 * New helper function `DomUtil.isArray` to test if a JavaScript object is an array
 * New `EntityAccessor` object which allows to get attributes and child elements from xml or json objects, regardless of their representation
@@ -27,12 +27,11 @@ _2021/07/29_
 
 _Breaking changes in 1.0.0_
 * The default representation is now `SimpleJson` instead of `BadgerFish`
-* The `sdk.init` and `Client` constructor method 4th parameter is now an object litteral containing configuration options for the client. Before it was a boolean indiating the value of the `rememberMe` parameter of the `Logon` call.
-* The `Logon` call now takes the `rememberMe` as a parameter
+* Changes in the `sdk.init`, `Client` constructor, and `logon` functions. Now using `ConnectionParameters` and `Credentials` objects to configure a Campaign connection
 * Client object members are now private: access to representation, etc. attributes is not allowed anymore except for `NLWS`, `XtkCaster`, and `DomUtil`
 * Access to the `sessionInfo` object after `logon` can be done via the new `getSessionInfo` call
-* Client constructor has a new first parameter (`sdk`)
 * Options cache internal strucutre change: option values in the cache are now object litterals containing the option value, type, and raw value (which may not be casted to the expected type yet)
+* Connecting to mid-sourcing (or other Campaign instances which are defined by an external account) is now done with the `ConnectionParameters.ofExternalAccount` function. As a consequence, `getSecretKeyCipher` is now private and deprecated
 
 ---
 

@@ -31,12 +31,35 @@ In order to call any Campaign  API, you need to create a `Client` object first. 
 
 ```js
 const sdk = require('./src/index.js');
-const client = await sdk.init("https://myInstance.campaign.adobe.com", "admin", "admin");
+const connectionParameters = sdk.ConnectionParameters.ofUserAndPassword(
+                                    "https://myInstance.campaign.adobe.com", 
+                                    "admin", "admin");
+const client = await sdk.init(connectionParameters);
 ```
 
-Starting from version 1.0.0, the init function takes a 4th parameter which contains some options for the client. The `options` parameter is an object litteral with the following attributes.
-* `representation` (defaults to SimpleJson) indicates whether to use Xml or Json (and which flavor of Json)
+## Connection options
 
+Connection parameters can also be passed an option object with the following attributes
+Attribute|Default|Description
+---|---|---
+representation|"SimpleJson"| See below. Will determine if the SDK works with xml of json object. Default is JSON
+rememberMe|false| The Campaign `rememberMe` attribute which can be used to extend the lifetime of session tokens
+
+```js
+const connectionParameters = sdk.ConnectionParameters.ofUserAndPassword(
+                                    "https://myInstance.campaign.adobe.com", 
+                                    "admin", "admin",
+                                    { representation: "xml", rememberMe: true });
+```
+
+## Login with IMS
+
+The SDK also supports IMS service token with the `ofUserAndServiceToken` function. Pass it a user to impersonate and the IMS token.
+```js
+const connectionParameters = sdk.ConnectionParameters.ofUserAndPassword(
+                                    "https://myInstance.campaign.adobe.com", 
+                                    "admin", "==ims_service_token_here");
+```
 
 ## LogOn / LogOff
 
@@ -438,7 +461,9 @@ From a marketing client connection, one can get a client to a mid server
 
 ```js
 console.log("Connecting to mid server...");
-const midClient = await client.getMidClient();
+const credentials = await sdk.Credentials.ofExternalAccount(client, "defaultEmailMid");
+const midClient = await sdk.init(credentials);
+
 await midClient.client.logon();
 const datbaseId = await midClient.getOption("XtkDatabaseId");
 console.log("Mid datbaseId: " + datbaseId);
@@ -969,15 +994,18 @@ Use the SDK
 <script>
 
     (async () => {
-
-        const client = await accSDK.init("http://ffdamid:8080", "admin", "admin");
+        const connectionParameters = sdk.ConnectionParameters.ofUserAndPassword(
+                "http://ffdamid:8080", "admin", "admin");
+        const client = await sdk.init(connectionParameters);
+  
         console.log(accSDK.getSDKVersion());
         await client.logon();
+
         var databaseId = await client.getOption("XtkDatabaseId");
         console.log(databaseId);
         document.getElementById("hello").textContent = databaseId;
-        await client.logoff();
-    
+
+        await client.logoff();    
     })();
 
 </script>

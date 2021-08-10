@@ -17,10 +17,10 @@ governing permissions and limitations under the License.
  * 
  *********************************************************************************/
  const sdk = require('../src/index.js');
- const Client = require('../src/client.js').Client;
 
-function makeClient(options) {
-    const client = new Client(sdk, "http://acc-sdk:8080", "admin", "admin", options);
+async function makeClient(options) {
+    const connectionParameters = sdk.ConnectionParameters.ofUserAndPassword("http://acc-sdk:8080", "admin", "admin", options);
+    const client = await sdk.init(connectionParameters);
     client._soapTransport = jest.fn();
     //client.traceSOAPCalls(true);
     return client;
@@ -227,6 +227,17 @@ const GET_MID_EXT_ACCOUNT_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
         <ExecuteQueryResponse xmlns='urn:xtk:queryDef' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
             <pdomOutput xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
                 <extAccount account="mid" id="2088" name="defaultEmailMid" password="@57QS5VHMb9BCsojLVrKI/Q==" server="http://ffdamid:8080" type="3"/>
+            </pdomOutput>
+        </ExecuteQueryResponse>
+    </SOAP-ENV:Body>
+    </SOAP-ENV:Envelope>`);
+
+const GET_BAD_EXT_ACCOUNT_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
+    <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:xtk:queryDef' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
+    <SOAP-ENV:Body>
+        <ExecuteQueryResponse xmlns='urn:xtk:queryDef' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
+            <pdomOutput xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
+                <extAccount account="bad" id="2088" name="bad" password="@57QS5VHMb9BCsojLVrKI/Q==" server="http://zz:8080" type="999"/>
             </pdomOutput>
         </ExecuteQueryResponse>
     </SOAP-ENV:Body>
@@ -513,6 +524,7 @@ exports.Mock = {
   GET_OPTION_MISSING_DATA_RESPONSE: GET_OPTION_MISSING_DATA_RESPONSE,
   GET_XTK_QUERY_SCHEMA_RESPONSE: GET_XTK_QUERY_SCHEMA_RESPONSE,
   GET_MID_EXT_ACCOUNT_RESPONSE: GET_MID_EXT_ACCOUNT_RESPONSE,
+  GET_BAD_EXT_ACCOUNT_RESPONSE: GET_BAD_EXT_ACCOUNT_RESPONSE,
   GET_SECRET_KEY_OPTION_RESPONSE: GET_SECRET_KEY_OPTION_RESPONSE,
   GET_LOGON_MID_RESPONSE: GET_LOGON_MID_RESPONSE,
   GET_TSTCNX_RESPONSE: GET_TSTCNX_RESPONSE,

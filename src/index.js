@@ -22,20 +22,16 @@ governing permissions and limitations under the License.
 const pjson = require('../package.json');
 const DomUtil = require('./dom.js').DomUtil;
 const XtkCaster = require('./xtkCaster.js').XtkCaster;
-
-const Client = require('./client.js').Client;
+const { Client, Credentials, ConnectionParameters } = require('./client.js');
 
 /**
  * Returns a Promise that resolves with a new ACC client object.
  *
- * @param {String} endpoint endpoint to connect to, for instance: https://myinstance.campaign.adobe.com
- * @param {String} user user name, for instance admin
- * @param {String} password the user password
- * @param {boolean} options an options object to configure the client
+ * @param {ConnectionParameters} connectionParameters. Use ConnectionParameters.ofUserAndPassword for example
  * @return {Promise<Client>}
  */
-async function init (endpoint, user, password, options) {
-    const client = new Client(this, endpoint, user, password, options);
+async function init (connectionParameters) {
+    const client = new Client(this, connectionParameters);
     return client;
 }
 
@@ -78,6 +74,8 @@ module.exports = {
     getSDKVersion: getSDKVersion,
     escapeXtk: escapeXtk,
     XtkCaster: XtkCaster,
-    DomUtil: DomUtil
+    DomUtil: DomUtil,
+    Credentials: Credentials,
+    ConnectionParameters: ConnectionParameters
 };
 
