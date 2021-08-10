@@ -214,6 +214,11 @@ const GET_XTK_QUERY_SCHEMA_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
                                 <param desc="Output XML document" inout="out" name="output" type="DOMDocument"/>
                             </parameters> 
                         </method>
+                        <method name="SelectAll">
+                            <parameters>
+                              <param desc="Specifies whether we are duplicating, in which case adds all OwnCopy elements." name="duplicate" type="boolean" inout="in"/>
+                            </parameters>
+                      </method>
                     </methods>
                 </schema>
             </pdomDoc>

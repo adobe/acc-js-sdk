@@ -592,6 +592,56 @@ describe('SOAP', function() {
                 expect(() => call.getNextDocument()).toThrow();
             });
         });
+
+        describe("Read entity for mutable calls", () => {
+            it("Should support not having an entity (non-mutable call)", () => {
+                const delegate = function(options) { 
+                    return Promise.resolve(makeSOAPResponse("SelectAll")); 
+                };
+                const call = makeSoapMethodCall("xtk:session", "SelectAll", "$session$", "$security$", delegate);
+                return call.execute(URL).then(() => {
+                    const entity = call.getEntity();
+                    expect(entity).toBeNull();
+                });
+            })
+            it("Should read entity if that's the only element returned", () => {
+                const delegate = function(options) { 
+                    return Promise.resolve(makeSOAPResponse("SelectAll", "entity", "ns:Element", "<queryDef/>")); 
+                };
+                const call = makeSoapMethodCall("xtk:session", "SelectAll", "$session$", "$security$", delegate);
+                return call.execute(URL).then(() => {
+                    const entity = call.getEntity();
+                    expect(DomUtil.toXMLString(entity)).toBe("<queryDef/>");
+                });
+            })
+
+            it("Should read entity if there are returned values too", () => {
+                const delegate = function(options) { 
+                    return Promise.resolve(makeSOAPResponse("SelectAll", "entity", "ns:Element", "<queryDef/>", "p", "xsd:string", "Hello")); 
+                };
+                const call = makeSoapMethodCall("xtk:session", "SelectAll", "$session$", "$security$", delegate);
+                return call.execute(URL).then(() => {
+                    const entity = call.getEntity();
+                    expect(DomUtil.toXMLString(entity)).toBe("<queryDef/>");
+                    // Read first return value
+                    expect(call.getNextString()).toBe("Hello");
+                });
+            })
+
+            it("Should ignore entity element if it's not of the expected element type. This will be considered as a parameter", () => {
+                const delegate = function(options) { 
+                    return Promise.resolve(makeSOAPResponse("SelectAll", "entity", "xsd:string", "<queryDef/>")); 
+                };
+                const call = makeSoapMethodCall("xtk:session", "SelectAll", "$session$", "$security$", delegate);
+                return call.execute(URL).then(() => {
+                    const entity = call.getEntity();
+                    expect(entity).toBeNull();
+                    expect(call.getNextString()).toBe("<queryDef/>");
+                });
+            })
+
+
+        })
     });
 
 

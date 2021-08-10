@@ -282,6 +282,27 @@ SoapMethodCall.prototype._checkTypeMatch = function(type) {
 }
 
 /**
+ * In Campaign, non static SOAP calls may return an "entity" DOM Element, which corresponds to the object on which
+ * the method is called. A good example is the xtk:queryDef#SelectAll API call: the method definition does not have
+ * any return parameters, but it still returns an <entity> element contains the queryDef with all select nodes.
+ * 
+ * @returns the Entity DOM Element if there's one, or null if there isn't. The currentElement pointer will be 
+ * updated accordingly
+ */
+SoapMethodCall.prototype.getEntity = function() {
+    if (!this.elemCurrent)
+        return null;
+    if (this.elemCurrent.getAttribute("xsi:type") != "ns:Element")
+        return null;
+    if (this.elemCurrent.tagName != "entity")
+        return null;
+    var entity = this.elemCurrent;
+    entity = DomUtil.getFirstChildElement(entity);
+    this.elemCurrent = DomUtil.getNextSiblingElement(this.elemCurrent);
+    return entity;
+}
+
+/**
  * Extracts the next result value as a string
  * @returns {string} the string result value
  */

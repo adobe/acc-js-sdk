@@ -45,8 +45,9 @@ const xtkObjectHandler = {
 
         const caller = function(thisArg, argumentsList) {
             const callContext = thisArg["."];
+            if (methodName == "inspect") return callContext.object;
             methodName = methodName.substr(0, 1).toUpperCase() + methodName.substr(1);
-            return callContext.client.callMethod(callContext.schemaId, methodName, callContext.object, argumentsList);
+            return callContext.client._callMethod(methodName, callContext, argumentsList);
         };
 
         return new Proxy(caller, {
@@ -91,7 +92,7 @@ const clientHandler = {
                     else if (namespace == "xtkSession" && methodNameLC == "logoff")
                         return callContext.client.logoff();
                     else if (namespace == "xtkSession" && methodNameLC == "getoption") {
-                        var promise = callContext.client.callMethod(schemaId, methodName, undefined, argumentsList);
+                        var promise = callContext.client._callMethod(methodName, callContext, argumentsList);
                         return promise.then(function(optionAndValue) {
                             const optionName = argumentsList[0];
                             client._optionCache.cache(optionName, optionAndValue);
@@ -99,7 +100,7 @@ const clientHandler = {
                         });
                     }
                     // static method
-                    var result = callContext.client.callMethod(schemaId, methodName, undefined, argumentsList);
+                    var result = callContext.client._callMethod(methodName, callContext, argumentsList);
                     return result;
                 };
 
@@ -763,15 +764,15 @@ Client.prototype.getSysEnum = async function(enumName, optionalStartSchemaOrSche
 /**
  * Call Campaign SOAP method
  * 
- * @param {string} schemaId is the schema id, such as "xtk:session", "xtk:persist", "nms:recipient"...
  * @param {string} methodName is the method to call. In order to be more JavaScript friendly, the first char can be lower-cased
- * @param {JSON|XML} object is the Xtk object for non static method. Create one with for example: NLWS.xtkQueryDef.create(...)
+ * @param {*} callContext the call context)
  * @param {*} parameters is an array of function parameters. When there's only one parameter, it can be passed directly
  * @returns {*} the SOAP call result. If there's just one output parameter, the value itself will be returned. If not, an array will be returned
  */
-Client.prototype.callMethod = async function(schemaId, methodName, object, parameters) {
+Client.prototype._callMethod = async function(methodName, callContext, parameters) {
     const that = this;
     const result = [];
+    const schemaId = callContext.schemaId;
     
     var schema = await that.getSchema(schemaId, "xml");
     if (!schema)
@@ -790,6 +791,7 @@ Client.prototype.callMethod = async function(schemaId, methodName, object, param
     var soapCall = that.prepareSoapCall(urn, methodName);
 
     const isStatic = DomUtil.getAttributeAsBoolean(method, "static");
+    var object = callContext.object;
     if (!isStatic) {
         if (!object)
             throw new Error(`Cannot call non-static method '${methodName}' of schema '${schemaId}' : no object was specified`);
@@ -856,6 +858,16 @@ Client.prototype.callMethod = async function(schemaId, methodName, object, param
     
     return that.makeSoapCall(soapCall).then(function() {
         var paramIndex = 0;
+
+        if (!isStatic) {
+            // Non static methods, such as xtk:query#SelectAll return a element named "entity" which is the object itself on which
+            // the method is called. This is the new version of the object (in XML form)
+            const entity = soapCall.getEntity();
+            if (entity) {
+                callContext.object = that.toRepresentation(entity);
+            }
+        }
+
         if (params) {
             var param = DomUtil.getFirstChildElement(params, "param");
             while (param) {
@@ -884,22 +896,20 @@ Client.prototype.callMethod = async function(schemaId, methodName, object, param
                     else if (type == "DOMDocument") {
                         returnValue = soapCall.getNextDocument();
                         returnValue = that.toRepresentation(returnValue);
-                        if ( that._representation == "BadgerFish" || that._representation == "SimpleJson") {
-                            if (schemaId === "xtk:queryDef" && methodName === "ExecuteQuery" && paramName === "output") {
-                                // https://github.com/adobe/acc-js-sdk/issues/3
-                                // Check if query operation is "getIfExists". The "object" variable at this point
-                                // is always an XML, regardless of the xml/json representation
-                                const objectRoot = object.documentElement;
-                                const emptyResult = Object.keys(returnValue).length == 0;
-                                var operation = DomUtil.getAttributeAsString(objectRoot, "operation");
-                                if (operation == "getIfExists" && emptyResult)
-                                    returnValue = null;
-                                if (operation == "select" && emptyResult) {
-                                    const querySchemaId = DomUtil.getAttributeAsString(objectRoot, "schema");
-                                    const index = querySchemaId.indexOf(':');
-                                    const querySchemaName = querySchemaId.substr(index + 1);
-                                    returnValue[querySchemaName] = [];
-                                }
+                        if (schemaId === "xtk:queryDef" && methodName === "ExecuteQuery" && paramName === "output") {
+                            // https://github.com/adobe/acc-js-sdk/issues/3
+                            // Check if query operation is "getIfExists". The "object" variable at this point
+                            // is always an XML, regardless of the xml/json representation
+                            const objectRoot = object.documentElement;
+                            const emptyResult = Object.keys(returnValue).length == 0;
+                            var operation = DomUtil.getAttributeAsString(objectRoot, "operation");
+                            if (operation == "getIfExists" && emptyResult)
+                                returnValue = null;
+                            if (operation == "select" && emptyResult) {
+                                const querySchemaId = DomUtil.getAttributeAsString(objectRoot, "schema");
+                                const index = querySchemaId.indexOf(':');
+                                const querySchemaName = querySchemaId.substr(index + 1);
+                                returnValue[querySchemaName] = [];
                             }
                         }
                     }

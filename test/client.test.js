@@ -786,7 +786,8 @@ describe('ACC Client', function () {
 
             // Call directly
             client._soapTransport.mockReturnValueOnce(Mock.GET_MISSING_SCHEMA_RESPONSE);
-            await client.callMethod("xtk:notFound", "dummy", null).catch(e => {
+            const callContext = { schemaId: "xtk:notFound" };
+            await client._callMethod("dummy", callContext).catch(e => {
                 expect(e.name).toMatch('Error');
             });
 
@@ -978,6 +979,54 @@ describe('ACC Client', function () {
             await client.NLWS.xtkSession.logoff();
         });
 
+        it("Should support mutable calls", async () => {
+            // Some methods can mutate the object on which they apply. This is for instance the case of the xtk:queryDef#SelectAll method. 
+            // You call it on a queryDef, and it internally returns a new query definition which contain select nodes for all the nodes of the schema. 
+            // When such a method is called, the SDK will know how to "mutate" the corresponding object.
+            const client = await Mock.makeClient();
+            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+            
+            var queryDef = {
+                "schema": "xtk:option",
+                "operation": "getIfExists",
+            };
+            client._soapTransport.mockReturnValueOnce(Mock.GET_XTK_QUERY_SCHEMA_RESPONSE);
+            var query = client.NLWS.xtkQueryDef.create(queryDef);
+
+            client._soapTransport.mockReturnValueOnce(Promise.resolve(`<?xml version='1.0'?>
+                    <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:xtk:queryDef' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
+                    <SOAP-ENV:Body>
+                    <SelectAllResponse xmlns='urn:xtk:queryDef' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
+                        <entity xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
+                            <queryDef operation="get" schema="xtk:option" startPath="/" xtkschema="xtk:queryDef">
+                            <select>
+                            <node expr="@id" noComputeString="true"/>
+                            <node expr="@name" noComputeString="true"/>
+                            <node expr="@type" noComputeString="true"/>
+                            <node anyType="true" expr="desc" noComputeString="true"/>
+                            <node expr="@dataType" noComputeString="true"/>
+                            <node expr="@stringValue" noComputeString="true"/>
+                            <node expr="@longValue" noComputeString="true"/>
+                            <node expr="@doubleValue" noComputeString="true"/>
+                            <node expr="@timeStampValue" noComputeString="true"/>
+                            <node anyType="true" expr="memoValue" noComputeString="true"/>
+                            <node expr="[@createdBy-id]" noComputeString="true"/>
+                            <node expr="[@modifiedBy-id]" noComputeString="true"/>
+                            <node expr="@created" noComputeString="true"/>
+                            <node expr="@lastModified" noComputeString="true"/>
+                            </select>
+                            </queryDef>
+                        </entity>
+                    </SelectAllResponse>
+                    </SOAP-ENV:Body>
+                    </SOAP-ENV:Envelope>`));
+            await query.selectAll(false);
+            
+            // Check that query has new nodes
+            const object = query.inspect();         // JSON query object
+            expect(object.select.node.length).toBe(14);
+        })
 
     });
 

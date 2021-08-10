@@ -196,6 +196,8 @@ const queryDef = {
 const query = NLWS.xtkQueryDef.create(queryDef);
 ```
 
+Note: the returned object is opaque and private, it should not be directly manipulated.
+
 The method can then be called directly on the object
 ```js
 const extAccounts = await query.executeQuery();
@@ -211,6 +213,19 @@ In this example, the result is as follows
 ]}
 ```
 
+Some methods can mutate the object on which they apply. This is for instance the case of the xtk:queryDef#SelectAll method. You call it on a queryDef, and it internally returns a new query definition which contain select nodes for all the nodes of the schema. When such a method is called, the SDK will know how to "mutate" the corresponding object.
+
+```js
+const  queryDef = {
+    schema: "xtk:option",
+    operation: "get",
+    where: { condition: [ { expr:`@name='XtkDatabaseId'` } ] }
+  };
+await query.selectAll(false);
+var result = await query.executeQuery();
+```
+
+In the previous example, a queryDef is created without any select nodes. Then the selectAll method is called. After the call, the JavaScript queryDef object will contain a select elements with all the nodes corresponding to attributes of the xtk:option schema.
 
 ## Campaign data types
 
