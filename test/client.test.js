@@ -608,7 +608,7 @@ describe('ACC Client', function () {
             client._soapTransport.mockReturnValueOnce(Mock.GET_SECRET_KEY_OPTION_RESPONSE);
             expect(async () => {
                 return sdk.ConnectionParameters.ofExternalAccount(client, "bad");
-            }).rejects.toThrow("account type 'bad' not supported");
+            }).rejects.toThrow("account type 999 not supported");
         })
 
         it("Should fail if invalid representation", async () => {

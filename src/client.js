@@ -531,7 +531,7 @@ Client.prototype.logon = function() {
         });
     }
     else {
-        throw new Error(`Cannot logon: unsupported credentials type '${this.credentials._type}'`);
+        throw new Error(`Cannot logon: unsupported credentials type '${credentials._type}'`);
     }
 }
 

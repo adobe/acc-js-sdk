@@ -117,13 +117,28 @@ describe("EntityAccessor", () => {
         })
 
     })
-/*
-    it("Should determine if string is an attribute name", () => {
-        expect(EntityAccessor.isAttributeName("")).toBe(false);
-        expect(EntityAccessor.isAttributeName("H")).toBe(false);
-        expect(EntityAccessor.isAttributeName("Hello")).toBe(false);
-        expect(EntityAccessor.isAttributeName("@")).toBe(true);
-        expect(EntityAccessor.isAttributeName("@Hello")).toBe(true);
+
+    it("Tests corresponding to the JSDoc examples", () => {
+        expect(EntityAccessor.getAttributeAsString({ hello: "world" }, "hello")).toBe("world");
+        expect(EntityAccessor.getAttributeAsString({ hello: "world" }, "notFound")).toBe("");
+        expect(EntityAccessor.getAttributeAsString(DomUtil.parse("<root hello='world'></root>"), "hello")).toBe("world");
+   
+        expect(EntityAccessor.getAttributeAsLong({ hello: 42 }, "hello")).toBe(42);
+        expect(EntityAccessor.getAttributeAsLong({ hello: 42 }, "notFound")).toBe(0);
+        expect(EntityAccessor.getAttributeAsLong(DomUtil.parse("<root hello='42'></root>"), "hello")).toBe(42);
+
+        expect(EntityAccessor.getAttributeAsBoolean({ hello: true }, "hello")).toBe(true);
+        expect(EntityAccessor.getAttributeAsBoolean({ hello: true }, "notFound")).toBe(false);
+        expect(EntityAccessor.getAttributeAsBoolean(DomUtil.parse("<root hello='true'></root>"), "hello")).toBe(true);
+
+        expect(EntityAccessor.getChildElements({ chapter:[ { title:"A" }, { title:"B" } ] }, "chapter")).toEqual([ { title:"A" }, { title:"B" } ]);
+
+        var children = EntityAccessor.getChildElements(DomUtil.parse("<root><chapter title='A'/><chapter title='B'/></root>"), "chapter");
+        expect(children.length).toBe(2);
+        expect(DomUtil.toXMLString(children[0])).toBe('<chapter title="A"/>');
+        expect(DomUtil.toXMLString(children[1])).toBe('<chapter title="B"/>');
+
+        expect(EntityAccessor.getElement({ body: { title:"Hello" }  }, "body")).toEqual({ title:"Hello" });
+        expect(DomUtil.toXMLString(EntityAccessor.getElement(DomUtil.parse("<root><body title='Hello'/></root>"), "body"))).toBe('<body title="Hello"/>');   
     })
-*/
 });

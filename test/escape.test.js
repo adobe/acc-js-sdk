@@ -64,7 +64,16 @@ describe('escapeXtk', function() {
             // Should support multiple variables
             expect({ expr: sdk.escapeXtk`@name = ${userName} or @name = ${name}` }).toEqual({ expr: "@name = 'Alex' or @name = 'Joe\\'s'" });
         })
+
+        it("Should support constants", () => {
+            expect(sdk.escapeXtk([],[])).toBe("''");
+        })
     })
+
+    it("examples in jsdoc", () => {
+        expect(sdk.escapeXtk("Rock 'n' Roll")).toBe("'Rock \\'n\\' Roll'");
+        expect(sdk.escapeXtk`@name=${"Rock 'n' Roll"}`).toBe("@name='Rock \\'n\\' Roll'");
+    });
 
     describe('QueryDef & template litteral', () => {
         
