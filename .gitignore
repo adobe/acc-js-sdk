@@ -20,3 +20,5 @@ bundle.js
 scratch.js
 .npmrc
 yarn-error.log
+
+out/

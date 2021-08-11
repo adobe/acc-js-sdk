@@ -25,6 +25,7 @@ _2021/07/29_
 * New `escapeXtk` function to escape litteral values in Xtk expression. Can be used as a function or as a tagged template litteral
 * New function `XtkCaster._variantStorageAttribute` which returns the name of a schema attribute used to store variant value types. The name of the attribute depends on the type: stringValue, longValue, etc.
 * Support for non static method that mutate the object on which they apply. For instance, the xtk:queryDef#SelectAll
+* Added samples in the samples/ folder
 
 _Breaking changes in 1.0.0_
 * The default representation is now `SimpleJson` instead of `BadgerFish`
