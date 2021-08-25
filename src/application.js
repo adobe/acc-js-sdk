@@ -17,8 +17,6 @@ governing permissions and limitations under the License.
  * https://docs.adobe.com/content/help/en/campaign-classic/technicalresources/api/c-Application.html
  * 
  *********************************************************************************/
-
-const DomUtil = require('./dom.js').DomUtil;
 const XtkCaster = require('./xtkCaster.js').XtkCaster;
 const EntityAccessor = require('./entityAccessor.js').EntityAccessor;
  
@@ -27,6 +25,7 @@ const EntityAccessor = require('./entityAccessor.js').EntityAccessor;
 // Helper functions
 // ========================================================================================
  
+// Determine if a name is an attribute name, i.e. if it starts with the "@" character
 isAttributeName = function(name) { return name.length > 0 && name[0] == '@'; }
 
 
