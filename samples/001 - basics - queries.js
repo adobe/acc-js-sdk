@@ -21,6 +21,10 @@ This sample illustrates how to execute Campaign queries using the QueryDef API
 - How to use the "select" operation to query a list of records
 - How to use the "getIfExist" operation to query a single record and return null if it does not exist
 - How to use the "select" operation with "lineCount" to do pagination
+- How to use the "selectAll" API to return all the fields of a given entity
+- How to use the BuildQuery and BuildQueryEx APIs to return the SQL code for a query
+- How to use the "analyze" flag to return user friendly names for enumeration values
+- How to use aliases to restructure the output document of a query
 
 ================================================================================================
 `);
@@ -193,4 +197,75 @@ The queryDef API also lets you generate the SQL for a query, using the BuildQuer
   var sql = await query.buildQueryEx();
   console.log(`>> SQL queryEx: "${sql[0]}"`);
   console.log(`>> Format string: "${sql[1]}"`);
+
+
+
+  console.log(`This query uses the 'analyze' option to return user friendly names for enumerations. 
+In this example, we use the exclusionType attribute of the target mappings schema. Without the analyze flag, the query will
+return the numeric value of the attribute (for example 2). With the flag, the query will still return the numeric value,
+but will also return the string value of the attribute and its label. It will use addition JSON attributes named
+"exclusionTypeName" and "exclusionTypeLabel", using the "Name" and "Label" suffixes.
+  `);
+    
+  var queryDef = {
+    schema: "nms:deliveryMapping",
+    operation: "get",
+    select: {
+        node: [
+            { expr: "@id" },
+            { expr: "@name" },
+            { expr: "[storage/@exclusionType]" },
+            { expr: "@schema" }
+        ]
+    },
+    where: {
+      condition: [
+          { expr:`@name='mapRecipient'` }
+      ]
+    }
+  }
+  query = NLWS.xtkQueryDef.create(queryDef);
+  var mapping = await query.executeQuery();
+  console.log(`>> Recipient target mapping without the analyze flag: ${JSON.stringify(mapping)}`);
+
+  queryDef.select.node[2] = { expr: "[storage/@exclusionType]", analyze: true };
+  query = NLWS.xtkQueryDef.create(queryDef);
+  var mapping = await query.executeQuery();
+  console.log(`>> Recipient target mapping with the analyze flag: ${JSON.stringify(mapping)}`);
+
+
+
+
+  console.log(`This example shows how to use aliases to control the structure of the output JSON. Without aliases, the output document structure will match
+the structure of the select nodes. In the following example, the exclusionType attribute will be moved to the root node of the result `);
+      
+    var queryDef = {
+      schema: "nms:deliveryMapping",
+      operation: "get",
+      select: {
+          node: [
+              { expr: "@id" },
+              { expr: "@name" },
+              { expr: "[storage/@exclusionType]" },
+              { expr: "@schema" }
+          ]
+      },
+      where: {
+        condition: [
+            { expr:`@name='mapRecipient'` }
+        ]
+      }
+    }
+    
+  query = NLWS.xtkQueryDef.create(queryDef);
+  var mapping = await query.executeQuery();
+  console.log(`>> Recipient target mapping without aliases: ${JSON.stringify(mapping)}`);
+
+  queryDef.select.node[2] = { expr: "[storage/@exclusionType]", alias: "@exclusionType" },
+  query = NLWS.xtkQueryDef.create(queryDef);
+  var mapping = await query.executeQuery();
+  console.log(`>> Recipient target mapping with an alias: ${JSON.stringify(mapping)}`);
+
+  
 });
+
