@@ -21,7 +21,7 @@ governing permissions and limitations under the License.
 /**
  * Client to ACC instance
  */
-const SoapMethodCall = require('./soap.js').SoapMethodCall;
+const { SoapMethodCall, SoapException } = require('./soap.js');
 const XtkCaster = require('./xtkCaster.js').XtkCaster;
 const XtkEntityCache = require('./xtkEntityCache.js').XtkEntityCache;
 const Cipher = require('./crypto.js').Cipher;
@@ -175,12 +175,12 @@ function transportWrapper(transport) {
 
 /**
  * Credentials to a Campaign instance. Encapsulats the various types of credentials
- * @param {string} type the credentials type. Supported types are "UserPassword" and "ImsServiceToken"
+ * @param {string} type the credentials type. Supported types are "UserPassword" and "ImsServiceToken" and "SessionToken"
  * @param {string} sessionToken the session token. It's exact form depends on the credentials type. For instance it can be "user/passord" for the "UserPassword" credentials type
  * @param {string} securityToken the security token. Will use an empty token if not specified
  */
 function Credentials(type, sessionToken, securityToken) {
-    if (type != "UserPassword" && type != "ImsServiceToken")
+    if (type != "UserPassword" && type != "ImsServiceToken" && type != "SessionToken")
         throw new Error(`Invalid credentials type '${type}`);
     this._type = type;
     this._sessionToken = sessionToken;
@@ -272,6 +272,18 @@ ConnectionParameters.ofUserAndServiceToken = function(endpoint, user, serviceTok
 }
 
 /**
+ * Creates connection parameters for a Campaign instance, using a session token
+ * @param {string} endpoint The campaign endpoint (URL)
+ * @param {string} sessionToken The session token
+ * @param {*} options connection options
+ * @returns {ConnectionParameters} a ConnectionParameters object which can be used to create a Client
+ */
+ ConnectionParameters.ofSessionToken = function(endpoint, sessionToken, options) {
+    const credentials = new Credentials("SessionToken", sessionToken, "");
+    return new ConnectionParameters(endpoint, credentials, options);
+}
+
+/**
  * Creates connection parameters for a Campaign instance, using an external account. This can be used to connect
  * to a mid-sourcing instance, or to a message center instance. This function will lookup the external account,
  * and use its credentials to get connection parameters to the corresponding Campaign instance
@@ -356,6 +368,8 @@ function Client(sdk, connectionParameters) {
     this.application = null;
 }
 
+Client.SoapException = SoapException;
+
 /**
  * Convert an XML object into a representation
  * @param {DOMElement} xml the XML DOM element to convert
@@ -436,12 +450,17 @@ Client.prototype.traceSOAPCalls = function(trace) {
  * @returns {boolean} a boolean indicating if the client is logged or not
  */
 Client.prototype.isLogged = function() {
+
+    // with session token authentication, we do not expect a security token
+    const isSessionTokenAuth = this._connectionParameters._credentials._type == "SessionToken";
+
     return this._sessionToken !== null && 
            this._sessionToken !== undefined && 
            this._sessionToken !== "" &&
-           this._securityToken !== null && 
-           this._securityToken !== undefined && 
-           this._securityToken !== "";
+           (isSessionTokenAuth || (
+            this._securityToken !== null && 
+            this._securityToken !== undefined && 
+            this._securityToken !== ""));
 }
 
 /**
@@ -487,7 +506,14 @@ Client.prototype.logon = function() {
     }
 
     const credentials = this._connectionParameters._credentials;
-    if (credentials._type == "UserPassword") {
+    if (credentials._type == "SessionToken") {
+        that._sessionInfo = undefined;
+        that._installedPackages = {};
+        that._sessionToken = credentials._sessionToken;
+        that._securityToken = "";
+        that.application = new Application(that);
+    }
+    else if (credentials._type == "UserPassword") {
         const user = credentials._getUser();
         const password = credentials._getPassword();
 
@@ -836,6 +862,8 @@ Client.prototype._callMethod = async function(methodName, callContext, parameter
                     // not work when using "BadgerFish" representation where we do not know the root element name.
                     if (schemaId == "xtk:workflow" && methodName == "StartWithParameters" && paramName == "parameters")
                         docName = "variables";
+                    if (schemaId == "nms:rtEvent" && methodName == "PushEvent")
+                        docName = "rtEvent";
                     // Try to guess the document name. This is usually available in the xtkschema attribute
                     var xtkschema = EntityAccessor.getAttributeAsString(paramValue, "xtkschema");
                     if (!xtkschema) xtkschema = paramValue["@xtkschema"];

@@ -19,14 +19,18 @@ const sdk = require('../src/index.js');
  *********************************************************************************/
 'use strict'
 
-const url = "https://test.campaign.adobe.com";
+const rt1_url = "http://accaepxl-rt1.rd.campaign.adobe.com:8080";
+const url = "http://accaepxl.rd.campaign.adobe.com:8080";
 const user = "admin";
 const password = "put password here}";
 
  function run(main) {
   main.apply(this).then(() => {
     console.log("Done.");
-  });      
+  })
+  .catch((err) => {
+    console.error(err);
+  });
 }
 
 function logon(callback) {
@@ -53,6 +57,7 @@ module.exports = {
     url: url,
     user: user,
     password: password,
+    rt1_url: rt1_url,
 
     run: run,
     logon: logon  

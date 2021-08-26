@@ -61,6 +61,20 @@ const connectionParameters = sdk.ConnectionParameters.ofUserAndPassword(
                                     "admin", "==ims_service_token_here");
 ```
 
+## Login with Session token
+
+Campaign supports authenticating with a session token in some contexts. This is usually used for Message Center API calls (see the "Message Center" section below).
+
+In this example, the session token is a string composed of the user name, a slash sign, and the password (often empty)
+
+```js
+const connectionParameters = sdk.ConnectionParameters.ofSessionToken(utils.rt1_url, "mc/mc");
+```
+
+Note that this authentication mode is very specific and does not actually performs a Logon: the passed session token will be passed to each API calls (with an empty security token) and requires proper setup of the security zones.
+Another consequence is that the Application object will not be availeble in this case either.
+
+
 ## LogOn / LogOff
 
 The `sdk.init` call will not actually connect to Campaign, you can call the `logon` method for this.
@@ -373,6 +387,32 @@ const document = DomUtil.fromJSON(json, "BadgerFish");
 const json = DomUtil.toJSON(documentOrElement, "BadgerFish");
 ```
 
+## Error Management
+
+If an API call fails (SOAP fault or HTTP error), a `SoapException` object is thrown. This object contains the following attributes
+
+* `message` a message describing the error
+* `stack` the stack trace
+* `statusCode` a HTTP status code. In case of a SOAP fault, the status code will be 500
+* `errorCode` the Campaign error code if one is available (ex: XSV-350013)
+* `soapCall` the SOAP call which caused the error. It will contain the following attributes
+    * `urn` the SOAP call URN, i.e. the schema id
+    * `methodName` the name of the SOAP method
+    * `request` the raw SOAP request, as text
+    * `response` the raw SOAP response, as text
+* `faultCode` for SOAP faults, the Campaign error code
+* `faultString` the error message
+* `detail` optional additional details about the error
+
+```js
+  try {
+    await client.logon();
+    result = await NLWS.xtkSession.getServerTime();
+  } catch (ex) {
+    console.log(ex.message);
+  }
+
+```
 
 ## Caches
 
@@ -596,15 +636,15 @@ or a template litteral
     `{ expr: "@name=${sdk.escapeXtk(name)}" }`
 ```
 
-The `xtkEscape` function can also be used to create tagged string litterals. This leads to a much shorter syntax. Note that with this syntax, only the parameter values of the template litteral are escaped
+The `escapeXtk` function can also be used to create tagged string litterals. This leads to a much shorter syntax. Note that with this syntax, only the parameter values of the template litteral are escaped
 ```
-    sdk.xtkEscape`{ expr: "@name=${name}" }`
+    sdk.escapeXtk`{ expr: "@name=${name}" }`
 ```
 
 This can also be used to escape other data types such as timestamps
 
 ```
-    sdk.xtkEscape`{ expr: "@lastModified > = ${yesterday}" }`
+    sdk.escapeXtk`{ expr: "@lastModified > = ${yesterday}" }`
 ```
 
 will return `{ expr: "@lastModified > = #2021-07-07T10:03:33.332Z# }`
@@ -787,6 +827,79 @@ await NLWS.xtkSession.write(recipient);
 Deletes a set of profiles, based on condition. For instance delete everyone having an email address in adobe.com domain
 ```js
 await NLWS.xtkSession.deleteCollection("nms:recipient", { condition: { expr: "GetEmailDomain(@email)='adobe.com'"} });
+```
+
+
+# Message Center
+
+The Message Center API (`nms:rtEvent#PushEvent`) can be used to send transactional messages. It should be called on the Message Center execution instances, not on the marketing instances.
+
+## Authentication
+Two authentication mechanism are possible for Message Center. It is possible to use a user/password authentication and call the Logon method to get a session and security token, as all other APIs. When using this authentication mechanism, the caller is responsible to handle token expiration and must explicitely handle the case when the Message Center API call fails because of an expired token.
+
+Another common authentication strategy is to define a trusted Security Zone for message center clients and setup this security zone to use the "user/password" as a session token.
+
+Here's an example of authentication with this method
+```js
+const connectionParameters = sdk.ConnectionParameters.ofSessionToken(utils.rt1_url, "mc/mc");
+const client = await sdk.init(connectionParameters);
+```
+
+## Pushing events
+
+Events can be pushed using the `nms:rtEvent#PushEvent` API call. For instance
+```js
+var result = await NLWS.nmsRtEvent.pushEvent({
+    wishedChannel: 0,
+    type: "welcome",
+    email: "aggmorin@gmail.com",
+    ctx: {
+      $title: "Alex"
+    }
+});
+console.log(`>> Result: ${result}`);
+```
+
+There are a couple of noteworthy things to say about this API when using SimpleJson serialization.
+
+* The payload passed to the pushEvent API call is actuall a nms:rtEvent entity. Hence the wishedChannel, etc. are actually XML attributes. The default SimpleJson conversion works fine here, no need to prefix the attributes with the "@" sign.
+* However, the `ctx` section is not structured. We do not have a schema to validate or guide the conversion. It is common to use XML elements instead of attributes in the ctx context. In the message center template, you'll find things like `<%= rtEvent.ctx.title %>`. The fact that "title" is used (in stead of "@title") implied that the ctx node will contain a title element, not a title attribute. For the SimpleJson conversion to work, it's therefore important to indicate "$title" as the JSON attribute name. This will guide the SimpleJson converted to use an XML element instead of an XML attribute
+
+
+## Getting event status
+
+There's no scalable API to get the status of a message center event. One can use the QueryDef API to query the nms:rtEvent table for testing purpose though.
+
+To do so, the first step is to decode the event id returned by PushEvent. It is a 64 bit number, whose high byte is the message center cell (instance) id which handled the event. It's a number between 0 and 255. The lower bytes represent the primary key of the event. Note that this is subject to change in future versions of Campaign and should not be considered stable.
+
+Clear high byte
+```js
+eventId = Number(BigInt(eventId) & BigInt("0xFFFFFFFFFFFFFF"));
+```
+
+Get event status
+```js
+var queryDef = {
+schema: "nms:rtEvent",
+operation: "get",
+select: {
+    node: [
+        { expr: "@id" },
+        { expr: "@status" },
+        { expr: "@created" },
+        { expr: "@processing" },
+        { expr: "@processed" }
+    ]
+},
+where: {
+    condition: [
+        { expr:`@id=${eventId}` }
+    ]
+}
+}
+query = NLWS.xtkQueryDef.create(queryDef);
+var event = await query.executeQuery();
+console.log(`>> Event: ${JSON.stringify(event)}`);
 ```
 
 

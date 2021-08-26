@@ -439,14 +439,18 @@ function newCurrentLogin(userInfo) {
 function Application(client) {
     this.client = client;
     const info = this.client.getSessionInfo();
-    const serverInfo = EntityAccessor.getElement(info, "serverInfo");
-    this.buildNumber = EntityAccessor.getAttributeAsString(serverInfo, "buildNumber");
-    this.instanceName = EntityAccessor.getAttributeAsString(serverInfo, "instanceName");
-    const userInfo = EntityAccessor.getElement(info, "userInfo");
-    this.operator = new CurrentLogin(userInfo);
-    this.packages = [];
-    for (var p of EntityAccessor.getChildElements(userInfo, "installed-package")) {
-        this.packages.push(`${EntityAccessor.getAttributeAsString(p, "namespace")}:${EntityAccessor.getAttributeAsString(p, "name")}`);
+    // When using "SessionToken" authentication, there is no actual logon, and therefore
+    // no "sessionInfo" object
+    if (info) {
+        const serverInfo = EntityAccessor.getElement(info, "serverInfo");
+        this.buildNumber = EntityAccessor.getAttributeAsString(serverInfo, "buildNumber");
+        this.instanceName = EntityAccessor.getAttributeAsString(serverInfo, "instanceName");
+        const userInfo = EntityAccessor.getElement(info, "userInfo");
+        this.operator = new CurrentLogin(userInfo);
+        this.packages = [];
+        for (var p of EntityAccessor.getChildElements(userInfo, "installed-package")) {
+            this.packages.push(`${EntityAccessor.getAttributeAsString(p, "namespace")}:${EntityAccessor.getAttributeAsString(p, "name")}`);
+        }
     }
 }
 

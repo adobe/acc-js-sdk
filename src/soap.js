@@ -55,17 +55,49 @@ const NS_XSI = "http://www.w3.org/2001/XMLSchema-instance";
 const NS_XSD = "http://www.w3.org/2001/XMLSchema";
 
 
-function SoapException(soapMethodCall, faultcode, faultstring, detail) {
-    var message = `${faultcode}: ${faultstring} (${detail})`;
-    const error = new Error(message);
-    error.soapMethodCall = soapMethodCall;
-    error.faultcode = faultcode;
-    error.faultstring = faultstring;
-    error.detail = detail;
-    return error;
+function SoapException(soapMethodCall, statusCode, faultCode, faultString, detail) {
+
+    faultString = faultString || "";
+    if (faultString == "null" || faultString == "null\n") faultString = "";
+    detail = detail || "";
+    faultCode = faultCode || "";
+    if (statusCode == 403 && faultString == "")
+        faultString = "Forbidden";
+
+    var errorMessage = "No error message was provided";
+    if (faultString != "" && detail != "")
+        errorMessage = `${faultString}. ${detail}`;
+    else if (faultString != "")
+        errorMessage = faultString;
+    else  if (detail != "")
+        errorMessage = detail;
+
+    var message = `${statusCode} - Error${faultCode == "" ? "" : faultCode} calling method '${soapMethodCall.urn}#${soapMethodCall.methodName}': ${errorMessage}`;
+
+    // Extract Campaign error code. For instance, the fault string may look like
+    // "XSV-350013 The '193.104.215.11' IP address via which...", we extract the "XSV-350013" code
+    var errorCode = "";
+    const match = faultString.match(/(\w{3}-\d{6}) (.*)/);
+    if (match && match.length >= 2) {
+        errorCode = match[1];
+        faultString = match[2];
+    }
+
+    this.message = message;
+    this.statusCode = statusCode;
+    this.soapCall = {
+        urn: soapMethodCall.urn,
+        methodName: soapMethodCall.methodName,
+        request: soapMethodCall.request,
+        response: soapMethodCall.response
+    };
+    this.errorCode = errorCode;
+    this.faultCode = faultCode;
+    this.faultString = faultString;
+    this.detail = detail;
+    this.stack = (new Error()).stack;
 }
   
-SoapException.prototype = Object.create(Error.prototype);
 
 /**
  * Creates a SOAP call object
@@ -272,11 +304,11 @@ SoapMethodCall.prototype.writeDocument = function(tag, document) {
 // This will check that the current element (which is the XML element for current returned value) matches the passed type
 SoapMethodCall.prototype._checkTypeMatch = function(type) {
     if (this.elemCurrent === null || this.elemCurrent === undefined) {
-        throw new SoapException(this, `Missing parameter for method '${this.methodName}' of urn '${this.urn}'`);
+        throw new SoapException(this, 400, `Missing parameter for method '${this.methodName}' of urn '${this.urn}'`);
     } else if ( type != "ns:Document") {
         var xsiType = this.elemCurrent.getAttribute("xsi:type");
         if (xsiType === null || xsiType === undefined || xsiType !== type) {
-            throw new SoapException(this, `Parameter type mismatch for method '${this.methodName}' of urn '${this.urn}'. Expected '${type}', got '${xsiType}'`);
+            throw new SoapException(this, 400, `Parameter type mismatch for method '${this.methodName}' of urn '${this.urn}'. Expected '${type}', got '${xsiType}'`);
         }
     }
 }
@@ -477,7 +509,9 @@ SoapMethodCall.prototype.execute = function(url) {
     const that = this;
     const options = this._createHTTPRequest(url);
     const promise = this.transport(options);
+    that.request = options.body;
     return promise.then(function(body) {
+        that.response = body;
         // Response is a serialized XML document with the following structure
         //
         // Success:
@@ -513,7 +547,7 @@ SoapMethodCall.prototype.execute = function(url) {
             const faultCode = DomUtil.findElement(that.elemCurrent, "faultcode").textContent;
             const faultString = DomUtil.findElement(that.elemCurrent, "faultstring").textContent;
             const detail = DomUtil.findElement(that.elemCurrent, "detail").textContent;
-            throw new SoapException(that, faultCode, faultString, detail);
+            throw new SoapException(that, 500, faultCode, faultString, detail);
         }
         // Set current element for subsequent calls to getNext* 
         while (that.elemCurrent) {
@@ -527,8 +561,15 @@ SoapMethodCall.prototype.execute = function(url) {
             else
                 that.elemCurrent = DomUtil.getNextSiblingElement(that.elemCurrent);
         }
+    })
+    .catch(function(err) {
+        if (err instanceof SoapException)
+            throw err;
+        else {
+            // TODO: this is depending on the "request" library. Should abstract this away
+            throw new SoapException(that, err.statusCode, "", err.error, undefined);
+        }
     });
-
 }
 
 /**
@@ -546,3 +587,4 @@ SoapMethodCall.prototype.createElement = function(tagName) {
  * Public exports
  */
 exports.SoapMethodCall = SoapMethodCall;
+exports.SoapException = SoapException;
