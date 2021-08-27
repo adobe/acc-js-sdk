@@ -33,6 +33,8 @@ governing permissions and limitations under the License.
   - How to use the session token authentication mode for message center
   - How to use the nms:rtEvent#PushEvent API to send an event to Message Center
   - How to query the status of an event
+  - Get the list of marketing instances
+  - Get the published event types for an execution instance
 
   ================================================================================================
   `);
@@ -42,7 +44,30 @@ governing permissions and limitations under the License.
   const NLWS = client.NLWS;
   await client.logon();
 
-  console.log(`Calling the message center API to push an event. Will return an event id. Although the event id looks like a number, it should be considered as an opaque string.`);
+
+
+  console.log(`Getting all the published event types for an execution instance`);
+  var queryDef = {
+    schema: "xtk:enumValue",
+    operation: "select",
+    select: {
+        node: [
+            { expr: "@id" },
+            { expr: "@name" },
+            { expr: "@label" }
+        ]
+    },
+    where: { condition: [
+      { expr: "[enum/@name]='eventType'" },
+    ] }
+  };``
+  query = NLWS.xtkQueryDef.create(queryDef);
+  const eventTypes = await query.executeQuery();
+  console.log(`>> Message center published event types: ${JSON.stringify(eventTypes)}`);
+  
+
+
+  console.log(`\nCalling the message center API to push an event. Will return an event id. Although the event id looks like a number, it should be considered as an opaque string.`);
   var eventId = await NLWS.nmsRtEvent.pushEvent({
     wishedChannel: 0,
     type: "welcome",
@@ -55,12 +80,13 @@ governing permissions and limitations under the License.
 
   
 
-  console.log(`The event id can be used to get the status of an event. Note that this API is not meant to be used at scale, it's only there for testing purpose. This API will also not work if using multiple Message Center instances behind a load balancer.`)
+  console.log(`\nThe event id can be used to get the status of an event. Note that this API is not meant to be used at scale, it's only there for testing purpose. This API will also not work if using multiple Message Center instances behind a load balancer.`)
 
   console.log("The eventId returned by the PushEvent API is a 64 bit number (returned as a string by the SDK). The high byte is the message center cell number, and the lower bytes represent the primary key of the event. To get the event, we need to remove the high byte (and this only works if there's a single execution cell)");
+  console.log("In the next example, we're retreiving the list of message center instances, and in particular the @executionInstanceId. This id can be used to match the high order byte of the 64 event id and then used to determine which server to ask the status to.");
   // Clear high byte
   eventId = Number(BigInt(eventId) & BigInt("0xFFFFFFFFFFFFFF"));
-  console.log(">> Event it (without high byte) " + eventId);
+  console.log(">> Event id (without high byte) " + eventId);
 
   var queryDef = {
     schema: "nms:rtEvent",
@@ -84,5 +110,36 @@ governing permissions and limitations under the License.
   query = NLWS.xtkQueryDef.create(queryDef);
   var event = await query.executeQuery();
   console.log(`>> Event: ${JSON.stringify(event)}`);
+
+
+
+  console.log(`\nGetting all message center instances (from Marketing server)`);
+  await utils.logon(async (client, NLWS) => {
+    var queryDef = {
+      schema: "nms:extAccount",
+      operation: "select",
+      select: {
+          node: [
+              { expr: "@id" },
+              { expr: "@name" },
+              { expr: "@label" },
+              { expr: "@active" },
+              { expr: "@server" },
+              { expr: "@port" },
+              { expr: "@account" },
+              { expr: "@executionInstanceId" }
+          ]
+      },
+      where: { condition: [
+        { expr: "@type=11" },
+        { expr: "@isMessageCenter=true" }
+      ] }
+    };``
+    query = NLWS.xtkQueryDef.create(queryDef);
+    const instances = await query.executeQuery();
+    console.log(`>> Message center instances: ${JSON.stringify(instances)}`);
+  });
+
+
 
 });
