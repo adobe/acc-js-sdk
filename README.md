@@ -399,7 +399,7 @@ const json = DomUtil.toJSON(documentOrElement, "BadgerFish");
 
 ## Error Management
 
-If an API call fails (SOAP fault or HTTP error), a `SoapException` object is thrown. This object contains the following attributes
+If an API call fails (SOAP fault or HTTP error), a `CampaignException` object is thrown. This object contains the following attributes
 
 * `message` a message describing the error
 * `stack` the stack trace

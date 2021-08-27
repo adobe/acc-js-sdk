@@ -21,7 +21,7 @@ governing permissions and limitations under the License.
 /**
  * Client to ACC instance
  */
-const { SoapMethodCall, SoapException } = require('./soap.js');
+const { SoapMethodCall, CampaignException } = require('./soap.js');
 const XtkCaster = require('./xtkCaster.js').XtkCaster;
 const XtkEntityCache = require('./xtkEntityCache.js').XtkEntityCache;
 const Cipher = require('./crypto.js').Cipher;
@@ -380,7 +380,7 @@ function Client(sdk, connectionParameters) {
     this.application = null;
 }
 
-Client.SoapException = SoapException;
+Client.CampaignException = CampaignException;
 
 /**
  * Get the user agent string to use in all HTTP requests
@@ -1030,7 +1030,7 @@ Client.prototype.test = async function() {
 
     }).catch((err) => {
         // TODO: this is depending on the "request" library. Should abstract this away
-        throw new SoapException({ request:err.options, response: err.response.body }, err.statusCode, "", err.error, undefined);
+        throw new CampaignException({ request:err.options, response: err.response.body }, err.statusCode, "", err.error, undefined);
     });
 }
 
@@ -1057,7 +1057,7 @@ Client.prototype.test = async function() {
         return result;
     }).catch((err) => {
         // TODO: this is depending on the "request" library. Should abstract this away
-        throw new SoapException({ request:err.options, response: err.response.body }, err.statusCode, "", err.error, undefined);
+        throw new CampaignException({ request:err.options, response: err.response.body }, err.statusCode, "", err.error, undefined);
     });
 }
 
@@ -1110,7 +1110,7 @@ Client.prototype.test = async function() {
         return result;
     }).catch((err) => {
         // TODO: this is depending on the "request" library. Should abstract this away
-        throw new SoapException({ request:err.options, response: err.response.body }, err.statusCode, "", err.error, undefined);
+        throw new CampaignException({ request:err.options, response: err.response.body }, err.statusCode, "", err.error, undefined);
     });
 }
 

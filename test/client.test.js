@@ -365,7 +365,8 @@ describe('ACC Client', function () {
             // in reality
             client._soapTransport.mockReturnValueOnce(Mock.GET_OPTION_MISSING_DATA_RESPONSE);
             await client.getOption("YY").catch(e => {
-                expect(e.name).toMatch('Error');
+                expect(e.statusCode).toBe(400);
+                expect(e.faultCode).toMatch('Missing parameter for method');
             });
         });
 

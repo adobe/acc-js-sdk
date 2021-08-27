@@ -27,12 +27,12 @@ _2021/07/29_
 * Support for non static method that mutate the object on which they apply. For instance, the xtk:queryDef#SelectAll
 * Added samples in the samples/ folder
 * Support of logon with session token only with sdk.ConnectionParameters.ofSessionToken
-* Error management. Return a proper SoapException upon failure with attributes that can be used to retreive error details (both http and soap)
+* Error management. Return a proper CampaignException upon failure with attributes that can be used to retreive error details (both http and soap)
 * Message Center API and examples
 * Added support for anonymous authentication via the "ofAnonymousUser" credentials function
 * Implement SDK functions for /r/test, /nl/jsp/ping.jsp, nl/jsp/mcPing.jsp (health check functions)
 * All HTTP request now add a user agent string identifying the SDK and it's version
-* SoapException has been improved to report errors on both SOAP and HTTP requests
+* CampaignException has been improved to report errors on both SOAP and HTTP requests
 
 _Breaking changes in 1.0.0_
 * The default representation is now `SimpleJson` instead of `BadgerFish`
@@ -41,7 +41,7 @@ _Breaking changes in 1.0.0_
 * Access to the `sessionInfo` object after `logon` can be done via the new `getSessionInfo` call
 * Options cache internal strucutre change: option values in the cache are now object litterals containing the option value, type, and raw value (which may not be casted to the expected type yet)
 * Connecting to mid-sourcing (or other Campaign instances which are defined by an external account) is now done with the `ConnectionParameters.ofExternalAccount` function. As a consequence, `getSecretKeyCipher` is now private and deprecated
-* SOAPException object signature changed (but was not previously exposed)
+* CampaignException object signature changed (but was not previously exposed)
 
 ---
 

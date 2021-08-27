@@ -55,7 +55,7 @@ const NS_XSI = "http://www.w3.org/2001/XMLSchema-instance";
 const NS_XSD = "http://www.w3.org/2001/XMLSchema";
 
 
-function SoapException(call, statusCode, faultCode, faultString, detail) {
+function CampaignException(call, statusCode, faultCode, faultString, detail, cause) {
 
     var methodCall = undefined;
     var methodName = undefined;
@@ -109,6 +109,7 @@ function SoapException(call, statusCode, faultCode, faultString, detail) {
         faultString = match[2];
     }
 
+    this.name = "CampaignException";
     this.message = message;
     this.statusCode = statusCode;
     this.methodCall = methodCall;
@@ -117,7 +118,24 @@ function SoapException(call, statusCode, faultCode, faultString, detail) {
     this.faultString = faultString;
     this.detail = detail;
     this.stack = (new Error()).stack;
+    this.cause = cause;
 }
+
+function makeCampaignException(call, err) {
+    if (err instanceof CampaignException)
+        return err;
+    const ctor = err.__proto__.constructor;
+    if (ctor && ctor.name == "DOMException") {
+        return new CampaignException(call, 500, err.code, `DOMException (${err.name})`, err.message, err);
+    }
+    const statusCode = err.statusCode || 500;
+    var error = err.error || err.message;
+    if (ctor && ctor.name && ctor.name != "")
+        error = `${ctor.name} (${error})`;
+    // TODO: this is depending on the "request" library. Should abstract this away
+    return new CampaignException(call, statusCode, "", error, undefined, err);
+}
+
   
 
 /**
@@ -327,11 +345,11 @@ SoapMethodCall.prototype.writeDocument = function(tag, document) {
 // This will check that the current element (which is the XML element for current returned value) matches the passed type
 SoapMethodCall.prototype._checkTypeMatch = function(type) {
     if (this.elemCurrent === null || this.elemCurrent === undefined) {
-        throw new SoapException(this, 400, `Missing parameter for method '${this.methodName}' of urn '${this.urn}'`);
+        throw new CampaignException(this, 400, `Missing parameter for method '${this.methodName}' of urn '${this.urn}'`);
     } else if ( type != "ns:Document") {
         var xsiType = this.elemCurrent.getAttribute("xsi:type");
         if (xsiType === null || xsiType === undefined || xsiType !== type) {
-            throw new SoapException(this, 400, `Parameter type mismatch for method '${this.methodName}' of urn '${this.urn}'. Expected '${type}', got '${xsiType}'`);
+            throw new CampaignException(this, 400, `Parameter type mismatch for method '${this.methodName}' of urn '${this.urn}'. Expected '${type}', got '${xsiType}'`);
         }
     }
 }
@@ -571,7 +589,7 @@ SoapMethodCall.prototype.execute = function(url) {
             const faultCode = DomUtil.findElement(that.elemCurrent, "faultcode").textContent;
             const faultString = DomUtil.findElement(that.elemCurrent, "faultstring").textContent;
             const detail = DomUtil.findElement(that.elemCurrent, "detail").textContent;
-            throw new SoapException(that, 500, faultCode, faultString, detail);
+            throw new CampaignException(that, 500, faultCode, faultString, detail);
         }
         // Set current element for subsequent calls to getNext* 
         while (that.elemCurrent) {
@@ -587,12 +605,7 @@ SoapMethodCall.prototype.execute = function(url) {
         }
     })
     .catch(function(err) {
-        if (err instanceof SoapException)
-            throw err;
-        else {
-            // TODO: this is depending on the "request" library. Should abstract this away
-            throw new SoapException(that, err.statusCode, "", err.error, undefined);
-        }
+        throw makeCampaignException(that, err);
     });
 }
 
@@ -611,4 +624,4 @@ SoapMethodCall.prototype.createElement = function(tagName) {
  * Public exports
  */
 exports.SoapMethodCall = SoapMethodCall;
-exports.SoapException = SoapException;
+exports.CampaignException = CampaignException;

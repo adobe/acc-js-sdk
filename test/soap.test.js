@@ -411,7 +411,7 @@ describe('SOAP', function() {
             const delegate = function(options) { return Promise.resolve(""); };
             const call = makeSoapMethodCall("xtk:session", "Date", "$session$", "$security$", delegate);
             return call.execute(URL).catch(e => {
-                expect(e.name).toMatch('SyntaxError');      // "" cannot be parsed as XML
+                expect(e.faultString).toMatch('SyntaxError');      // "" cannot be parsed as XML
             });
         });
 
@@ -419,7 +419,7 @@ describe('SOAP', function() {
             const delegate = function(options) { return Promise.resolve("{'this':'is', 'not':'xml'}"); };
             const call = makeSoapMethodCall("xtk:session", "Date", "$session$", "$security$", delegate);
             return call.execute(URL).catch(e => {
-                expect(e.name).toMatch('SyntaxError');      // cannot be parsed as XML
+                expect(e.faultString).toMatch('SyntaxError');      // cannot be parsed as XML
             });
         });
 
@@ -427,7 +427,7 @@ describe('SOAP', function() {
             const delegate = function(options) { return Promise.resolve(makeSOAPResponseWithNoBody()); };
             const call = makeSoapMethodCall("xtk:session", "Date", "$session$", "$security$", delegate);
             return call.execute(URL).catch(e => {
-                expect(e.name).toMatch('Error');      // body missing
+                expect(e.faultString).toMatch('Malformed SOAP response');      // body missing
             });
         });
 
@@ -435,7 +435,7 @@ describe('SOAP', function() {
             const delegate = function(options) { return Promise.resolve(makeSOAPResponseWithEmptyBody()); };
             const call = makeSoapMethodCall("xtk:session", "Date", "$session$", "$security$", delegate);
             return call.execute(URL).catch(e => {
-                expect(e.name).toMatch('Error');      // body present but empty
+                expect(e.faultString).toMatch('Malformed SOAP response');      // body present but empty
             });
         });
 
@@ -653,8 +653,8 @@ describe('SOAP', function() {
             };
             const call = makeSoapMethodCall("xtk:session", "Date", "$session$", "$security$", delegate);
             return call.execute(URL).catch(e => {
-                expect(e.faultcode).toMatch("-53");
-                expect(e.faultstring).toMatch("failed");
+                expect(e.faultCode).toBe("-53");
+                expect(e.faultString).toBe("failed");
             });
         });
     });
