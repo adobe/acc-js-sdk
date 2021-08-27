@@ -29,6 +29,10 @@ _2021/07/29_
 * Support of logon with session token only with sdk.ConnectionParameters.ofSessionToken
 * Error management. Return a proper SoapException upon failure with attributes that can be used to retreive error details (both http and soap)
 * Message Center API and examples
+* Added support for anonymous authentication via the "ofAnonymousUser" credentials function
+* Implement SDK functions for /r/test, /nl/jsp/ping.jsp, nl/jsp/mcPing.jsp (health check functions)
+* All HTTP request now add a user agent string identifying the SDK and it's version
+* SoapException has been improved to report errors on both SOAP and HTTP requests
 
 _Breaking changes in 1.0.0_
 * The default representation is now `SimpleJson` instead of `BadgerFish`

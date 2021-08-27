@@ -55,7 +55,33 @@ const NS_XSI = "http://www.w3.org/2001/XMLSchema-instance";
 const NS_XSD = "http://www.w3.org/2001/XMLSchema";
 
 
-function SoapException(soapMethodCall, statusCode, faultCode, faultString, detail) {
+function SoapException(call, statusCode, faultCode, faultString, detail) {
+
+    var methodCall = undefined;
+    var methodName = undefined;
+    if (call instanceof SoapMethodCall) {
+        methodCall = {
+            type: "SOAP",
+            urn: call.urn,
+            methodName: call.methodName,
+            request: call.request,
+            response: call.response
+        };
+        methodName = `${call.urn}#${call.methodName}`;
+    }
+    else {
+        // HTTP call
+        const index = call.request.url.indexOf('/');
+        const path = index == -1 ? call.request.url : call.request.url.substring(index+1);
+        methodCall = {
+            type: "HTTP",
+            urn: "",
+            methodName: path,
+            request: call.request,
+            response: call.response
+        };
+        methodName = path;
+    }
 
     faultString = faultString || "";
     if (faultString == "null" || faultString == "null\n") faultString = "";
@@ -72,7 +98,7 @@ function SoapException(soapMethodCall, statusCode, faultCode, faultString, detai
     else  if (detail != "")
         errorMessage = detail;
 
-    var message = `${statusCode} - Error${faultCode == "" ? "" : faultCode} calling method '${soapMethodCall.urn}#${soapMethodCall.methodName}': ${errorMessage}`;
+    var message = `${statusCode} - Error${faultCode == "" ? "" : faultCode} calling method '${methodName}': ${errorMessage}`;
 
     // Extract Campaign error code. For instance, the fault string may look like
     // "XSV-350013 The '193.104.215.11' IP address via which...", we extract the "XSV-350013" code
@@ -85,12 +111,7 @@ function SoapException(soapMethodCall, statusCode, faultCode, faultString, detai
 
     this.message = message;
     this.statusCode = statusCode;
-    this.soapCall = {
-        urn: soapMethodCall.urn,
-        methodName: soapMethodCall.methodName,
-        request: soapMethodCall.request,
-        response: soapMethodCall.response
-    };
+    this.methodCall = methodCall;
     this.errorCode = errorCode;
     this.faultCode = faultCode;
     this.faultString = faultString;
@@ -101,14 +122,16 @@ function SoapException(soapMethodCall, statusCode, faultCode, faultString, detai
 
 /**
  * Creates a SOAP call object
- * @param {*} urn Campaign method namespace, ex: "xtk:session"
- * @param {*} methodName Method name, ex: "Logon"
- * @param {*} sessionToken Campaign session token
- * @param {*} securityToken  Campaign security token
+ * @param {String} urn Campaign method namespace, ex: "xtk:session"
+ * @param {String} methodName Method name, ex: "Logon"
+ * @param {String} sessionToken Campaign session token
+ * @param {String} securityToken  Campaign security token
+ * @param {String} userAgentString The user agent string to use for HTTP requests
  */
-function SoapMethodCall(urn, methodName, sessionToken, securityToken) {
+function SoapMethodCall(urn, methodName, sessionToken, securityToken, userAgentString) {
     this.sessionToken = sessionToken || "";
     this.securityToken = securityToken || "";
+    this.userAgentString = userAgentString;
     this._initMessage(urn, methodName, SOAP_ENCODING_NATIVE);
 
     // Current DOM element for reading result (getNext* functions) 
@@ -491,6 +514,7 @@ SoapMethodCall.prototype._createHTTPRequest = function(url) {
         method: 'POST',
         headers: {
             'Content-type': 'application/soap+xml',
+            'User-Agent': this.userAgentString,
             'SoapAction': `${this.urn}#${this.methodName}`,
             'X-Security-Token': this.securityToken,
             'Cookie': '__sessiontoken=' + this.sessionToken

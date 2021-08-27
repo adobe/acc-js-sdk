@@ -22,10 +22,18 @@ const sdk = require('../src/index.js');
 const rt1_url = "http://accaepxl-rt1.rd.campaign.adobe.com:8080";
 const url = "http://accaepxl.rd.campaign.adobe.com:8080";
 const user = "admin";
-const password = "put password here}";
+const password = "put password here";
 
- function run(main) {
-  main.apply(this).then(() => {
+async function attempt(callback) {
+  try {
+    await callback();
+  } catch(ex) {
+    console.error(ex);
+  }
+}
+
+async function run(main) {
+  return main.apply(this).then(() => {
     console.log("Done.");
   })
   .catch((err) => {
@@ -33,7 +41,7 @@ const password = "put password here}";
   });
 }
 
-function logon(callback) {
+async function logon(callback) {
 
   var main = async () => {
     var version = sdk.getSDKVersion();
@@ -50,7 +58,7 @@ function logon(callback) {
     await client.logoff();
   };
 
-  run(main);
+  return run(main);
 }
 
 module.exports = {
@@ -60,6 +68,7 @@ module.exports = {
     rt1_url: rt1_url,
 
     run: run,
-    logon: logon  
+    logon: logon,
+    attempt: attempt
 };
 

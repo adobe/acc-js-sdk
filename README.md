@@ -75,6 +75,16 @@ Note that this authentication mode is very specific and does not actually perfor
 Another consequence is that the Application object will not be availeble in this case either.
 
 
+## Anonymous logon
+
+Several Campaign APIs are anonymous, i.e. do not require to actually logon to be used. For instance the "/r/test" API is anonymous. The SDK supports anonymous APIs but still need to be initialized with anonymous credentials as follows. Of course, anonymous APIs also work if you are logged on with a different method.
+
+```js
+const connectionParameters = sdk.ConnectionParameters.ofAnonymousUser(url);
+const client = await sdk.init(connectionParameters);
+```
+
+
 ## LogOn / LogOff
 
 The `sdk.init` call will not actually connect to Campaign, you can call the `logon` method for this.
@@ -395,11 +405,12 @@ If an API call fails (SOAP fault or HTTP error), a `SoapException` object is thr
 * `stack` the stack trace
 * `statusCode` a HTTP status code. In case of a SOAP fault, the status code will be 500
 * `errorCode` the Campaign error code if one is available (ex: XSV-350013)
-* `soapCall` the SOAP call which caused the error. It will contain the following attributes
-    * `urn` the SOAP call URN, i.e. the schema id
-    * `methodName` the name of the SOAP method
-    * `request` the raw SOAP request, as text
-    * `response` the raw SOAP response, as text
+* `methodCall` the SOAP call which caused the error. It will contain the following attributes
+    * `type` the type of the API call ("SOAP" or "HTTP")
+    * `urn` the SOAP call URN, i.e. the schema id. Will be empty for HTTP methods
+    * `methodName` the name of the SOAP method. For HTTP methods, the query path
+    * `request` the raw SOAP request, as text. For HTTP requests, this is an option object containing details about the request
+    * `response` the raw SOAP/HTTP response, as text
 * `faultCode` for SOAP faults, the Campaign error code
 * `faultString` the error message
 * `detail` optional additional details about the error
@@ -526,6 +537,68 @@ await midClient.NLWS.xtkSession.testCnx();
 console.log("Disconnecting from mid");
 await midClient.client.logoff();
 ```
+
+## Health check
+Campaign proposes several APIs for health check. Just like all APIs in the SDK, it's been wrapped into a function and will return a XML or JSON object depending on the current representation
+
+### /r/test
+This API is anonymous and run directly on the Apache front server. Note that this API will failed if called on a tomcat endpoint (port 8080)
+```js
+const test = await client.test();
+```
+
+will return
+```json
+{
+    "status":"OK",
+    "date":"2021-08-27 03:06:02.941-07",
+    "build":"9236",
+    "sha1":"cc45440",
+    "instance":"xxx_mkt_prod1",
+    "sourceIP":"193.104.215.11",
+    "host":"xxx.campaign.adobe.com",
+    "localHost":"xxx-mkt-prod1-1"
+}
+```
+
+Note: as this API is anonymous, one does not need to actually log on to Campaign to call it. Here's a full example. See the authentication section for more details about anonymous logon.
+```js
+const connectionParameters = sdk.ConnectionParameters.ofAnonymousUser("https://...");
+const client = await sdk.init(connectionParameters);
+const test = await client.test();
+```
+
+
+### ping
+The ping API is authenticated and will return a simple status code indicating the the Campaign server is running. It will also return the current database timestamp. The API itself will return plain text, but for convenience this has been wrapped into JSON / XML in the SDK
+```js
+const ping = await client.ping();
+```
+
+will return
+```json
+{
+    "status":"Ok",
+    "timestamp":"2021-08-27 12:51:56.088Z"
+}
+```
+
+### mcPing
+Message Center instances have a dedicated ping API which also returns the Message Center queue size and the maximum expected size (threshold). The API itself will return plain text, but for convenience this has been wrapped into JSON / XML in the SDK
+```js
+const ping = await client.mcPing();
+```
+
+will return
+```json
+{
+    "status":"Ok",
+    "timestamp":"2021-08-27 12:51:56.088Z",
+    "eventQueueSize":"7",
+    "eventQueueMaxSize":"400"
+}
+```
+
 
 # Configuration
 

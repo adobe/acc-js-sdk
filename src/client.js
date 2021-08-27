@@ -175,15 +175,15 @@ function transportWrapper(transport) {
 
 /**
  * Credentials to a Campaign instance. Encapsulats the various types of credentials
- * @param {string} type the credentials type. Supported types are "UserPassword" and "ImsServiceToken" and "SessionToken"
+ * @param {string} type the credentials type. Supported types are "UserPassword" and "ImsServiceToken" and "SessionToken" and "AnonymousUser"
  * @param {string} sessionToken the session token. It's exact form depends on the credentials type. For instance it can be "user/passord" for the "UserPassword" credentials type
  * @param {string} securityToken the security token. Will use an empty token if not specified
  */
 function Credentials(type, sessionToken, securityToken) {
-    if (type != "UserPassword" && type != "ImsServiceToken" && type != "SessionToken")
+    if (type != "UserPassword" && type != "ImsServiceToken" && type != "SessionToken" && type != "AnonymousUser")
         throw new Error(`Invalid credentials type '${type}`);
     this._type = type;
-    this._sessionToken = sessionToken;
+    this._sessionToken = sessionToken || "";
     this._securityToken = securityToken || "";
 }
 
@@ -284,6 +284,18 @@ ConnectionParameters.ofUserAndServiceToken = function(endpoint, user, serviceTok
 }
 
 /**
+ * Creates connection parameters for a Campaign instance for an anonymous user
+ * @param {string} endpoint The campaign endpoint (URL)
+ * @param {*} options connection options
+ * @returns {ConnectionParameters} a ConnectionParameters object which can be used to create a Client
+ */
+ ConnectionParameters.ofAnonymousUser = function(endpoint, options) {
+    const credentials = new Credentials("AnonymousUser", "", "");
+    return new ConnectionParameters(endpoint, credentials, options);
+}
+
+
+/**
  * Creates connection parameters for a Campaign instance, using an external account. This can be used to connect
  * to a mid-sourcing instance, or to a message center instance. This function will lookup the external account,
  * and use its credentials to get connection parameters to the corresponding Campaign instance
@@ -371,6 +383,14 @@ function Client(sdk, connectionParameters) {
 Client.SoapException = SoapException;
 
 /**
+ * Get the user agent string to use in all HTTP requests
+ */
+Client.prototype.getUserAgentString = function() {
+    const version = this.sdk.getSDKVersion();
+    return `${version.name}/${version.version} ${version.description}`;
+}
+
+/**
  * Convert an XML object into a representation
  * @param {DOMElement} xml the XML DOM element to convert
  * @param {string} representation the expected representation ('xml', 'BadgerFish', or 'SimpleJson'). If not set, will use the current representation
@@ -450,9 +470,12 @@ Client.prototype.traceSOAPCalls = function(trace) {
  * @returns {boolean} a boolean indicating if the client is logged or not
  */
 Client.prototype.isLogged = function() {
+    const credentialsType = this._connectionParameters._credentials._type;
+    if (credentialsType == "AnonymousUser")
+        return true;
 
     // with session token authentication, we do not expect a security token
-    const isSessionTokenAuth = this._connectionParameters._credentials._type == "SessionToken";
+    const isSessionTokenAuth = credentialsType == "SessionToken";
 
     return this._sessionToken !== null && 
            this._sessionToken !== undefined && 
@@ -506,7 +529,7 @@ Client.prototype.logon = function() {
     }
 
     const credentials = this._connectionParameters._credentials;
-    if (credentials._type == "SessionToken") {
+    if (credentials._type == "SessionToken" || credentials._type == "AnonymousUser") {
         that._sessionInfo = undefined;
         that._installedPackages = {};
         that._sessionToken = credentials._sessionToken;
@@ -572,13 +595,17 @@ Client.prototype.getSessionInfo = function(representation) {
 Client.prototype.logoff = function() {
     var that = this;
     if (!that.isLogged()) return;
-    var soapCall = that.prepareSoapCall("xtk:session", "Logoff");
-        return this.makeSoapCall(soapCall).then(function() {
-        that._sessionToken = "";
-        that._securityToken = "";
-        that.application = null;
-        soapCall.checkNoMoreArgs();
-    });
+    
+    const credentials = this._connectionParameters._credentials;
+    if (credentials._type != "SessionToken" && credentials._type != "AnonymousUser") {
+        var soapCall = that.prepareSoapCall("xtk:session", "Logoff");
+            return this.makeSoapCall(soapCall).then(function() {
+            that._sessionToken = "";
+            that._securityToken = "";
+            that.application = null;
+            soapCall.checkNoMoreArgs();
+        });
+    }
 }
 
 /**
@@ -984,6 +1011,108 @@ Client.prototype._callMethod = async function(methodName, callContext, parameter
     });
 }
 
+
+/**
+ * Wrapps the /r/test
+ */
+Client.prototype.test = async function() {
+    const that = this;
+    return request({
+        url: `${that._connectionParameters._endpoint}/r/test`, 
+        method: 'GET',
+        headers: {
+            'User-Agent': that.getUserAgentString()
+        }
+    }).then((body) => {
+        const xml = DomUtil.parse(body);
+        const result = that.toRepresentation(xml);
+        return result;
+
+    }).catch((err) => {
+        // TODO: this is depending on the "request" library. Should abstract this away
+        throw new SoapException({ request:err.options, response: err.response.body }, err.statusCode, "", err.error, undefined);
+    });
+}
+
+/**
+ * Wrapps the /nl/jsp/ping.jsp
+ */
+ Client.prototype.ping = async function() {
+    const that = this;
+    return request({
+        url: `${that._connectionParameters._endpoint}/nl/jsp/ping.jsp`, 
+        method: 'GET',
+        headers: {
+            'User-Agent': that.getUserAgentString(),
+            'X-Security-Token': that._securityToken,
+            'Cookie': '__sessiontoken=' + this._sessionToken
+        }
+    }).then((body) => {
+        const lines = body.split('\n');
+        const doc = DomUtil.newDocument("ping");
+        const root = doc.documentElement;
+        root.setAttribute("status", lines.length > 0 ? lines[0] : "undefined");
+        root.setAttribute("timestamp", lines.length > 1 ? lines[1] : "");
+        const result = that.toRepresentation(doc);
+        return result;
+    }).catch((err) => {
+        // TODO: this is depending on the "request" library. Should abstract this away
+        throw new SoapException({ request:err.options, response: err.response.body }, err.statusCode, "", err.error, undefined);
+    });
+}
+
+
+/**
+ * Wrapps the /nl/jsp/mcPing.jsp
+ */
+ Client.prototype.mcPing = async function() {
+    const that = this;
+    return request({
+        url: `${that._connectionParameters._endpoint}/nl/jsp/mcPing.jsp`, 
+        method: 'GET',
+        headers: {
+            'User-Agent': that.getUserAgentString(),
+            'X-Security-Token': that._securityToken,
+            'Cookie': '__sessiontoken=' + this._sessionToken
+        }
+    }).then((body) => {
+        const lines = body.split('\n');
+        const doc = DomUtil.newDocument("ping");
+        const root = doc.documentElement;
+        const status = lines.length > 0 ? lines[0] : "undefined";
+        root.setAttribute("status", status);
+        var rtCount = 0;
+        var threshold = 0;
+        if (status == "Error") {
+            const error = lines.length > 1 ? lines[1] : "";
+            root.setAttribute("error", error);
+            var index1 = error.indexOf('(');
+            var index2 = error.indexOf('/');
+            var index3 = error.indexOf(')');
+            if (index1 != -1 && index2 != -1 && index3 != -1) {
+                rtCount = error.substring(index+1, index2);
+                threshold = error.substring(index2+1, index3);
+            }
+        }
+        else {
+            root.setAttribute("timestamp", lines.length > 1 ? lines[1] : "");
+            const queue = lines.length > 2 ? lines[2] : "";
+            var index2 = queue.indexOf('/');
+            var index3 = queue.indexOf(' pending events');
+            if (index2 != -1 && index3 != -1) {
+                rtCount = queue.substring(0, index2);
+                threshold = queue.substring(index2+1, index3);
+            }
+        }
+        root.setAttribute("eventQueueSize", rtCount);
+        root.setAttribute("eventQueueMaxSize", threshold);
+        const result = that.toRepresentation(doc);
+        return result;
+    }).catch((err) => {
+        // TODO: this is depending on the "request" library. Should abstract this away
+        throw new SoapException({ request:err.options, response: err.response.body }, err.statusCode, "", err.error, undefined);
+    });
+}
 
 
 /**
