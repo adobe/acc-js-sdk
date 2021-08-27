@@ -59,28 +59,38 @@ function CampaignException(call, statusCode, faultCode, faultString, detail, cau
 
     var methodCall = undefined;
     var methodName = undefined;
-    if (call instanceof SoapMethodCall) {
-        methodCall = {
-            type: "SOAP",
-            urn: call.urn,
-            methodName: call.methodName,
-            request: call.request,
-            response: call.response
-        };
-        methodName = `${call.urn}#${call.methodName}`;
-    }
-    else {
-        // HTTP call
-        const index = call.request.url.indexOf('/');
-        const path = index == -1 ? call.request.url : call.request.url.substring(index+1);
-        methodCall = {
-            type: "HTTP",
-            urn: "",
-            methodName: path,
-            request: call.request,
-            response: call.response
-        };
-        methodName = path;
+    if (call) {
+        if (call instanceof SoapMethodCall) {
+            methodCall = {
+                type: "SOAP",
+                urn: call.urn,
+                methodName: call.methodName,
+                request: call.request,
+                response: call.response
+            };
+            methodName = `${call.urn}#${call.methodName}`;
+        }
+        else {
+            // HTTP call
+            var path = call.request.url;
+            var index = path.indexOf('://');
+            if (index >= 0) {
+                path = path.substring(index+3);
+                index = path.indexOf('/');
+                if (index >= 0)
+                    path = path.substring(index);
+                else
+                    path = "";
+            }
+            methodCall = {
+                type: "HTTP",
+                urn: "",
+                methodName: path,
+                request: call.request,
+                response: call.response
+            };
+            methodName = path;
+        }
     }
 
     faultString = faultString || "";
@@ -130,7 +140,9 @@ function makeCampaignException(call, err) {
     }
     const statusCode = err.statusCode || 500;
     var error = err.error || err.message;
-    if (ctor && ctor.name && ctor.name != "")
+    if (ctor.name == "String")
+        error = err;
+    else
         error = `${ctor.name} (${error})`;
     // TODO: this is depending on the "request" library. Should abstract this away
     return new CampaignException(call, statusCode, "", error, undefined, err);
@@ -625,3 +637,4 @@ SoapMethodCall.prototype.createElement = function(tagName) {
  */
 exports.SoapMethodCall = SoapMethodCall;
 exports.CampaignException = CampaignException;
+exports.makeCampaignException = makeCampaignException;

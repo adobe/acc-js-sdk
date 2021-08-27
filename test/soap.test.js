@@ -17,7 +17,7 @@ governing permissions and limitations under the License.
  * 
  *********************************************************************************/
 
-const SoapMethodCall = require('../src/soap.js').SoapMethodCall;
+const { SoapMethodCall, CampaignException, makeCampaignException } = require('../src/soap.js');
 const JSDOM = require("jsdom").JSDOM;
 const { DomUtil } = require('../src/dom.js');
 const assert = require('assert');
@@ -661,4 +661,75 @@ describe('SOAP', function() {
     
 });
 
-                
+
+describe("Campaign exception", () => {
+
+    it("Http errors", () => {
+        const err = {
+            statusCode: 504, 
+            error: "This call failed",
+            options: {
+                url: "http://test.com/r/test"
+            },
+            response: {
+                body: "Response body"
+            }
+        };
+        const ex = new CampaignException({ request:err.options, response: err.response.body }, err.statusCode, "", err.error, undefined);
+        expect(ex.name).toBe("CampaignException");
+        expect(ex.statusCode).toBe(504);
+        expect(ex.faultCode).toBe("");
+        expect(ex.errorCode).toBe("");
+        expect(ex.faultString).toBe("This call failed");
+        expect(ex.message).toBe("504 - Error calling method '/r/test': This call failed");
+        expect(ex.methodCall.type).toBe("HTTP");
+        expect(ex.methodCall.methodName).toBe("/r/test");
+    });
+
+    it('Default error message for 403 http code', () => {
+        const ex = new CampaignException(undefined, 403);
+        expect(ex.name).toBe("CampaignException");
+        expect(ex.statusCode).toBe(403);
+        expect(ex.faultString).toBe("Forbidden");
+    })
+
+    it('error message', () => {
+        expect(new CampaignException({ request:{ url:'/r/test' } }, 403).message).toBe("403 - Error calling method '/r/test': Forbidden");
+        expect(new CampaignException({ request:{ url:'/r/test' } }, 500).message).toBe("500 - Error calling method '/r/test': No error message was provided");
+        expect(new CampaignException({ request:{ url:'/r/test' } }, 500, undefined, "fault").message).toBe("500 - Error calling method '/r/test': fault");
+        expect(new CampaignException({ request:{ url:'/r/test' } }, 500, undefined, undefined, "detail").message).toBe("500 - Error calling method '/r/test': detail");
+        expect(new CampaignException({ request:{ url:'/r/test' } }, 500, undefined, "fault", "detail").message).toBe("500 - Error calling method '/r/test': fault. detail");
+    });
+
+    it("Should extract campaign code from fault string", () => {
+        expect(new CampaignException({ request:{ url:'/r/test' } }, 403, undefined, "Hello The '193.104.215.11' IP address via which...").errorCode).toBe("");
+        expect(new CampaignException({ request:{ url:'/r/test' } }, 403, undefined, "Hello The '193.104.215.11' IP address via which...").faultString).toBe("Hello The '193.104.215.11' IP address via which...");
+
+        expect(new CampaignException({ request:{ url:'/r/test' } }, 403, undefined, "XSV-350013 The '193.104.215.11' IP address via which...").errorCode).toBe("XSV-350013");
+        expect(new CampaignException({ request:{ url:'/r/test' } }, 403, undefined, "XSV-350013 The '193.104.215.11' IP address via which...").faultString).toBe("The '193.104.215.11' IP address via which...");
+    })
+
+    it("Should decode HTTP method name", () => {
+        expect(new CampaignException({ request:{ url:'/r/test' } }, 403).methodCall.methodName).toBe("/r/test");
+        expect(new CampaignException({ request:{ url:'http://hello.com/r/test' } }, 403).methodCall.methodName).toBe("/r/test");
+        expect(new CampaignException({ request:{ url:'http://hello.com:8080/r/test' } }, 403).methodCall.methodName).toBe("/r/test");
+        expect(new CampaignException({ request:{ url:'http://hello.com:8080' } }, 403).methodCall.methodName).toBe("");
+    });
+
+    it("Should ignore bogus fault strings", () => {
+        expect(new CampaignException(undefined, 500, undefined, "").faultString).toBe("");
+        expect(new CampaignException(undefined, 500, undefined, null).faultString).toBe("");
+        expect(new CampaignException(undefined, 500, undefined, undefined).faultString).toBe("");
+        expect(new CampaignException(undefined, 500, undefined, "null").faultString).toBe("");
+        expect(new CampaignException(undefined, 500, undefined, "null\n").faultString).toBe("");
+        expect(new CampaignException(undefined, 500, undefined, "Hello").faultString).toBe("Hello");
+    })
+
+    it("Should make Campaign exception if cause has no ctor", () => {
+        expect(makeCampaignException(undefined, "Hello").faultString).toBe("Hello");
+        expect(makeCampaignException(undefined, new Error("Hello")).faultString).toBe("Error (Hello)");
+    })
+    
+
+});
+

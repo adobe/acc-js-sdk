@@ -690,3 +690,18 @@ describe("CurrentLogin", () => {
         })
     })
 });
+
+
+describe("Application for anonymous users", () => {
+    it("Application objet should exist but will not have user/session info", async () => {
+        const client = await Mock.makeAnonymousClient();
+        expect(client.application).toBeNull();
+        await client.logon();
+        const application = client.application;
+        expect(application).not.toBeNull();
+        expect(application.buildNumber).toBeUndefined();
+        expect(application.instanceName).toBeUndefined();
+        expect(application.operator).toBeUndefined();
+        expect(application.package).toBeUndefined();
+    })
+});

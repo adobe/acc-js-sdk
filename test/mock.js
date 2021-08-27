@@ -18,6 +18,14 @@ governing permissions and limitations under the License.
  *********************************************************************************/
  const sdk = require('../src/index.js');
 
+ async function makeAnonymousClient(options) {
+    const connectionParameters = sdk.ConnectionParameters.ofAnonymousUser("http://acc-sdk:8080", options);
+    const client = await sdk.init(connectionParameters);
+    client._soapTransport = jest.fn();
+    //client.traceSOAPCalls(true);
+    return client;
+}
+
 async function makeClient(options) {
     const connectionParameters = sdk.ConnectionParameters.ofUserAndPassword("http://acc-sdk:8080", "admin", "admin", options);
     const client = await sdk.init(connectionParameters);
@@ -25,6 +33,17 @@ async function makeClient(options) {
     //client.traceSOAPCalls(true);
     return client;
 }
+
+const R_TEST = Promise.resolve(`<redir status='OK' date='2021-08-27 08:02:07.963-07' build='9236' sha1='cc45440' instance='xxx_mkt_prod1' sourceIP='193.104.215.11' host='xxxol.campaign.adobe.com' localHost='xxxol-mkt-prod1-1'/>`);
+const R_TEST_FAILED = Promise.reject({ statusCode: 504, error: "This call failed" });
+
+const PING = Promise.resolve("OK\n2021-08-27 15:43:48.862Z\n");
+const PING_FAILED = Promise.reject({ statusCode: 504, error: "This call failed" });
+
+const MC_PING = Promise.resolve("Ok\n2021-08-27 15:48:07.893Z\n7/400 pending events");
+const MC_PING_ERROR = Promise.resolve("Error\nThe queue is full (7/400)");
+
+const MC_PING_FAILED = Promise.reject({ statusCode: 504, error: "This call failed" });
 
 const LOGON_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
     <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:xtk:session' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
@@ -425,6 +444,27 @@ const GET_XTK_WORKFLOW_SCHEMA_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
     </SOAP-ENV:Body>
     </SOAP-ENV:Envelope>`);
 
+const GET_NMS_RTEVENT_SCHEMA_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
+<SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:wpp:default' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
+<SOAP-ENV:Body>
+    <GetEntityIfMoreRecentResponse xmlns='urn:wpp:default' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
+        <pdomDoc xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
+        <schema namespace="nms" name="rtEvent">
+            <element name="rtEvent"></element>
+            <methods>
+                <method name="PushEvent" static="true">
+                    <parameters>
+                        <param desc="Event." inout="in" name="event" type="DOMDocument"/>
+                        <param desc="Technical identifier of the inserted event" inout="out" name="id" type="int64"/>
+                    </parameters>
+                </method>      
+            </methods>
+        </schema>
+        </pdomDoc>
+    </GetEntityIfMoreRecentResponse>
+</SOAP-ENV:Body>
+</SOAP-ENV:Envelope>`);
+
 const GET_QUERY_EXECUTE_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
     <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:xtk:queryDef' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
     <SOAP-ENV:Body>
@@ -519,6 +559,14 @@ const GET_HELLO_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
  */
 exports.Mock = {
   makeClient: makeClient,
+  makeAnonymousClient: makeAnonymousClient,
+  R_TEST: R_TEST,
+  R_TEST_FAILED: R_TEST_FAILED,
+  PING: PING,
+  PING_FAILED: PING_FAILED,
+  MC_PING: MC_PING,
+  MC_PING_ERROR: MC_PING_ERROR,
+  MC_PING_FAILED: MC_PING_FAILED,
   LOGON_RESPONSE: LOGON_RESPONSE,
   LOGON_RESPONSE_NO_SESSIONTOKEN: LOGON_RESPONSE_NO_SESSIONTOKEN,
   LOGON_RESPONSE_NO_SECURITYTOKEN: LOGON_RESPONSE_NO_SECURITYTOKEN,
@@ -540,6 +588,7 @@ exports.Mock = {
   GET_USER_INFO_RESPONSE: GET_USER_INFO_RESPONSE,
   GET_MISSING_SCHEMA_RESPONSE: GET_MISSING_SCHEMA_RESPONSE,
   GET_XTK_WORKFLOW_SCHEMA_RESPONSE: GET_XTK_WORKFLOW_SCHEMA_RESPONSE,
+  GET_NMS_RTEVENT_SCHEMA_RESPONSE: GET_NMS_RTEVENT_SCHEMA_RESPONSE,
   GET_QUERY_EXECUTE_RESPONSE: GET_QUERY_EXECUTE_RESPONSE,
   GET_GETDOCUMENT_RESPONSE: GET_GETDOCUMENT_RESPONSE,
   GET_GETELEMENT_RESPONSE: GET_GETELEMENT_RESPONSE,

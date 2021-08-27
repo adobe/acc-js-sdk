@@ -606,6 +606,11 @@ Client.prototype.logoff = function() {
             soapCall.checkNoMoreArgs();
         });
     }
+    else {
+        that._sessionToken = "";
+        that._securityToken = "";
+        that.application = null;
+    }
 }
 
 /**
@@ -1017,7 +1022,7 @@ Client.prototype._callMethod = async function(methodName, callContext, parameter
  */
 Client.prototype.test = async function() {
     const that = this;
-    return request({
+    return that._soapTransport({
         url: `${that._connectionParameters._endpoint}/r/test`, 
         method: 'GET',
         headers: {
@@ -1039,7 +1044,7 @@ Client.prototype.test = async function() {
  */
  Client.prototype.ping = async function() {
     const that = this;
-    return request({
+    return that._soapTransport({
         url: `${that._connectionParameters._endpoint}/nl/jsp/ping.jsp`, 
         method: 'GET',
         headers: {
@@ -1051,8 +1056,13 @@ Client.prototype.test = async function() {
         const lines = body.split('\n');
         const doc = DomUtil.newDocument("ping");
         const root = doc.documentElement;
-        root.setAttribute("status", lines.length > 0 ? lines[0] : "undefined");
-        root.setAttribute("timestamp", lines.length > 1 ? lines[1] : "");
+        const status = lines[0].trim();
+        if (status != "") root.setAttribute("status", status);
+
+        if (lines.length > 1) {
+            const timestamp = lines[1].trim();
+            if (timestamp != "") root.setAttribute("timestamp", timestamp);
+        }
         const result = that.toRepresentation(doc);
         return result;
     }).catch((err) => {
@@ -1067,7 +1077,7 @@ Client.prototype.test = async function() {
  */
  Client.prototype.mcPing = async function() {
     const that = this;
-    return request({
+    return that._soapTransport({
         url: `${that._connectionParameters._endpoint}/nl/jsp/mcPing.jsp`, 
         method: 'GET',
         headers: {
@@ -1079,10 +1089,11 @@ Client.prototype.test = async function() {
         const lines = body.split('\n');
         const doc = DomUtil.newDocument("ping");
         const root = doc.documentElement;
-        const status = lines.length > 0 ? lines[0] : "undefined";
-        root.setAttribute("status", status);
-        var rtCount = 0;
-        var threshold = 0;
+        var status = lines[0].trim();
+        if (status != "") root.setAttribute("status", status);
+        
+        var rtCount = undefined;
+        var threshold = undefined;
         if (status == "Error") {
             const error = lines.length > 1 ? lines[1] : "";
             root.setAttribute("error", error);
@@ -1090,27 +1101,32 @@ Client.prototype.test = async function() {
             var index2 = error.indexOf('/');
             var index3 = error.indexOf(')');
             if (index1 != -1 && index2 != -1 && index3 != -1) {
-                rtCount = error.substring(index+1, index2);
+                rtCount = error.substring(index1+1, index2);
                 threshold = error.substring(index2+1, index3);
             }
         }
         else {
-            root.setAttribute("timestamp", lines.length > 1 ? lines[1] : "");
-            const queue = lines.length > 2 ? lines[2] : "";
-            var index2 = queue.indexOf('/');
-            var index3 = queue.indexOf(' pending events');
-            if (index2 != -1 && index3 != -1) {
-                rtCount = queue.substring(0, index2);
-                threshold = queue.substring(index2+1, index3);
+            if (lines.length > 1) {
+                const timestamp = lines[1].trim();
+                if (timestamp != "") root.setAttribute("timestamp", timestamp);
+            }
+            if (lines.length > 2) {
+                const queue = lines[2];
+                var index2 = queue.indexOf('/');
+                var index3 = queue.indexOf(' pending events');
+                if (index2 != -1 && index3 != -1) {
+                    rtCount = queue.substring(0, index2);
+                    threshold = queue.substring(index2+1, index3);
+                }
             }
         }
-        root.setAttribute("eventQueueSize", rtCount);
-        root.setAttribute("eventQueueMaxSize", threshold);
+        if (rtCount !== undefined && rtCount.trim() != "") root.setAttribute("eventQueueSize", rtCount);
+        if (threshold !== undefined && rtCount.trim() != "") root.setAttribute("eventQueueMaxSize", threshold);
         const result = that.toRepresentation(doc);
         return result;
     }).catch((err) => {
         // TODO: this is depending on the "request" library. Should abstract this away
-        throw new CampaignException({ request:err.options, response: err.response.body }, err.statusCode, "", err.error, undefined);
+        throw new CampaignException({ request:err.options, response: err.response.body }, err.statusCode, "", err.error, undefined, err);
     });
 }
 

@@ -1258,4 +1258,276 @@ describe('ACC Client', function () {
             }).rejects.toThrow("Dummy");
         });
     });
+
+    describe("Logon with session token", () => {
+        // With session token logon, the session token is passed by the caller, and therefore the will be no "Logon" call
+      
+        it("Should create logged client", async() => {
+            const connectionParameters = sdk.ConnectionParameters.ofSessionToken("http://acc-sdk:8080", "mc/");
+            const client = await sdk.init(connectionParameters);
+            client._soapTransport = jest.fn();
+            expect(client.isLogged()).toBeFalsy();
+            await client.logon();
+            expect(client.isLogged()).toBeTruthy();
+            await client.logoff();
+            expect(client.isLogged()).toBeFalsy();
+        })
+    })
+
+
+    describe("Anonymous login", () => {
+        // With anonymous login, one is always logged
+      
+        it("Should create anonymous client", async() => {
+            const connectionParameters = sdk.ConnectionParameters.ofAnonymousUser("http://acc-sdk:8080");
+            const client = await sdk.init(connectionParameters);
+            client._soapTransport = jest.fn();
+            expect(client.isLogged()).toBeTruthy();
+            await client.logon();
+            expect(client.isLogged()).toBeTruthy();
+            await client.logoff();
+            expect(client.isLogged()).toBeTruthy();
+        })
+    })
+
+    it("User agent string", async () => {
+        const client = await Mock.makeClient();
+        const ua = client.getUserAgentString();
+        expect(ua.startsWith("@adobe/acc-js-sdk/")).toBeTruthy();
+        expect(ua.endsWith(" ACC Javascript SDK")).toBeTruthy();
+    })
+
+
+    describe("PushEvent API", () => {
+        it("Should generate the corect document root", async () => {
+            const client = await Mock.makeClient();
+            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+
+            client._soapTransport.mockReturnValueOnce(Mock.GET_NMS_RTEVENT_SCHEMA_RESPONSE);
+            client._soapTransport.mockImplementationOnce(options => {
+                const doc = DomUtil.parse(options.body);
+                const body = DomUtil.findElement(doc.documentElement, "SOAP-ENV:Body");
+                const method = DomUtil.getFirstChildElement(body);
+                const event = DomUtil.findElement(method, "event");
+                const rtEvent = DomUtil.findElement(event, "rtEvent");
+                if (!rtEvent)
+                    throw new Error("Did not find 'rtEvent' node");
+                if (rtEvent.getAttribute("type") != "welcome")
+                    throw new Error("Did not find 'type' attribute with 'welcome' value");
+
+                return Promise.resolve(`<?xml version='1.0'?>
+                        <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:nms:rtEvent' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
+                        <SOAP-ENV:Body>
+                        <PushEventResponse xmlns='urn:nms:rtEvent' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
+                        <plId xsi:type='xsd:long'>72057594039155998</plId>
+                        </PushEventResponse>
+                        </SOAP-ENV:Body>
+                        </SOAP-ENV:Envelope>`);
+            });
+            await client.NLWS.nmsRtEvent.pushEvent({
+                wishedChannel: 0,
+                type: "welcome",
+                email: "aggmorin@gmail.com",
+                ctx: {
+                  $firstName: "Alex"
+                }
+              });
+
+            client._soapTransport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
+            await client.NLWS.xtkSession.logoff();
+        });
+    });
+
+    describe("/r/test API", () => {
+        it("Should call test API", async () => {
+            const client = await Mock.makeClient();
+            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+
+            client._soapTransport.mockReturnValueOnce(Mock.R_TEST);
+            const test = await client.test();
+            expect(test.build).toBe("9236");
+            expect(test.date).toBe("2021-08-27 08:02:07.963-07");
+            expect(test.host).toBe("xxxol.campaign.adobe.com");
+            expect(test.instance).toBe("xxx_mkt_prod1");
+            expect(test.localHost).toBe("xxxol-mkt-prod1-1");
+            expect(test.sha1).toBe("cc45440");
+            expect(test.sourceIP).toBe("193.104.215.11");
+            expect(test.status).toBe("OK");
+
+            client._soapTransport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
+            await client.NLWS.xtkSession.logoff();
+        });
+
+        it("Should fail to call test API", async () => {
+            const client = await Mock.makeClient();
+            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+
+            client._soapTransport.mockReturnValueOnce(Mock.R_TEST_FAILED);
+            expect(async () => {
+                return client.test();
+            }).rejects.toThrow("CampaignException");
+
+            client._soapTransport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
+            await client.NLWS.xtkSession.logoff();
+        });
+    })
+
+    describe("/nl/jsp/ping.jsp API", () => {
+        it("Should call ping API", async () => {
+            const client = await Mock.makeClient();
+            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+
+            client._soapTransport.mockReturnValueOnce(Mock.PING);
+            const ping = await client.ping();
+            expect(ping.status).toBe("OK");
+            expect(ping.timestamp).toBe("2021-08-27 15:43:48.862Z");
+
+            client._soapTransport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
+            await client.NLWS.xtkSession.logoff();
+        });
+
+        it("Truncated result from ping API", async () => {
+            const client = await Mock.makeClient();
+            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+
+            client._soapTransport.mockReturnValueOnce(Promise.resolve("OK"));
+            var ping = await client.ping();
+            expect(ping.status).toBe("OK");
+            expect(ping.timestamp).toBeUndefined();
+
+
+            client._soapTransport.mockReturnValueOnce(Promise.resolve("OK\n"));
+            var ping = await client.ping();
+            expect(ping.status).toBe("OK");
+            expect(ping.timestamp).toBeUndefined();
+
+            client._soapTransport.mockReturnValueOnce( Promise.resolve(""));
+            var ping = await client.ping();
+            expect(ping.status).toBeUndefined();
+            expect(ping.timestamp).toBeUndefined();
+
+            client._soapTransport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
+            await client.NLWS.xtkSession.logoff();
+        });
+
+        it("Should fail to call ping API", async () => {
+            const client = await Mock.makeClient();
+            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+
+            client._soapTransport.mockReturnValueOnce(Mock.PING_FAILED);
+            expect(async () => {
+                return client.ping();
+            }).rejects.toThrow("CampaignException");
+
+            client._soapTransport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
+            await client.NLWS.xtkSession.logoff();
+        });
+
+    });
+
+    describe("/nl/jsp/mcPing.jsp API", () => {
+        it("Should call mcPing API", async () => {
+            const client = await Mock.makeClient();
+            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+
+            client._soapTransport.mockReturnValueOnce(Mock.MC_PING);
+            const ping = await client.mcPing();
+            expect(ping.status).toBe("Ok");
+            expect(ping.timestamp).toBe("2021-08-27 15:48:07.893Z");
+            expect(ping.eventQueueSize).toBe("7");
+            expect(ping.eventQueueMaxSize).toBe("400");
+
+            client._soapTransport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
+            await client.NLWS.xtkSession.logoff();
+        });
+
+        it("Should return an error", async () => {
+            const client = await Mock.makeClient();
+            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+
+            client._soapTransport.mockReturnValueOnce(Mock.MC_PING_ERROR);
+            const ping = await client.mcPing();
+            expect(ping.status).toBe("Error");
+            expect(ping.timestamp).toBeUndefined();
+            expect(ping.eventQueueSize).toBe("7");
+            expect(ping.eventQueueMaxSize).toBe("400");
+
+            client._soapTransport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
+            await client.NLWS.xtkSession.logoff();
+        });
+
+        it("Should fail to call ping API", async () => {
+            const client = await Mock.makeClient();
+            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+
+            client._soapTransport.mockReturnValueOnce(Mock.MC_PING_FAILED);
+            expect(async () => {
+                return client.mcPing();
+            }).rejects.toThrow("CampaignException");
+
+            client._soapTransport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
+            await client.NLWS.xtkSession.logoff();
+        });
+
+
+        it("Truncated result from mcping API", async () => {
+            const client = await Mock.makeClient();
+            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+
+            client._soapTransport.mockReturnValueOnce(Promise.resolve("OK"));
+            var ping = await client.mcPing();
+            expect(ping.status).toBe("OK");
+            expect(ping.timestamp).toBeUndefined();
+            expect(ping.eventQueueSize).toBeUndefined();
+            expect(ping.eventQueueMaxSize).toBeUndefined();
+
+            client._soapTransport.mockReturnValueOnce(Promise.resolve("OK\n"));
+            var ping = await client.mcPing();
+            expect(ping.status).toBe("OK");
+            expect(ping.timestamp).toBeUndefined();
+            expect(ping.eventQueueSize).toBeUndefined();
+            expect(ping.eventQueueMaxSize).toBeUndefined();
+
+            client._soapTransport.mockReturnValueOnce(Promise.resolve("OK\n\n"));
+            var ping = await client.mcPing();
+            expect(ping.status).toBe("OK");
+            expect(ping.timestamp).toBeUndefined();
+            expect(ping.eventQueueSize).toBeUndefined();
+            expect(ping.eventQueueMaxSize).toBeUndefined();
+
+            client._soapTransport.mockReturnValueOnce(Promise.resolve("OK\n\n7/"));
+            var ping = await client.mcPing();
+            expect(ping.status).toBe("OK");
+            expect(ping.timestamp).toBeUndefined();
+            expect(ping.eventQueueSize).toBeUndefined();
+            expect(ping.eventQueueMaxSize).toBeUndefined();
+
+            client._soapTransport.mockReturnValueOnce( Promise.resolve(""));
+            var ping = await client.mcPing();
+            expect(ping.status).toBeUndefined();
+            expect(ping.timestamp).toBeUndefined();
+            expect(ping.eventQueueSize).toBeUndefined();
+            expect(ping.eventQueueMaxSize).toBeUndefined();
+
+            client._soapTransport.mockReturnValueOnce( Promise.resolve("Error"));
+            var ping = await client.mcPing();
+            expect(ping.status).toBe("Error");
+            expect(ping.timestamp).toBeUndefined();
+            expect(ping.eventQueueSize).toBeUndefined();
+            expect(ping.eventQueueMaxSize).toBeUndefined();
+
+            client._soapTransport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
+            await client.NLWS.xtkSession.logoff();
+        });
+    });
 });
