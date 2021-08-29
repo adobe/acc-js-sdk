@@ -25,8 +25,13 @@ const XtkCaster = require('./xtkCaster.js').XtkCaster;
 const { Client, Credentials, ConnectionParameters } = require('./client.js');
 
 /**
+ * @namespace Campaign
+ */
+
+/**
  * Returns a Client interface which allows you to logon on to an ACC instance and call SOAP methods
  *
+ * @memberof Campaign
  * @param {ConnectionParameters} connectionParameters. Use ConnectionParameters.ofUserAndPassword for example
  * @return {Promise<Client>} an ACC client object
  */
@@ -40,11 +45,13 @@ async function init (connectionParameters) {
  * @property {string} version - the version of the SDK (example: "1.0.0")
  * @property {string} name - the name of the npm package ("@adobe/acc-js-sdk")
  * @property {string} description - the version of the SDK (example: "ACC JavaScript SDK")
+ * @memberOf Campaign
  */
 
 /**
  * Get client SDK version
- * @returns {SDKVersion} an object containing information about the SDK, such as it's name, version, etc.
+ * @memberof Campaign
+ * @returns {Campaign.SDKVersion} an object containing information about the SDK, such as it's name, version, etc.
  */
 function getSDKVersion() {
     return {
@@ -69,6 +76,7 @@ function getSDKVersion() {
  * <p>
  * The function can be used in a tagged string litterals like this: "var expr = escapeXtk`@name=${hello}`"
  * <p>
+ * @memberof Campaign
  * @param {string|string[]} p1 is the text to escape. If the text is null or undefined, it will be handled as an empty string. when using the escapeXtk for a tagged string litteral, this parameter is the array of constant values in the template.
  * @param {undefined|string[]} p2 when using the escapeXtk for a tagged string litteral, this parameter is the array of expression values in the template.
  * @returns {string} the escaped and quoted (simple quotes) text.
@@ -100,9 +108,7 @@ function escapeXtk(p1, ...p2)
     return str;
 }
 
-/**
- * Public exports
- */
+// Public exports
 module.exports = {
     init: init,
     getSDKVersion: getSDKVersion,

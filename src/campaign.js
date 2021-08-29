@@ -20,9 +20,7 @@ governing permissions and limitations under the License.
 // Ignore constant definitions from coverage
 /* istanbul ignore file */
 
-/**
- * Public exports
- */
+// Public exports
 
 exports.WORKFLOW_STATE_EDITION     = 0;
 exports.WORKFLOW_STATE_RUNNING     = 2;

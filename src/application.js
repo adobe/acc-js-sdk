@@ -19,7 +19,10 @@ governing permissions and limitations under the License.
  *********************************************************************************/
 const XtkCaster = require('./xtkCaster.js').XtkCaster;
 const EntityAccessor = require('./entityAccessor.js').EntityAccessor;
- 
+
+/**
+ * @namespace Campaign
+ */
 
 // ========================================================================================
 // Helper functions
@@ -30,10 +33,14 @@ isAttributeName = function(name) { return name.length > 0 && name[0] == '@'; }
 
 
 /**
-  * Creates a schema object
+  * Creates a schema object from an XML representation
+  * This function is not intended to be used publicly.
   * 
+  * @private
   * @param {DOMElement|DOMDocument} xml the XML document or element representing the schema
-  * @returns {Schema} a schema object
+  * @returns {XtkSchema} a schema object
+  * @see {@link XtkSchema}
+  * @memberof Campaign
   */
 function newSchema(xml) {
     if (xml.nodeType == 9) xml = xml.documentElement;       // Document -> element
@@ -64,20 +71,44 @@ function newSchema(xml) {
 // 
 // ========================================================================================
 
+/**
+ * Represents an element of a XPath
+ * 
+ * @private
+ * @class
+ * @constructor
+ * @param {string} pathElement the element as a string
+ * @memberof XML
+ */
 function XPathElement(pathElement) {
     if (pathElement == null || pathElement == undefined || pathElement.trim() == "")
         throw new Error(`Invalid empty xpath element`);
     this._pathElement = pathElement;
 }
 
+/**
+ * Tests if the XPath element represents the current node ("self" or ".")
+ * @returns {boolean} a boolean indicating if the element represents the current node
+ * @memberof XML.XPathElement
+ */
 XPathElement.prototype.isSelf = function() {
     return this._pathElement == ".";
 }
 
+/**
+ * Tests if the XPath element represents the parent node ("..")
+ * @returns {boolean} a boolean indicating if the element represents the parent node
+ * @memberof XML.XPathElement
+ */
 XPathElement.prototype.isParent = function() {
     return this._pathElement == "..";
 }
 
+/**
+ * Get the string representation of the XPath element
+ * @returns {string} the XPath element as a string
+ * @memberof XML.XPathElement
+ */
 XPathElement.prototype.asString = function() {
     return this._pathElement;
 }
@@ -86,10 +117,24 @@ XPathElement.prototype.toString = function() {
     return this.asString();
 }
 
+/**
+ * Represents a XPath
+ * 
+ * @private
+ * @class
+ * @constructor
+ * @param {string} path the XPath, as a string
+ * @memberof XML
+ */
 function XPath(path) {
     this._path = (path || "").trim();
 }
 
+/**
+ * Get the string representation of the XPath
+ * @returns {string} the XPath as a string
+ * @memberof XML.XPath
+ */
 XPath.prototype.asString = function() {
     return this._path;
 }
@@ -98,25 +143,46 @@ XPath.prototype.toString = function() {
     return this.asString();
 }
 
+/**
+ * Tests if the XPath is empty ("")
+ * @returns {boolean} a boolean indicating whether the XPath is empty or not
+ * @memberof XML.XPath
+ */
 XPath.prototype.isEmpty = function() {
     return this._path.length == 0;
 }
 
-XPath.prototype.isAbsolute = function() {
+/**
+ * Tests if the XPath is an absolute XPath (starts with "/")
+ * @returns {boolean} a boolean indicating whether the XPath is an absolute XPath or not
+ * @memberof XML.XPath
+ */
+ XPath.prototype.isAbsolute = function() {
     return this._path.length > 0 && this._path[0] == '/';
 }
 
-XPath.prototype.isSelf = function() {
+/**
+ * Tests if the XPath represents the current node ("self" or ".")
+ * @returns {boolean} a boolean indicating whether the XPath is the current node
+ * @memberof XML.XPath
+ */
+ XPath.prototype.isSelf = function() {
     return this._path == ".";
 }
 
-XPath.prototype.isRootPath = function() {
+/**
+ * Tests if the XPath represents the root node ("/")
+ * @returns {boolean} a boolean indicating whether the XPath is the root node
+ * @memberof XML.XPath
+ */
+ XPath.prototype.isRootPath = function() {
     return this._path == "/";
 }
 
 /**
  * Get an array of the elements making up the path
  * @returns {XPathElement[]} an array of XPath elements, which may be empty. Will never be null or undefined.
+ * @memberof XML.XPath
  */
 XPath.prototype.getElements = function() {
     const elements = [];
@@ -135,7 +201,8 @@ XPath.prototype.getElements = function() {
 /**
  * Get an XPath representing a relative path corresponding to the path. In other words, removing
  * the starting "/" if there is one
- * @returns {XPath}
+ * @returns {XPath} the relative XPaht
+ * @memberof XML.XPath
  */
 XPath.prototype.getRelativePath = function() {
     if (!this.isAbsolute()) return this;
@@ -146,6 +213,17 @@ XPath.prototype.getRelativePath = function() {
 // Keys
 // ========================================================================================
 
+/**
+ * A key in a schema
+ * 
+ * @private
+ * @class
+ * @constructor
+ * @param {Campaign.XtkSchema} schema
+ * @param {} xml
+ * @param {Campaign.XtkSchemaNode} schemaNode
+ * @memberof Campaign
+ */
 XtkSchemaKey = function(schema, xml, schemaNode) {
     this.schema = schema;
     this.name = EntityAccessor.getAttributeAsString(xml, "name");
@@ -167,22 +245,102 @@ XtkSchemaKey = function(schema, xml, schemaNode) {
 // Schema nodes
 // ========================================================================================
 
+/**
+ * A Schema Node (CXtkNodeDef). Schemas are a hierarchy of nodes. The top-level node (i.e. the
+ * schema itself is also a node). The "root" node is the first child node having the same name
+ * as the schema itself
+ * 
+ * @private
+ * @class
+ * @constructor
+ * @param {Campaign.XtkSchema} schema The schema this node belongs to
+ * @param {Campaign.XtkSchemaNode} parentNode the parent node, can be undefined for the schema top level node (the schema itself)
+ * @param {boolean} isAttribute indicates whether the node is an attribute node or an element node
+ * @memberof Campaign
+ */
 XtkSchemaNode = function(schema, xml, parentNode, isAttribute) {
+
+    /**
+     * The schema the node belongs to
+     * @type {XtkSchema}
+     */
     this.schema = schema;
+    /**
+     * The parent node
+     * @type {XtkSchemaNode}
+     */
     this.parent = parentNode;
+    /**
+     * Indicates if the node is an attribute or not (element or schema itself)
+     * @type {boolean}
+     */
     this.isAttribute = isAttribute;
+    /**
+     * The attribute or the node name (without the "@" sign for attributes)
+     * @type {string}
+     */
     this.name = (this.isAttribute ? "@" : "") + EntityAccessor.getAttributeAsString(xml, "name");
+    /**
+     * A human friendly name for the node. If the node is the schema node, the label will be in the plural form and "labelSingular"
+     * should be used for the singular form
+     * @type {string}
+     */
     this.label = EntityAccessor.getAttributeAsString(xml, "label");
+    /**
+     * A long description of the node
+     * @type {string}
+     */
     this.description = EntityAccessor.getAttributeAsString(xml, "desc");
+    /**
+     * An optional image for the node
+     * @type {string}
+     */
     this.img = EntityAccessor.getAttributeAsString(xml, "img");
+    /**
+     * The node type
+     * @type {string}
+     */
     this.type = EntityAccessor.getAttributeAsString(xml, "type");
+    /**
+     * The node data length (applicable for string-types only)
+     * @type {number}
+     */
     this.length = EntityAccessor.getAttributeAsLong(xml, "length");
+    /**
+     * "ref" attribute of the node, which references another node
+     * @type {string}
+     */
     this.ref = EntityAccessor.getAttributeAsString(xml, "ref");
+    /**
+     * Children of the node. This is a object whose key are the names of the children nodes (without the "@"
+     * character for attributes) 
+     * @type {Object.<string, Campaign.XtkSchemaNode>}
+     */
     this.children = {};
+    /**
+     * Count the children of a node
+     * @type {number}
+     */
     this.childrenCount = 0;
+    /**
+     * Indicates if the node is the root node, i.e. the first child node of the schema, whose name is the same as the schema name
+     * @type {boolean}
+     */
     this.isRoot = this.parent && !this.parent.parent && this.parent.name == this.name;
+    /**
+     * A user desciption of the node, in the form "label (name)"
+     * @type {string}
+     */
     this.userDescription = (this.label == "" || this.label == this.name) ? this.name : `${this.label} (${this.name})`;
+    /**
+     * Schema root elements may have a list of keys. This is a dictionary whose names are the key names and values the keys
+     * @type {Object<string, XtkSchemaKey>}
+     */
     this.keys = {};
+    /**
+     * The full path of the node
+     * @type {string}
+     */
     this.nodePath = this._getNodePath(true)._path;
 
     // Children (elements and attributes)
@@ -209,6 +367,13 @@ XtkSchemaNode = function(schema, xml, parentNode, isAttribute) {
     }
 }
 
+/**
+ * Does the node have a child with the given name?
+ * 
+ * @param {string} name the child name, without the "@" character for attributes
+ * @returns {boolean} a boolean indicating whether the node contains a child with the given name
+ * @memberof Campaign.XtkSchemaNode
+ */
 XtkSchemaNode.prototype.hasChild = function(name) {
     var child = this.children[name];
     if (child) return true;
@@ -218,8 +383,14 @@ XtkSchemaNode.prototype.hasChild = function(name) {
     return false;
 }
 
-// Return node path in schema definition
-// See CXtkNodeDef::GetNodePath
+/**
+ * Computes the path of a node
+ * 
+ * @private
+ * @param {boolean} absolute indicates whether to compute an absolute path or a relative path (default)
+ * @returns {string} the node path
+ * @memberof Campaign.XtkSchemaNode
+ */
 XtkSchemaNode.prototype._getNodePath = function(absolute) {
     if (absolute === undefined) absolute = true;
     var path = !this.parent ? this.name : "";
@@ -245,11 +416,12 @@ XtkSchemaNode.prototype._getNodePath = function(absolute) {
 /**
  * Returns an instance of XtkSchemaNode or null if the node doesn't exist and the mustExist parameter is set to false.
  *
- * @param {XPath|string} path XPath represents the name of the node to be searched
+ * @param {XML.XPath|string} path XPath represents the name of the node to be searched
  * @param {boolean} strict indicates whether (strict to false) or not, when the name of the last item in the path does not exist as is, it should be searched for as an attribute or an element. By default to true.
  * @param {boolean} mustExist indicates whether an exception must be raised if the node does not exist. true by default
  * @returns Returns a XtkSchemaNode instance if the node can be found, or null if the mustExist parameter is set to false.
- 
+ * @throws {Error} if the request cannot be find (when mustExist is set)
+ * @memberof Campaign.XtkSchemaNode
 */
 XtkSchemaNode.prototype.findNode = function(path, strict, mustExist) {
     if (strict === undefined) strict = true;
@@ -331,24 +503,108 @@ XtkSchemaNode.prototype._getChildDefAutoExpand = function(name, mustExist) {
 // Enumerations
 // ========================================================================================
 
+/**
+ * @typedef {('string'|'byte'|'short'|'long'|'boolean')} XtkEnumerationType
+ * @memberOf Campaign 
+ * 
+ * @typedef {('sql'|'textFile'|'xmlFile'|'binaryFile')} XtkSchemaMappingType
+ * @memberOf Campaign 
+ */
+
+
+/**
+ * A system enumeration value
+ * 
+ * @private
+ * @class
+ * @constructor
+ * @param {XML.XtkObject} The enumeration value definition
+ * @param {Campaign.XtkEnumerationType} baseType the enumeration type (often "string" or "byte")
+ * @memberof Campaign
+ */
 function XtkEnumerationValue(xml, baseType) {
+    /**
+     * The value (unique) name
+     * @type {string}
+     */
     this.name = EntityAccessor.getAttributeAsString(xml, "name");
+    /**
+     * A human friendly name describing the enumeration value
+     * @type {string}
+     */
     this.label = EntityAccessor.getAttributeAsString(xml, "label");
-    this.description = EntityAccessor.getAttributeAsString(xml, "desc");
+    /**
+     * A human friendly long description of the value
+     * @type {string}
+     */
+     this.description = EntityAccessor.getAttributeAsString(xml, "desc");
+     /**
+     * The value image (if any) or an empty string
+     * @type {string}
+     */
     this.image = EntityAccessor.getAttributeAsString(xml, "img");
+    /**
+     * The value "enabledIf" expression, or an empty string
+     * @type {string}
+     */
     this.enabledIf = EntityAccessor.getAttributeAsString(xml, "enabledIf");
+    /**
+     * The value "applicableIf" expression, or an empty string
+     * @type {string}
+     */
     this.applicableIf = EntityAccessor.getAttributeAsString(xml, "applicableIf");
     const stringValue = EntityAccessor.getAttributeAsString(xml, "value");
+    /**
+     * The enumeration value, casted according to the enumeration type
+     * @type {*}
+     */
     this.value = XtkCaster.as(stringValue, baseType);
 }
 
+/**
+ * A system enumeration 
+ * 
+ * @private
+ * @class
+ * @constructor
+ * @param {XML.XtkObject} xml the enumeration definition
+ * @memberof Campaign
+ */
 function XtkEnumeration(xml) {
+    /**
+     * The system enumeration name
+     * @type {string}
+     */
     this.name = EntityAccessor.getAttributeAsString(xml, "name");
+    /**
+     * A human friendly name for the system enumeration
+     * @type {string}
+     */
     this.label = EntityAccessor.getAttributeAsString(xml, "label");
+    /**
+     * A human friendly long description of the enumeration
+     * @type {string}
+     */
     this.description = EntityAccessor.getAttributeAsString(xml, "desc");
+    /**
+     * The type of the enumeration
+     * @type {Campaign.XtkEnumerationType}
+     */
     this.baseType = EntityAccessor.getAttributeAsString(xml, "basetype");
+    /**
+     * The default value of the enumeration
+     * @type {Campaign.XtkEnumerationValue}
+     */
     this.default = null;
+    /**
+     * Indicates if the enumeration has an image, i.e. if any of its values has an image
+     * @type {boolean}
+     */
     this.hasImage = false;
+    /**
+     * The enumerations values 
+     * @type {Object<string, Campaign.XtkEnumerationValue>}
+     */
     this.values = {};
 
     var defaultValue = EntityAccessor.getAttributeAsString(xml, "default");
@@ -367,15 +623,59 @@ function XtkEnumeration(xml) {
 // Schemas
 // ========================================================================================
 
+/**
+ * A schema
+ * 
+ * @private
+ * @class
+ * @constructor
+ * @augments Campaign.XtkSchemaNode
+ * @param {XML.XtkObject} xml the schema definition
+ * @memberof Campaign
+ */
 function XtkSchema(xml) {
     XtkSchemaNode.call(this, this, xml);          // inherits from NodeDef
+    /**
+     * The namespace of the schema
+     * @type {string}
+     */
     this.namespace = EntityAccessor.getAttributeAsString(xml, "namespace");
+    /**
+     * The schema id, in the form "namespace:name"
+     * @type {string}
+     */
     this.id = `${this.namespace}:${this.name}`;
+    /**
+     * Indicates whether the schema is a library schema or not
+     * @type {boolean}
+     */
     this.isLibrary = EntityAccessor.getAttributeAsBoolean(xml, "library");
+    /**
+     * A human name for the schema, in singular
+     * @type {string}
+     */
     this.labelSingular = EntityAccessor.getAttributeAsString(xml, "labelSingular");
+    /**
+     * The schema mappgin type, following the xtk:srcSchema:mappingType enumeration
+     * @type {Campaign.XtkSchemaMappingType}
+     */
     this.mappingType = EntityAccessor.getAttributeAsString(xml, "mappingType");
+    /**
+     * The schema definition
+     * @private
+     * @type {XML.XtkObject}
+     */
     this.xml = xml;
+    /**
+     * The schema root node, if it has one, i.e. the first child whose name matches the schema name
+     * @type {Campaign.XtkSchemaNode}
+     */
     this.root = this.children[this.name];
+    /**
+     * Enumerations in this schema, as a dictionary whose keys are enumeration names and values are the
+     * corresponding enumeration definitions
+     * @type {Object<string, XtkEnumeration>}
+     */
     this.enumerations = {};
 
     for (child of EntityAccessor.getChildElements(xml, "enumeration")) {
@@ -384,8 +684,17 @@ function XtkSchema(xml) {
     }
 }
 
+// Inherits from XtkSchemaNode
 XtkSchema.prototype = Object.create(XtkSchemaNode.prototype);
 
+/**
+ * Internal recursive function used to create a multi-line debug string representing the schema
+ * 
+ * @private
+ * @param {string} indent indentation string, will be "" for the first, level, "   " for the next level, etc.
+ * @returns {string} a multi-line string representing the schema definition in a human readable form for troubleshooting purposes
+ * @memberof Campaign.XtkSchema
+ */
 XtkSchemaNode.prototype.toString = function(indent) {
     indent = indent || "";
     var s = `${indent}${this.userDescription}\n`;
@@ -395,6 +704,12 @@ XtkSchemaNode.prototype.toString = function(indent) {
     return s;
 }
 
+/**
+ * Creates a multi-line debug string representing the schema
+ * 
+ * @returns {string} a multi-line string representing the schema definition in a human readable form for troubleshooting purposes
+ * @memberof Campaign.XtkSchema
+ */
 XtkSchema.prototype.toString = function() {
     var s =  `${this.userDescription}\n`;
     //s = s + `   enumerations: [${enumerations}]`
@@ -409,11 +724,41 @@ XtkSchema.prototype.toString = function() {
 // Current Login
 // ========================================================================================
 
+/**
+ * Represents the currently logged operator. Do not create directly, this is available
+ * as the sdk.application.operator variable
+ * 
+ * @private
+ * @class
+ * @constructor
+ * @param {XML.XtkObject} userInfo the user info object as returned from the xtk:session#Logon call
+ * @memberof Campaign
+ */
 function CurrentLogin(userInfo) {
+    /**
+     * The operator login name
+     * @type {string}
+     */
     this.login = EntityAccessor.getAttributeAsString(userInfo, "login");
+    /**
+     * The operator login id
+     * @type {number}
+     */
     this.id = EntityAccessor.getAttributeAsLong(userInfo, "loginId");
+    /**
+     * A human friendly string naming the operator (compute string)
+     * @type {string}
+     */
     this.computeString = EntityAccessor.getAttributeAsString(userInfo, "loginCS");
+    /**
+     * The operator timezone
+     * @type {string}
+     */
     this.timezone = EntityAccessor.getAttributeAsString(userInfo, "timezone");
+    /**
+     * The llist of operator rights
+     * @type {string[]}
+     */
     this.rights = [];
     this._rightsSet = {};
     for (child of EntityAccessor.getChildElements(userInfo, "login-right")) {
@@ -423,11 +768,25 @@ function CurrentLogin(userInfo) {
     }
 }
 
+/**
+ * Tests if the operator has a given named right
+ * 
+ * @param {string} name the access right name
+ * @returns {boolean} a boolean indicating whether the operator has the given right or not
+ * @memberof Campaign.CurrentLogin
+ */
 CurrentLogin.prototype.hasRight = function(name) {
     return !!this._rightsSet[name];
 }
 
-// For testing
+/**
+ * Creates a current login object for testing purposes
+ * 
+ * @private
+ * @param {XML.XtkObject} userInfo the user info object as returned from the xtk:session#Logon call 
+ * @returns the CurrentLogin object corresponding to the passed object
+ * @memberof Campaign
+ */
 function newCurrentLogin(userInfo) {
     return new CurrentLogin(userInfo);
 }
@@ -436,6 +795,14 @@ function newCurrentLogin(userInfo) {
 // Application
 // ========================================================================================
 
+/**
+ * The Application object provides access to certain properties of the Campaign server.
+ * 
+ * @class
+ * @constructor
+ * @param {Campaign.Client} client The Campaign Client from which this Application object is created
+ * @memberof Campaign
+ */
 function Application(client) {
     this.client = client;
     const info = this.client.getSessionInfo();
@@ -443,10 +810,26 @@ function Application(client) {
     // no "sessionInfo" object
     if (info) {
         const serverInfo = EntityAccessor.getElement(info, "serverInfo");
+        /**
+         * The server build number
+         * @type {string}
+         */
         this.buildNumber = EntityAccessor.getAttributeAsString(serverInfo, "buildNumber");
+        /**
+         * The Campaign instance name
+         * @type {string}
+         */
         this.instanceName = EntityAccessor.getAttributeAsString(serverInfo, "instanceName");
         const userInfo = EntityAccessor.getElement(info, "userInfo");
+        /**
+         * The logged operator
+         * @type {Campaign.CurrentLogin}
+         */
         this.operator = new CurrentLogin(userInfo);
+        /**
+         * The list of installed packages
+         * @type {string[]}
+         */
         this.packages = [];
         for (var p of EntityAccessor.getChildElements(userInfo, "installed-package")) {
             this.packages.push(`${EntityAccessor.getAttributeAsString(p, "namespace")}:${EntityAccessor.getAttributeAsString(p, "name")}`);
@@ -457,8 +840,11 @@ function Application(client) {
 /**
  * Get a schema by id. This function returns an XtkSchema object or null if the schema is not found.
  * Using the `XtkSchema` API makes it easier to navigate schemas than using a plain XML or JSON object
+ * 
  * @param {string} schemaId 
- * @returns {XtkSchema} the schema, or null if the schema was not found
+ * @returns {Campaign.XtkSchema} the schema, or null if the schema was not found
+ * @method
+ * @memberof Campaign.Application
  */
 Application.prototype.getSchema = async function(schemaId) {
     const xml = await this.client.getSchema(schemaId, "xml");
@@ -467,6 +853,13 @@ Application.prototype.getSchema = async function(schemaId) {
     return newSchema(xml);
 }
 
+/**
+ * Tests if a package is installed or not
+ * 
+ * @param {string} name the package name
+ * @returns {boolean} a boolean indicating whether the package is installed or not
+ * @memberof Campaign.Application
+ */
 Application.prototype.hasPackage = function(name) {
     for (var p of this.packages) {
         if (p == name) return true;
@@ -475,9 +868,7 @@ Application.prototype.hasPackage = function(name) {
 }
 
 
-/**
- * Public exports
- */
+// Public exports
 exports.Application = Application;
 
 // For tests

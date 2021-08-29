@@ -33,6 +33,7 @@ _2021/07/29_
 * Implement SDK functions for /r/test, /nl/jsp/ping.jsp, nl/jsp/mcPing.jsp (health check functions)
 * All HTTP request now add a user agent string identifying the SDK and it's version
 * CampaignException has been improved to report errors on both SOAP and HTTP requests
+* Added full jsdoc documentation of the SDK (run with `npm run jsdoc`)
 
 _Breaking changes in 1.0.0_
 * The default representation is now `SimpleJson` instead of `BadgerFish`

@@ -17,11 +17,21 @@ governing permissions and limitations under the License.
  * 
  *********************************************************************************/
 
- var crypto = require('crypto');
+var crypto = require('crypto');
+
+/**
+ * @namespace Campaign
+ */
 
 /**
  * Creates the encryption/decryption object
- * @param {String} key is the encryption key, coming from the XtkSecretKey or XtkKey option
+ * 
+ * @private
+ * @deprecated
+ * @class
+ * @constructor
+ * @param {string} key is the encryption key, coming from the XtkSecretKey or XtkKey option
+ * @memberof Campaign
  */
 function Cipher(key) {
     // ex: "llL97E5mAvLTxgT1fsAH2kjLqZXKCGHfDyR9q0C6Ivs="
@@ -31,8 +41,12 @@ function Cipher(key) {
 
 /**
  * Encrypts a password
+ * 
+ * @private
+ * @deprecated
  * @param {string} password it the password to encrypt
  * @returns {string} the encrypted password
+ * @memberof Campaign.Cipher
  */
 Cipher.prototype.encryptPassword = function(password) {
     const cipher = crypto.createCipheriv('aes-256-cbc', this.key, this.iv);
@@ -50,8 +64,12 @@ Cipher.prototype.encryptPassword = function(password) {
 /**
  * Decrypts a password (such as an external account password)
  * Corresponds to the Campaign `decryptPassword` implemented in jst.cpp
- * @param {String} password is the password to decrypt
- * @returns {String} the decrypted password
+
+ * @private
+ * @deprecated
+ * @param {string} password is the password to decrypt
+ * @returns {string} the decrypted password
+ * @memberof Campaign.Cipher
  * 
  * {marker} @
  *  {base64}

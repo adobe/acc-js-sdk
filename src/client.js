@@ -32,12 +32,34 @@ const request = require('request-promise-native');
 const Application = require('./application.js').Application;
 const EntityAccessor = require('./entityAccessor.js').EntityAccessor;
 
+/**
+ * @namespace Campaign
+ * 
+ * @typedef {Object} SessionInfo
+ * @memberOf Campaign
+ * 
+ * @typedef {Object} RedirStatus
+ * @memberOf Campaign
+ * 
+ * @typedef {Object} PingStatus
+ * @memberOf Campaign
+ * 
+ * @typedef {Object} McPingStatus
+ * @memberOf Campaign
+ */
 
 /**
- * Java Script Proxy handler for XtkObject. An XTK object is one constructed with the following syntax:
- *      NLWS.xtkQueryDef.create(...)
+ * Java Script Proxy handler for an XTK object. An XTK object is one constructed with the following syntax:
+ * 
+ * <code>
+ * NLWS.xtkQueryDef.create(...)
+ * </code>
+ * 
  * Any Xtk methods can be called directly on such an object using this proxy handler which will lookup
  * the method definition and manage parameters marshalling and SOAP call
+ * 
+ * @private
+ * @memberof Campaign
  */
 const xtkObjectHandler = {
     get: function(callContext, methodName) {
@@ -62,7 +84,13 @@ const xtkObjectHandler = {
 /**
  * Java Script Proxy handler for NLWS. 
  * The proxy resolves constructs such as
- *     result = await client.NLWS.xtkSession.getServerTime();
+ * 
+ * <code>
+ * result = await client.NLWS.xtkSession.getServerTime();
+ * </code>
+ *
+ * @private
+ * @memberof Campaign
  */
 const clientHandler = {
     get: function(client, namespace) {
@@ -124,6 +152,10 @@ const clientHandler = {
 /**
  * Wraps the transport for SOAP calls. The transport is a function taking a request (options)
  * and returning a promise. When resolved, the promise returns the request result
+ * 
+ * @private
+ * @param {Request} transport the transport layer, or an request (see request-promise-native)
+ * @memberof Campaign
  */
 function transportWrapper(transport) {
     const browser = !!this._browser;
@@ -174,10 +206,16 @@ function transportWrapper(transport) {
 // ========================================================================================
 
 /**
- * Credentials to a Campaign instance. Encapsulats the various types of credentials
+ * Credentials to a Campaign instance. Encapsulates the various types of credentials.
+ * Do not create directly, use one of the methods in ConnectionParameters
+ * 
+ * @class
+ * @constructor
+ * @private
  * @param {string} type the credentials type. Supported types are "UserPassword" and "ImsServiceToken" and "SessionToken" and "AnonymousUser"
  * @param {string} sessionToken the session token. It's exact form depends on the credentials type. For instance it can be "user/passord" for the "UserPassword" credentials type
  * @param {string} securityToken the security token. Will use an empty token if not specified
+ * @memberof Campaign
  */
 function Credentials(type, sessionToken, securityToken) {
     if (type != "UserPassword" && type != "ImsServiceToken" && type != "SessionToken" && type != "AnonymousUser")
@@ -189,7 +227,10 @@ function Credentials(type, sessionToken, securityToken) {
 
 /**
  * For "UserPassword" type credentials, return the user name
+ * 
+ * @private
  * @returns {string} the user name
+ * @memberof Campaign.Credentials
  */
 Credentials.prototype._getUser = function() {
     if (this._type != "UserPassword")
@@ -200,7 +241,10 @@ Credentials.prototype._getUser = function() {
 
 /**
  * For "UserPassword" type credentials, return the user password
+ * 
+ * @private
  * @returns {string} the user password
+ * @memberof Campaign.Credentials
  */
  Credentials.prototype._getPassword = function() {
     if (this._type != "UserPassword")
@@ -217,9 +261,13 @@ Credentials.prototype._getUser = function() {
 /**
  * Creates a connection parameters object which can be used to create a Client object
  * to connect to a Campaign instance
+ * 
+ * @class
+ * @constructor
  * @param {string} endpoint The campaign endpoint (URL)
  * @param {Credentials} credentials The credentials for the connection
  * @param {*} options connection options. Currently only contains a "representation" attribute which controls what type of entities (xml or json) the SDK handles
+ * @memberof Campaign
  */
 function ConnectionParameters(endpoint, credentials, options) {
     // Default value
@@ -247,11 +295,13 @@ function ConnectionParameters(endpoint, credentials, options) {
 
 /**
  * Creates connection parameters for a Campaign instance, using a user name and password
+ * 
  * @param {string} endpoint The campaign endpoint (URL)
  * @param {string} user The user name
  * @param {string} password The user password
  * @param {*} options connection options
  * @returns {ConnectionParameters} a ConnectionParameters object which can be used to create a Client
+ * @memberof Campaign.ConnectionParameters
  */
 ConnectionParameters.ofUserAndPassword = function(endpoint, user, password, options) {
     const credentials = new Credentials("UserPassword", `${user}/${password}`, "");
@@ -260,23 +310,28 @@ ConnectionParameters.ofUserAndPassword = function(endpoint, user, password, opti
 
 /**
  * Creates connection parameters for a Campaign instance, using an IMS service token and a user name (the user to impersonate)
+ * 
  * @param {string} endpoint The campaign endpoint (URL)
  * @param {string} user The user name
  * @param {string} serviceToken The IMS service token
  * @param {*} options connection options
  * @returns {ConnectionParameters} a ConnectionParameters object which can be used to create a Client
+ * @memberof Campaign.ConnectionParameters
  */
-ConnectionParameters.ofUserAndServiceToken = function(endpoint, user, serviceToken, options) {
+ ConnectionParameters.ofUserAndServiceToken = function(endpoint, user, serviceToken, options) {
     const credentials = new Credentials("ImsServiceToken", `_ims_/${user}/${serviceToken}`, "");
     return new ConnectionParameters(endpoint, credentials, options);
 }
 
 /**
  * Creates connection parameters for a Campaign instance, using a session token
+ * 
+ * @static
  * @param {string} endpoint The campaign endpoint (URL)
  * @param {string} sessionToken The session token
  * @param {*} options connection options
  * @returns {ConnectionParameters} a ConnectionParameters object which can be used to create a Client
+ * @memberof Campaign.ConnectionParameters
  */
  ConnectionParameters.ofSessionToken = function(endpoint, sessionToken, options) {
     const credentials = new Credentials("SessionToken", sessionToken, "");
@@ -285,9 +340,11 @@ ConnectionParameters.ofUserAndServiceToken = function(endpoint, user, serviceTok
 
 /**
  * Creates connection parameters for a Campaign instance for an anonymous user
+ * 
  * @param {string} endpoint The campaign endpoint (URL)
  * @param {*} options connection options
  * @returns {ConnectionParameters} a ConnectionParameters object which can be used to create a Client
+ * @memberof Campaign.ConnectionParameters
  */
  ConnectionParameters.ofAnonymousUser = function(endpoint, options) {
     const credentials = new Credentials("AnonymousUser", "", "");
@@ -299,11 +356,13 @@ ConnectionParameters.ofUserAndServiceToken = function(endpoint, user, serviceTok
  * Creates connection parameters for a Campaign instance, using an external account. This can be used to connect
  * to a mid-sourcing instance, or to a message center instance. This function will lookup the external account,
  * and use its credentials to get connection parameters to the corresponding Campaign instance
+ * 
  * @param {Client} client The Campaign Client from which to lookup the external account (normally, a connected client to the marketing instance)
  * @param {string} extAccountName The name of the external account. Only mid-sourcing accounts (type 3) are supported
  * @returns {ConnectionParameters} a ConnectionParameters object which can be used to create a Client
+ * @memberof Campaign.ConnectionParameters
  */
-ConnectionParameters.ofExternalAccount = async function(client, extAccountName) {
+ ConnectionParameters.ofExternalAccount = async function(client, extAccountName) {
     var queryDef = {
         "schema": "nms:extAccount",
         "operation": "get",
@@ -348,10 +407,15 @@ ConnectionParameters.ofExternalAccount = async function(client, extAccountName) 
 // ========================================================================================
 
 /**
- * ACC API Client
+ * ACC API Client.
+ * Do not create directly, use SDK.init instead
  * 
- * @param {SDK} sdk is the global sdk object used to create the client
- * @param {ConnectionParameters} user user name, for instance admin
+ * @private
+ * @class
+ * @constructor
+ * @param {Campaign.SDK} sdk is the global sdk object used to create the client
+ * @param {Campaign.ConnectionParameters} user user name, for instance admin
+ * @memberof Campaign
  */
 function Client(sdk, connectionParameters) {
     this.sdk = sdk;
@@ -375,8 +439,21 @@ function Client(sdk, connectionParameters) {
     this._browser = typeof window !== 'undefined';
 
     // expose utilities
+
+    /** 
+     * Accessor to DOM helpers
+     * @type {XML.DomUtil}
+     */
     this.DomUtil = DomUtil;
-    this.XtkCaster = XtkCaster;
+    /** 
+     * Accessor to a XtkCaster
+     * @type {XtkCaster}
+     */
+     this.XtkCaster = XtkCaster;
+     /**
+      * The application object. Only valid when logged
+      * @type {Campaign.Application}
+      */
     this.application = null;
 }
 
@@ -384,6 +461,9 @@ Client.CampaignException = CampaignException;
 
 /**
  * Get the user agent string to use in all HTTP requests
+ * 
+ * @returns {string} the user agent string
+ * @memberof Campaign.Client
  */
 Client.prototype.getUserAgentString = function() {
     const version = this.sdk.getSDKVersion();
@@ -392,9 +472,12 @@ Client.prototype.getUserAgentString = function() {
 
 /**
  * Convert an XML object into a representation
+ * 
+ * @private
  * @param {DOMElement} xml the XML DOM element to convert
  * @param {string} representation the expected representation ('xml', 'BadgerFish', or 'SimpleJson'). If not set, will use the current representation
- * @returns {DOMElement|JSON} the object converted in the requested representation
+ * @returns {XML.XtkObject} the object converted in the requested representation
+ * @memberof Campaign.Client
  */
 Client.prototype.toRepresentation = function(xml, representation) {
     representation = representation || this._representation;
@@ -411,10 +494,13 @@ Client.prototype.toRepresentation = function(xml, representation) {
 
 /**
  * Convert to an XML object from a representation
+ * 
+ * @private
  * @param {string} rootName the name of the root XML element
- * @param {DOMElement|JSON} entity the object to convert
+ * @param {XML.XtkObject} entity the object to convert
  * @param {string} representation the expected representation ('xml', 'BadgerFish', or 'SimpleJson'). If not set, will use the current representation
  * @returns {DOMElement} the object converted to XML
+ * @memberof Campaign.Client
  */
  Client.prototype.fromRepresentation = function(rootName, entity, representation) {
     representation = representation || this._representation;
@@ -429,10 +515,13 @@ Client.prototype.toRepresentation = function(xml, representation) {
 
 /**
  * Convert between 2 representations
- * @param {DOMElement|JSON} entity the object to convert
+ * 
+ * @private
+ * @param {XML.XtkObject} entity the object to convert
  * @param {string} fromRepresentation the source representation ('xml', 'BadgerFish', or 'SimpleJson').
  * @param {string} toRepresentation the target representation ('xml', 'BadgerFish', or 'SimpleJson'). If not set, will use the current representation
  * @returns {DOMElement} the converted object
+ * @memberof Campaign.Client
  */
 Client.prototype.convertToRepresentation = function(entity, fromRepresentation, toRepresentation) {
     toRepresentation = toRepresentation || this._representation;
@@ -445,9 +534,12 @@ Client.prototype.convertToRepresentation = function(entity, fromRepresentation, 
 
 /**
  * Compare two representations
+ * 
+ * @private
  * @param {string} rep1 the first representation ('xml', 'BadgerFish', or 'SimpleJson')
  * @param {string} rep2 the second representation ('xml', 'BadgerFish', or 'SimpleJson')
  * @returns a boolean indicating if the 2 representations are the same or not
+ * @memberof Campaign.Client
  */
 Client.prototype.isSameRepresentation = function(rep1, rep2) {
     if (!rep1 || !rep2) throw new Error(`Undefined representation: cannot compare`);
@@ -459,17 +551,25 @@ Client.prototype.isSameRepresentation = function(rep1, rep2) {
 
 /**
  * Activate / deactivate tracing of SOAP calls
+ * 
  * @param {boolean} trace indicates whether to activate tracing or not
+ * @memberof Campaign.Client
  */
 Client.prototype.traceSOAPCalls = function(trace) {
-    this._traceSOAPCalls = trace;
+    this._traceSOAPCalls = !!trace;
 }
 
 /**
  * Is the client logged?
+ * 
  * @returns {boolean} a boolean indicating if the client is logged or not
+ * @memberof Campaign.Client
  */
 Client.prototype.isLogged = function() {
+    if (!this._connectionParameters || !this._connectionParameters._credentials)
+        return false;
+
+    // If using anonymous credentials => always logged
     const credentialsType = this._connectionParameters._credentials._type;
     if (credentialsType == "AnonymousUser")
         return true;
@@ -488,10 +588,13 @@ Client.prototype.isLogged = function() {
 
 /**
  * Prepares a SOAP call, including authentication, headers...
- * @param urn is the API name space, usually the schema. For instance xtk:session
- * @param method is the method to call, for instance Logon
- * @return a SoapMethodCall which have been initialized with security tokens... and to which the method
+ * 
+ * @private
+ * @param {string} urn is the API name space, usually the schema. For instance xtk:session
+ * @param {string} method is the method to call, for instance Logon
+ * @return {SOAP.SoapMethodCall} a SoapMethodCall which have been initialized with security tokens... and to which the method
  * parameters should be set
+ * @memberof Campaign.Client
  */
 Client.prototype.prepareSoapCall = function(urn, method) {
     const soapCall = new SoapMethodCall(urn, method, this._sessionToken, this._securityToken);
@@ -502,8 +605,10 @@ Client.prototype.prepareSoapCall = function(urn, method) {
 /**
  * After a SOAP method call has been prepared with 'prepareSoapCall', and parameters have been added,
  * this function actually executes the SOAP call
- * @param soapCall
- * @throws Exception
+ * 
+ * @private
+ * @param {SOAP.SoapMethodCall} soapCall the SOAP method to call
+ * @memberof Campaign.Client
  */
 Client.prototype.makeSoapCall = function(soapCall) {
     const requiresLogon = !(soapCall.urn === "xtk:session" && soapCall.methodName === "Logon");
@@ -515,6 +620,8 @@ Client.prototype.makeSoapCall = function(soapCall) {
 
 /**
  * Login to an instance
+ * 
+ * @memberof Campaign.Client
  */
 Client.prototype.logon = function() {
     const that = this;
@@ -584,6 +691,13 @@ Client.prototype.logon = function() {
     }
 }
 
+/**
+ * Get details about the session (assumes client is logged)
+ * 
+ * @param {string} representation the expected representation. If not set, will use the default client representation
+ * @returns {Campaign.SessionInfo} details about the session
+ * @memberof Campaign.Client
+ */
 Client.prototype.getSessionInfo = function(representation) {
     representation = representation || this._representation;
     return this.toRepresentation(this._sessionInfo, representation);
@@ -591,6 +705,8 @@ Client.prototype.getSessionInfo = function(representation) {
 
 /**
  * Logs off from an instance to which one previous logged on using the "logon" call
+ * 
+ * @memberof Campaign.Client
  */
 Client.prototype.logoff = function() {
     var that = this;
@@ -615,9 +731,11 @@ Client.prototype.logoff = function() {
 
 /**
  * Get the value of an option
- * @param name is the option name, for instance XtkDatabaseId
- * @param useCache
+ * 
+ * @param {string} name is the option name, for instance XtkDatabaseId
+ * @param {boolean} useCache indicates whether to use the cache or not. Default is true
  * @return the option value, casted in the expected data type. If the option does not exist, it will return null.
+ * @memberof Campaign.Client
  */
 Client.prototype.getOption = async function(name, useCache = true) {
     var value = undefined;
@@ -634,10 +752,11 @@ Client.prototype.getOption = async function(name, useCache = true) {
 /**
  * Set an option value. Creates the option if it does not exists. Update the option
  * if it exists already
+ * 
  * @param {string} name the option name
  * @param {*} rawValue the value to set
  * @param {string} description the optional description of the option
- * @returns 
+ * @memberof Campaign.Client
  */
 Client.prototype.setOption = async function(name, rawValue, description) {
     // First, read the current option value to make sure we have the right type
@@ -666,6 +785,8 @@ Client.prototype.setOption = async function(name, rawValue, description) {
 
 /**
  * Clears the options cache
+ * 
+ * @memberof Campaign.Client
  */
 Client.prototype.clearOptionCache = function() {
     this._optionCache.clear();
@@ -673,6 +794,8 @@ Client.prototype.clearOptionCache = function() {
 
 /**
  * Clears the method cache
+ * 
+ * @memberof Campaign.Client
  */
 Client.prototype.clearMethodCache = function() {
     this._methodCache.clear();
@@ -680,13 +803,17 @@ Client.prototype.clearMethodCache = function() {
 
 /**
  * Clears the entity cache
+ * 
+ * @memberof Campaign.Client
  */
 Client.prototype.clearEntityCache = function() {
     this._entityCache.clear();
 }
 
 /**
- * Clears all caches
+ * Clears all caches (options, methods, entities)
+ * 
+ * @memberof Campaign.Client
  */
 Client.prototype.clearAllCaches = function() {
     this.clearEntityCache();
@@ -695,13 +822,17 @@ Client.prototype.clearAllCaches = function() {
 }
 
 /**
- * Check if a package is installed
- * @param {String} packageId the package identifier, for instance: "nms:amp"
- * @param {String} optionalName if set, the first parameter will be interpreted as the namespace (ex: "nms") and the second as the name, ex: "amp"
+ * Tests if a package is installed
+ * 
+ * @param {string} packageId the package identifier, for instance: "nms:amp"
+ * @param {string} optionalName if set, the first parameter will be interpreted as the namespace (ex: "nms") and the second as the name, ex: "amp"
+ * @returns {boolean} a boolean indicating if the package is installed or not
+ * @memberof Campaign.Client
  */
 Client.prototype.hasPackage = function(packageId, optionalName) {
   if (optionalName === undefined)
     packageId = `${packageId}:${optionalName}`;
+  // TODO: Use a CampaignException
   if (!this.isLogged())
     throw new Error(`Cannot call hasPackage: session not connected`);
   return this._installedPackages[packageId] !== undefined;
@@ -710,7 +841,10 @@ Client.prototype.hasPackage = function(packageId, optionalName) {
 /**
  * Obtains a cipher that can be used to encrypt/decrypt passwords, using the database secret key.
  * This is used for example for mid-sourcing account. 
+ * 
+ * @private
  * @deprecated since version 1.0.0
+ * @memberof Campaign.Client
  */
 Client.prototype._getSecretKeyCipher = async function() {
     var that = this;
@@ -722,10 +856,14 @@ Client.prototype._getSecretKeyCipher = async function() {
 }
 
 /**
- * Get entity
- * @param entityType is the type of entity requested, such as "xtk:schema", "xtk:srcSchema", "xtk:navtree", "xtk:form", etc.
- * @param fullName is the fully qualified name of the entity (i.e. <namespace>:<name>)
+ * Fetches an entity (GetEntityIfMoreRecent)
+ * 
+ * @private
+ * @param {string} entityType is the type of entity requested, such as "xtk:schema", "xtk:srcSchema", "xtk:navtree", "xtk:form", etc.
+ * @param {string} fullName is the fully qualified name of the entity (i.e. <namespace>:<name>)
+ * @param {string} representation the expected representation, or undefined to set the default
  * @return A DOM representation of the entity, or null if the entity is not found
+ * @memberof Campaign.Client
  */
 Client.prototype.getEntityIfMoreRecent = function(entityType, fullName, representation) {
     const that = this;
@@ -743,9 +881,11 @@ Client.prototype.getEntityIfMoreRecent = function(entityType, fullName, represen
 
 /**
  * Get a schema definition.
+ * 
  * @param {string} schemaId the schema id, such as "xtk:session", or "nms:recipient"
  * @param {string} representation an optional representation of the schema: "BadgerFish", "SimpleJson" or "xml". If not set, we'll use the client default representation
  * @returns {*} the schema definition, as either a DOM document or a JSON object
+ * @memberof Campaign.Client
  */
 Client.prototype.getSchema = async function(schemaId, representation) {
     var that = this;
@@ -761,7 +901,12 @@ Client.prototype.getSchema = async function(schemaId, representation) {
 }
 
 /**
- * Get the definition of a sys enum. Will be returned as JSON or XML depending on the client 'representation' attribute
+ * Get the definition of a system enumeration (SysEnum). Will be returned as JSON or XML depending on the client 'representation' attribute
+ * 
+ * @param {string} enumName
+ * @param {string} optionalStartSchemaOrSchemaName
+ * @returns the enumeration definition in the current representation
+ * @memberof Campaign.Client
  */
 Client.prototype.getSysEnum = async function(enumName, optionalStartSchemaOrSchemaName) {
 
@@ -822,10 +967,12 @@ Client.prototype.getSysEnum = async function(enumName, optionalStartSchemaOrSche
 /**
  * Call Campaign SOAP method
  * 
+ * @private
  * @param {string} methodName is the method to call. In order to be more JavaScript friendly, the first char can be lower-cased
  * @param {*} callContext the call context)
  * @param {*} parameters is an array of function parameters. When there's only one parameter, it can be passed directly
  * @returns {*} the SOAP call result. If there's just one output parameter, the value itself will be returned. If not, an array will be returned
+ * @memberof Campaign.Client
  */
 Client.prototype._callMethod = async function(methodName, callContext, parameters) {
     const that = this;
@@ -1018,7 +1165,11 @@ Client.prototype._callMethod = async function(methodName, callContext, parameter
 
 
 /**
- * Wrapps the /r/test
+ * Tests if the Campaign redirection server is up (/r/test).
+ * Does not require a logged client
+ * 
+ * @returns {Campaign.RedirStatus} an object describing the status of the redirection server
+ * @memberof Campaign.Client
  */
 Client.prototype.test = async function() {
     const that = this;
@@ -1040,7 +1191,10 @@ Client.prototype.test = async function() {
 }
 
 /**
- * Wrapps the /nl/jsp/ping.jsp
+ * Ping the Campaign server (/nl/jsp/ping.jsp)
+ * 
+ * @returns {Campaign.PingStatus} an object describing the server status
+ * @memberof Campaign.Client
  */
  Client.prototype.ping = async function() {
     const that = this;
@@ -1073,7 +1227,11 @@ Client.prototype.test = async function() {
 
 
 /**
- * Wrapps the /nl/jsp/mcPing.jsp
+ * Ping a Message Center Campaign server (/nl/jsp/mcPing.jsp).
+ * Assumes Message Center is installed
+ * 
+ * @returns {Campaign.McPingStatus} an object describing Message Center server status
+ * @memberof Campaign.Client
  */
  Client.prototype.mcPing = async function() {
     const that = this;
@@ -1131,9 +1289,7 @@ Client.prototype.test = async function() {
 }
 
 
-/**
- * Public exports
- */
+// Public exports
 exports.Client = Client;
 exports.Credentials = Credentials;
 exports.ConnectionParameters = ConnectionParameters;

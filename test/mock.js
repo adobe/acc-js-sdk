@@ -554,9 +554,7 @@ const GET_HELLO_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
 
 
 
-/**
- * Public exports
- */
+// Public exports
 exports.Mock = {
   makeClient: makeClient,
   makeAnonymousClient: makeAnonymousClient,

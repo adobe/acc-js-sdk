@@ -20,6 +20,18 @@ const XtkCaster = require('./xtkCaster.js').XtkCaster;
 const DomUtil = require('./dom.js').DomUtil;
 
 /**
+ * @namespace XML
+ */
+
+/**
+ * The XtkObject type is a Campaign entity, represented either as a DOM element, or as a JavaScript
+ * literal object, depending on the selected representation (xml, SimpleJson or BadgerFish)
+ * 
+ * @typedef {DOMElement|SimpleJson|BadgerFish} XtkObject
+ * @memberOf XML
+ */
+
+/**
  * An entity accessor enables you to access properties of entity objects manipulated by
  * the JS SDK. With the representations mechanism, the SDK can work with either xml or
  * json documents. You can use the DOM API to manipulate XML documents, and native
@@ -29,6 +41,7 @@ const DomUtil = require('./dom.js').DomUtil;
  * <p>
  * It's a static object and only contains static methods.
  * @class
+ * @memberof XML
  */
 const EntityAccessor = (function() {
 
@@ -39,8 +52,8 @@ const EntityAccessor = (function() {
      * Get an attribute value and cast into an XTK string. By attribute here, we mean that it's an
      * actual XML attribute in the original XML document taken or returned by the SOAP API. 
      * @method
-     * @memberof EntityAccessor
-     * @param {XML|Object} entity the entity (XML or JSON)
+     * @memberof XML.EntityAccessor
+     * @param {XML.XtkObject} entity the entity (XML or JSON)
      * @param {string} name the name of the attribute (without the "@" character)
      * @returns {string} the value of the attribute, as a string.
      * 
@@ -67,8 +80,8 @@ const EntityAccessor = (function() {
      * Get an attribute value and cast into an XTK long number (32 bits, never null). By attribute here, we mean that it's an
      * actual XML attribute in the original XML document taken or returned by the SOAP API. 
      * @method
-     * @memberof EntityAccessor
-     * @param {XML|Object} entity the entity (XML or JSON)
+     * @memberof XML.EntityAccessor
+     * @param {XML.XtkObject} entity the entity (XML or JSON)
      * @param {string} name the name of the attribute (without the "@" character)
      * @returns {number} the value of the attribute, as a 32 bits integer.
      *
@@ -94,8 +107,8 @@ const EntityAccessor = (function() {
      * Get an attribute value and cast into an XTK boolean (never null). By attribute here, we mean that it's an
      * actual XML attribute in the original XML document taken or returned by the SOAP API. 
      * @method
-     * @memberof EntityAccessor
-     * @param {XML|Object} entity the entity (XML or JSON)
+     * @memberof XML.EntityAccessor
+     * @param {XML.XtkObject} entity the entity (XML or JSON)
      * @param {string} name the name of the attribute (without the "@" character)
      * @returns {number} the value of the attribute, as a boolean
      *
@@ -120,8 +133,8 @@ const EntityAccessor = (function() {
     /**
      * Get the list of child elements with a given tag name
      * @method
-     * @memberof EntityAccessor
-     * @param {XML|Object} entity the entity (XML or JSON)
+     * @memberof XML.EntityAccessor
+     * @param {XML.XtkObject} entity the entity (XML or JSON)
      * @param {string} tagName the tag name of the element
      * @returns {XML[]|Object[]} a non-null array of child elements
      * 
@@ -157,10 +170,10 @@ const EntityAccessor = (function() {
     /**
      * Get the the first child element with a given tag name (if there's one)
      * @method
-     * @memberof EntityAccessor
-     * @param {XML|Object} entity the entity (XML or JSON)
+     * @memberof XML.EntityAccessor
+     * @param {XML.XtkObject} entity the entity (XML or JSON)
      * @param {string} tagName the tag name of the element
-     * @returns {XML|Object|null} the child element, or null if it's not found
+     * @returns {XML.XtkObject|null} the child element, or null if it's not found
      * 
      * @example
      * const entity = { body: { title:"Hello" }  };

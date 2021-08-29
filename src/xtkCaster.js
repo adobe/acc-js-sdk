@@ -17,9 +17,61 @@ governing permissions and limitations under the License.
  * 
  *********************************************************************************/
 
+/**
+ * @namespace Campaign
+ */
+
+/**
+ * Campaign XTK types
+ * 
+ * 
+ Campaign uses a typed system with some specificities:
+* for strings, "", null, or undefined are equivalent
+* numerical values cannot be null or undefined (0 is used instead)
+* boolean values cannot be null or undefined (false is used instead)
+* conversion between types is automatic based on their ISO representation
+
+
+|     Xtk type |    | JS type | Comment |
+| ------------ |----|-------- | --- |
+|       string |  6 |  string | never null, defaults to "" |
+|         memo | 12 |  string |
+|        CDATA | 13 |  string |
+|         byte |  1 |  number | signed integer in the [-128, 128[ range. Never null, defaults to 0 |
+|        short |  2 |  number | signed 16 bits integer in the [-32768, 32768[ range. Never null, defaults to 0 |
+|         long |  3 |  number | signed 32 bits integer. Never null, defaults to 0 |
+|        int64 |    | string  | signed 64 bits integer. As JavaScript handles all numbers as doubles, it's not possible to properly represent an int64 as a number, and it's therefore represented as a string.
+|        float |  4 |  number | single-percision numeric value. Never null, defaults to 0 |
+|       double |  5 |  number | single-percision numeric value. Never null, defaults to 0 |
+|     datetime |  7 |    Date | UTC timestamp with second precision. Can be null |
+|   datetimetz |    |         | |
+| datetimenotz |    |         | |
+|         date | 10 |    Date | UTC timestamp with day precision. Can be null |
+|      boolean | 15 | boolean | boolean value, defaultint to false. Cannot be null |
+|     timespan |    |         | |
+
+ * @typedef {(0|''|6|'string'|'int64'|12|13|'memo'|'CDATA'|1|'byte'|2|'short'|3|'long'|15|'boolean'|4|5|'float'|'double'|7|'datetime'|'datetimetz'|'datetimenotz'|10|'date')} XtkType
+ * @memberof Campaign
+ */
+
+/**
+ * Helpers to convert between JavaScript data types and Campaign XTK data types
+ * 
+ * @memberof Campaign
+ * @class
+ * @constructor
+ */
 function XtkCaster() {
 }
 
+/**
+ * Returns the name of a schema attribute used to store variant value types. The name of the attribute depends on the type: stringValue, longValue, etc.
+ * 
+ * @private
+ * @param {Campaign.XtkType} type the XTK type, either as a string or number (6=string)
+ * @returns {string} the attribute name: "stringValue", etc.
+ * @memberof Campaign.XtkCaster
+ */
 // See "variant" element in xtk:common srcSchema
 XtkCaster.prototype._variantStorageAttribute = function(type) {
     if (type === null || type === undefined) return null;
@@ -64,9 +116,12 @@ XtkCaster.prototype._variantStorageAttribute = function(type) {
 }
 
 /**
- * Cast with given type
- * @param {*} value 
- * @param {*} type      // See FIELD_xxx constants in cvariant.h - "string" = 6, "long" = 3, "double" = 5, "datetime" = 7, "memo" = 12
+ * Cast a value to a given type
+ * 
+ * @param {*} value the value to case
+ * @param {Campaign.XtkType} type the type to cast to:  "string" = 6, "long" = 3, "double" = 5, "datetime" = 7, "memo" = 12
+ * @returns {*} the value casted to the requested type, following XTK rules
+ * @memberof Campaign.XtkCaster
  */
 XtkCaster.prototype.as = function(value, type) {
     switch(type) {
@@ -125,8 +180,10 @@ XtkCaster.prototype.as = function(value, type) {
 
 /**
  * Convert a raw value into a string
+ * 
  * @param {*} value is the raw value to convert
- * @return a string value, guaranteed to be valid
+ * @return {string} a string value, guaranteed to be valid
+ * @memberof Campaign.XtkCaster
  */
 XtkCaster.prototype.asString = function(value) {
     if (value === null || value === undefined) return "";
@@ -142,9 +199,11 @@ XtkCaster.prototype.asString = function(value) {
 
 /**
  * Convert a raw value into a true/false boolean
+ * 
  * @param {*} value is the raw value to convert
  * @param {boolean} is the default to return in case the passed value is null or undefined. Defaults to false
- * @return a boolean value, guaranteed to be true or false
+ * @return {boolean} a boolean value, guaranteed to be true or false
+ * @memberof Campaign.XtkCaster
  */
 XtkCaster.prototype.asBoolean = function(value, defaultValue) {
     if (defaultValue === undefined) defaultValue = false;
@@ -160,8 +219,10 @@ XtkCaster.prototype.asBoolean = function(value, defaultValue) {
 
 /**
  * Convert a raw value into a non-null byte number in the [-128, 127] range
+ * 
  * @param {*} value is the raw value to convert
- * @return a numercial value, guaranteed to be valid and in the [-128, 127] range
+ * @return {number} a numercial value, guaranteed to be valid and in the [-128, 127] range
+ * @memberof Campaign.XtkCaster
  */
 XtkCaster.prototype.asByte = function(value) {
     var number = this.asNumber(value);
@@ -175,8 +236,10 @@ XtkCaster.prototype.asByte = function(value) {
 
 /**
  * Convert a raw value into a non-null short number in the [-32768, 32767] range
+ * 
  * @param {*} value is the raw value to convert
- * @return a numercial value, guaranteed to be valid and in the [-32768, 32767] range
+ * @return {number} a numercial value, guaranteed to be valid and in the [-32768, 32767] range
+ * @memberof Campaign.XtkCaster
  */
 XtkCaster.prototype.asShort = function(value) {
     var number = this.asNumber(value);
@@ -189,9 +252,11 @@ XtkCaster.prototype.asShort = function(value) {
 }
 
 /**
- * Convert a raw value into a non-null long number in the [-2147483648, 2147483647] range
+ * Convert a raw value into a non-null 32 bits number (XTK long) in the [-2147483648, 2147483647] range
+ * 
  * @param {*} value is the raw value to convert
- * @return a numercial value, guaranteed to be valid and in the [-2147483648, 2147483647] range
+ * @return {number} a numercial value, guaranteed to be valid and in the [-2147483648, 2147483647] range
+ * @memberof Campaign.XtkCaster
  */
 XtkCaster.prototype.asLong = function(value) {
     var number = this.asNumber(value);
@@ -206,8 +271,10 @@ XtkCaster.prototype.asLong = function(value) {
 /**
  * Convert a raw value into a non-null int64 number. As JavaScript does not have support
  * for int64, this is actually represented as a string
+ * 
  * @param {*} value is the raw value to convert
- * @return a string value representing the number
+ * @return {string} a string value representing the number
+ * @memberof Campaign.XtkCaster
  */
 XtkCaster.prototype.asInt64 = function(value) {
     if (value === null || value === undefined || value === "") return "0";
@@ -222,8 +289,10 @@ XtkCaster.prototype.asInt64 = function(value) {
 
 /**
  * Convert a raw value into a non-null float number
+ * 
  * @param {*} value is the raw value to convert
- * @return a numercial value, guaranteed to be valid
+ * @return {number} a numercial value, guaranteed to be valid
+ * @memberof Campaign.XtkCaster
  */
 XtkCaster.prototype.asFloat = function(value) {
     return this.asNumber(value);
@@ -231,8 +300,10 @@ XtkCaster.prototype.asFloat = function(value) {
 
 /**
  * Convert a raw value into a non-null double number
+ * 
  * @param {*} value is the raw value to convert
- * @return a numercial value, guaranteed to be valid
+ * @return {number} a numercial value, guaranteed to be valid
+ * @memberof Campaign.XtkCaster
  */
 XtkCaster.prototype.asDouble = function(value) {
     return this.asNumber(value);
@@ -240,8 +311,10 @@ XtkCaster.prototype.asDouble = function(value) {
 
 /**
  * Convert a raw value into a non-null number
+ * 
  * @param {*} value is the raw value to convert
- * @return a numercial value, guaranteed to be valid
+ * @return {number} a numercial value, guaranteed to be valid
+ * @memberof Campaign.XtkCaster
  */
 XtkCaster.prototype.asNumber = function(value) {
     if (value === null || value === undefined || value === "") return 0;
@@ -253,8 +326,10 @@ XtkCaster.prototype.asNumber = function(value) {
 
 /**
  * Convert a raw value into a timestamp
+ * 
  * @param {*} value is the raw value to convert
- * @return the timestamp, possibly null
+ * @return {Date} the timestamp, possibly null
+ * @memberof Campaign.XtkCaster
  */
 XtkCaster.prototype.asTimestamp = function(value) {
     if (value === null || value === undefined) return null;
@@ -286,9 +361,11 @@ XtkCaster.prototype.asTimestamp = function(value) {
 }
 
 /**
- * Convert a raw value into a (moment) date. This is a moment UTC timestamp where time fields are 0
+ * Convert a raw value into a  date. This is a UTC timestamp where time fields are 0
+ *
  * @param {*} value is the raw value to convert
- * @return a moment timestamp, possibly null
+ * @return {Date} a date
+ * @memberof Campaign.XtkCaster
  */
 XtkCaster.prototype.asDate = function(value) {
     var timestamp = this.asTimestamp(value);

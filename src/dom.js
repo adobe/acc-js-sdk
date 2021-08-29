@@ -20,13 +20,26 @@ governing permissions and limitations under the License.
 const JSDOM = require("jsdom").JSDOM;
 const XtkCaster = require('./xtkCaster.js').XtkCaster;
 
+/**
+ * @namespace XML
+ */
+
+/**
+ * Helpers for common manipulation of DOM documents
+ * @memberof XML
+ * @class
+ * @constructor
+ */
 function DomUtil() {
 }
 
 /**
  * Test if a object is an array
+ * @todo: does not really belong to dom.js. Move it to a better place
+ * 
  * @param {*} o the object to test
  * @returns {boolean} indicates if the object is an array
+ * @memberof XML.DomUtil
  */
 DomUtil.prototype.isArray = function(o) {
     if (o === null || o === undefined) return false;
@@ -45,8 +58,10 @@ DomUtil.prototype.isArray = function(o) {
 
 /**
  * Parse an XML string as a DOM Document
+ * 
  * @param {string} xmlString the string to parse
  * @returns {Document} the DOM document to the parsed string
+ * @memberof XML.DomUtil
  */
 DomUtil.prototype.parse = function(xmlString) {
     const dom = new JSDOM(xmlString, {contentType: "text/xml"});
@@ -54,6 +69,13 @@ DomUtil.prototype.parse = function(xmlString) {
     return doc;
 }
 
+/**
+ * Creates a new DOM document
+ * 
+ * @param {string} name the name of the document
+ * @returns a DOM Document
+ * @memberof XML.DomUtil
+ */
 DomUtil.prototype.newDocument = function(name) {
     const dom = new JSDOM('<' + name + '/>', {contentType: "text/xml"});
     return dom.window.document;
@@ -61,8 +83,10 @@ DomUtil.prototype.newDocument = function(name) {
 
 /**
  * Escapes a string for inserting as text in an XML element
+ * 
  * @param {string} text the string to escape
  * @returns {string} the escaped string
+ * @memberof XML.DomUtil
  */
 DomUtil.prototype.escapeXmlString = function(text) {
     if (text === null || text === undefined) return text;
@@ -81,10 +105,12 @@ DomUtil.prototype.escapeXmlString = function(text) {
 
 /**
  * Finds the first child element with given name
+ * 
  * @param {Element} element the DOM element to search child node for
  * @param {string} tagName the element tag name to search for
  * @param {boolean} throws if true, will throw an error if element if not found. If not will return null
  * @returns the first child element with given name, or null if not found
+ * @memberof XML.DomUtil
  */
 DomUtil.prototype.findElement = function(element, tagName, throws) {
     if (element === null || element === undefined) return null;
@@ -101,8 +127,10 @@ DomUtil.prototype.findElement = function(element, tagName, throws) {
 
 /**
  * Get the first child element, optionally matching a name
+ * 
  * @param {Element} node is the parent element from which we'll find the first child
  * @param {string} optionalNodeName is an optional tag name. If set, the first child with a matching name will be returned
+ * @memberof XML.DomUtil
  */
 DomUtil.prototype.getFirstChildElement = function(node, optionalNodeName) {
     if (node === null || node === undefined) return null;
@@ -115,8 +143,10 @@ DomUtil.prototype.getFirstChildElement = function(node, optionalNodeName) {
 /**
  * Returns the text content of a node. If there are multiple content or cdata nodes, their content will
  * be concatenated. Text content of subnodes is not included
+ * 
  * @param {Element} node the node to get content for
  * @returns {string} the text content
+ * @memberof XML.DomUtil
  */
 DomUtil.prototype.elementValue = function(node) {
     var text = "";
@@ -130,6 +160,14 @@ DomUtil.prototype.elementValue = function(node) {
     return text;
 }
 
+/**
+ * Get the next sibling element, optionally matching a tag name
+ * 
+ * @param {Element} node the element to get the next sibling of
+ * @param {string} optionalNodeName if set, a tag name to match
+ * @returns the next sibling element with the given tag name
+ * @memberof XML.DomUtil
+ */
 DomUtil.prototype.getNextSiblingElement = function(node, optionalNodeName) {
     if (node === null || node === undefined) return null;
     var sibling = node.nextSibling;
@@ -138,31 +176,78 @@ DomUtil.prototype.getNextSiblingElement = function(node, optionalNodeName) {
     return sibling;
 }
 
+/**
+ * Get an attribute value, casted to a xtk string
+ * 
+ * @param {Element} node the element from which to get the attribute
+ * @param {string} name the attribute name
+ * @returns {string} the attribute value, or an empty string if the attribute is not set
+ * @memberof XML.DomUtil
+ */
 DomUtil.prototype.getAttributeAsString = function(node, name) {
     const attr = node.getAttribute(name);
     return XtkCaster.asString(attr);
 }
 
+/**
+ * Get an attribute value, casted to a xtk byte
+ * 
+ * @param {Element} node the element from which to get the attribute
+ * @param {string} name the attribute name
+ * @returns {number} the attribute value casted to a byte number, or 0 if the attribute is not set
+ * @memberof XML.DomUtil
+ */
 DomUtil.prototype.getAttributeAsByte = function(node, name) {
     const attr = node.getAttribute(name);
     return XtkCaster.asByte(attr);
 }
 
-DomUtil.prototype.getAttributeAsBoolean = function(node, name) {
+/**
+ * Get an attribute value, casted to a xtk boolean
+ * 
+ * @param {Element} node the element from which to get the attribute
+ * @param {string} name the attribute name
+ * @returns {boolean} the attribute value casted to a boolean, or false if the attribute is not set
+ * @memberof XML.DomUtil
+ */
+ DomUtil.prototype.getAttributeAsBoolean = function(node, name) {
     const attr = node.getAttribute(name);
     return XtkCaster.asBoolean(attr);
 }
 
+/**
+ * Get an attribute value, casted to a xtk short
+ * 
+ * @param {Element} node the element from which to get the attribute
+ * @param {string} name the attribute name
+ * @returns {number} the attribute value casted to a short number, or 0 if the attribute is not set
+ * @memberof XML.DomUtil
+ */
 DomUtil.prototype.getAttributeAsShort = function(node, name) {
     const attr = node.getAttribute(name);
     return XtkCaster.asShort(attr);
 }
 
+/**
+ * Get an attribute value, casted to a xtk long (32 bits integer)
+ * 
+ * @param {Element} node the element from which to get the attribute
+ * @param {string} name the attribute name
+ * @returns {number} the attribute value casted to a long number, or 0 if the attribute is not set
+ * @memberof XML.DomUtil
+ */
 DomUtil.prototype.getAttributeAsLong = function(node, name) {
     const attr = node.getAttribute(name);
     return XtkCaster.asLong(attr);
 }
 
+/**
+ * Serialize a DOM element or a DOM document as an XML string
+ * 
+ * @param {Element|Document} node the element or document to serialize
+ * @returns {string} the serialized XML string
+ * @memberof XML.DomUtil
+ */
 DomUtil.prototype.toXMLString = function(node) {
     var s = "";
     if (node) {
@@ -173,6 +258,17 @@ DomUtil.prototype.toXMLString = function(node) {
     return s;
 }
 
+/**
+ * Internal recursive method to convert a object literal (JSON) to an XML element/document.
+ * This function does not return anything. Instead it creates children elements in the passed 'xmlRoot' element
+ * 
+ * @private
+ * @param {Document} doc the DOM document owning the created elements
+ * @param {Element} xmlRoot the parent DOM element
+ * @param {Object} jsonRoot the object literal to convert
+ * @param {string} flavor the JSON flavor: "SimpleJson" or "BadgerFish"
+ * @memberof XML.DomUtil
+ */
 DomUtil.prototype._fromJSON = function(doc, xmlRoot, jsonRoot, flavor) {
     for(var att in jsonRoot) {
         const value = jsonRoot[att];
@@ -231,7 +327,16 @@ DomUtil.prototype._fromJSON = function(doc, xmlRoot, jsonRoot, flavor) {
 
 }
 
-DomUtil.prototype.fromJSON = function(docName, json, flavor) {
+/**
+ * Convert a object literal (JSON) to an XML document.
+ * 
+ * @param {string} docName the name of the XML document (tag of the root node)
+ * @param {Object} json the object literal to convert
+ * @param {string} flavor the JSON flavor: "SimpleJson" or "BadgerFish"
+ * @returns {Document} An XML document corresponding to the converted obejct literal
+ * @memberof XML.DomUtil
+ */
+ DomUtil.prototype.fromJSON = function(docName, json, flavor) {
     flavor = flavor || "SimpleJson";
     if (flavor != "SimpleJson" && flavor != "BadgerFish")
         throw new Error(`Invalid JSON flavor '${flavor}'. Should be 'SimpleJson' or 'BadgerFish'`);
@@ -243,6 +348,16 @@ DomUtil.prototype.fromJSON = function(docName, json, flavor) {
     return doc;
 }
 
+/**
+ * Internal recursive method to convert an XML element to a object literal (JSON)
+ * This function does not return anything. Instead it creates children elements in the passed 'json' object
+ * 
+ * @private
+ * @param {Element} xml the DOM element to convert to JSON
+ * @param {Object} json the object literal to write to
+ * @param {string} flavor the JSON flavor: "SimpleJson" or "BadgerFish"
+ * @memberof XML.DomUtil
+ */
 DomUtil.prototype._toJSON = function(xml, json, flavor) {
     if (xml.hasAttributes()) {
         var attributes = xml.attributes;
@@ -288,6 +403,14 @@ DomUtil.prototype._toJSON = function(xml, json, flavor) {
     }
 }
 
+/**
+ * Convert an XML element to a object literal (JSON)
+ * 
+ * @param {Element|Document} xml the DOM element or document to convert to JSON
+ * @param {string} flavor the JSON flavor: "SimpleJson" or "BadgerFish"
+ * @returns {Object} an object literal corresponding to the XML element or document
+ * @memberof XML.DomUtil
+ */
 DomUtil.prototype.toJSON = function(xml, flavor) {
     if (xml === null || xml === undefined) return xml;
     flavor = flavor || "SimpleJson";

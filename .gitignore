@@ -22,3 +22,5 @@ scratch.js
 yarn-error.log
 
 out/
+docs/
+.vscode/

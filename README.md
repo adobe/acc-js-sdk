@@ -1133,6 +1133,18 @@ To build this project, you need node and npm
 npm install
 ````
 
+## Run tests
+```sh
+npm run unit-tests
+```
+
+## Build JavaScript documentation
+```sh
+npm run jsdoc
+```
+
+The HTML doc will be generated in the docs/ folder
+
 ## Deploy to npm
 
 To deploy to npm

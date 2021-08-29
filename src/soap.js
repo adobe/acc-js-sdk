@@ -54,24 +54,48 @@ const NS_ENV = "http://schemas.xmlsoap.org/soap/envelope/";
 const NS_XSI = "http://www.w3.org/2001/XMLSchema-instance";
 const NS_XSD = "http://www.w3.org/2001/XMLSchema";
 
+/**
+ * @namespace Campaign
+ */
 
+/**
+ * Represents a Campaign exception, i.e. any kind of error that can happen when calling Campaign APIs, 
+ * ranging from HTTP errors, XML serialization errors, SOAP errors, authentication errors, etc.
+ * 
+ * @todo does not really belong to soap.js. Move it to a better place
+ * @class
+ * @constructor
+ * @param {SoapMethodCall|request} call the call that triggered the error. It can be a SoapMethodCall object, a HTTP request object, or even be undefined if the exception is generated outside of the context of a call
+ * @param {number} statusCode the HTTP status code (200, 500, etc.)
+ * @param {string} faultCode the fault code, i.e. an error code
+ * @param {string} faultString a short description of the error
+ * @param {string} detail a more detailed description of the error
+ * @param {*} cause an optional error object representing the cause of the exception
+ * @memberof Campaign
+ */
 function CampaignException(call, statusCode, faultCode, faultString, detail, cause) {
 
+    // Provides a shorter and more friendly description of the call and method name
+    // depending on whether the exception is thrown by a SOAP or HTTP call
     var methodCall = undefined;
     var methodName = undefined;
     if (call) {
         if (call instanceof SoapMethodCall) {
             methodCall = {
                 type: "SOAP",
-                urn: call.urn,
+                urn: call.urn,                              // Campaign schema id (ex: "xtk:session")
                 methodName: call.methodName,
-                request: call.request,
-                response: call.response
+                request: call.request,                      // raw text of SOAP request
+                response: call.response                     // raw text of SOAP response
             };
-            methodName = `${call.urn}#${call.methodName}`;
+            methodName = `${call.urn}#${call.methodName}`;  // Example: "xtk:session#Logon"
         }
-        else {
-            // HTTP call
+        else { // HTTP call
+            // Extract the path of the request URL if there's one
+            // If it's a relative URL, use the URL itself
+            // https://test.com/hello => "/hello"
+            // /r/test => "/r/test“
+            // https://test.com => ""
             var path = call.request.url;
             var index = path.indexOf('://');
             if (index >= 0) {
@@ -86,13 +110,14 @@ function CampaignException(call, statusCode, faultCode, faultString, detail, cau
                 type: "HTTP",
                 urn: "",
                 methodName: path,
-                request: call.request,
-                response: call.response
+                request: call.request,                      // the "options" object making up the HTTP request
+                response: call.response                     // the raw response text
             };
             methodName = path;
         }
     }
 
+    // Provides default and fix edge cases for fault code, string and details
     faultString = faultString || "";
     if (faultString == "null" || faultString == "null\n") faultString = "";
     detail = detail || "";
@@ -100,6 +125,7 @@ function CampaignException(call, statusCode, faultCode, faultString, detail, cau
     if (statusCode == 403 && faultString == "")
         faultString = "Forbidden";
 
+    // Compose a user firendly user message
     var errorMessage = "No error message was provided";
     if (faultString != "" && detail != "")
         errorMessage = `${faultString}. ${detail}`;
@@ -107,7 +133,6 @@ function CampaignException(call, statusCode, faultCode, faultString, detail, cau
         errorMessage = faultString;
     else  if (detail != "")
         errorMessage = detail;
-
     var message = `${statusCode} - Error${faultCode == "" ? "" : faultCode} calling method '${methodName}': ${errorMessage}`;
 
     // Extract Campaign error code. For instance, the fault string may look like
@@ -119,49 +144,125 @@ function CampaignException(call, statusCode, faultCode, faultString, detail, cau
         faultString = match[2];
     }
 
+    /** 
+     * The type of exception, always "CampaignException"
+     * @type {string}
+     */
     this.name = "CampaignException";
+    /** 
+     * A human friendly message describing the error
+     * @type {string}
+     */
     this.message = message;
+    /** 
+     * The HTTP status code corresponding to the error 
+     * @type {number}
+     */
     this.statusCode = statusCode;
+    /** 
+     * An object describing the call (SOAP or HTTP) which caused the exception. Can be null 
+     * @type {string}
+     */
     this.methodCall = methodCall;
+    /** 
+     * A Campaign-specific error code, such as XSV-350013. May not be set if the exception did not come from a SOAP call 
+     * @type {string}
+     */
     this.errorCode = errorCode;
+    /** 
+     * An error code 
+     * @type {string}
+     */
     this.faultCode = faultCode;
+    /** 
+     * A short description of the error 
+     * @type {string}
+     */
     this.faultString = faultString;
+    /** 
+     * A detailed description of the error 
+     * @type {string}
+     */
     this.detail = detail;
+    /** 
+     * The call stack 
+     * @type {string}
+     */
     this.stack = (new Error()).stack;
+    /** 
+     * The cause of the error, such as the root cause exception 
+     */
     this.cause = cause;
 }
 
+
+/**
+ * @namespace SOAP
+ */
+
+
+/**
+ * Creates a CampaignException for a SOAP call and from a root exception
+ * @private
+ * @param {SoapMethodCall} call the SOAP call
+ * @param {*} err the exception causing the SOAP call.
+ * @returns {CampaignException} a CampaingException object wrapping the error
+ * @memberof Campaign
+ */
 function makeCampaignException(call, err) {
+    // It's already a CampaignException
     if (err instanceof CampaignException)
         return err;
+    
+    // Wraps DOM exceptions which can occur when dealing with malformed XML
     const ctor = err.__proto__.constructor;
     if (ctor && ctor.name == "DOMException") {
         return new CampaignException(call, 500, err.code, `DOMException (${err.name})`, err.message, err);
     }
+
+    // Wraps other type of exceptions, including when a String is used as an exception
     const statusCode = err.statusCode || 500;
     var error = err.error || err.message;
     if (ctor.name == "String")
         error = err;
     else
         error = `${ctor.name} (${error})`;
-    // TODO: this is depending on the "request" library. Should abstract this away
+    
+        // TODO: this is depending on the "request" library. Should abstract this away
     return new CampaignException(call, statusCode, "", error, undefined, err);
 }
 
   
+/**
+ * @namespace SOAP
+ */
+
 
 /**
- * Creates a SOAP call object
- * @param {String} urn Campaign method namespace, ex: "xtk:session"
- * @param {String} methodName Method name, ex: "Logon"
- * @param {String} sessionToken Campaign session token
- * @param {String} securityToken  Campaign security token
- * @param {String} userAgentString The user agent string to use for HTTP requests
+ * Creates a SOAP method call object which encapsulates a SOAP call and helper methods to constructs
+ * the call and decode the result.
+ * 
+ * @constructor SoapMethodCall
+ * @param {string} urn Campaign method namespace, ex: "xtk:session"
+ * @param {string} methodName Method name, ex: "Logon"
+ * @param {string} sessionToken Campaign session token
+ * @param {string} securityToken  Campaign security token
+ * @param {string} userAgentString The user agent string to use for HTTP requests
+ * @memberof SOAP
  */
 function SoapMethodCall(urn, methodName, sessionToken, securityToken, userAgentString) {
     this.sessionToken = sessionToken || "";
     this.securityToken = securityToken || "";
     this.userAgentString = userAgentString;
+
+    // THe SOAP call being built
+    this.dom = undefined;
+    this.doc = undefined;
+    this.root = undefined;
+    this.header = undefined;
+    this.body = undefined;
+    this.method = undefined;
+
     this._initMessage(urn, methodName, SOAP_ENCODING_NATIVE);
 
     // Current DOM element for reading result (getNext* functions) 
@@ -171,11 +272,19 @@ function SoapMethodCall(urn, methodName, sessionToken, securityToken, userAgentS
     this.urn = urn;
     this.methodName = methodName;
 
-    // Transport (request or mock)
+    // Transport object to perform HTTP request (request or mock)
     this.transport = request;
 }
 
-// Initialze SOAP message
+/**
+ * Initialze SOAP message
+ * 
+ * @private
+ * @param {string} urn Campaign method namespace, ex: "xtk:session"
+ * @param {string} methodName Method name, ex: "Logon"
+ * @param {string} encoding the SOAP encoding style (SOAP-ENV:encodingStyle) 
+ * @memberOf SOAP.SoapMethodCall
+  */
 SoapMethodCall.prototype._initMessage = function(urn, method, encoding) {
     this.urn = urn;
     this.methodName = method;
@@ -210,11 +319,14 @@ SoapMethodCall.prototype._initMessage = function(urn, method, encoding) {
 
 /**
  * Adds a XML parameter to the SOAP call being built
- * @param {string} tag the node tag name, i.e. the parameter name. Example: "sessiontoken", "login", etc.
+ * 
+ * @private
+ * @param {string} tag the XML node tag name, i.e. the parameter name. Example: "sessiontoken", "login", etc.
  * @param {string} type the SOAP parameter type, ex: "xsd:string"
- * @param {*} value the parameter value
+ * @param {string} value the parameter value, already serialized as a string. For XML types (DOM Element or Document), pass null as the value and SOAP_ENCODING_XML for encoding
  * @param {string} encoding the parameter encoding (optional) : SOAP_ENCODING_NATIVE or SOAP_ENCODING_XML
  * @returns the XML element to be added to the SOAP call
+ * @memberOf SOAP.SoapMethodCall
  */
 SoapMethodCall.prototype._addNode = function(tag, type, value, encoding) {
     const node = this.doc.createElement(tag);
@@ -231,6 +343,7 @@ SoapMethodCall.prototype._addNode = function(tag, type, value, encoding) {
  * Sets a byte-type parameter
  * @param {string} tag the parameter name
  * @param {*} value the parameter value, which will be casted to a byte according to xtk rules
+ * @memberOf SOAP.SoapMethodCall
  */
 SoapMethodCall.prototype.writeByte = function(tag, value) {
     value = XtkCaster.asByte(value);
@@ -241,6 +354,7 @@ SoapMethodCall.prototype.writeByte = function(tag, value) {
  * Sets a boolean-type parameter
  * @param {string} tag the parameter name
  * @param {*} value the parameter value, which will be casted to a boolean according to xtk rules
+ * @memberOf SOAP.SoapMethodCall
  */
 SoapMethodCall.prototype.writeBoolean = function(tag, value) {
     value = XtkCaster.asBoolean(value);
@@ -251,6 +365,7 @@ SoapMethodCall.prototype.writeBoolean = function(tag, value) {
  * Sets a short-type parameter
  * @param {string} tag the parameter name
  * @param {*} value the parameter value, which will be casted to a short according to xtk rules
+ * @memberOf SOAP.SoapMethodCall
  */
 SoapMethodCall.prototype.writeShort = function(tag, value) {
     value = XtkCaster.asShort(value);
@@ -261,6 +376,7 @@ SoapMethodCall.prototype.writeShort = function(tag, value) {
  * Sets a int32-type parameter
  * @param {string} tag the parameter name
  * @param {*} value the parameter value, which will be casted to a int32 according to xtk rules
+ * @memberOf SOAP.SoapMethodCall
  */
  SoapMethodCall.prototype.writeLong = function(tag, value) {
     value = XtkCaster.asLong(value);
@@ -271,6 +387,7 @@ SoapMethodCall.prototype.writeShort = function(tag, value) {
  * Sets a int64-type parameter
  * @param {string} tag the parameter name
  * @param {*} value the parameter value, which will be casted to a int64 according to xtk rules
+ * @memberOf SOAP.SoapMethodCall
  */
  SoapMethodCall.prototype.writeInt64 = function(tag, value) {
     value = XtkCaster.asInt64(value);
@@ -281,6 +398,7 @@ SoapMethodCall.prototype.writeShort = function(tag, value) {
  * Sets a float-type parameter
  * @param {string} tag the parameter name
  * @param {*} value the parameter value, which will be casted to a float according to xtk rules
+ * @memberOf SOAP.SoapMethodCall
  */
 SoapMethodCall.prototype.writeFloat = function(tag, value) {
     value = XtkCaster.asNumber(value);
@@ -291,6 +409,7 @@ SoapMethodCall.prototype.writeFloat = function(tag, value) {
  * Sets a double-type parameter
  * @param {string} tag the parameter name
  * @param {*} value the parameter value, which will be casted to a double according to xtk rules
+ * @memberOf SOAP.SoapMethodCall
  */
 SoapMethodCall.prototype.writeDouble = function(tag, value) {
     value = XtkCaster.asNumber(value);
@@ -301,6 +420,7 @@ SoapMethodCall.prototype.writeDouble = function(tag, value) {
  * Sets a string-type parameter
  * @param {string} tag the parameter name
  * @param {*} value the parameter value, which will be casted to a string according to xtk rules
+ * @memberOf SOAP.SoapMethodCall
  */
 SoapMethodCall.prototype.writeString = function(tag, value) {
     value = XtkCaster.asString(value);
@@ -311,6 +431,7 @@ SoapMethodCall.prototype.writeString = function(tag, value) {
  * Sets a timestamp-type parameter
  * @param {string} tag the parameter name
  * @param {*} value the parameter value, which will be casted to a timestamp according to xtk rules
+ * @memberOf SOAP.SoapMethodCall
  */
 SoapMethodCall.prototype.writeTimestamp = function(tag, value) {
     value = XtkCaster.asTimestamp(value);
@@ -321,6 +442,7 @@ SoapMethodCall.prototype.writeTimestamp = function(tag, value) {
  * Sets a date-type parameter (no hour part)
  * @param {string} tag the parameter name
  * @param {*} value the parameter value, which will be casted to a date according to xtk rules
+ * @memberOf SOAP.SoapMethodCall
  */
 SoapMethodCall.prototype.writeDate = function(tag, value) {
     value = XtkCaster.asDate(value);
@@ -331,6 +453,7 @@ SoapMethodCall.prototype.writeDate = function(tag, value) {
  * Sets a XML element-type parameter. See createElement method to create such an element
  * @param {string} tag the parameter name
  * @param {Element} value the parameter value (XML element)
+ * @memberOf SOAP.SoapMethodCall
  */
 SoapMethodCall.prototype.writeElement = function(tag, element) {
     const node = this._addNode(tag, "ns:Element", null, SOAP_ENCODING_XML);
@@ -344,6 +467,7 @@ SoapMethodCall.prototype.writeElement = function(tag, element) {
  * Sets a XML document-type parameter
  * @param {string} tag the parameter name
  * @param {Document} value the parameter value (XML document)
+ * @memberOf SOAP.SoapMethodCall
  */
 SoapMethodCall.prototype.writeDocument = function(tag, document) {
     const node = this._addNode(tag, "", null, SOAP_ENCODING_XML);
@@ -353,8 +477,15 @@ SoapMethodCall.prototype.writeDocument = function(tag, document) {
     }
 }
 
-// Verifies that a returned value matches an expected type
-// This will check that the current element (which is the XML element for current returned value) matches the passed type
+/** 
+ * Verifies that a returned value matches an expected type. Will throw a CampaignException if there's no match.
+ * This will check that the current element (which is the XML element for current returned value) matches the passed type
+ * 
+ * @private
+ * @param {string} type is the expected type (ex: "xsd:string") which is supposed to match the xsi:type attribute of the current element
+ * @throws {CampaignException} if the current return value type does not match the expected type
+ * @memberOf SOAP.SoapMethodCall
+ */
 SoapMethodCall.prototype._checkTypeMatch = function(type) {
     if (this.elemCurrent === null || this.elemCurrent === undefined) {
         throw new CampaignException(this, 400, `Missing parameter for method '${this.methodName}' of urn '${this.urn}'`);
@@ -371,8 +502,9 @@ SoapMethodCall.prototype._checkTypeMatch = function(type) {
  * the method is called. A good example is the xtk:queryDef#SelectAll API call: the method definition does not have
  * any return parameters, but it still returns an <entity> element contains the queryDef with all select nodes.
  * 
- * @returns the Entity DOM Element if there's one, or null if there isn't. The currentElement pointer will be 
- * updated accordingly
+ * @private
+ * @returns the Entity DOM Element if there's one, or null if there isn't. The currentElement pointer will be  updated accordingly
+ * @memberOf SOAP.SoapMethodCall
  */
 SoapMethodCall.prototype.getEntity = function() {
     if (!this.elemCurrent)
@@ -389,7 +521,9 @@ SoapMethodCall.prototype.getEntity = function() {
 
 /**
  * Extracts the next result value as a string
+ * 
  * @returns {string} the string result value
+ * @memberOf SOAP.SoapMethodCall
  */
 SoapMethodCall.prototype.getNextString = function() {
     this._checkTypeMatch("xsd:string");
@@ -400,7 +534,9 @@ SoapMethodCall.prototype.getNextString = function() {
 
 /**
  * Extracts the next result value as a boolean
+ * 
  * @returns {number} the boolean result value
+ * @memberOf SOAP.SoapMethodCall
  */
 SoapMethodCall.prototype.getNextBoolean = function() {
     this._checkTypeMatch("xsd:boolean");
@@ -411,7 +547,9 @@ SoapMethodCall.prototype.getNextBoolean = function() {
 
 /**
  * Extracts the next result value as a byte
+ * 
  * @returns {number} the byte result value
+ * @memberOf SOAP.SoapMethodCall
  */
 SoapMethodCall.prototype.getNextByte = function() {
     this._checkTypeMatch("xsd:byte");
@@ -422,7 +560,9 @@ SoapMethodCall.prototype.getNextByte = function() {
 
 /**
  * Extracts the next result value as a short
+ * 
  * @returns {number} the short result value
+ * @memberOf SOAP.SoapMethodCall
  */
 SoapMethodCall.prototype.getNextShort = function() {
     this._checkTypeMatch("xsd:short");
@@ -433,7 +573,9 @@ SoapMethodCall.prototype.getNextShort = function() {
 
 /**
  * Extracts the next result value as an int32 (xtk long)
+ * 
  * @returns {number} the int32 result value
+ * @memberOf SOAP.SoapMethodCall
  */
 SoapMethodCall.prototype.getNextLong = function() {
     this._checkTypeMatch("xsd:int");
@@ -445,7 +587,9 @@ SoapMethodCall.prototype.getNextLong = function() {
 /**
  * Extracts the next result value as a 64 bit integer
  * Will be returned as a string to ensure no precision is lost
+ * 
  * @returns {string} the int64 result value as a string
+ * @memberOf SOAP.SoapMethodCall
  */
 SoapMethodCall.prototype.getNextInt64 = function() {
     this._checkTypeMatch("xsd:long");
@@ -456,7 +600,9 @@ SoapMethodCall.prototype.getNextInt64 = function() {
 
 /**
  * Extracts the next result value as an float
+ * 
  * @returns {number} the float result value
+ * @memberOf SOAP.SoapMethodCall
  */
 SoapMethodCall.prototype.getNextFloat = function() {
     this._checkTypeMatch("xsd:float");
@@ -467,7 +613,9 @@ SoapMethodCall.prototype.getNextFloat = function() {
 
 /**
  * Extracts the next result value as an double
+ * 
  * @returns {number} the double result value
+ * @memberOf SOAP.SoapMethodCall
  */
 SoapMethodCall.prototype.getNextDouble = function() {
     this._checkTypeMatch("xsd:double");
@@ -478,7 +626,9 @@ SoapMethodCall.prototype.getNextDouble = function() {
 
 /**
  * Extracts the next result value as a timestamp
+ * 
  * @returns {Date} the timestamp result value
+ * @memberOf SOAP.SoapMethodCall
  */
 SoapMethodCall.prototype.getNextDateTime = function() {
     this._checkTypeMatch("xsd:dateTime");
@@ -489,7 +639,9 @@ SoapMethodCall.prototype.getNextDateTime = function() {
 
 /**
  * Extracts the next result value as a date (no hour part)
+ * 
  * @returns {Date} the date result value
+ * @memberOf SOAP.SoapMethodCall
  */
 SoapMethodCall.prototype.getNextDate = function() {
     this._checkTypeMatch("xsd:date");
@@ -500,7 +652,9 @@ SoapMethodCall.prototype.getNextDate = function() {
 
 /**
  * Extracts the next result value as an XML document
+ * 
  * @returns {Document} the XML document result value
+ * @memberOf SOAP.SoapMethodCall
  */
 SoapMethodCall.prototype.getNextDocument = function() {
     this._checkTypeMatch("ns:Document");
@@ -516,7 +670,9 @@ SoapMethodCall.prototype.getNextDocument = function() {
 
 /**
  * Extracts the next result value as an XML element
+ * 
  * @returns {Element} the XML element result value
+ * @memberOf SOAP.SoapMethodCall
  */
 SoapMethodCall.prototype.getNextElement = function() {
     this._checkTypeMatch("ns:Element");
@@ -531,13 +687,21 @@ SoapMethodCall.prototype.getNextElement = function() {
 
 /**
  * Checks that all return values have been consumed (with one of the getNext* functions)
+ * 
  * @returns a boolean set to true if ther are no more response args to read
+ * @memberOf SOAP.SoapMethodCall
  */ 
 SoapMethodCall.prototype.checkNoMoreArgs = function() {
     return !this.elemCurrent
 }
 
-// Generates "options" object for HTTP request
+/**
+ * Generates "options" object for HTTP request corresponding to the SOAP call
+ * 
+ * @param {string} url is the Campaign SOAP endpoint (soaprouter.jsp)
+ * @returns {Object} an options object describing the HTTP request, with cookies, headers and body
+ * @memberOf SOAP.SoapMethodCall
+ */
 SoapMethodCall.prototype._createHTTPRequest = function(url) {
     const options = {
         url: url,
@@ -555,11 +719,14 @@ SoapMethodCall.prototype._createHTTPRequest = function(url) {
 }
 
 /**
- * Executes the SOAP call
+ * Executes the SOAP call. This function does not return anything but preprocess the result
+ * and populates the SoapMethodCall objet so that result values can be read using 
+ * the getNext* methods
+ * 
  * @param {string} url the Campaign endpoint, such as "http://ffdamkt:8080/nl/jsp/soaprouter.jsp"
- * @param {function} delegate is optional. If set, will cann this function to make the HTTP request instead of the request library
+ * @memberOf SOAP.SoapMethodCall
  */
-SoapMethodCall.prototype.execute = function(url) {
+SoapMethodCall.prototype.execute = async function(url) {
     const that = this;
     const options = this._createHTTPRequest(url);
     const promise = this.transport(options);
@@ -624,17 +791,17 @@ SoapMethodCall.prototype.execute = function(url) {
 /**
  * Creates an XML element with the given tag name. This element is created to be added
  * as a parameter with the writeElement() function
+ * 
+ * @private
  * @param {string} tagName 
  * @returns {Element} the XML element (empty)
+ * @memberOf SOAP.SoapMethodCall
  */
 SoapMethodCall.prototype.createElement = function(tagName) {
     return this.doc.createElement(tagName);
 }
 
-
-/**
- * Public exports
- */
+// Public exports
 exports.SoapMethodCall = SoapMethodCall;
 exports.CampaignException = CampaignException;
 exports.makeCampaignException = makeCampaignException;

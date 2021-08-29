@@ -19,21 +19,44 @@ governing permissions and limitations under the License.
 
 const DomUtil = require('./dom.js').DomUtil;
 
+/**
+ * @namespace Campaign
+ * 
+ * @typedef {DOMElement} SoapMethodDefinition
+ * @memberof Campaign
+ */
 
+/**
+ * A in-memory cache for SOAP call method definitions. Not intended to be used directly,
+ * but an internal cache for the Campaign.Client object
+ * 
+ * @private
+ * @class
+ * @constructor
+ * @memberof Campaign
+ */
 function MethodCache() {
-    // Key is schema id, value is a map whose key is a method name. Value is the DOM element
-    // corresponding to a method
+    /**
+     * Method definitions, keyed but schema id. Value is a map whose key is a method name. Value is the DOM element
+     * corresponding to a method
+     * @type {Object<string, Object<string, Campaign.SoapMethodDefinition>>}
+     */
     this.methodsBySchema = {};
 
-    // Key is schema id, value is a map whose key is a method name. Value is the SOAP action
-    // for the method. For interface method (ex: xtk:session#Write, the SOAP action is actually
-    // xtk:persist#Write, using the interface id, not the session id)
+    /** 
+     * Soap action headers for each method. Key is schema id, value is a map whose key is a method name. Value is the SOAP action
+     * for the method. For interface method (ex: xtk:session#Write, the SOAP action is actually
+     * xtk:persist#Write, using the interface id, not the session id)
+     * @type {Object<string, Object<string, string>>}
+     */
     this.soapUrns = {};
 }
 
 /**
  * Caches all methods of a schema
+ * 
  * @param {Element} schema DOM document node represening the schema 
+ * @memberof Campaign.MethodCache
  */
 MethodCache.prototype.cache = function(schema) {
     var namespace = DomUtil.getAttributeAsString(schema, "namespace");
@@ -72,6 +95,14 @@ MethodCache.prototype.cache = function(schema) {
     }
 }
 
+/**
+ * Get cached method of a schema
+ *
+ * @param {string} schemaId the schema id (ex: "nms:delivery")
+ * @param {string} methodName the method name
+ * @returns {Campaign.SoapMethodDefinition} the method definition, or undefined if the schema or the method is not found
+ * @memberof Campaign.MethodCache
+ */
 MethodCache.prototype.get = function(schemaId, methodName) {
     var dict = this.methodsBySchema[schemaId];
     if (dict) 
@@ -79,6 +110,14 @@ MethodCache.prototype.get = function(schemaId, methodName) {
     return dict;
 }
 
+/**
+ * Get the URL (i.e. SoapAction header) for a method
+ *
+ * @param {string} schemaId the schema id (ex: "nms:delivery")
+ * @param {string} methodName the method name
+ * @returns {string} the URN (or Soap action header), or undefined if the schema or the method is not found
+ * @memberof Campaign.MethodCache
+ */
 MethodCache.prototype.getSoapUrn = function(schemaId, methodName) {
     var soapUrn = this.soapUrns[schemaId];
     if (soapUrn) 
@@ -86,8 +125,14 @@ MethodCache.prototype.getSoapUrn = function(schemaId, methodName) {
     return soapUrn;
 }
 
+/**
+ * Clears the cache
+ *
+ * @memberof Campaign.MethodCache
+ */
 MethodCache.prototype.clear = function() {
     this.methodsBySchema = {};
 }
 
+// Public exports
 exports.MethodCache = MethodCache;
