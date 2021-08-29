@@ -1,3 +1,4 @@
+"use strict";
 /*
 Copyright 2020 Adobe. All rights reserved.
 This file is licensed to you under the Apache License, Version 2.0 (the "License");
@@ -273,14 +274,14 @@ function ConnectionParameters(endpoint, credentials, options) {
     // Default value
     if (options === undefined || options === null)
         options = { };
-    if (options.representation === undefined || options.representation === null)
-        options.representation = "SimpleJson";
-
     // Before version 1.0.0, the 4th parameter could be a boolean for the 'rememberMe' option.
     // Passing a boolean is not supported any more in 1.0.0. The Client constructor takes an
     // option object. The rememberMe parameter can be passed directly to the logon function
     if (typeof options  != "object")
         throw new Error(`Invalid options parameter (type '${typeof options}'). An object litteral is expected`);
+
+    if (options.representation === undefined || options.representation === null)
+        options.representation = "SimpleJson";
 
     if (options.representation != "xml" && options.representation != "BadgerFish" && options.representation != "SimpleJson")
         throw new Error(`Invalid representation '${options.representation}'. Cannot create client object`);
@@ -658,7 +659,7 @@ Client.prototype.logon = function() {
         soapCall.writeElement("parameters", parameters);
         
         return this.makeSoapCall(soapCall).then(function() {
-            sessionToken = soapCall.getNextString();
+            const sessionToken = soapCall.getNextString();
             
             that._sessionInfo = soapCall.getNextDocument();
             that._installedPackages = {};
@@ -672,7 +673,7 @@ Client.prototype.logon = function() {
                 pack = DomUtil.getNextSiblingElement(pack);
             }
             
-            securityToken = soapCall.getNextString();
+            const securityToken = soapCall.getNextString();
             soapCall.checkNoMoreArgs();
             // Sanity check: we should have both a session token and a security token.
             if (!sessionToken)

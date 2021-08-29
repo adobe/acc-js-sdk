@@ -1,3 +1,4 @@
+"use strict";
 /*
 Copyright 2020 Adobe. All rights reserved.
 This file is licensed to you under the Apache License, Version 2.0 (the "License");
@@ -29,7 +30,7 @@ const EntityAccessor = require('./entityAccessor.js').EntityAccessor;
 // ========================================================================================
  
 // Determine if a name is an attribute name, i.e. if it starts with the "@" character
-isAttributeName = function(name) { return name.length > 0 && name[0] == '@'; }
+const isAttributeName = function(name) { return name.length > 0 && name[0] == '@'; }
 
 
 /**
@@ -224,7 +225,7 @@ XPath.prototype.getRelativePath = function() {
  * @param {Campaign.XtkSchemaNode} schemaNode
  * @memberof Campaign
  */
-XtkSchemaKey = function(schema, xml, schemaNode) {
+const XtkSchemaKey = function(schema, xml, schemaNode) {
     this.schema = schema;
     this.name = EntityAccessor.getAttributeAsString(xml, "name");
     this.label = EntityAccessor.getAttributeAsString(xml, "label");
@@ -233,7 +234,7 @@ XtkSchemaKey = function(schema, xml, schemaNode) {
     this.allowEmptyPart = EntityAccessor.getAttributeAsString(xml, "allowEmptyPart");
     this.fields = {};
 
-    for (child of EntityAccessor.getChildElements(xml, "keyfield")) {
+    for (var child of EntityAccessor.getChildElements(xml, "keyfield")) {
         const xpath = EntityAccessor.getAttributeAsString(child, "xpath");
         if (xpath == "") throw new Error(`Cannot create XtkSchemaKey for key '${this.name}': keyfield does not have an xpath attribute`);
         const field = schemaNode.findNode(xpath);
@@ -258,7 +259,7 @@ XtkSchemaKey = function(schema, xml, schemaNode) {
  * @param {boolean} isAttribute indicates whether the node is an attribute node or an element node
  * @memberof Campaign
  */
-XtkSchemaNode = function(schema, xml, parentNode, isAttribute) {
+const XtkSchemaNode = function(schema, xml, parentNode, isAttribute) {
 
     /**
      * The schema the node belongs to
@@ -345,13 +346,13 @@ XtkSchemaNode = function(schema, xml, parentNode, isAttribute) {
 
     // Children (elements and attributes)
     const childNodes = [];
-    for (child of EntityAccessor.getChildElements(xml, "attribute")) {
+    for (var child of EntityAccessor.getChildElements(xml, "attribute")) {
         childNodes.push(new XtkSchemaNode(schema, child, this, true));
     }
-    for (child of EntityAccessor.getChildElements(xml, "element")) {
+    for (var child of EntityAccessor.getChildElements(xml, "element")) {
         childNodes.push(new XtkSchemaNode(schema, child, this, false));
     }
-    for (childNode of childNodes) {
+    for (var childNode of childNodes) {
         if (this.children[childNode.name]) {
             // already a child with the name => there's a problem with the schema
             throw new Error(`Failed to create schema node '${childNode.name}': there's a already a node with this name`);
@@ -361,7 +362,7 @@ XtkSchemaNode = function(schema, xml, parentNode, isAttribute) {
     }
 
     // Keys (after elements and attributes have been found)
-    for (child of EntityAccessor.getChildElements(xml, "key")) {
+    for (var child of EntityAccessor.getChildElements(xml, "key")) {
         const key = new XtkSchemaKey(schema, child, this);
         this.keys[key.name] = key;
     }
@@ -609,7 +610,7 @@ function XtkEnumeration(xml) {
 
     var defaultValue = EntityAccessor.getAttributeAsString(xml, "default");
 
-    for (child of EntityAccessor.getChildElements(xml, "value")) {
+    for (var child of EntityAccessor.getChildElements(xml, "value")) {
         const e = new XtkEnumerationValue(child, this.baseType);
         this.values[e.name] = e;
         if (e.image != "") this.hasImage = true;
@@ -678,7 +679,7 @@ function XtkSchema(xml) {
      */
     this.enumerations = {};
 
-    for (child of EntityAccessor.getChildElements(xml, "enumeration")) {
+    for (var child of EntityAccessor.getChildElements(xml, "enumeration")) {
         const e = new XtkEnumeration(child);
         this.enumerations[e.name] = e;
     }
@@ -761,7 +762,7 @@ function CurrentLogin(userInfo) {
      */
     this.rights = [];
     this._rightsSet = {};
-    for (child of EntityAccessor.getChildElements(userInfo, "login-right")) {
+    for (var child of EntityAccessor.getChildElements(userInfo, "login-right")) {
         const right = EntityAccessor.getAttributeAsString(child, "right");
         this.rights.push(right);
         this._rightsSet[right] = true;
