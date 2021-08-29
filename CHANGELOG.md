@@ -34,6 +34,8 @@ _2021/07/29_
 * All HTTP request now add a user agent string identifying the SDK and it's version
 * CampaignException has been improved to report errors on both SOAP and HTTP requests
 * Added full jsdoc documentation of the SDK (run with `npm run jsdoc`)
+* Use "strict" mode
+* Use E6 classes instead of prototype based inheritance
 
 _Breaking changes in 1.0.0_
 * The default representation is now `SimpleJson` instead of `BadgerFish`

@@ -39,68 +39,68 @@ const XtkCaster = require('./xtkCaster.js').XtkCaster;
  * @constructor
  * @memberof Campaign
  */
-function OptionCache() {
-    /**
-     * The option values, by option name
-     * @private
-     * @type {Object<string,Campaign.XtkOption>}
-     */
-    this._optionsByName = {};
-}
-
-/**
- * Cache an option and its value
- * 
- * @param {string} name is the option name
- * @param {Array} rawValueAndtype a 2 elements array, whose first element is the raw option value (text serialized) and the second element 
- * is the data type of the option. Such an array is returned by the xtk:session#GetOption method
- * @memberof Campaign.OptionCache
- */
-OptionCache.prototype.cache = function(name, rawValueAndtype) {
-    var value = null;
-    var type = 0;
-    var rawValue = undefined;
-    if (rawValueAndtype && rawValueAndtype[1] != 0) {
-        rawValue = rawValueAndtype[0];
-        type = rawValueAndtype[1];
-        value = XtkCaster.as(rawValue, type);
+class OptionCache {
+    
+    constructor() {
+        /**
+         * The option values, by option name
+         * @private
+         * @type {Object<string,Campaign.XtkOption>}
+         */
+        this._optionsByName = {};
     }
-    this._optionsByName[name] = { value:value, type:type, rawValue:rawValue };
-    return value;
+
+    /**
+     * Cache an option and its value
+     * 
+     * @param {string} name is the option name
+     * @param {Array} rawValueAndtype a 2 elements array, whose first element is the raw option value (text serialized) and the second element 
+     * is the data type of the option. Such an array is returned by the xtk:session#GetOption method
+     */
+    cache(name, rawValueAndtype) {
+        var value = null;
+        var type = 0;
+        var rawValue = undefined;
+        if (rawValueAndtype && rawValueAndtype[1] != 0) {
+            rawValue = rawValueAndtype[0];
+            type = rawValueAndtype[1];
+            value = XtkCaster.as(rawValue, type);
+        }
+        this._optionsByName[name] = { value:value, type:type, rawValue:rawValue };
+        return value;
+    }
+
+    /**
+     * Get the value of an option, casted to the option type
+     * 
+     * @param {string} name the option name
+     * @returns {*} the option value
+     */
+    get(name) {
+        const option = this._optionsByName[name];
+        return option ? option.value : undefined;
+    }
+
+    /**
+     * Get an option from the cache, including it's type and value
+     * 
+     * @param {string} name the option name
+     * @returns {Campaign.XtkOption} the option
+     */
+    getOption(name) {
+        const option = this._optionsByName[name];
+        return option;
+    }
+
+    /**
+     * Clears the cache
+     */
+    clear() {
+        this._optionsByName = {};
+    }
+
 }
 
-/**
- * Get the value of an option, casted to the option type
- * 
- * @param {string} name the option name
- * @returns {*} the option value
- * @memberof Campaign.OptionCache
- */
-OptionCache.prototype.get = function(name) {
-    const option = this._optionsByName[name];
-    return option ? option.value : undefined;
-}
-
-/**
- * Get an option from the cache, including it's type and value
- * 
- * @param {string} name the option name
- * @returns {Campaign.XtkOption} the option
- * @memberof Campaign.OptionCache
- */
-OptionCache.prototype.getOption = function(name) {
-    const option = this._optionsByName[name];
-    return option;
-}
-
-/**
- * Clears the cache
- * 
- * @memberof Campaign.OptionCache
- */
-OptionCache.prototype.clear = function() {
-    this._optionsByName = {};
-}
 
 // Public exports
 exports.OptionCache = OptionCache;

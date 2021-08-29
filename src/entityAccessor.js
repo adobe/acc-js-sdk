@@ -44,16 +44,15 @@ const DomUtil = require('./dom.js').DomUtil;
  * @class
  * @memberof XML
  */
-const EntityAccessor = (function() {
-
-    function EntityAccessor() {
+class EntityAccessor {
+    
+    constructor() {
     }
 
     /**
      * Get an attribute value and cast into an XTK string. By attribute here, we mean that it's an
      * actual XML attribute in the original XML document taken or returned by the SOAP API. 
      * @method
-     * @memberof XML.EntityAccessor
      * @param {XML.XtkObject} entity the entity (XML or JSON)
      * @param {string} name the name of the attribute (without the "@" character)
      * @returns {string} the value of the attribute, as a string.
@@ -67,7 +66,7 @@ const EntityAccessor = (function() {
      * const entity = DomUtil.parse("<root hello='world'></root>")
      * expect(EntityAccessor.getAttributeAsString(entity, "hello")).toBe("world");
      */
-    EntityAccessor.prototype.getAttributeAsString = function(entity, name) {
+    static getAttributeAsString(entity, name) {
         if (entity.documentElement) entity = entity.documentElement;
         if (entity.insertAdjacentElement)
             return DomUtil.getAttributeAsString(entity, name);
@@ -81,7 +80,6 @@ const EntityAccessor = (function() {
      * Get an attribute value and cast into an XTK long number (32 bits, never null). By attribute here, we mean that it's an
      * actual XML attribute in the original XML document taken or returned by the SOAP API. 
      * @method
-     * @memberof XML.EntityAccessor
      * @param {XML.XtkObject} entity the entity (XML or JSON)
      * @param {string} name the name of the attribute (without the "@" character)
      * @returns {number} the value of the attribute, as a 32 bits integer.
@@ -94,7 +92,7 @@ const EntityAccessor = (function() {
      * const entity = DomUtil.parse("<root hello='42'></root>")
      * expect(EntityAccessor.getAttributeAsLong(entity, "hello")).toBe(42);
      */
-    EntityAccessor.prototype.getAttributeAsLong = function(entity, name) {
+    static getAttributeAsLong(entity, name) {
         if (entity.documentElement) entity = entity.documentElement;
         if (entity.insertAdjacentElement)
             return DomUtil.getAttributeAsLong(entity, name);
@@ -108,7 +106,6 @@ const EntityAccessor = (function() {
      * Get an attribute value and cast into an XTK boolean (never null). By attribute here, we mean that it's an
      * actual XML attribute in the original XML document taken or returned by the SOAP API. 
      * @method
-     * @memberof XML.EntityAccessor
      * @param {XML.XtkObject} entity the entity (XML or JSON)
      * @param {string} name the name of the attribute (without the "@" character)
      * @returns {number} the value of the attribute, as a boolean
@@ -121,7 +118,7 @@ const EntityAccessor = (function() {
      * const entity = DomUtil.parse("<root hello='true'></root>")
      * expect(EntityAccessor.getAttributeAsBoolean(entity, "hello")).toBe(true);
      */
-    EntityAccessor.prototype.getAttributeAsBoolean = function(entity, name) {
+    static getAttributeAsBoolean(entity, name) {
         if (entity.documentElement) entity = entity.documentElement;
         if (entity.insertAdjacentElement)
             return DomUtil.getAttributeAsBoolean(entity, name);
@@ -134,7 +131,6 @@ const EntityAccessor = (function() {
     /**
      * Get the list of child elements with a given tag name
      * @method
-     * @memberof XML.EntityAccessor
      * @param {XML.XtkObject} entity the entity (XML or JSON)
      * @param {string} tagName the tag name of the element
      * @returns {XML[]|Object[]} a non-null array of child elements
@@ -149,7 +145,7 @@ const EntityAccessor = (function() {
      * // returns an array with 2 elements: <chapter title='A'/> and <chapter title='B'/>
      * EntityAccessor.getChildElements(entity, "chapter");
      */
-    EntityAccessor.prototype.getChildElements = function(entity, tagName) {
+    static getChildElements(entity, tagName) {
         if (entity.documentElement) entity = entity.documentElement;
         if (entity.insertAdjacentElement) {
             var elements = [];
@@ -171,7 +167,6 @@ const EntityAccessor = (function() {
     /**
      * Get the the first child element with a given tag name (if there's one)
      * @method
-     * @memberof XML.EntityAccessor
      * @param {XML.XtkObject} entity the entity (XML or JSON)
      * @param {string} tagName the tag name of the element
      * @returns {XML.XtkObject|null} the child element, or null if it's not found
@@ -186,7 +181,7 @@ const EntityAccessor = (function() {
      * // returns an array with 1 elements: <body title="Hello"/>
      * EntityAccessor.getElement(entity, "body");
      */
-    EntityAccessor.prototype.getElement = function(entity, tagName) {
+    static getElement(entity, tagName) {
         if (entity.documentElement) entity = entity.documentElement;
         if (entity.insertAdjacentElement) {
             var child = DomUtil.getFirstChildElement(entity);
@@ -203,8 +198,8 @@ const EntityAccessor = (function() {
         }
     }
 
-    return new EntityAccessor();
-})();
+}
+
 
 // Public exports
 exports.EntityAccessor = EntityAccessor;
