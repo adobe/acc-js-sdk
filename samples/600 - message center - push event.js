@@ -61,7 +61,7 @@ governing permissions and limitations under the License.
       { expr: "[enum/@name]='eventType'" },
     ] }
   };``
-  query = NLWS.xtkQueryDef.create(queryDef);
+  var query = NLWS.xtkQueryDef.create(queryDef);
   const eventTypes = await query.executeQuery();
   console.log(`>> Message center published event types: ${JSON.stringify(eventTypes)}`);
   
@@ -88,7 +88,7 @@ governing permissions and limitations under the License.
   eventId = Number(BigInt(eventId) & BigInt("0xFFFFFFFFFFFFFF"));
   console.log(">> Event id (without high byte) " + eventId);
 
-  var queryDef = {
+  queryDef = {
     schema: "nms:rtEvent",
     operation: "get",
     select: {

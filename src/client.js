@@ -168,6 +168,7 @@ function transportWrapper(transport) {
                     var requestBody = DomUtil.parse(options.body);
                     console.log("SOAP//request", options.headers["SoapAction"], requestBody);
                 } catch(ex) {
+                    console.log("Failed to trace SOAP call", ex);
                 }
             }
             else 
@@ -189,6 +190,7 @@ function transportWrapper(transport) {
                         var responseBody = DomUtil.parse(body);
                         console.log("SOAP//response", options.headers["SoapAction"], responseBody);
                     } catch(ex) {
+                        console.log("Failed to trace SOAP call", ex);
                     }
                 }
                 else
@@ -237,7 +239,8 @@ class Credentials {
     _getUser() {
         if (this._type != "UserPassword")
             throw new Error(`Cannot get user for Credentials of type '${this._type}'`);
-        const [ user, _ ] = this._sessionToken.split("/");
+        const tokens = this._sessionToken.split("/");
+        const user = tokens[0];
         return user;
     }
 
@@ -250,7 +253,8 @@ class Credentials {
     _getPassword() {
         if (this._type != "UserPassword")
             throw new Error(`Cannot get password for Credentials of type '${this._type}'`);
-        const [ _, password ] = this._sessionToken.split("/");
+        const tokens = this._sessionToken.split("/");
+        const password = tokens.length > 1 ? tokens[1] : "";
         return password;
     }
 }
@@ -560,7 +564,7 @@ class Client {
      * @returns {boolean} a boolean indicating if the client is logged or not
      */
     isLogged() {
-        if (!this._connectionParameters || !this._connectionParameters._credentials)
+        if (!this._connectionParameters._credentials)
             return false;
 
         // If using anonymous credentials => always logged
@@ -641,7 +645,7 @@ class Client {
             soapCall.writeString("login", user);
             soapCall.writeString("password", password);
             var parameters = null;
-            if (!!this._connectionParameters._options.rememberMe) {
+            if (this._connectionParameters._options.rememberMe) {
                 parameters = soapCall.createElement("parameters");
                 parameters.setAttribute("rememberMe", "true");
             }
@@ -885,7 +889,7 @@ class Client {
         // Called with one parameter: enumName must be the fully qualified enumeration name
         // as <namespace>:<schema>:<enum>, for instance "nms:extAccount:encryptionType"
         if (!optionalStartSchemaOrSchemaName) {
-            var index = enumName.lastIndexOf(':');
+            const index = enumName.lastIndexOf(':');
             if (index == -1)
                 throw new Error(`getEnum expects a fully qualified enumeration name. '${enumName}' is not a valid name.`);
             optionalStartSchemaOrSchemaName = enumName.substring(0, index);
@@ -894,7 +898,7 @@ class Client {
 
         // If we have a schema name (and not a schema), then lookup the schema by name
         if (optionalStartSchemaOrSchemaName && ((typeof optionalStartSchemaOrSchemaName) == "string")) {
-            var index = optionalStartSchemaOrSchemaName.lastIndexOf(':');
+            const index = optionalStartSchemaOrSchemaName.lastIndexOf(':');
             if (index == -1)
                 throw new Error(`getEnum expects a valid schema name. '${optionalStartSchemaOrSchemaName}' is not a valid name.`);
             optionalStartSchemaOrSchemaName = await this.getSchema(optionalStartSchemaOrSchemaName);
@@ -902,12 +906,12 @@ class Client {
         if (!optionalStartSchemaOrSchemaName) {
             throw new Error(`Failed to find schema to load enumeration '${enumName}'`);
         }
-        var schema = optionalStartSchemaOrSchemaName; 
+        const schema = optionalStartSchemaOrSchemaName; 
 
         if (this._representation == "BadgerFish") {
             if (schema.enumeration) {
-                for (var i in schema.enumeration) {
-                    var e = schema.enumeration[i];
+                for (const i in schema.enumeration) {
+                    const e = schema.enumeration[i];
                     if (e["@name"] == enumName)
                         return e;
                 }
@@ -915,8 +919,8 @@ class Client {
         }
         else if (this._representation == "SimpleJson") {
             if (schema.enumeration) {
-                for (var i in schema.enumeration) {
-                    var e = schema.enumeration[i];
+                for (const i in schema.enumeration) {
+                    const e = schema.enumeration[i];
                     if (e["name"] == enumName)
                         return e;
                 }
@@ -1035,8 +1039,6 @@ class Client {
         }
         
         return that.makeSoapCall(soapCall).then(function() {
-            var paramIndex = 0;
-
             if (!isStatic) {
                 // Non static methods, such as xtk:query#SelectAll return a element named "entity" which is the object itself on which
                 // the method is called. This is the new version of the object (in XML form)
@@ -1141,7 +1143,7 @@ class Client {
      * 
      * @returns {Campaign.RedirStatus} an object describing the status of the redirection server
      */
-    async test() {
+    test() {
         const that = this;
         return that._soapTransport({
             url: `${that._connectionParameters._endpoint}/r/test`, 
@@ -1165,7 +1167,7 @@ class Client {
      * 
      * @returns {Campaign.PingStatus} an object describing the server status
      */
-    async ping() {
+    ping() {
         const that = this;
         return that._soapTransport({
             url: `${that._connectionParameters._endpoint}/nl/jsp/ping.jsp`, 
@@ -1189,11 +1191,10 @@ class Client {
             const result = that.toRepresentation(doc);
             return result;
         }).catch((err) => {
-            // TODO: this is depending on the "request" library. Should abstract this away
+            // TODO: this is depending on the "request" library. Should abstract this away}
             throw new CampaignException({ request:err.options, response: err.response.body }, err.statusCode, "", err.error, undefined);
         });
     }
-
 
     /**
      * Ping a Message Center Campaign server (/nl/jsp/mcPing.jsp).
@@ -1201,7 +1202,7 @@ class Client {
      * 
      * @returns {Campaign.McPingStatus} an object describing Message Center server status
      */
-    async mcPing() {
+    mcPing() {
         const that = this;
         return that._soapTransport({
             url: `${that._connectionParameters._endpoint}/nl/jsp/mcPing.jsp`, 
@@ -1223,9 +1224,9 @@ class Client {
             if (status == "Error") {
                 const error = lines.length > 1 ? lines[1] : "";
                 root.setAttribute("error", error);
-                var index1 = error.indexOf('(');
-                var index2 = error.indexOf('/');
-                var index3 = error.indexOf(')');
+                const index1 = error.indexOf('(');
+                const index2 = error.indexOf('/');
+                const index3 = error.indexOf(')');
                 if (index1 != -1 && index2 != -1 && index3 != -1) {
                     rtCount = error.substring(index1+1, index2);
                     threshold = error.substring(index2+1, index3);
@@ -1238,8 +1239,8 @@ class Client {
                 }
                 if (lines.length > 2) {
                     const queue = lines[2];
-                    var index2 = queue.indexOf('/');
-                    var index3 = queue.indexOf(' pending events');
+                    const index2 = queue.indexOf('/');
+                    const index3 = queue.indexOf(' pending events');
                     if (index2 != -1 && index3 != -1) {
                         rtCount = queue.substring(0, index2);
                         threshold = queue.substring(index2+1, index3);
@@ -1264,3 +1265,5 @@ Client.CampaignException = CampaignException;
 exports.Client = Client;
 exports.Credentials = Credentials;
 exports.ConnectionParameters = ConnectionParameters;
+// Private
+exports.transportWrapper = transportWrapper;

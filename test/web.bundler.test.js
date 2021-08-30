@@ -32,7 +32,7 @@ describe('Bundler', function() {
         expect(() => {
             bundler.define('test');
             bundler.modules.test.exports.test = () => 1;
-            const exports = bundler.require('notFound');
+            bundler.require('notFound');
         }).toThrow();
     });
 
@@ -41,7 +41,7 @@ describe('Bundler', function() {
             bundler.define('test');
             bundler.define('empty');
             bundler.modules.test.exports.test = () => 1;
-            const exports = bundler.require('empty');
+            bundler.require('empty');
         }).toThrow();
     });
 

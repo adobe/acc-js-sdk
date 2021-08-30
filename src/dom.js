@@ -290,20 +290,20 @@ class DomUtil {
                 }
                 else if (flavor == "SimpleJson" && att[0] == '$') {
                     att = att.substr(1);
-                    var xmlElement = doc.createElement(att);
+                    const xmlElement = doc.createElement(att);
                     xmlElement.textContent = value;
                     xmlRoot.appendChild(xmlElement);
                 }
                 else if (t == "object") {
                     if (value.length !== undefined && value.length !== null) {
                         for (var i=0; i<value.length; i++) {
-                            var xmlElement = doc.createElement(att);
+                            const xmlElement = doc.createElement(att);
                             this._fromJSON(doc, xmlElement, value[i], flavor);
                             xmlRoot.appendChild(xmlElement);
                         }
                     }
                     else {
-                        var xmlElement = doc.createElement(att);
+                        const xmlElement = doc.createElement(att);
                         this._fromJSON(doc, xmlElement, value, flavor);
                         xmlRoot.appendChild(xmlElement);
                     }
@@ -380,9 +380,6 @@ class DomUtil {
                         json["$"] = text;
                     else 
                         json["$"] = json["$"] + text;
-                }
-                else {
-
                 }
             }
             child = child.nextSibling;

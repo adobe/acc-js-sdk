@@ -28,6 +28,18 @@ describe("ACC Credentials", () => {
         expect(credentials._type).toBe("UserPassword");
     });
 
+    it("Should support incomplete user/password credentials", () => {
+        var credentials = new sdk.Credentials("UserPassword", "admin");
+        expect(credentials._getUser()).toBe("admin");
+        expect(credentials._getPassword()).toBe("");
+        expect(credentials._type).toBe("UserPassword");
+
+        credentials = new sdk.Credentials("UserPassword", "");
+        expect(credentials._getUser()).toBe("");
+        expect(credentials._getPassword()).toBe("");
+        expect(credentials._type).toBe("UserPassword");
+    })
+
     it("Should not allow to get user/password if credentials type does not allow for it", () => {
         expect(() => { new sdk.Credentials("Invalid"); }).toThrow("Invalid credentials type");
     });

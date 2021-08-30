@@ -9,7 +9,6 @@ the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR REPRESENTA
 OF ANY KIND, either express or implied. See the License for the specific language
 governing permissions and limitations under the License.
 */
-
 const utils = require("./utils.js");
 
 utils.logon(async (client, NLWS) => {
@@ -65,7 +64,7 @@ This sample illustrates how to execute Campaign queries using the QueryDef API
 
 
   console.log("\nIllustrating the 'select' operation in a query which will return a list of records (javaScript array).");
-  var queryDef = {
+  queryDef = {
     schema: "nms:deliveryMapping",
     operation: "select",
     select: {
@@ -84,7 +83,7 @@ This sample illustrates how to execute Campaign queries using the QueryDef API
 
 
   console.log("\nThe 'getIfExists' operation will return 'null' when the requested record does not exist.");
-  var queryDef = {
+  queryDef = {
     schema: "nms:deliveryMapping",
     operation: "getIfExists",
     select: {
@@ -108,7 +107,7 @@ This sample illustrates how to execute Campaign queries using the QueryDef API
   console.log(`\nIllustrating how to do pagination with the 'select' operation and 'orderBy' clause. 
 The 'lineCount' attribute determines the max number of rows returned by the query. And the 'startLine' attribute the row number to start from (first row is line 0)
 This also illustrates how to use an orderBy clause to sort the result`);
-  var queryDef = {
+  queryDef = {
     schema: "nms:deliveryMapping",
     operation: "select",
     lineCount: 2,
@@ -126,7 +125,7 @@ This also illustrates how to use an orderBy clause to sort the result`);
   var page = await query.executeQuery();
   console.log(`>> mappings (page 1): ${JSON.stringify(page)}`);
   
-  var queryDef = {
+  queryDef = {
     schema: "nms:deliveryMapping",
     operation: "select",
     lineCount: 2,
@@ -142,7 +141,7 @@ This also illustrates how to use an orderBy clause to sort the result`);
     ]}
   };
   query = NLWS.xtkQueryDef.create(queryDef);
-  var page = await query.executeQuery();
+  page = await query.executeQuery();
   console.log(`>> mappings (page 2): ${JSON.stringify(page)}`);
 
 
@@ -150,7 +149,7 @@ This also illustrates how to use an orderBy clause to sort the result`);
   console.log(`
 The 'selectAll' function allows to return all attributes. In this example, we'll get all attributes of the XtkDatabaseId option.
 This call is an actual SOAP call which returns a new query object`);
-  var queryDef = {
+  queryDef = {
     schema: "xtk:option",
     operation: "get",
     where: {
@@ -159,7 +158,7 @@ This call is an actual SOAP call which returns a new query object`);
       ]
     }
   }
-  var query = NLWS.xtkQueryDef.create(queryDef);
+  query = NLWS.xtkQueryDef.create(queryDef);
   await query.selectAll(false);
   var databaseId = await query.executeQuery();
   console.log(`>> XtkDatabaseId (query with all attributes): ${JSON.stringify(databaseId)}`);
@@ -169,7 +168,7 @@ This call is an actual SOAP call which returns a new query object`);
   console.log(`
 The queryDef API also lets you generate the SQL for a query, using the BuildQuery or BuildQueryEx methods. The latter will return the SQL and also metadata (data type) about each select field`);
 
-  var queryDef = {
+  queryDef = {
     schema: "nms:deliveryMapping",
     operation: "get",
     select: {
@@ -187,14 +186,14 @@ The queryDef API also lets you generate the SQL for a query, using the BuildQuer
     }
   }
 
-  var query = NLWS.xtkQueryDef.create(queryDef);
+  query = NLWS.xtkQueryDef.create(queryDef);
 
   console.log(`The xtk:queryDef#BuildQuery API returns the SQL that a query would generate if it were executed`);
   var sql = await query.buildQuery();
   console.log(">> SQL query: " + sql);
 
   console.log(`\nThe xtk:queryDef#BuildQueryEx API returns the SQL that a query would generate if it were executed and a format string for the returned select fields`);
-  var sql = await query.buildQueryEx();
+  sql = await query.buildQueryEx();
   console.log(`>> SQL queryEx: "${sql[0]}"`);
   console.log(`>> Format string: "${sql[1]}"`);
 
@@ -207,7 +206,7 @@ but will also return the string value of the attribute and its label. It will us
 "exclusionTypeName" and "exclusionTypeLabel", using the "Name" and "Label" suffixes.
   `);
     
-  var queryDef = {
+  queryDef = {
     schema: "nms:deliveryMapping",
     operation: "get",
     select: {
@@ -230,7 +229,7 @@ but will also return the string value of the attribute and its label. It will us
 
   queryDef.select.node[2] = { expr: "[storage/@exclusionType]", analyze: true };
   query = NLWS.xtkQueryDef.create(queryDef);
-  var mapping = await query.executeQuery();
+  mapping = await query.executeQuery();
   console.log(`>> Recipient target mapping with the analyze flag: ${JSON.stringify(mapping)}`);
 
 
@@ -239,7 +238,7 @@ but will also return the string value of the attribute and its label. It will us
   console.log(`This example shows how to use aliases to control the structure of the output JSON. Without aliases, the output document structure will match
 the structure of the select nodes. In the following example, the exclusionType attribute will be moved to the root node of the result `);
       
-    var queryDef = {
+    queryDef = {
       schema: "nms:deliveryMapping",
       operation: "get",
       select: {
@@ -258,12 +257,12 @@ the structure of the select nodes. In the following example, the exclusionType a
     }
     
   query = NLWS.xtkQueryDef.create(queryDef);
-  var mapping = await query.executeQuery();
+  mapping = await query.executeQuery();
   console.log(`>> Recipient target mapping without aliases: ${JSON.stringify(mapping)}`);
 
   queryDef.select.node[2] = { expr: "[storage/@exclusionType]", alias: "@exclusionType" },
   query = NLWS.xtkQueryDef.create(queryDef);
-  var mapping = await query.executeQuery();
+  mapping = await query.executeQuery();
   console.log(`>> Recipient target mapping with an alias: ${JSON.stringify(mapping)}`);
 
   

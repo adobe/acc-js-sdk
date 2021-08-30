@@ -28,10 +28,10 @@ describe('crypto', function() {
         assert.equal(decrypted, "mid");
     });
 
-    if("Should fail on invalid encrypted string", function() {
+    it("Should fail on invalid encrypted string", function() {
         const cipher = new Cipher("HMLmn6uvWr8wu1Akt8UORr07YbC64u1FVW7ENAxNjpo=");
         assert.throws(function() {
-            const failedDecrypted = cipher.decryptPassword("Hello");
+            cipher.decryptPassword("Hello");
         });
     });
 
@@ -39,14 +39,14 @@ describe('crypto', function() {
         const cipher = new Cipher("HMLmn6uvWr8wu1Akt8UORr07YbC64u1FVW7ENAxNjpo=");
         var decrypted = cipher.decryptPassword("@57QS5VHMb9BCsojLVrKI/Q==");
         assert.equal(decrypted, "mid");
-        var decrypted = cipher.decryptPassword("@57QS5VHMb9BCsojLVrKI/Q==");
+         decrypted = cipher.decryptPassword("@57QS5VHMb9BCsojLVrKI/Q==");
         assert.equal(decrypted, "mid");
     });
 
     it("Should decrypt password after failure", function() {
         const cipher = new Cipher("HMLmn6uvWr8wu1Akt8UORr07YbC64u1FVW7ENAxNjpo=");
         assert.throws(function() {
-            const failedDecrypted = cipher.decryptPassword("@Hello");
+            cipher.decryptPassword("@Hello");
         });
         // make sure state is valid after failure
         var decrypted = cipher.decryptPassword("@57QS5VHMb9BCsojLVrKI/Q==");

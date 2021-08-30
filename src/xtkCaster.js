@@ -320,7 +320,7 @@ class XtkCaster {
      * Convert a raw value into a timestamp
      * 
      * @param {*} value is the raw value to convert
-     * @return {Date} the timestamp, possibly null
+     * @return {Date} the timestamp, possibly null
      */
     static asTimestamp(value) {
         if (value === null || value === undefined) return null;

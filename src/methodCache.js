@@ -66,16 +66,19 @@ class MethodCache {
         var impls = DomUtil.getAttributeAsString(schema, "implements");
         var root = DomUtil.getFirstChildElement(schema);
         while (root) {
+            var schemaId;
+            var soapUrn;
+
             if (root.nodeName == "interface") {
-                var itfName = namespace + ":" +  DomUtil.getAttributeAsString(root, "name");
+                const itfName = namespace + ":" +  DomUtil.getAttributeAsString(root, "name");
                 if (impls === itfName) {
-                    var schemaId = namespace + ":" + name;
-                    var soapUrn = itfName;
+                    schemaId = namespace + ":" + name;
+                    soapUrn = itfName;
                 }
             }
             else if (root.nodeName == "methods") {
-                var schemaId = namespace + ":" + name;
-                var soapUrn = schemaId;
+                schemaId = namespace + ":" + name;
+                soapUrn = schemaId;
             }
 
             if (schemaId) {

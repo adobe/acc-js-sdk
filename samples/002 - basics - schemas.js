@@ -30,13 +30,13 @@ var schema = await client.getSchema("xtk:option");
 console.log(`>> client.getSchema (current representation) => ${JSON.stringify(schema)}`);
 
 console.log("\nThe second parameter of the getSchema function makes it possible to change the representation. For instance, we can get the schema in xml form");
-var schema = await client.getSchema("xtk:option", "xml");
+schema = await client.getSchema("xtk:option", "xml");
 console.log(`>> client.getSchema (xml) => ${client.DomUtil.toXMLString(schema)}`);
 
 
 
 console.log("\nUse the xtk:session#GetEntityIfMoreRecent API to get the nms:rtEvent source schema. This does not use the cache at all and is not restricted to schemas. In the following example, we retrieve a source schema");
-var schema = await client.getEntityIfMoreRecent("xtk:srcSchema", "nms:rtEvent");
+schema = await client.getEntityIfMoreRecent("xtk:srcSchema", "nms:rtEvent");
 console.log(`>> client.getEntityIfMoreRecent => ${JSON.stringify(schema)}`);
 
 
@@ -65,7 +65,7 @@ console.log(`>> ${JSON.stringify(enumValues)}`);
 
 
 console.log("\nA more programmatic way to use schema is via the application.getSchema function. This returns JavaScript objects wrapping the JSON or XML representation of the schema and mimmics the existing Campaign internal SDK : https://docs.adobe.com/content/help/en/campaign-classic/technicalresources/api/c-Schema.html");
-var schema = await client.application.getSchema("nms:recipient");
+schema = await client.application.getSchema("nms:recipient");
 
 console.log(`Here's some information about the nms:recipient schema
 >> id: ${schema.id}

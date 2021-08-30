@@ -21,12 +21,14 @@ governing permissions and limitations under the License.
  
 describe('JSDOM', function() {
 
+    /* eslint no-global-assign: "off" */
     Headers = function() {
     }
     Headers.prototype.append = function(key, value) {
         this[key] = value;
     }
 
+    /* eslint no-global-assign: "off" */
     Request = function(url, options) {
         this.url = url;
         this.options = options;
@@ -34,7 +36,7 @@ describe('JSDOM', function() {
 
     it('Should run a successful request', async function() {
 
-        fetch = async (request) => {
+        fetch = async () => {
             return  {
                 ok: true,
                 blob: async () => {
@@ -57,7 +59,7 @@ describe('JSDOM', function() {
 
     it('Should run a failed request', async function() {
 
-        fetch = async (request) => {
+        fetch = async () => {
             return  {
                 ok: false,
                 status: 404,
@@ -66,7 +68,7 @@ describe('JSDOM', function() {
         };
 
         expect(async () => {
-            var body = await request({
+            await request({
                 url: 'test',
                 method: 'POST',
                 headers: { 'foo':'bar', 'toto':'titi'}

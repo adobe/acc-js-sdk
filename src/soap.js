@@ -99,7 +99,7 @@ class CampaignException {
                 // https://test.com/hello => "/hello"
                 // /r/test => "/r/test“
                 // https://test.com => ""
-                var path = call.request.url;
+                var path = call.request.url || "";
                 var index = path.indexOf('://');
                 if (index >= 0) {
                     path = path.substring(index+3);
@@ -124,7 +124,7 @@ class CampaignException {
         faultString = faultString || "";
         if (faultString == "null" || faultString == "null\n") faultString = "";
         detail = detail || "";
-        faultCode = faultCode || "";
+        faultCode = faultCode || "";
         if (statusCode == 403 && faultString == "")
             faultString = "Forbidden";
 
@@ -191,7 +191,7 @@ class CampaignException {
          * The call stack 
          * @type {string}
          */
-        this.stack = (new Error()).stack;
+        //this.stack = (new Error()).stack;
         /** 
          * The cause of the error, such as the root cause exception 
          */

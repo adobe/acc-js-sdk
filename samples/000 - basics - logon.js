@@ -57,7 +57,7 @@ This sample illustrates how to connect to a Campaign instance and the following 
   console.log(`>> ACC_JS_SDK option (from cache) '${await client.getOption("ACC_JS_SDK")}'`);
 
   console.log(`\nThe static method xtk:session#GetServerTime returns the server current date+time as a JavaScript date.\nWhen printing the date, it will be localized by JavaScipt to your local settings, but the actual timestamp is available in UTC`);
-  result = await NLWS.xtkSession.getServerTime();
+  var result = await NLWS.xtkSession.getServerTime();
   console.log(`>> Server timestamp (UTC): ${result.toUTCString()}`);
   console.log(`>> Server timestamp (localized): ${result}`);
 

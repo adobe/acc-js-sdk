@@ -427,7 +427,6 @@ describe('XtkCaster', function() {
             const expected = expectedValues[i];
             const value = expected[0];
             const expectedResult = expected[1];
-            const nonStrict = !!expected[2];
             it('Should return the value casted as a timestamp ("' + value + '")', function() {
                 const actual = XtkCaster.asTimestamp(value);
                 assert.myEquals(actual, expectedResult);
@@ -484,7 +483,6 @@ describe('XtkCaster', function() {
             const expected = expectedValues[i];
             const value = expected[0];
             const expectedResult = expected[1];
-            const nonStrict = !!expected[2];
             it('Should return the value casted as a date ("' + value + '")', function() {
                 const actual = XtkCaster.asDate(value);
                 assert.myEquals(actual, expectedResult);

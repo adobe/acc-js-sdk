@@ -624,7 +624,7 @@ describe("CurrentLogin", () => {
             function elements(xpath) {
                 const result = [];
                 const list = xpath.getElements();
-                for (e of list) {
+                for (const e of list) {
                     result.push(e._pathElement);
                 }
                 return result;

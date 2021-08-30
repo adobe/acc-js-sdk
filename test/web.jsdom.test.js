@@ -24,14 +24,16 @@ describe('JSDOM', function() {
     it('Should create DOM document', function() {
         const text = "<xml/>";
         var parsed;
+        /* eslint no-global-assign: "off" */
         DOMParser = function() {
         }
-        DOMParser.prototype.parseFromString = function(text, type) {
+        DOMParser.prototype.parseFromString = function(text) {
             parsed = text;
         }
+        /* eslint no-global-assign: "off" */
         XMLSerializer = function() {
         }
-        XMLSerializer.prototype.serializeToString = function(dom) {
+        XMLSerializer.prototype.serializeToString = function() {
             return parsed;
         }
 

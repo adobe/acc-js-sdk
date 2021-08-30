@@ -17,6 +17,7 @@ governing permissions and limitations under the License.
  * 
  *********************************************************************************/
 
+/* eslint no-unused-vars: "off" */
  const crypto = require('../src/web/crypto.js');
  
 describe('Crypto', function() {

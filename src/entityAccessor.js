@@ -148,7 +148,7 @@ class EntityAccessor {
     static getChildElements(entity, tagName) {
         if (entity.documentElement) entity = entity.documentElement;
         if (entity.insertAdjacentElement) {
-            var elements = [];
+            const elements = [];
             var child = DomUtil.getFirstChildElement(entity);
             while (child) {
                 if (!tagName || tagName == child.tagName)

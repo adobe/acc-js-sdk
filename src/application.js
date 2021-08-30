@@ -355,17 +355,17 @@ class XtkSchemaNode {
 
         // Children (elements and attributes)
         const childNodes = [];
-        for (var child of EntityAccessor.getChildElements(xml, "attribute")) {
+        for (const child of EntityAccessor.getChildElements(xml, "attribute")) {
             const node = new XtkSchemaNode();
             node.init(schema, child, this, true);
             childNodes.push(node);
         }
-        for (var child of EntityAccessor.getChildElements(xml, "element")) {
+        for (const child of EntityAccessor.getChildElements(xml, "element")) {
             const node = new XtkSchemaNode();
             node.init(schema, child, this, false);
             childNodes.push(node);
         }
-        for (var childNode of childNodes) {
+        for (const childNode of childNodes) {
             if (this.children[childNode.name]) {
                 // already a child with the name => there's a problem with the schema
                 throw new Error(`Failed to create schema node '${childNode.name}': there's a already a node with this name`);
@@ -375,7 +375,7 @@ class XtkSchemaNode {
         }
 
         // Keys (after elements and attributes have been found)
-        for (var child of EntityAccessor.getChildElements(xml, "key")) {
+        for (const child of EntityAccessor.getChildElements(xml, "key")) {
             const key = new XtkSchemaKey(schema, child, this);
             this.keys[key.name] = key;
         }
@@ -722,7 +722,7 @@ class XtkSchema extends XtkSchemaNode {
      * 
      * @returns {string} a multi-line string representing the schema definition in a human readable form for troubleshooting purposes
      */
-    toString = function() {
+    toString() {
         var s =  `${this.userDescription}\n`;
         //s = s + `   enumerations: [${enumerations}]`
         for (var name in this.children) {

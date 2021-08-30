@@ -56,8 +56,8 @@ class XtkEntityCache {
             const namespace = entity.getAttribute("namespace");
             var interfaceElement = DomUtil.getFirstChildElement(entity, "interface");
             while (interfaceElement) {
-                var name = `${namespace}:${interfaceElement.getAttribute("name")}`;
-                var key = entityKey(entityType, name);
+                const name = `${namespace}:${interfaceElement.getAttribute("name")}`;
+                const key = entityKey(entityType, name);
                 this.cache[key] = interfaceElement;
                 interfaceElement = DomUtil.getNextSiblingElement(interfaceElement, "interface");
             }

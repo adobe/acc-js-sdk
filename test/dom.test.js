@@ -19,8 +19,6 @@ governing permissions and limitations under the License.
 
 const assert = require('assert');
 const { DomUtil } = require('../src/dom.js');
-const { isRegExp } = require('util');
-const exp = require('constants');
 
 
 describe('DomUtil', function() {
@@ -48,8 +46,8 @@ describe('DomUtil', function() {
                 var xml = DomUtil.parse(item.xml);
                 var json = JSON.stringify(DomUtil.toJSON(xml, "BadgerFish"));
                 if (item.altXML) {
-                    var xml = DomUtil.parse(item.altXML);
-                    var json = JSON.stringify(DomUtil.toJSON(xml, "BadgerFish"));
+                    xml = DomUtil.parse(item.altXML);
+                    json = JSON.stringify(DomUtil.toJSON(xml, "BadgerFish"));
                 }
                 var expected = item.altJSON || item.json;
                 assert.equal(json, expected);
@@ -226,11 +224,11 @@ describe('DomUtil', function() {
             (item) => {
                 var expected = item.altXML || item.xml;
                 var xml = DomUtil.parse(item.xml);
-                var xml = DomUtil.toXMLString(xml);
+                xml = DomUtil.toXMLString(xml);
                 assert.equal(xml, expected);
                 if (item.altXML) {
-                    var xml = DomUtil.parse(item.altXML);
-                    var xml = DomUtil.toXMLString(xml);
+                    xml = DomUtil.parse(item.altXML);
+                    xml = DomUtil.toXMLString(xml);
                     assert.equal(xml, expected);
                 }
             }
@@ -283,8 +281,6 @@ describe('DomUtil', function() {
 
     describe('Element iterator', function() {
         it('Should support nulls', function() {
-            const dom = DomUtil.parse("<root><top>Hello</top>World<child><a x='1'/><b x='2'/><b x='3'/><c x='4'/></child></root>");
-            const root = dom.documentElement;
             assert.equal(DomUtil.getFirstChildElement(null), null);
             assert.equal(DomUtil.getFirstChildElement(undefined), null);
             assert.equal(DomUtil.getFirstChildElement(null, "a"), null);
