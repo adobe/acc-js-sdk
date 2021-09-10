@@ -33,7 +33,7 @@ utils.run(async () => {
   });
 
   console.log(`\nLogging in to Campaign for authenticated health methods`);
-  utils.logon(async (client) => {
+  await utils.logon(async (client) => {
 
     await utils.attempt(async () => {
       console.log(`\nCalling the ping API (/nl/jsp/ping.jsp)`);
