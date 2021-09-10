@@ -61,9 +61,7 @@ describe('crypto', function() {
 
     it("Should fail if no marker", function() {
         const cipher = new Cipher("HMLmn6uvWr8wu1Akt8UORr07YbC64u1FVW7ENAxNjpo=");
-        assert.throws(function() {
-            cipher.decryptPassword("57QS5VHMb9BCsojLVrKI/Q==");
-        });
+        expect(() => { cipher.decryptPassword("57QS5VHMb9BCsojLVrKI/Q=="); }).toThrow("SDK-000011");
     });
 
     it("Should support empty passwords", function() {

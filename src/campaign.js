@@ -12,6 +12,203 @@ governing permissions and limitations under the License.
 */
 
 
+/**
+ * @namespace Campaign
+ */
+
+/**
+ * Represents a Campaign exception, i.e. any kind of error that can happen when calling Campaign APIs, 
+ * ranging from HTTP errors, XML serialization errors, SOAP errors, authentication errors, etc.
+ * 
+ * @todo does not really belong to soap.js. Move it to a better place
+ * @class
+ * @constructor
+ * @param {SoapMethodCall|request} call the call that triggered the error. It can be a SoapMethodCall object, a HTTP request object, or even be undefined if the exception is generated outside of the context of a call
+ * @param {number} statusCode the HTTP status code (200, 500, etc.)
+ * @param {string} faultCode the fault code, i.e. an error code
+ * @param {string} faultString a short description of the error
+ * @param {string} detail a more detailed description of the error
+ * @param {*} cause an optional error object representing the cause of the exception
+ * @memberof Campaign
+ */
+ class CampaignException {
+
+  static INVALID_CREDENTIALS_TYPE(type, details)          { return new CampaignException(undefined, 400, 16384, `SDK-000000 Invalid credentials type '${type}'`, details); }
+  static CANNOT_GET_CREDENTIALS_USER(type)                { return new CampaignException(undefined, 400, 16384, `SDK-000001 Cannot get user for Credentials of type '${type}'`); }
+  static CANNOT_GET_CREDENTIALS_PASSWORD(type)            { return new CampaignException(undefined, 400, 16384, `SDK-000002 Cannot get password for Credentials of type '${type}'`); }
+  static INVALID_CONNECTION_OPTIONS(options)              { return new CampaignException(undefined, 400, 16384, `SDK-000003 Invalid options parameter (type '${typeof options}'). An object litteral is expected`); }
+  static INVALID_REPRESENTATION(representation, details)  { return new CampaignException(undefined, 400, 16384, `SDK-000004 Invalid representation '${representation}'.`, details); }
+  static CREDENTIALS_FOR_INVALID_EXT_ACCOUNT(name, type)  { return new CampaignException(undefined, 400, 16384, `SDK-000005 Cannot created connection parameters for external account '${name}': account type ${type} not supported`); }
+  static BAD_PARAMETER(name, value, details)              { return new CampaignException(undefined, 400, 16384, `SDK-000006 Bad parameter '${name}' with value '${value}'`, details); }
+  static UNEXPECTED_SOAP_RESPONSE(call, details)          { return new CampaignException(     call, 500,   -53, `SDK-000007 Unexpected response from SOAP call`, details); }
+  static BAD_SOAP_PARAMETER(call, name, value, details)   { return new CampaignException(     call, 400, 16384, `SDK-000008 Bad parameter '${name}' with value '${value}'`, details); }
+  static SOAP_UNKNOWN_METHOD(schema, method, details)     { return new CampaignException(undefined, 400, 16384, `SDK-000009 Unknown method '${method}' of schema '${schema}'`, details); }
+  static NOT_LOGGED_IN(call, details)                     { return new CampaignException(     call, 400, 16384, `SDK-000010 Cannot call API because client is not logged in`, details); }
+  static DECRYPT_ERROR(details)                           { return new CampaignException(undefined, 400, 16384, `SDK-000011 "Cannot decrypt password: password marker is missing`, details); }
+  
+  constructor(call, statusCode, faultCode, faultString, detail, cause) {
+
+      // Provides a shorter and more friendly description of the call and method name
+      // depending on whether the exception is thrown by a SOAP or HTTP call
+      var methodCall = undefined;
+      var methodName = undefined;
+      if (call) {
+          const ctor = call.__proto__.constructor;
+          if (ctor && ctor.name == "SoapMethodCall") {
+              methodCall = {
+                  type: "SOAP",
+                  urn: call.urn,                              // Campaign schema id (ex: "xtk:session")
+                  methodName: call.methodName,
+                  request: call.request,                      // raw text of SOAP request
+                  response: call.response                     // raw text of SOAP response
+              };
+              methodName = `${call.urn}#${call.methodName}`;  // Example: "xtk:session#Logon"
+          }
+          else { // HTTP call
+              // Extract the path of the request URL if there's one
+              // If it's a relative URL, use the URL itself
+              // https://test.com/hello => "/hello"
+              // /r/test => "/r/test“
+              // https://test.com => ""
+              var path = call.request.url || "";
+              var index = path.indexOf('://');
+              if (index >= 0) {
+                  path = path.substring(index+3);
+                  index = path.indexOf('/');
+                  if (index >= 0)
+                      path = path.substring(index);
+                  else
+                      path = "";
+              }
+              methodCall = {
+                  type: "HTTP",
+                  urn: "",
+                  methodName: path,
+                  request: call.request,                      // the "options" object making up the HTTP request
+                  response: call.response                     // the raw response text
+              };
+              methodName = path;
+          }
+      }
+
+      // Provides default and fix edge cases for fault code, string and details
+      faultString = faultString || "";
+      if (faultString == "null" || faultString == "null\n") faultString = "";
+      detail = detail || "";
+      faultCode = faultCode || "";
+      if (statusCode == 403 && faultString == "")
+          faultString = "Forbidden";
+
+      // Compose a user firendly user message
+      var errorMessage = "No error message was provided";
+      if (faultString != "" && detail != "")
+          errorMessage = `${faultString}. ${detail}`;
+      else if (faultString != "")
+          errorMessage = faultString;
+      else  if (detail != "")
+          errorMessage = detail;
+      var message = `${statusCode} - Error${faultCode == "" ? "" : " " + faultCode}`;
+      if (methodName && methodName != "")
+          message = message + ` calling method '${methodName}'`;
+          message = message + `: ${errorMessage}`;
+
+      // Extract Campaign error code. For instance, the fault string may look like
+      // "XSV-350013 The '193.104.215.11' IP address via which...", we extract the "XSV-350013" code
+      var errorCode = "";
+      const match = faultString.match(/(\w{3}-\d{6}) (.*)/);
+      if (match && match.length >= 2) {
+          errorCode = match[1];
+          faultString = match[2];
+      }
+
+      /** 
+       * The type of exception, always "CampaignException"
+       * @type {string}
+       */
+      this.name = "CampaignException";
+      /** 
+       * A human friendly message describing the error
+       * @type {string}
+       */
+      this.message = message;
+      /** 
+       * The HTTP status code corresponding to the error 
+       * @type {number}
+       */
+      this.statusCode = statusCode;
+      /** 
+       * An object describing the call (SOAP or HTTP) which caused the exception. Can be null 
+       * @type {string}
+       */
+      this.methodCall = methodCall;
+      /** 
+       * A Campaign-specific error code, such as XSV-350013. May not be set if the exception did not come from a SOAP call 
+       * @type {string}
+       */
+      this.errorCode = errorCode;
+      /** 
+       * An error code 
+       * @type {string}
+       */
+      this.faultCode = faultCode;
+      /** 
+       * A short description of the error 
+       * @type {string}
+       */
+      this.faultString = faultString;
+      /** 
+       * A detailed description of the error 
+       * @type {string}
+       */
+      this.detail = detail;
+      /** 
+       * The call stack 
+       * @type {string}
+       */
+      //this.stack = (new Error()).stack;
+      /** 
+       * The cause of the error, such as the root cause exception 
+       */
+      this.cause = cause;
+  }
+}
+
+
+
+/**
+ * Creates a CampaignException for a SOAP call and from a root exception
+ * @private
+ * @param {SoapMethodCall} call the SOAP call
+ * @param {*} err the exception causing the SOAP call.
+ * @returns {CampaignException} a CampaingException object wrapping the error
+ * @memberof Campaign
+ */
+function makeCampaignException(call, err) {
+  // It's already a CampaignException
+  if (err instanceof CampaignException)
+      return err;
+  
+  // Wraps DOM exceptions which can occur when dealing with malformed XML
+  const ctor = err.__proto__.constructor;
+  if (ctor && ctor.name == "DOMException") {
+      return new CampaignException(call, 500, err.code, `DOMException (${err.name})`, err.message, err);
+  }
+
+  // Wraps other type of exceptions, including when a String is used as an exception
+  const statusCode = err.statusCode || 500;
+  var error = err.error || err.message;
+  if (ctor.name == "String")
+      error = err;
+  else
+      error = `${ctor.name} (${error})`;
+  
+      // TODO: this is depending on the "request" library. Should abstract this away
+  return new CampaignException(call, statusCode, "", error, undefined, err);
+}
+
+exports.CampaignException = CampaignException;
+exports.makeCampaignException = makeCampaignException;
+
 /**********************************************************************************
  * 
  * Business constants and helpers

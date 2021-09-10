@@ -10,7 +10,7 @@ OF ANY KIND, either express or implied. See the License for the specific languag
 governing permissions and limitations under the License.
 */
 
-const { DomUtil } = require("../src/domUtil.js");
+const { DomUtil, BadgerFishObject } = require("../src/domUtil.js");
 const { EntityAccessor } = require("../src/entityAccessor.js");
 
 
@@ -54,14 +54,21 @@ describe("EntityAccessor", () => {
 
     describe("BadgerFish format", () => {
 
-        const entity = { "__representation": "BadgerFish", "@string": "hello", "@number": "43", "@bool": "true",
+        const entity = new BadgerFishObject({ "@string": "hello", "@number": "43", "@bool": "true",
             "alone": {},
             "chapter": [
-                { "@name": 1 },
-                { "@name": 2 },
-                { "@name": 3 },   
+                { "@name": 1, "@constant": "b" },
+                { "@name": 2, "@constant": "b" },
+                { "@name": 3, "@constant": "b" },
             ]
-        };
+        });
+
+        it("Child Elements should also be BadgerFish", () => {
+            expect(entity instanceof BadgerFishObject).toBeTruthy();
+            expect(entity.alone instanceof BadgerFishObject).toBeTruthy();
+            expect(entity.chapter instanceof BadgerFishObject).toBeFalsy();
+            expect(entity.chapter[0] instanceof BadgerFishObject).toBeTruthy();
+        })
 
         it("Should find attribute", () => {
             expect(EntityAccessor.getAttributeAsString(entity, "string")).toBe("hello");
@@ -81,6 +88,19 @@ describe("EntityAccessor", () => {
         it("Should support getting elements which do not exist", () => {
             expect(EntityAccessor.getElement(entity, "notFound")).toBeNull();
             expect(EntityAccessor.getChildElements(entity, "notFound").length).toBe(0);
+        })
+
+        it("Should get attribute", () => {
+            for (const e of EntityAccessor.getChildElements(entity, "chapter")) {
+                expect(EntityAccessor.getAttributeAsString(e, "constant")).toBe("b");
+            }
+        })
+
+        it("Should create badger fish object with null attributes", () => {
+            const bf = new BadgerFishObject({ x: null });
+            expect(bf instanceof BadgerFishObject);
+            expect(bf.x).toBeNull();
+            expect(bf.y).toBeUndefined();
         })
 
     })

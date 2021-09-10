@@ -18,7 +18,7 @@ governing permissions and limitations under the License.
  * 
  *********************************************************************************/
 const XtkCaster = require('./xtkCaster.js').XtkCaster;
-const DomUtil = require('./domUtil.js').DomUtil;
+const { DomUtil, BadgerFishObject } = require('./domUtil.js');
 
 /**
  * @namespace XML
@@ -70,7 +70,7 @@ class EntityAccessor {
         if (entity.documentElement) entity = entity.documentElement;
         if (entity.insertAdjacentElement)
             return DomUtil.getAttributeAsString(entity, name);
-        else if (entity.__representation == "BadgerFish")
+        else if (entity instanceof BadgerFishObject)
             return XtkCaster.asString(entity[`@${name}`]);
         else 
             return XtkCaster.asString(entity[name]);
@@ -96,7 +96,7 @@ class EntityAccessor {
         if (entity.documentElement) entity = entity.documentElement;
         if (entity.insertAdjacentElement)
             return DomUtil.getAttributeAsLong(entity, name);
-        else if (entity.__representation == "BadgerFish")
+        else if (entity instanceof BadgerFishObject)
             return XtkCaster.asLong(entity[`@${name}`]);
         else 
             return XtkCaster.asLong(entity[name]);
@@ -122,7 +122,7 @@ class EntityAccessor {
         if (entity.documentElement) entity = entity.documentElement;
         if (entity.insertAdjacentElement)
             return DomUtil.getAttributeAsBoolean(entity, name);
-        else if (entity.__representation == "BadgerFish")
+        else if (entity instanceof BadgerFishObject)
             return XtkCaster.asBoolean(entity[`@${name}`]);
         else 
             return XtkCaster.asBoolean(entity[name]);

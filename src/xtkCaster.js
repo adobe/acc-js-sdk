@@ -17,6 +17,7 @@ governing permissions and limitations under the License.
  * Helper class to cast values to and from their Xtk versions
  * 
  *********************************************************************************/
+ const { CampaignException } = require('./campaign.js');
 
 /**
  * @namespace Campaign
@@ -112,7 +113,7 @@ class XtkCaster {
             case "date": 
                 return "timeStampValue"
             default: {
-                throw new Error(`Cannot get variant storage attribute name for type '${type}'`);
+                throw CampaignException.BAD_PARAMETER("type", type, `Cannot get variant storage attribute name for type '${type}'`);
             }
         }
     }
@@ -174,7 +175,7 @@ class XtkCaster {
                 return this.asDate(value);
             }
             default: {
-                throw new Error(`Cannot convert value type='${type}', value='${value}'`);
+                throw CampaignException.BAD_PARAMETER("type", type, `Cannot convert value type='${type}', value='${value}'`);
             }
         }
     }

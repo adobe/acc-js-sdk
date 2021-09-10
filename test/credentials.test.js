@@ -41,7 +41,7 @@ describe("ACC Credentials", () => {
     })
 
     it("Should not allow to get user/password if credentials type does not allow for it", () => {
-        expect(() => { new sdk.Credentials("Invalid"); }).toThrow("Invalid credentials type");
+        expect(() => { new sdk.Credentials("Invalid"); }).toThrow("SDK-000000");
     });
 
     it("Should fail on invalid credentials type", () => {

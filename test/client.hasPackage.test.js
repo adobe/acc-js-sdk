@@ -66,7 +66,7 @@ describe('ACC Client (has package)', () => {
 
   it('should fail when unlogged', async () => {
     const client = await makeClient();
-    expect( () => { client.hasPackage("nms:campaign"); }).toThrow(Error);
+    expect(() => {client.hasPackage("nms:campaign") }).toThrow("SDK-000010");
   });
 
 });

@@ -44,8 +44,9 @@ governing permissions and limitations under the License.
  * 
  *********************************************************************************/
 
-const DomUtil = require('./domUtil.js').DomUtil;
+const { DomUtil, DomException } = require('./domUtil.js');
 const XtkCaster = require('./xtkCaster.js').XtkCaster;
+const { CampaignException, makeCampaignException } = require('./campaign.js');
 const request = require('request-promise-native');
 const SOAP_ENCODING_NATIVE = "http://schemas.xmlsoap.org/soap/encoding/";
 const SOAP_ENCODING_XML = "http://xml.apache.org/xml-soap/literalxml";
@@ -53,186 +54,11 @@ const NS_ENV = "http://schemas.xmlsoap.org/soap/envelope/";
 const NS_XSI = "http://www.w3.org/2001/XMLSchema-instance";
 const NS_XSD = "http://www.w3.org/2001/XMLSchema";
 
-/**
- * @namespace Campaign
- */
-
-/**
- * Represents a Campaign exception, i.e. any kind of error that can happen when calling Campaign APIs, 
- * ranging from HTTP errors, XML serialization errors, SOAP errors, authentication errors, etc.
- * 
- * @todo does not really belong to soap.js. Move it to a better place
- * @class
- * @constructor
- * @param {SoapMethodCall|request} call the call that triggered the error. It can be a SoapMethodCall object, a HTTP request object, or even be undefined if the exception is generated outside of the context of a call
- * @param {number} statusCode the HTTP status code (200, 500, etc.)
- * @param {string} faultCode the fault code, i.e. an error code
- * @param {string} faultString a short description of the error
- * @param {string} detail a more detailed description of the error
- * @param {*} cause an optional error object representing the cause of the exception
- * @memberof Campaign
- */
-class CampaignException {
-    
-    constructor(call, statusCode, faultCode, faultString, detail, cause) {
-
-        // Provides a shorter and more friendly description of the call and method name
-        // depending on whether the exception is thrown by a SOAP or HTTP call
-        var methodCall = undefined;
-        var methodName = undefined;
-        if (call) {
-            if (call instanceof SoapMethodCall) {
-                methodCall = {
-                    type: "SOAP",
-                    urn: call.urn,                              // Campaign schema id (ex: "xtk:session")
-                    methodName: call.methodName,
-                    request: call.request,                      // raw text of SOAP request
-                    response: call.response                     // raw text of SOAP response
-                };
-                methodName = `${call.urn}#${call.methodName}`;  // Example: "xtk:session#Logon"
-            }
-            else { // HTTP call
-                // Extract the path of the request URL if there's one
-                // If it's a relative URL, use the URL itself
-                // https://test.com/hello => "/hello"
-                // /r/test => "/r/test“
-                // https://test.com => ""
-                var path = call.request.url || "";
-                var index = path.indexOf('://');
-                if (index >= 0) {
-                    path = path.substring(index+3);
-                    index = path.indexOf('/');
-                    if (index >= 0)
-                        path = path.substring(index);
-                    else
-                        path = "";
-                }
-                methodCall = {
-                    type: "HTTP",
-                    urn: "",
-                    methodName: path,
-                    request: call.request,                      // the "options" object making up the HTTP request
-                    response: call.response                     // the raw response text
-                };
-                methodName = path;
-            }
-        }
-
-        // Provides default and fix edge cases for fault code, string and details
-        faultString = faultString || "";
-        if (faultString == "null" || faultString == "null\n") faultString = "";
-        detail = detail || "";
-        faultCode = faultCode || "";
-        if (statusCode == 403 && faultString == "")
-            faultString = "Forbidden";
-
-        // Compose a user firendly user message
-        var errorMessage = "No error message was provided";
-        if (faultString != "" && detail != "")
-            errorMessage = `${faultString}. ${detail}`;
-        else if (faultString != "")
-            errorMessage = faultString;
-        else  if (detail != "")
-            errorMessage = detail;
-        var message = `${statusCode} - Error${faultCode == "" ? "" : faultCode} calling method '${methodName}': ${errorMessage}`;
-
-        // Extract Campaign error code. For instance, the fault string may look like
-        // "XSV-350013 The '193.104.215.11' IP address via which...", we extract the "XSV-350013" code
-        var errorCode = "";
-        const match = faultString.match(/(\w{3}-\d{6}) (.*)/);
-        if (match && match.length >= 2) {
-            errorCode = match[1];
-            faultString = match[2];
-        }
-
-        /** 
-         * The type of exception, always "CampaignException"
-         * @type {string}
-         */
-        this.name = "CampaignException";
-        /** 
-         * A human friendly message describing the error
-         * @type {string}
-         */
-        this.message = message;
-        /** 
-         * The HTTP status code corresponding to the error 
-         * @type {number}
-         */
-        this.statusCode = statusCode;
-        /** 
-         * An object describing the call (SOAP or HTTP) which caused the exception. Can be null 
-         * @type {string}
-         */
-        this.methodCall = methodCall;
-        /** 
-         * A Campaign-specific error code, such as XSV-350013. May not be set if the exception did not come from a SOAP call 
-         * @type {string}
-         */
-        this.errorCode = errorCode;
-        /** 
-         * An error code 
-         * @type {string}
-         */
-        this.faultCode = faultCode;
-        /** 
-         * A short description of the error 
-         * @type {string}
-         */
-        this.faultString = faultString;
-        /** 
-         * A detailed description of the error 
-         * @type {string}
-         */
-        this.detail = detail;
-        /** 
-         * The call stack 
-         * @type {string}
-         */
-        this.stack = (new Error()).stack;
-        /** 
-         * The cause of the error, such as the root cause exception 
-         */
-        this.cause = cause;
-    }
-
-}
 
 /**
  * @namespace SOAP
  */
 
-
-/**
- * Creates a CampaignException for a SOAP call and from a root exception
- * @private
- * @param {SoapMethodCall} call the SOAP call
- * @param {*} err the exception causing the SOAP call.
- * @returns {CampaignException} a CampaingException object wrapping the error
- * @memberof Campaign
- */
-function makeCampaignException(call, err) {
-    // It's already a CampaignException
-    if (err instanceof CampaignException)
-        return err;
-    
-    // Wraps DOM exceptions which can occur when dealing with malformed XML
-    const ctor = err.__proto__.constructor;
-    if (ctor && ctor.name == "DOMException") {
-        return new CampaignException(call, 500, err.code, `DOMException (${err.name})`, err.message, err);
-    }
-
-    // Wraps other type of exceptions, including when a String is used as an exception
-    const statusCode = err.statusCode || 500;
-    var error = err.error || err.message;
-    if (ctor.name == "String")
-        error = err;
-    else
-        error = `${ctor.name} (${error})`;
-    
-        // TODO: this is depending on the "request" library. Should abstract this away
-    return new CampaignException(call, statusCode, "", error, undefined, err);
-}
 
   
 /**
@@ -729,10 +555,10 @@ class SoapMethodCall {
             that.elemCurrent = dom.documentElement;
             that.elemCurrent = DomUtil.findElement(that.elemCurrent, "SOAP-ENV:Body");
             if (!that.elemCurrent)
-                throw new Error("Malformed SOAP response: missing body element");
+                throw new DomException("Malformed SOAP response: missing body element");
             that.elemCurrent = DomUtil.getFirstChildElement(that.elemCurrent);
             if (!that.elemCurrent)
-                throw new Error("Malformed SOAP response: body element is empty");
+                throw new DomException("Malformed SOAP response: body element is empty");
             
             // Error management
             if (that.elemCurrent.nodeName == "SOAP-ENV:Fault") {
@@ -775,5 +601,3 @@ class SoapMethodCall {
 
 // Public exports
 exports.SoapMethodCall = SoapMethodCall;
-exports.CampaignException = CampaignException;
-exports.makeCampaignException = makeCampaignException;

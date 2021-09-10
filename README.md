@@ -415,6 +415,8 @@ If an API call fails (SOAP fault or HTTP error), a `CampaignException` object is
 * `faultString` the error message
 * `detail` optional additional details about the error
 
+In general all errors are mapped to a CampaignException and we try to keep the semantic of errors: for instance a call with an incorrect parameter will return an HTTP stauts of 400 even if it's not actually a, HTTP call. SDK specific errors will have an errorCode with the "SDK-######" format, using "SDK" as a prefix.
+
 ```js
   try {
     await client.logon();

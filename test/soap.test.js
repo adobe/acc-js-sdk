@@ -17,7 +17,8 @@ governing permissions and limitations under the License.
  * 
  *********************************************************************************/
 
-const { SoapMethodCall, CampaignException, makeCampaignException } = require('../src/soap.js');
+const { SoapMethodCall } = require('../src/soap.js');
+const { CampaignException, makeCampaignException } = require('../src/campaign.js');
 const { DomUtil } = require('../src/domUtil.js');
 const assert = require('assert');
 

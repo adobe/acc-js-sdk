@@ -19,6 +19,7 @@ governing permissions and limitations under the License.
  *********************************************************************************/
 
 var crypto = require('crypto');
+const { CampaignException } = require('./campaign.js');
 
 /**
  * @namespace Campaign
@@ -87,7 +88,7 @@ class Cipher {
         
         // remove marker
         if (password[0] !== '@')
-            throw new Error("Cannot decrypt passwor: password marker is missing");
+            throw CampaignException.DECRYPT_ERROR();
         password = password.substr(1);  
 
         const decipher = crypto.createDecipheriv('aes-256-cbc', this.key, this.iv);

@@ -27,6 +27,40 @@ const XtkCaster = require('./xtkCaster.js').XtkCaster;
 
 
 /**
+ * A dedicated class of object literals of class BadgerFish
+ * Used to distinguish between the 2 JSON representations: BadgerFish & SimpleJson
+ */
+
+function _toBadgerFish(json) {
+    if (!json) return json;
+
+    if (DomUtil.isArray(json)) {
+        const result = [];
+        for (const i of json)
+            result.push(_toBadgerFish(i));
+        return result;
+    }
+    if (typeof json == "object")
+        return new BadgerFishObject(json);
+    return json;
+}
+
+class BadgerFishObject {
+    constructor(json) {
+        for (const p in json) {
+            this[p] = _toBadgerFish(json[p]);
+        }
+    }
+}
+
+class DomException {
+    constructor(message) {
+        this.message = message;
+    }
+}
+
+
+/**
  * Helpers for common manipulation of DOM documents
  * @memberof XML
  * @class
@@ -121,7 +155,7 @@ class DomUtil {
             child = child.nextSibling;
         }
         if (throws)
-            throw new Error(`Node ${tagName} not found`);
+            throw new DomException(`Node ${tagName} not found`);
         return null;
     }
 
@@ -286,7 +320,7 @@ class DomUtil {
                 else if (t == "boolean")
                     xmlRoot.setAttribute(att, XtkCaster.asString(XtkCaster.asBoolean(value)));
                 else
-                    throw new Error(`Cannot cast JSON to XML: attribute '${att}' type '${t}' is unknown or not supported yet`);
+                    throw new DomException(`Cannot cast JSON to XML: attribute '${att}' type '${t}' is unknown or not supported yet`);
             }
             else {
                 if (att == "$") {
@@ -313,7 +347,7 @@ class DomUtil {
                     }
                 }
                 else
-                    throw new Error(`Cannot cast JSON to XML: element '${att}' type '${t}' is unknown or not supported yet`);
+                    throw new DomException(`Cannot cast JSON to XML: element '${att}' type '${t}' is unknown or not supported yet`);
             }
         }
 
@@ -330,9 +364,9 @@ class DomUtil {
     static fromJSON(docName, json, flavor) {
         flavor = flavor || "SimpleJson";
         if (flavor != "SimpleJson" && flavor != "BadgerFish")
-            throw new Error(`Invalid JSON flavor '${flavor}'. Should be 'SimpleJson' or 'BadgerFish'`);
+            throw new DomException(`Invalid JSON flavor '${flavor}'. Should be 'SimpleJson' or 'BadgerFish'`);
         if (!docName)
-            throw new Error(`Cannot transform entity of flavor '${flavor}' to xml because no XML root name was given`);
+            throw new DomException(`Cannot transform entity of flavor '${flavor}' to xml because no XML root name was given`);
         const doc = this.newDocument(docName);
         const root = doc.documentElement;
         this._fromJSON(doc, root, json, flavor);
@@ -370,7 +404,7 @@ class DomUtil {
             if (isArray && !this.isArray(json[childName]))
                 json[childName] = [ json[childName] ];
             if (child.nodeType == 1) {  // element
-                const jsonChild = {};
+                const jsonChild = flavor == "BadgerFish" ? new BadgerFishObject() : {};
                 this._toJSON(child, jsonChild, flavor);
                 if (isArray) 
                     json[childName].push(jsonChild);
@@ -401,10 +435,10 @@ class DomUtil {
         if (xml === null || xml === undefined) return xml;
         flavor = flavor || "SimpleJson";
         if (flavor != "SimpleJson" && flavor != "BadgerFish")
-            throw new Error(`Invalid JSON flavor '${flavor}'. Should be 'SimpleJson' or 'BadgerFish'`);
+            throw new DomException(`Invalid JSON flavor '${flavor}'. Should be 'SimpleJson' or 'BadgerFish'`);
         if (xml.nodeType == 9)
             xml = xml.documentElement;
-        var json = {};
+        var json = flavor == "BadgerFish" ? new BadgerFishObject() : {};
         this._toJSON(xml, json, flavor);
         return json;
     }
@@ -413,4 +447,5 @@ class DomUtil {
 
 // Public expots
 exports.DomUtil = DomUtil;
-
+exports.DomException = DomException;
+exports.BadgerFishObject = BadgerFishObject;

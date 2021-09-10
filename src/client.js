@@ -22,7 +22,8 @@ governing permissions and limitations under the License.
 /**
  * Client to ACC instance
  */
-const { SoapMethodCall, CampaignException } = require('./soap.js');
+const { SoapMethodCall } = require('./soap.js');
+const { CampaignException } = require('./campaign.js');
 const XtkCaster = require('./xtkCaster.js').XtkCaster;
 const XtkEntityCache = require('./xtkEntityCache.js').XtkEntityCache;
 const Cipher = require('./crypto.js').Cipher;
@@ -48,6 +49,8 @@ const EntityAccessor = require('./entityAccessor.js').EntityAccessor;
  * @typedef {Object} McPingStatus
  * @memberOf Campaign
  */
+
+
 
 /**
  * Java Script Proxy handler for an XTK object. An XTK object is one constructed with the following syntax:
@@ -224,7 +227,7 @@ class Credentials {
 
     constructor(type, sessionToken, securityToken) {
         if (type != "UserPassword" && type != "ImsServiceToken" && type != "SessionToken" && type != "AnonymousUser")
-            throw new Error(`Invalid credentials type '${type}`);
+            throw CampaignException.INVALID_CREDENTIALS_TYPE(type);
         this._type = type;
         this._sessionToken = sessionToken || "";
         this._securityToken = securityToken || "";
@@ -238,7 +241,7 @@ class Credentials {
      */
     _getUser() {
         if (this._type != "UserPassword")
-            throw new Error(`Cannot get user for Credentials of type '${this._type}'`);
+            throw CampaignException.CANNOT_GET_CREDENTIALS_USER(this._type);
         const tokens = this._sessionToken.split("/");
         const user = tokens[0];
         return user;
@@ -252,7 +255,7 @@ class Credentials {
      */
     _getPassword() {
         if (this._type != "UserPassword")
-            throw new Error(`Cannot get password for Credentials of type '${this._type}'`);
+            throw CampaignException.CANNOT_GET_CREDENTIALS_PASSWORD(this._type);
         const tokens = this._sessionToken.split("/");
         const password = tokens.length > 1 ? tokens[1] : "";
         return password;
@@ -285,13 +288,13 @@ class ConnectionParameters {
         // Passing a boolean is not supported any more in 1.0.0. The Client constructor takes an
         // option object. The rememberMe parameter can be passed directly to the logon function
         if (typeof options  != "object")
-            throw new Error(`Invalid options parameter (type '${typeof options}'). An object litteral is expected`);
+            throw CampaignException.INVALID_CONNECTION_OPTIONS(options);
 
         if (options.representation === undefined || options.representation === null)
             options.representation = "SimpleJson";
 
         if (options.representation != "xml" && options.representation != "BadgerFish" && options.representation != "SimpleJson")
-            throw new Error(`Invalid representation '${options.representation}'. Cannot create client object`);
+            throw CampaignException.INVALID_REPRESENTATION(options.representation, "Cannot create Campaign client");
 
         // Defaults for rememberMe
         options.rememberMe = !!options.rememberMe;
@@ -401,7 +404,7 @@ class ConnectionParameters {
             const password = cipher.decryptPassword(EntityAccessor.getAttributeAsString(extAccount, "password"));
             return ConnectionParameters.ofUserAndPassword(endpoint, user, password, client._connectionParameters._options);
         }
-        throw new Error(`Cannot created connection parameters for external account '${extAccountName}': account type ${type} not supported`);
+        throw CampaignException.CREDENTIALS_FOR_INVALID_EXT_ACCOUNT(extAccountName, type);
     }
 
 }
@@ -486,13 +489,9 @@ class Client {
         representation = representation || this._representation;
         if (representation == "xml")
             return xml;
-        if (representation == "BadgerFish" || representation == "SimpleJson") {
-            var json = DomUtil.toJSON(xml, representation);
-            if (representation == "BadgerFish" && json)
-                json.__representation = "BadgerFish";
-            return json;
-        }
-        throw new Error(`Unsupported representation '${this._representation}'`);
+        if (representation == "BadgerFish" || representation == "SimpleJson")
+            return DomUtil.toJSON(xml, representation);
+        throw CampaignException.INVALID_REPRESENTATION(this._representation, "Cannot convert XML document to this representation");
     }
 
     /**
@@ -512,7 +511,7 @@ class Client {
             var xml = DomUtil.fromJSON(rootName, entity, representation);
             return xml;
         }
-        throw new Error(`Unsupported representation '${this._representation}'`);
+        throw CampaignException.INVALID_REPRESENTATION(this._representation, "Cannot convert to XML from this representation");
     }
 
     /**
@@ -542,9 +541,9 @@ class Client {
      * @returns a boolean indicating if the 2 representations are the same or not
      */
     isSameRepresentation(rep1, rep2) {
-        if (!rep1 || !rep2) throw new Error(`Undefined representation: cannot compare`);
-        if (rep1 != "xml" && rep1 != "SimpleJson" && rep1 != "BadgerFish") throw new Error(`Invalid representation '${rep1}': cannot compare`);
-        if (rep2 != "xml" && rep2 != "SimpleJson" && rep2 != "BadgerFish") throw new Error(`Invalid representation '${rep2}': cannot compare`);
+        if (!rep1 || !rep2) throw CampaignException.INVALID_REPRESENTATION(undefined, "Cannot compare to undefined representation");
+        if (rep1 != "xml" && rep1 != "SimpleJson" && rep1 != "BadgerFish") throw CampaignException.INVALID_REPRESENTATION(rep1, "Cannot compare to invalid representation");
+        if (rep2 != "xml" && rep2 != "SimpleJson" && rep2 != "BadgerFish") throw CampaignException.INVALID_REPRESENTATION(rep2, "Cannot compare to invalid representation");
         if (rep1 == rep2) return true;
         return rep1 == rep2;
     }
@@ -609,7 +608,7 @@ class Client {
     makeSoapCall(soapCall) {
         const requiresLogon = !(soapCall.urn === "xtk:session" && soapCall.methodName === "Logon");
         if (requiresLogon && !this.isLogged())
-            throw new Error(`Cannot execute SOAP call ${soapCall.urn}#${soapCall.methodName}: you are not logged in. Use the Logon function first`);
+            throw CampaignException.NOT_LOGGED_IN(soapCall, `Cannot execute SOAP call ${soapCall.urn}#${soapCall.methodName}: you are not logged in. Use the Logon function first`);
         var soapEndpoint = this._connectionParameters._endpoint + "/nl/jsp/soaprouter.jsp";
         return soapCall.execute(soapEndpoint);
     }
@@ -658,7 +657,7 @@ class Client {
                 that._installedPackages = {};
                 const userInfo = DomUtil.findElement(that._sessionInfo, "userInfo");
                 if (!userInfo)
-                    throw new Error(`Invalid response for xtk:session#Logon API call: userInfo structure missing`);
+                    throw CampaignException.UNEXPECTED_SOAP_RESPONSE(soapCall, `userInfo structure missing`);
                 var pack = DomUtil.getFirstChildElement(userInfo, "installed-package");
                 while (pack) {
                     const name = `${DomUtil.getAttributeAsString(pack, "namespace")}:${DomUtil.getAttributeAsString(pack, "name")}`;
@@ -670,9 +669,9 @@ class Client {
                 soapCall.checkNoMoreArgs();
                 // Sanity check: we should have both a session token and a security token.
                 if (!sessionToken)
-                    throw new Error(`Logon method succeeded, but no session token was returned`);
+                    throw CampaignException.UNEXPECTED_SOAP_RESPONSE(soapCall, `Logon method succeeded, but no session token was returned`);
                 if (!securityToken)
-                    throw new Error(`Logon method succeeded, but no security token was returned`);
+                    throw CampaignException.UNEXPECTED_SOAP_RESPONSE(soapCall, `Logon method succeeded, but no security token was returned`);
                 // store member variables after all parameters are decode the ensure atomicity
                 that._sessionToken = sessionToken;
                 that._securityToken = securityToken;
@@ -681,7 +680,8 @@ class Client {
             });
         }
         else {
-            throw new Error(`Cannot logon: unsupported credentials type '${credentials._type}'`);
+            //throw CampaignException.INVALID_CREDENTIALS_TYPE(credentials._type, "Cannot logon");
+            return Promise.reject(CampaignException.INVALID_CREDENTIALS_TYPE(credentials._type, "Cannot logon"));
         }
     }
 
@@ -812,9 +812,8 @@ class Client {
     hasPackage(packageId, optionalName) {
     if (optionalName === undefined)
         packageId = `${packageId}:${optionalName}`;
-    // TODO: Use a CampaignException
     if (!this.isLogged())
-        throw new Error(`Cannot call hasPackage: session not connected`);
+        throw CampaignException.NOT_LOGGED_IN(undefined, `Cannot call hasPackage: session not connected`);
     return this._installedPackages[packageId] !== undefined;
     }
 
@@ -891,53 +890,32 @@ class Client {
         if (!optionalStartSchemaOrSchemaName) {
             const index = enumName.lastIndexOf(':');
             if (index == -1)
-                throw new Error(`getEnum expects a fully qualified enumeration name. '${enumName}' is not a valid name.`);
+                throw CampaignException.BAD_PARAMETER("enumName", enumName, `getEnum expects a fully qualified enumeration name. '${enumName}' is not a valid name.`);
             optionalStartSchemaOrSchemaName = enumName.substring(0, index);
             enumName = enumName.substring(index + 1);
         }
 
+        if (!optionalStartSchemaOrSchemaName || optionalStartSchemaOrSchemaName == "")
+            throw CampaignException.BAD_PARAMETER("enumName", enumName, `getEnum needs a schema id.`);
+
         // If we have a schema name (and not a schema), then lookup the schema by name
-        if (optionalStartSchemaOrSchemaName && ((typeof optionalStartSchemaOrSchemaName) == "string")) {
+        if (typeof optionalStartSchemaOrSchemaName == "string") {
             const index = optionalStartSchemaOrSchemaName.lastIndexOf(':');
             if (index == -1)
-                throw new Error(`getEnum expects a valid schema name. '${optionalStartSchemaOrSchemaName}' is not a valid name.`);
+                throw CampaignException.BAD_PARAMETER("optionalStartSchemaOrSchemaName", optionalStartSchemaOrSchemaName, `getEnum expects a valid schema name. '${optionalStartSchemaOrSchemaName}' is not a valid name.`);
             optionalStartSchemaOrSchemaName = await this.getSchema(optionalStartSchemaOrSchemaName);
+            if (!optionalStartSchemaOrSchemaName) 
+                throw CampaignException.BAD_PARAMETER("optionalStartSchemaOrSchemaName", optionalStartSchemaOrSchemaName, `Schema '${optionalStartSchemaOrSchemaName}' not found.`);
         }
-        if (!optionalStartSchemaOrSchemaName) {
-            throw new Error(`Failed to find schema to load enumeration '${enumName}'`);
-        }
-        const schema = optionalStartSchemaOrSchemaName; 
+        else 
+            throw CampaignException.BAD_PARAMETER("optionalStartSchemaOrSchemaName", optionalStartSchemaOrSchemaName, `getEnum expects a valid schema name wich is a string. Given ${typeof optionalStartSchemaOrSchemaName} instead`);
 
-        if (this._representation == "BadgerFish") {
-            if (schema.enumeration) {
-                for (const i in schema.enumeration) {
-                    const e = schema.enumeration[i];
-                    if (e["@name"] == enumName)
-                        return e;
-                }
-            }
+        const schema = optionalStartSchemaOrSchemaName; 
+        for (const e of EntityAccessor.getChildElements(schema, "enumeration")) {
+            const n = EntityAccessor.getAttributeAsString(e, "name");
+            if (n == enumName)
+                return e;
         }
-        else if (this._representation == "SimpleJson") {
-            if (schema.enumeration) {
-                for (const i in schema.enumeration) {
-                    const e = schema.enumeration[i];
-                    if (e["name"] == enumName)
-                        return e;
-                }
-            }
-        }
-        else if (this._representation == "xml") {
-            var enumNode = DomUtil.getFirstChildElement(schema, "enumeration");
-            while (enumNode) {
-                var name = DomUtil.getAttributeAsString(enumNode, "name");
-                if (name == enumName) 
-                    break;
-                enumNode = DomUtil.getNextSiblingElement(enumNode, "enumeration")
-            }
-            return enumNode;
-        }
-        else
-            throw new Error(`Unsupported representation '${this._representation}'`);
     }
 
     /**
@@ -956,7 +934,7 @@ class Client {
         
         var schema = await that.getSchema(schemaId, "xml");
         if (!schema)
-            throw new Error(`Schema '${schemaId}' not found`);
+            throw CampaignException.SOAP_UNKNOWN_METHOD(schemaId, methodName, `Schema '${schemaId}' not found`);
         var schemaName = schema.getAttribute("name");
         var method = that._methodCache.get(schemaId, methodName);
         if (!method) {
@@ -964,7 +942,7 @@ class Client {
             method = that._methodCache.get(schemaId, methodName);
         }
         if (!method)
-            throw new Error(`Method '${methodName}' of schema '${schemaId}' not found`);
+            throw CampaignException.SOAP_UNKNOWN_METHOD(schemaId, methodName, `Method '${methodName}' of schema '${schemaId}' not found`);
         // console.log(method.toXMLString());
 
         var urn = that._methodCache.getSoapUrn(schemaId, methodName);
@@ -974,7 +952,7 @@ class Client {
         var object = callContext.object;
         if (!isStatic) {
             if (!object)
-                throw new Error(`Cannot call non-static method '${methodName}' of schema '${schemaId}' : no object was specified`);
+                throw CampaignException.SOAP_UNKNOWN_METHOD(schemaId, methodName, `Cannot call non-static method '${methodName}' of schema '${schemaId}' : no object was specified`);
 
             const rootName = schemaId.substr(schemaId.indexOf(':') + 1);
             object = that.fromRepresentation(rootName, object);
@@ -1032,7 +1010,7 @@ class Client {
                             soapCall.writeElement(paramName, xmlValue.documentElement);
                     }
                     else
-                        throw new Error(`Unsupported parameter type '${type}' for parameter '${paramName}' of method '${methodName}' of schema '${schemaId}`);
+                        throw CampaignException.BAD_SOAP_PARAMETER(soapCall, paramName, paramValue, `Unsupported parameter type '${type}' for parameter '${paramName}' of method '${methodName}' of schema '${schemaId}`);
                 }
                 param = DomUtil.getNextSiblingElement(param, "param");
             }
@@ -1122,7 +1100,7 @@ class Client {
                         }
                         */
                             if (!element)
-                                throw new Error(`Unsupported return type '${type}' for parameter '${paramName}' of method '${methodName}' of schema '${schemaId}'`);
+                                throw CampaignException.UNEXPECTED_SOAP_RESPONSE(soapCall, `Unsupported return type '${type}' for parameter '${paramName}' of method '${methodName}' of schema '${schemaId}'`);
                         }
                         result.push(returnValue);
                     }

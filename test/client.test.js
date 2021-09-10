@@ -112,26 +112,20 @@ describe('ACC Client', function () {
 
         it('Should fail to call if unlogged', async () => {
             const client = await Mock.makeClient();
-            await client.getSchema("nms:recipient").catch(e => {
-                expect(e.name).toMatch('Error');
-            });
+            await expect(client.getSchema("nms:recipient")).rejects.toMatchObject({ errorCode: "SDK-000010" });
         });
 
         it('Should fail if logon does not return a session token', async () => {
             const client = await Mock.makeClient();
-            await expect(async () => {
-                client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE_NO_SESSIONTOKEN);
-                return client.NLWS.xtkSession.logon();
-            }).rejects.toThrow();
+            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE_NO_SESSIONTOKEN);
+            await expect(client.NLWS.xtkSession.logon()).rejects.toMatchObject({ errorCode: "SDK-000007" });
             expect(client.isLogged()).toBe(false);
         });
 
         it('Should fail if logon does not return a security token', async () => {
             const client = await Mock.makeClient();
-            await expect(async () => {
-                client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE_NO_SECURITYTOKEN);
-                return client.NLWS.xtkSession.logon();
-            }).rejects.toThrow();
+            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE_NO_SECURITYTOKEN);
+            await expect(client.NLWS.xtkSession.logon()).rejects.toMatchObject({ errorCode: "SDK-000007" });
             expect(client.isLogged()).toBe(false);
         });
 
@@ -153,14 +147,14 @@ describe('ACC Client', function () {
         it('Should fail if Logon does not return an UserInfo struture', async () => {
             const client = await Mock.makeClient();
             client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE_NO_USERINFO);
-            await expect(client.NLWS.xtkSession.logon()).rejects.toThrow("userInfo structure missing");
+            await expect(client.NLWS.xtkSession.logon()).rejects.toMatchObject({ errorCode: "SDK-000007" });
             expect(client.isLogged()).toBe(false);
         });
 
         it('Should fail with invalid credentials type', async () => {
             const client = await Mock.makeClient();
             client._connectionParameters._credentials._type = "Dummy";
-            await expect(async () => { return client.logon() }).rejects.toThrow("Cannot logon: unsupported credentials type 'Dummy'");
+            await expect(client.logon()).rejects.toMatchObject({ errorCode: 'SDK-000000' });
         })
 
         it('Should not crash if calling isLogged on uninitialized client', () => {
@@ -408,7 +402,7 @@ describe('ACC Client', function () {
             expect(schema["@name"]).toBe("extAccount");
 
             // Ask with invalid representation
-            await expect(async () => { return client.getSchema("nms:extAccount", "invalid"); }).rejects.toThrow("Unsupported representation");
+            await expect(client.getSchema("nms:extAccount", "invalid")).rejects.toMatchObject({ errorCode: 'SDK-000004' }); 
 
             // Get missing schema
             client.clearAllCaches();
@@ -444,20 +438,12 @@ describe('ACC Client', function () {
             expect(sysEnum.value[1]["@name"]).toBe("ssl");
 
             // Schema name should be valid, i.e. "nms:extAccount" and not "extAccount"
-            await client.getSysEnum("encryptionType", "extAccount").catch(e => {
-                expect(e.name).toMatch('Error');
-            });
+            await expect(client.getSysEnum("encryptionType", "extAccount")).rejects.toMatchObject({ errorCode: "SDK-000006" });
             // Schema name must be a string
-            await client.getSysEnum("encryptionType", new Date()).catch(e => {
-                expect(e.name).toMatch('Error');
-            });
+            await expect(client.getSysEnum("encryptionType", new Date())).rejects.toMatchObject({ errorCode: "SDK-000006" });
             // With one parameter, enum name must be fully qualified, i.e. "nms:extAccount:encryptionType"
-            await client.getSysEnum("encryptionType").catch(e => {
-                expect(e.name).toMatch('Error');
-            });
-            await client.getSysEnum("extAccount:encryptionType").catch(e => {
-                expect(e.name).toMatch('Error');
-            });
+            await expect(client.getSysEnum("encryptionType")).rejects.toMatchObject({ errorCode: "SDK-000006" });
+            await expect(client.getSysEnum("extAccount:encryptionType")).rejects.toMatchObject({ errorCode: "SDK-000006" });
 
             // Enum does not exist
             sysEnum = await client.getSysEnum("nms:extAccount:notFound");
@@ -471,9 +457,7 @@ describe('ACC Client', function () {
             // Invalid representation
             const startSchema = await client.getSchema("nms:extAccount");
             client._representation = "invalid";
-            await client.getSysEnum("encryptionType", startSchema).catch(e => {
-                expect(e.name).toMatch('Error');
-            });
+            await expect(client.getSysEnum("encryptionType", startSchema)).rejects.toMatchObject({ errorCode: "SDK-000006" });
             client._representation = "xml";
 
             // Get non-cached XML representation 
@@ -485,9 +469,7 @@ describe('ACC Client', function () {
             // Schema does not exist
             client.clearAllCaches();
             client._soapTransport.mockReturnValueOnce(Mock.GET_MISSING_SCHEMA_RESPONSE);
-            await client.getSysEnum("nms:dummy:encryptionType").catch(e => {
-                expect(e.name).toMatch('Error');
-            });
+            await expect(client.getSysEnum("nms:dummy:encryptionType")).rejects.toMatchObject({ errorCode: "SDK-000006" });
 
             client._soapTransport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
             await client.NLWS.xtkSession.logoff();
@@ -495,6 +477,18 @@ describe('ACC Client', function () {
 
         it("getSysEnum should support schemas which do not have enumerations (BadgerFish representation)", async () => {
             const client = await Mock.makeClient();
+            client._representation = "BadgerFish";
+            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+
+            client._soapTransport.mockReturnValueOnce(Mock.GET_XTK_ALL_SCHEMA_RESPONSE);
+            var sysEnum = await client.getSysEnum("xtk:all:encryptionType");
+            expect(sysEnum).toBeUndefined();
+        });
+
+        it("getSysEnum should support schemas which do not have enumerations (XML representation)", async () => {
+            const client = await Mock.makeClient();
+            client._representation = "xml";
             client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
 
@@ -511,6 +505,25 @@ describe('ACC Client', function () {
             client._soapTransport.mockReturnValueOnce(Mock.GET_XTK_ALL_SCHEMA_RESPONSE);
             var sysEnum = await client.getSysEnum("xtk:all:encryptionType");
             expect(sysEnum).toBeUndefined();
+        });
+
+        it("getSysEnum should fail if schema not found", async () => {
+            const client = await Mock.makeClient();
+            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+
+            client._soapTransport.mockReturnValueOnce(Mock.GET_XTK_ALL_SCHEMA_RESPONSE);
+            await expect(client.getSysEnum(":")).rejects.toMatchObject({ errorCode: "SDK-000006" });
+        });
+
+        it("getSysEnum should fail on invalid representation)", async () => {
+            const client = await Mock.makeClient();
+            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+            client._soapTransport.mockReturnValueOnce(Mock.GET_XTK_ALL_SCHEMA_RESPONSE);
+            await client.getSysEnum("xtk:all:encryptionType"); // cache schema before setting invalid representation
+            client._representation = "Dummy";
+            await expect(client.getSysEnum("xtk:all:encryptionType")).rejects.toMatchObject({ errorCode: "SDK-000004" });
         });
 
     });
@@ -614,7 +627,7 @@ describe('ACC Client', function () {
             client._soapTransport.mockReturnValueOnce(Mock.GET_SECRET_KEY_OPTION_RESPONSE);
             await expect(async () => {
                 return sdk.ConnectionParameters.ofExternalAccount(client, "bad");
-            }).rejects.toThrow("account type 999 not supported");
+            }).rejects.toMatchObject({ errorCode: "SDK-000005" });
         })
 
         it("Should fail if invalid representation", async () => {
@@ -632,7 +645,7 @@ describe('ACC Client', function () {
                 client._representation = "Dummy";
                 var connectionParameters = await sdk.ConnectionParameters.ofExternalAccount(client, "defaultEmailMid");
                 return sdk.init(connectionParameters);
-            }).rejects.toThrow();
+            }).rejects.toMatchObject({ errorCode: "SDK-000004" });
         });
 
         // getMidClient internally uses an object encoded in BadgerFish
@@ -739,15 +752,11 @@ describe('ACC Client', function () {
             client._soapTransport.mockReturnValueOnce(Mock.GET_XTK_ALL_SCHEMA_RESPONSE);
 
             // unsupported input parameter
-            await client.NLWS.xtkAll.unsupportedInput().catch(e => {
-                expect(e.name).toMatch('Error');
-            });
+            await expect(client.NLWS.xtkAll.unsupportedInput()).rejects.toMatchObject({ errorCode: "SDK-000008" });
 
             // unsupported output parameter
             client._soapTransport.mockReturnValueOnce(Mock.GET_XTK_TYPE_UNSUPPORTED_TYPE_RESPONSE);
-            await client.NLWS.xtkAll.unsupported().catch(e => {
-                expect(e.name).toMatch('Error');
-            });
+            await expect(client.NLWS.xtkAll.unsupported()).rejects.toMatchObject({ errorCode: "SDK-000007" });
 
             client._soapTransport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
             await client.NLWS.xtkSession.logoff();
@@ -786,16 +795,13 @@ describe('ACC Client', function () {
             client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
 
-            await client.NLWS.xtkNotFound.unsupported().catch(e => {
-                expect(e.name).toMatch('Error');
-            });
+            client._soapTransport.mockReturnValueOnce(Mock.GET_MISSING_SCHEMA_RESPONSE);
+            await expect(client.NLWS.xtkNotFound.unsupported()).rejects.toMatchObject({ errorCode: "SDK-000009" });
 
             // Call directly
             client._soapTransport.mockReturnValueOnce(Mock.GET_MISSING_SCHEMA_RESPONSE);
             const callContext = { schemaId: "xtk:notFound" };
-            await client._callMethod("dummy", callContext).catch(e => {
-                expect(e.name).toMatch('Error');
-            });
+            await expect(client._callMethod("dummy", callContext)).rejects.toMatchObject({ errorCode: "SDK-000009" });
 
             client._soapTransport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
             await client.NLWS.xtkSession.logoff();
@@ -807,9 +813,7 @@ describe('ACC Client', function () {
             await client.NLWS.xtkSession.logon();
 
             client._soapTransport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
-            await client.NLWS.xtkSession.unsupported().catch(e => {
-                expect(e.name).toMatch('Error');
-            });
+            await expect(client.NLWS.xtkSession.unsupported()).rejects.toMatchObject({ errorCode: "SDK-000009" });
 
             client._soapTransport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
             await client.NLWS.xtkSession.logoff();
@@ -821,9 +825,7 @@ describe('ACC Client', function () {
             await client.NLWS.xtkSession.logon();
 
             client._soapTransport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
-            await client.NLWS.xtkSession.nonStatic().catch(e => {
-                expect(e.name).toMatch('Error');
-            });
+            await expect(client.NLWS.xtkSession.nonStatic()).rejects.toMatchObject({ errorCode: "SDK-000009" });
 
             client._soapTransport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
             await client.NLWS.xtkSession.logoff();
@@ -893,9 +895,9 @@ describe('ACC Client', function () {
 
             client._representation = "invalid";
             client.NLWS.xtkQueryDef.create(queryDef)
-            await query.executeQuery().catch(e => {
-                expect(e.name).toMatch('Error');
-            });
+            await expect(async () => {
+                return query.executeQuery();
+            }).rejects.toMatchObject({ errorCode: "SDK-000004" });
 
             client._soapTransport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
             await client.NLWS.xtkSession.logoff();
@@ -914,9 +916,9 @@ describe('ACC Client', function () {
 
             client._soapTransport.mockReturnValueOnce(Mock.GET_GETDOCUMENT_RESPONSE);
             client._representation = "invalid";
-            await client.NLWS.xtkPersist.getDocument().catch(e => {
-                expect(e.name).toMatch('Error');
-            });
+            await expect(async() => {
+                return client.NLWS.xtkPersist.getDocument();
+            }).rejects.toMatchObject({ errorCode: "SDK-000004" });
 
             client._soapTransport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
             await client.NLWS.xtkSession.logoff();
@@ -934,9 +936,9 @@ describe('ACC Client', function () {
 
             client._soapTransport.mockReturnValueOnce(Mock.GET_GETELEMENT_RESPONSE);
             client._representation = "invalid";
-            await client.NLWS.xtkPersist.getElement().catch(e => {
-                expect(e.name).toMatch('Error');
-            });
+            await expect(async() => {
+                return client.NLWS.xtkPersist.getElement();
+            }).rejects.toMatchObject({ errorCode: "SDK-000004" });
 
             client._soapTransport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
             await client.NLWS.xtkSession.logoff();
@@ -955,9 +957,9 @@ describe('ACC Client', function () {
 
             client._soapTransport.mockReturnValueOnce(Mock.GET_SETDOCUMENT_RESPONSE);
             client._representation = "invalid";
-            await client.NLWS.xtkPersist.setDocument(document).catch(e => {
-                expect(e.name).toMatch('Error');
-            });
+            await expect(async() => {
+                return client.NLWS.xtkPersist.setDocument(document);
+            }).rejects.toMatchObject({ errorCode: "SDK-000004" });
 
             client._soapTransport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
             await client.NLWS.xtkSession.logoff();
@@ -977,9 +979,9 @@ describe('ACC Client', function () {
 
             client._soapTransport.mockReturnValueOnce(Mock.GET_SETELEMENT_RESPONSE);
             client._representation = "invalid";
-            await client.NLWS.xtkPersist.setElement(element).catch(e => {
-                expect(e.name).toMatch('Error');
-            });
+            await expect(async() => {
+                return client.NLWS.xtkPersist.setElement(element);
+            }).rejects.toMatchObject({ errorCode: "SDK-000004" });
 
             client._soapTransport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
             await client.NLWS.xtkSession.logoff();
@@ -1211,20 +1213,20 @@ describe('ACC Client', function () {
 
         it("Compare representations", async () => {
             const client = await Mock.makeClient();
-            expect(() => { client.isSameRepresentation("json", "json") }).toThrow("cannot compare");
-            expect(() => { client.isSameRepresentation("json", "BadgerFish") }).toThrow("cannot compare");
-            expect(() => { client.isSameRepresentation("BadgerFish", "json") }).toThrow("cannot compare");
+            expect(() => { client.isSameRepresentation("json", "json") }).toThrow("SDK-000004");
+            expect(() => { client.isSameRepresentation("json", "BadgerFish") }).toThrow("SDK-000004");
+            expect(() => { client.isSameRepresentation("BadgerFish", "json") }).toThrow("SDK-000004");
             expect(client.isSameRepresentation("SimpleJson", "SimpleJson")).toBeTruthy();
             expect(client.isSameRepresentation("BadgerFish", "SimpleJson")).toBeFalsy();
             expect(client.isSameRepresentation("SimpleJson", "BadgerFish")).toBeFalsy();
             expect(client.isSameRepresentation("xml", "BadgerFish")).toBeFalsy();
             expect(client.isSameRepresentation("SimpleJson", "xml")).toBeFalsy();
-            expect(() => { client.isSameRepresentation("Xml", "Xml") }).toThrow("cannot compare");
-            expect(() => { client.isSameRepresentation("xml", "Xml") }).toThrow("cannot compare");
-            expect(() => { client.isSameRepresentation("Xml", "xml") }).toThrow("cannot compare");
-            expect(() => { client.isSameRepresentation("", "xml") }).toThrow("cannot compare");
-            expect(() => { client.isSameRepresentation("xml", "") }).toThrow("cannot compare");
-            expect(() => { client.isSameRepresentation("xml", null) }).toThrow("cannot compare");
+            expect(() => { client.isSameRepresentation("Xml", "Xml") }).toThrow("SDK-000004");
+            expect(() => { client.isSameRepresentation("xml", "Xml") }).toThrow("SDK-000004");
+            expect(() => { client.isSameRepresentation("Xml", "xml") }).toThrow("SDK-000004");
+            expect(() => { client.isSameRepresentation("", "xml") }).toThrow("SDK-000004");
+            expect(() => { client.isSameRepresentation("xml", "") }).toThrow("SDK-000004");
+            expect(() => { client.isSameRepresentation("xml", null) }).toThrow("SDK-000004");
         })
     });
 
@@ -1260,7 +1262,7 @@ describe('ACC Client', function () {
                 client._soapTransport.mockReturnValueOnce(Mock.GET_HELLO_RESPONSE);
                 var doc = await client.NLWS.xtkHello.world();
                 expect(doc).toEqual({ world: "cruel" });
-            }).rejects.toThrow("Dummy");
+            }).rejects.toMatchObject({ errorCode: "SDK-000004" });
         });
     });
 

@@ -18,7 +18,8 @@ governing permissions and limitations under the License.
  * https://docs.adobe.com/content/help/en/campaign-classic/technicalresources/api/c-Application.html
  * 
  *********************************************************************************/
-const XtkCaster = require('./xtkCaster.js').XtkCaster;
+ const { DomException } = require('./domUtil.js');
+ const XtkCaster = require('./xtkCaster.js').XtkCaster;
 const EntityAccessor = require('./entityAccessor.js').EntityAccessor;
 
 /**
@@ -85,7 +86,7 @@ class XPathElement {
     
     constructor(pathElement) {
         if (pathElement == null || pathElement == undefined || pathElement.trim() == "")
-            throw new Error(`Invalid empty xpath element`);
+            throw new DomException(`Invalid empty xpath element`);
         this._pathElement = pathElement;
     }
 
@@ -234,7 +235,7 @@ class XtkSchemaKey {
 
         for (var child of EntityAccessor.getChildElements(xml, "keyfield")) {
             const xpath = EntityAccessor.getAttributeAsString(child, "xpath");
-            if (xpath == "") throw new Error(`Cannot create XtkSchemaKey for key '${this.name}': keyfield does not have an xpath attribute`);
+            if (xpath == "") throw new DomException(`Cannot create XtkSchemaKey for key '${this.name}': keyfield does not have an xpath attribute`);
             const field = schemaNode.findNode(xpath);
             this.fields[field.name] = field;
         }
@@ -368,7 +369,7 @@ class XtkSchemaNode {
         for (const childNode of childNodes) {
             if (this.children[childNode.name]) {
                 // already a child with the name => there's a problem with the schema
-                throw new Error(`Failed to create schema node '${childNode.name}': there's a already a node with this name`);
+                throw new DomException(`Failed to create schema node '${childNode.name}': there's a already a node with this name`);
             }
             this.children[childNode.name] = childNode;
             this.childrenCount = this.childrenCount + 1;
@@ -445,7 +446,7 @@ class XtkSchemaNode {
         if (path.isEmpty() || path.isAbsolute()) {
             node = this.schema.root;
             if (!node)
-                throw new Error(`Cannot find node '${path}' in node ${this.name} : schema ${this.schema.name} does not have a root node`);
+                throw new DomException(`Cannot find node '${path}' in node ${this.name} : schema ${this.schema.name} does not have a root node`);
             path = path.getRelativePath();
         }
 
@@ -500,11 +501,11 @@ class XtkSchemaNode {
             const isAttribute = isAttributeName(name);
             const schemaDesc = this.schema.userDescription;
             if( path.isRootPath() ) {
-                if (isAttribute) throw new Error(`Unknown attribute '${name.substring(1)}' (see definition of schema '${schemaDesc}').`);
-                else throw new Error(`Unknown element '${name}' (see definition of schema '${schemaDesc}').`);
+                if (isAttribute) throw new DomException(`Unknown attribute '${name.substring(1)}' (see definition of schema '${schemaDesc}').`);
+                else throw new DomException(`Unknown element '${name}' (see definition of schema '${schemaDesc}').`);
             }
-            if (isAttribute) throw new Error(`Unknown attribute '${name.substring(1)}' (see definition of element '${path.asString()}' in schema '${schemaDesc}').`);
-            else throw new Error(`Unknown element '${name}' (see definition of element '${path.asString()}' in schema '${schemaDesc}').`);
+            if (isAttribute) throw new DomException(`Unknown attribute '${name.substring(1)}' (see definition of element '${path.asString()}' in schema '${schemaDesc}').`);
+            else throw new DomException(`Unknown element '${name}' (see definition of element '${path.asString()}' in schema '${schemaDesc}').`);
         }
 
         return null;
