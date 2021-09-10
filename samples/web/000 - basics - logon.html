@@ -1,0 +1,27 @@
+<html>
+    <head>
+        <script src="../../bundle.js"></script>
+    </head>
+    <body>
+        <h1>Hello</h1>
+        <div id="hello"></div>
+        <script>
+
+(async () => {
+
+    const connectionParameters = accSDK.ConnectionParameters.ofUserAndPassword("http://localhost:3000", "admin", "neo");
+    const client = await accSDK.init(connectionParameters);
+    const NLWS = client.NLWS;
+
+    console.log(accSDK.getSDKVersion());
+    await client.logon();
+    var databaseId = await client.getOption("XtkDatabaseId");
+    console.log(databaseId);
+    document.getElementById("hello").textContent = databaseId;
+    await client.logoff();
+
+})();
+
+        </script>
+    </body>
+</html>

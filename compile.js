@@ -14,7 +14,7 @@ governing permissions and limitations under the License.
 /**********************************************************************************
  * 
  * Compiles the SDK for using in a browser
- * Runs without any parameters. Will create a file named "bundle.js"
+ * Runs without any parameters. Will create a file named "dist/bundle.js"
  * 
  *********************************************************************************/
 const fs = require('fs');
@@ -30,17 +30,20 @@ var resources = [
     { name: "crypto", file: "./web/crypto.js" },
     { name: "request-promise-native", file: "./web/request.js" },
     { name: "./xtkCaster.js" },
-    { name: "./dom.js" },
+    { name: "./domUtil.js" },
+    { name: "./entityAccessor.js" },
     { name: "./xtkEntityCache.js" },
     { name: "./methodCache.js" },
     { name: "./optionCache.js" },
     { name: "./soap.js" },
     { name: "./crypto.js" },
+    { name: "./application.js" },
+    { name: "./campaign.js" },
     { name: "./client.js" },
     { name: "./index.js" },
 ];
 
-const outFileName = "./bundle.js";
+const outFileName = "./dist/bundle.js";
 const rootPath = "./src";
 
 

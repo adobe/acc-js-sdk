@@ -1162,7 +1162,7 @@ Go to the root folder of the SDK and compile the SDK
 node compile.js
 ````
 
-It generates a file named `bundle.js`
+It generates a file named `dist/bundle.js`
 ````
 ACC client-side SDK compiler version 0.1.0
 Bundling ../package.json
@@ -1170,7 +1170,7 @@ Bundling ./web/jsdom.js
 Bundling ./web/crypto.js
 Bundling ./web/request.js
 Bundling ./xtkCaster.js
-Bundling ./dom.js
+Bundling ./domUtil.js
 Bundling ./xtkEntityCache.js
 Bundling ./methodCache.js
 Bundling ./optionCache.js
@@ -1178,14 +1178,14 @@ Bundling ./soap.js
 Bundling ./crypto.js
 Bundling ./client.js
 Bundling ./index.js
-Client-side SDK generated in ./bundle.js
+Client-side SDK generated in ./dist/bundle.js
 ````
 
 ## Deploy the SDK
 Once compiled, copy it to the Campaign server (here on a dev environment).
 ````sh
 cd /c/cygwin64/home/neolane/ac
-cp "Z:\amorin On My Mac\Documents\dev\git\ac7\acc-js-sdk\bundle.js" nl/web/accSDK.js
+cp "Z:\amorin On My Mac\Documents\dev\git\ac7\acc-js-sdk\dist/bundle.js" nl/web/accSDK.js
 cp "Z:\amorin On My Mac\Documents\dev\git\ac7\acc-js-sdk\index.html" nl/web/index.html
 ````
 

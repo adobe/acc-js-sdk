@@ -24,3 +24,4 @@ yarn-error.log
 out/
 docs/
 .vscode/
+dist/
