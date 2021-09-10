@@ -21,7 +21,7 @@ governing permissions and limitations under the License.
 'use strict'
 
 const pjson = require('../package.json');
-const DomUtil = require('./dom.js').DomUtil;
+const DomUtil = require('./domUtil.js').DomUtil;
 const XtkCaster = require('./xtkCaster.js').XtkCaster;
 const { Client, Credentials, ConnectionParameters } = require('./client.js');
 

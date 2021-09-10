@@ -18,8 +18,7 @@ governing permissions and limitations under the License.
  *********************************************************************************/
 
 const { SoapMethodCall, CampaignException, makeCampaignException } = require('../src/soap.js');
-const JSDOM = require("jsdom").JSDOM;
-const { DomUtil } = require('../src/dom.js');
+const { DomUtil } = require('../src/domUtil.js');
 const assert = require('assert');
 
 const URL = "https://soap-test/nl/jsp/soaprouter.jsp";
@@ -55,9 +54,9 @@ function makeSOAPResponse(methodName /*, p1, t1, v1, p2, t2, v2... */) {
                 </${methodName}Response>
             </SOAP-ENV:Body>
         </SOAP-ENV:Envelope>`;
-    const dom = new JSDOM(xml, {contentType: "text/xml"});
-    const doc = dom.window.document;
-    const body = DomUtil.getFirstChildElement(doc.documentElement);
+    const doc = DomUtil.parse(xml);
+    const root = doc.documentElement;
+    const body = DomUtil.getFirstChildElement(root);
     const response = DomUtil.getFirstChildElement(body);
     for (var i=1; i<arguments.length; i+=3) {
         var pname = arguments[i];
@@ -77,7 +76,7 @@ function makeSOAPResponse(methodName /*, p1, t1, v1, p2, t2, v2... */) {
         pel.setAttribute("xsi:type", ptype);
         response.appendChild(pel);
     }
-    return dom.serialize();
+    return DomUtil.toXMLString(doc);
 }
 
 function makeSOAPResponseWithExtraElements(methodName) {
@@ -91,8 +90,7 @@ function makeSOAPResponseWithExtraElements(methodName) {
                 <extra/>
             </SOAP-ENV:Body>
         </SOAP-ENV:Envelope>`;
-    const dom = new JSDOM(xml, {contentType: "text/xml"});
-    return dom.serialize();
+    return xml;
 }
 
 function makeSOAPFault(faultcode, faultstring, detail) {
@@ -415,7 +413,7 @@ describe('SOAP', function() {
             });
         });
 
-        it("Should fail on non-XSL return value", function() {
+        it("Should fail on non-XML return value", function() {
             const delegate = function() { return Promise.resolve("{'this':'is', 'not':'xml'}"); };
             const call = makeSoapMethodCall("xtk:session", "Date", "$session$", "$security$", delegate);
             return call.execute(URL).catch(e => {
@@ -544,7 +542,7 @@ describe('SOAP', function() {
         });
 
 
-        it("Should should read Document response", function() {
+        it("Should read Document response", function() {
             const xml = '<root att="Hello"><child/></root>';
             const delegate = function() { 
                 return Promise.resolve(makeSOAPResponse("Date", "p", "ns:Document", xml)); 
@@ -627,7 +625,7 @@ describe('SOAP', function() {
                 });
             })
 
-            it("Should ignore entity element if it's not of the expected element type. This will be considered as a parameter", () => {
+            it("Should ignore entity element if it is not of the expected element type. This will be considered as a parameter", () => {
                 const delegate = function() { 
                     return Promise.resolve(makeSOAPResponse("SelectAll", "entity", "xsd:string", "<queryDef/>")); 
                 };
@@ -729,6 +727,6 @@ describe("Campaign exception", () => {
         expect(makeCampaignException(undefined, new Error("Hello")).faultString).toBe("Error (Hello)");
     })
     
-
+    
 });
 

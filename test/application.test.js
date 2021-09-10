@@ -16,7 +16,7 @@ governing permissions and limitations under the License.
  * Unit tests for the schema data objects
  * 
  *********************************************************************************/
-const DomUtil = require('../src/dom.js').DomUtil;
+const DomUtil = require('../src/domUtil.js').DomUtil;
 const newSchema = require('../src/application.js').newSchema;
 const newCurrentLogin = require('../src/application.js').newCurrentLogin;
 const XPath = require('../src/application.js').XPath;

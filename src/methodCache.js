@@ -18,7 +18,7 @@ governing permissions and limitations under the License.
  * 
  *********************************************************************************/
 
-const DomUtil = require('./dom.js').DomUtil;
+const DomUtil = require('./domUtil.js').DomUtil;
 
 /**
  * @namespace Campaign

@@ -18,7 +18,7 @@ governing permissions and limitations under the License.
  *********************************************************************************/
 
 const assert = require('assert');
-const { DomUtil } = require('../src/dom.js');
+const { DomUtil } = require('../src/domUtil.js');
 
 
 describe('DomUtil', function() {
@@ -219,6 +219,7 @@ describe('DomUtil', function() {
     
 
     describe('toXMLString', function() {
+
         test.each(ref) (
             "toXMLString %p",
             (item) => {
@@ -232,7 +233,23 @@ describe('DomUtil', function() {
                     assert.equal(xml, expected);
                 }
             }
-          );
+        );
+
+        it("Should serialize document", () => {
+            var doc = DomUtil.parse("<hello/>");
+            expect(DomUtil.toXMLString(doc)).toBe("<hello/>");
+        })
+
+        it("Should serialize document if __jsdom__ is not defined", () => {
+            var doc = DomUtil.parse("<hello/>");
+            delete doc.__jsdom__;
+            expect(DomUtil.toXMLString(doc)).toBe("<hello/>");
+        })
+
+        it("Should serialize the document element", () => {
+            var doc = DomUtil.parse("<hello/>");
+            expect(DomUtil.toXMLString(doc.documentElement)).toBe("<hello/>");
+        })
     });
 
     describe('Escaping', function() {
@@ -423,25 +440,25 @@ describe('DomUtil', function() {
         it("Should get short attribute value", function() {
             const dom = DomUtil.parse("<root empty='' v1='Hello' v2='0' v3='1' v4='-2' v5='500'></root>");
             const root = dom.documentElement;
-            assert.equal(DomUtil.getAttributeAsShort(root, "empty"), 0);
-            assert.equal(DomUtil.getAttributeAsShort(root, "notFound"), 0);
-            assert.equal(DomUtil.getAttributeAsShort(root, "v1"), 0);
-            assert.equal(DomUtil.getAttributeAsShort(root, "v2"), 0);
-            assert.equal(DomUtil.getAttributeAsShort(root, "v3"), 1);
-            assert.equal(DomUtil.getAttributeAsShort(root, "v4"), -2);
-            assert.equal(DomUtil.getAttributeAsShort(root, "v5"), 500);
+            expect(DomUtil.getAttributeAsShort(root, "empty")).toBe(0);
+            expect(DomUtil.getAttributeAsShort(root, "notFound")).toBe(0);
+            expect(DomUtil.getAttributeAsShort(root, "v1")).toBe(0);
+            expect(DomUtil.getAttributeAsShort(root, "v2")).toBe(0);
+            expect(DomUtil.getAttributeAsShort(root, "v3")).toBe(1);
+            expect(DomUtil.getAttributeAsShort(root, "v4")).toBe(-2);
+            expect(DomUtil.getAttributeAsShort(root, "v5")).toBe(500);
         });
 
         it("Should get long attribute value", function() {
             const dom = DomUtil.parse("<root empty='' v1='Hello' v2='0' v3='1' v4='-2' v5='500'></root>");
             const root = dom.documentElement;
-            assert.equal(DomUtil.getAttributeAsLong(root, "empty"), 0);
-            assert.equal(DomUtil.getAttributeAsLong(root, "notFound"), 0);
-            assert.equal(DomUtil.getAttributeAsLong(root, "v1"), 0);
-            assert.equal(DomUtil.getAttributeAsLong(root, "v2"), 0);
-            assert.equal(DomUtil.getAttributeAsLong(root, "v3"), 1);
-            assert.equal(DomUtil.getAttributeAsLong(root, "v4"), -2);
-            assert.equal(DomUtil.getAttributeAsLong(root, "v5"), 500);
+            expect(DomUtil.getAttributeAsLong(root, "empty")).toBe(0);
+            expect(DomUtil.getAttributeAsLong(root, "notFound")).toBe(0);
+            expect(DomUtil.getAttributeAsLong(root, "v1")).toBe(0);
+            expect(DomUtil.getAttributeAsLong(root, "v2")).toBe(0);
+            expect(DomUtil.getAttributeAsLong(root, "v3")).toBe(1);
+            expect(DomUtil.getAttributeAsLong(root, "v4")).toBe(-2);
+            expect(DomUtil.getAttributeAsLong(root, "v5")).toBe(500);
         });
     });
 

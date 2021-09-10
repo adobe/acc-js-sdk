@@ -19,7 +19,7 @@ governing permissions and limitations under the License.
 
 const sdk = require('../src/index.js');
 const { Client, ConnectionParameters, transportWrapper } = require('../src/client.js');
-const DomUtil = require('../src/dom.js').DomUtil;
+const DomUtil = require('../src/domUtil.js').DomUtil;
 const Mock = require('./mock.js').Mock;
 
 

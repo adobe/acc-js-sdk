@@ -21,7 +21,7 @@ const assert = require('assert');
 const OptionCache = require('../src/optionCache.js').OptionCache;
 const MethodCache = require('../src/methodCache.js').MethodCache;
 const XtkEntityCache = require('../src/xtkEntityCache.js').XtkEntityCache;
-const { DomUtil } = require('../src/dom.js');
+const { DomUtil } = require('../src/domUtil.js');
 
 describe('Caches', function() {
 

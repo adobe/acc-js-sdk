@@ -18,7 +18,7 @@ governing permissions and limitations under the License.
  * 
  *********************************************************************************/
 const XtkCaster = require('./xtkCaster.js').XtkCaster;
-const DomUtil = require('./dom.js').DomUtil;
+const DomUtil = require('./domUtil.js').DomUtil;
 
 /**
  * @namespace XML

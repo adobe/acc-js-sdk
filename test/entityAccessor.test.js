@@ -10,8 +10,8 @@ OF ANY KIND, either express or implied. See the License for the specific languag
 governing permissions and limitations under the License.
 */
 
-const { DomUtil } = require("../src/dom");
-const { EntityAccessor } = require("../src/entityAccessor");
+const { DomUtil } = require("../src/domUtil.js");
+const { EntityAccessor } = require("../src/entityAccessor.js");
 
 
 /**********************************************************************************

@@ -44,11 +44,9 @@ governing permissions and limitations under the License.
  * 
  *********************************************************************************/
 
-const DomUtil = require('./dom.js').DomUtil;
+const DomUtil = require('./domUtil.js').DomUtil;
 const XtkCaster = require('./xtkCaster.js').XtkCaster;
 const request = require('request-promise-native');
-const JSDOM = require("jsdom").JSDOM;
-
 const SOAP_ENCODING_NATIVE = "http://schemas.xmlsoap.org/soap/encoding/";
 const SOAP_ENCODING_XML = "http://xml.apache.org/xml-soap/literalxml";
 const NS_ENV = "http://schemas.xmlsoap.org/soap/envelope/";
@@ -191,7 +189,7 @@ class CampaignException {
          * The call stack 
          * @type {string}
          */
-        //this.stack = (new Error()).stack;
+        this.stack = (new Error()).stack;
         /** 
          * The cause of the error, such as the root cause exception 
          */
@@ -262,7 +260,6 @@ class SoapMethodCall {
         this.userAgentString = userAgentString;
 
         // THe SOAP call being built
-        this.dom = undefined;
         this.doc = undefined;
         this.root = undefined;
         this.header = undefined;
@@ -296,8 +293,7 @@ class SoapMethodCall {
         this.encoding = encoding;
         var urnPath = "urn:" + urn;
 
-        this.dom = new JSDOM(`<?xml version='1.0' encoding='UTF-8'?><SOAP-ENV:Envelope xmlns:xsd='${NS_XSD}' xmlns:xsi='${NS_XSI}' xmlns:SOAP-ENV='${NS_ENV}' xmlns:ns='http://xml.apache.org/xml-soap'></SOAP-ENV:Envelope>`, {contentType: "text/xml"});
-        this.doc = this.dom.window.document;
+        this.doc = DomUtil.parse(`<?xml version='1.0' encoding='UTF-8'?><SOAP-ENV:Envelope xmlns:xsd='${NS_XSD}' xmlns:xsi='${NS_XSI}' xmlns:SOAP-ENV='${NS_ENV}' xmlns:ns='http://xml.apache.org/xml-soap'></SOAP-ENV:Envelope>`);
         this.root = this.doc.documentElement;
 
         this.header = this.doc.createElement(`SOAP-ENV:Header`);
@@ -336,7 +332,7 @@ class SoapMethodCall {
         const node = this.doc.createElement(tag);
         node.setAttribute("xsi:type", type);
         if (encoding != this.encoding)
-            node.setAttribute("SOAP-ENV:encodingStyle", encoding);
+        node.setAttribute("SOAP-ENV:encodingStyle", encoding);
         if (value !== null && value !== undefined)
             node.textContent = value;
         this.method.appendChild(node);
@@ -499,7 +495,7 @@ class SoapMethodCall {
     getEntity() {
         if (!this.elemCurrent)
             return null;
-        if (this.elemCurrent.getAttribute("xsi:type") != "ns:Element")
+            if (this.elemCurrent.getAttribute("xsi:type") != "ns:Element")
             return null;
         if (this.elemCurrent.tagName != "entity")
             return null;
@@ -689,7 +685,7 @@ class SoapMethodCall {
                 'X-Security-Token': this.securityToken,
                 'Cookie': '__sessiontoken=' + this.sessionToken
             },
-            body: this.dom.serialize()
+            body: DomUtil.toXMLString(this.doc)
         };
         return options;
     }
@@ -729,8 +725,8 @@ class SoapMethodCall {
             //               </SOAP-ENV:Fault>
             //           </SOAP-ENV:Body>
             //      </SOAP-ENV:Envelope>        
-            const dom = new JSDOM(body, {contentType: "text/xml"});
-            that.elemCurrent = dom.window.document.firstChild;
+            const dom = DomUtil.parse(body);
+            that.elemCurrent = dom.documentElement;
             that.elemCurrent = DomUtil.findElement(that.elemCurrent, "SOAP-ENV:Body");
             if (!that.elemCurrent)
                 throw new Error("Malformed SOAP response: missing body element");

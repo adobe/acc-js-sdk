@@ -25,6 +25,7 @@ const XtkCaster = require('./xtkCaster.js').XtkCaster;
  * @namespace XML
  */
 
+
 /**
  * Helpers for common manipulation of DOM documents
  * @memberof XML
@@ -38,7 +39,7 @@ class DomUtil {
 
     /**
      * Test if a object is an array
-     * @todo: does not really belong to dom.js. Move it to a better place
+     * @todo: does not really belong to domUtil.js. Move it to a better place
      * 
      * @param {*} o the object to test
      * @returns {boolean} indicates if the object is an array
@@ -67,7 +68,9 @@ class DomUtil {
     static parse(xmlString) {
         const dom = new JSDOM(xmlString, {contentType: "text/xml"});
         const doc = dom.window.document;
+        doc.__jsdom__ = dom;
         return doc;
+        //return parseXML(xmlString);
     }
 
     /**
@@ -77,8 +80,7 @@ class DomUtil {
      * @returns a DOM Document
      */
     static newDocument(name) {
-        const dom = new JSDOM('<' + name + '/>', {contentType: "text/xml"});
-        return dom.window.document;
+        return this.parse(`<${name}/>`);
     }
 
     /**
@@ -240,7 +242,9 @@ class DomUtil {
     static toXMLString(node) {
         var s = "";
         if (node) {
-            if (node.nodeType == 9) // documentElement
+            if (node.__jsdom__) 
+                return node.__jsdom__.serialize();
+            if (node.nodeType == 9) // documentElement 
                 node = node.documentElement;
             s = node.outerHTML;
         }
