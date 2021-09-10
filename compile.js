@@ -26,12 +26,9 @@ console.log("ACC client-side SDK compiler version " + pjson.version);
 // Add files / resources to bundle here in dependency order
 var resources = [
     { name: "../package.json" },
-    { name: "jsdom", file: "./web/jsdom.js" },
     { name: "./util.js" },
     { name: "./campaign.js" },
-    { name: "crypto", file: "./web/crypto.js" },
-    //{ name: "./transport.js" },       // explicitely ignore since we use web/request.js
-    { name: "axios", file: "./web/request.js" },
+    { name: "./transport.js" },
     { name: "./xtkCaster.js" },
     { name: "./domUtil.js" },
     { name: "./entityAccessor.js" },
@@ -44,6 +41,7 @@ var resources = [
     { name: "./client.js" },
     { name: "./index.js" },
 ];
+
 
 const outFileName = "./dist/bundle.js";
 const rootPath = "./src";

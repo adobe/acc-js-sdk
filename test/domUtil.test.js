@@ -19,6 +19,7 @@ governing permissions and limitations under the License.
 
 const assert = require('assert');
 const { DomUtil } = require('../src/domUtil.js');
+const { Util } = require('../src/util.js');
 
 
 describe('DomUtil', function() {

@@ -11,16 +11,44 @@ OF ANY KIND, either express or implied. See the License for the specific languag
 governing permissions and limitations under the License.
 */
 
+const XtkCaster = require('./xtkCaster.js').XtkCaster;
+const { Util } = require("./util.js");
+
+var JSDOM = undefined;
+
+/* istanbul ignore else */
+if (!Util.isBrowser()) {
+  JSDOM = require("jsdom").JSDOM;
+}
+
+/**********************************************************************************
+ * 
+ * Browser-side implementation of jsdom node module. As the DOM is already
+ * available in the browser, this is very light weight
+ * 
+ *********************************************************************************/
+else {
+
+  var jsdom = function(text) {
+    var parser = new DOMParser();
+    var dom = parser.parseFromString(text, "application/xml");
+    this.window = {
+        document: dom
+    }
+    this.serialize = function() {
+        return new XMLSerializer().serializeToString(dom);
+    }
+  }
+
+  JSDOM = jsdom;
+}
+
 
 /**********************************************************************************
  * 
  * DOM Utilities
  * 
  *********************************************************************************/
-
-const JSDOM = require("jsdom").JSDOM;
-const XtkCaster = require('./xtkCaster.js').XtkCaster;
-const { Util } = require("./util.js");
 
 /**
  * @namespace XML
@@ -454,7 +482,7 @@ class DomUtil {
  * @param {string} pathElement the element as a string
  * @memberof XML
  */
- class XPathElement {
+class XPathElement {
     
     constructor(pathElement) {
         if (pathElement == null || pathElement == undefined || pathElement.trim() == "")

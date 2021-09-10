@@ -1,4 +1,5 @@
 "use strict";
+
 /*
 Copyright 2020 Adobe. All rights reserved.
 This file is licensed to you under the Apache License, Version 2.0 (the "License");
@@ -29,6 +30,11 @@ governing permissions and limitations under the License.
  * @constructor
  */
 class Util {
+
+    static isBrowser() {
+        const browser = typeof window !== 'undefined';
+        return browser;
+    }
     
     static isArray(o) {
         if (o === null || o === undefined) return false;

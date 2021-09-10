@@ -18,10 +18,11 @@ governing permissions and limitations under the License.
  *********************************************************************************/
 
 const assert = require('assert');
-const Cipher = require('../src/crypto.js').Cipher;
+const crypto = require('../src/crypto.js');
+const Cipher = crypto.Cipher;
 
 describe('crypto', function() {
-
+    
     it("Should decrypt password", function() {
         const cipher = new Cipher("HMLmn6uvWr8wu1Akt8UORr07YbC64u1FVW7ENAxNjpo=");
         var decrypted = cipher.decryptPassword("@57QS5VHMb9BCsojLVrKI/Q==");
@@ -79,4 +80,13 @@ describe('crypto', function() {
         expect(cipher.decryptPassword(cipher.encryptPassword("ABCDEFGHIJKLmnopqrstuvwxyz"))).toBe("ABCDEFGHIJKLmnopqrstuvwxyz");
     });
 
+});
+
+
+describe('crypto (browser)', function() {
+
+    it("Should do nothing", () => {
+        const browserCrypto = crypto.__browser.crypto;
+        expect(browserCrypto).toStrictEqual({});
+    })
 });

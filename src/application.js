@@ -18,7 +18,7 @@ governing permissions and limitations under the License.
  * https://docs.adobe.com/content/help/en/campaign-classic/technicalresources/api/c-Application.html
  * 
  *********************************************************************************/
-const { DomException, XPath, XPathElement } = require('../src/domUtil.js');
+const { DomException, XPath } = require('./domUtil.js');
 const XtkCaster = require('./xtkCaster.js').XtkCaster;
 const EntityAccessor = require('./entityAccessor.js').EntityAccessor;
 

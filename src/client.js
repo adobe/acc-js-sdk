@@ -163,22 +163,11 @@ const clientHandler = {
  * @memberof Campaign
  */
 function transportWrapper(transport) {
-    const browser = !!this._browser;
     const traceSOAPCalls = !!this._traceSOAPCalls;
     return (options) => {
         if (traceSOAPCalls) {
-            if (browser) {
-                try {
-                    var requestBody = DomUtil.parse(options.data);
-                    console.log("SOAP//request", options.headers["SoapAction"], Util.trim(requestBody));
-                } catch(ex) {
-                    console.log("Failed to trace SOAP call", ex);
-                }
-            }
-            else 
-                console.log("SOAP//request", options.headers["SoapAction"], Util.trim(options.data));
+            console.log("SOAP//request", options.headers["SoapAction"], Util.trim(options.data));
         }
-    
 
         var promise = transport(options);
 
@@ -189,16 +178,7 @@ function transportWrapper(transport) {
         promise.then((body) => {
             
             if (traceSOAPCalls) {
-                if (browser) {
-                    try {
-                        var responseBody = DomUtil.parse(body);
-                        console.log("SOAP//response", options.headers["SoapAction"], Util.trim(responseBody));
-                    } catch(ex) {
-                        console.log("Failed to trace SOAP call", ex);
-                    }
-                }
-                else
-                    console.log("SOAP//response", options.headers["SoapAction"], Util.trim(body));
+                console.log("SOAP//response", options.headers["SoapAction"], Util.trim(body));
             }
 
             return body;
@@ -446,7 +426,6 @@ class Client {
 
         this._soapTransport = request;
         this._traceSOAPCalls = false;
-        this._browser = typeof window !== 'undefined';
 
         // expose utilities
 

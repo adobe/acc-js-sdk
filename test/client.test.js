@@ -74,19 +74,6 @@ describe('ACC Client', function () {
             expect(client.isLogged()).toBe(false);
         });
 
-        it('Should logon and logoff with traces (as if in browser)', async () => {
-            const client = await Mock.makeClient();
-            client.traceSOAPCalls(true);
-            client._browser = true;
-            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
-            client._soapTransport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
-            await client.NLWS.xtkSession.logon();
-            expect(client.isLogged()).toBe(true);
-            var sessionInfoXml = client.getSessionInfo("xml");
-            expect(DomUtil.findElement(sessionInfoXml, "serverInfo", true).getAttribute("buildNumber")).toBe("9219");
-            await client.NLWS.xtkSession.logoff();
-            expect(client.isLogged()).toBe(false);
-        });
 
         it('Should logon and logoff (remember me)', async () => {
             const client = await Mock.makeClient({ rememberMe: true });
@@ -1523,24 +1510,4 @@ describe('ACC Client', function () {
         });
     });
 
-    describe("transportWrapper", () => {
-        it("Should ignore trace errors", async () => {
-            // In browser mode, we tracing SOAP calls is on, the transport wrapper will parse SOAP request and responses XML.
-            // Make sure any failures in this parsing are just ignored
-
-            // Fake "this" objet to call the transportWrapper on
-            const that = {
-                _browser: true,
-                _traceSOAPCalls: true
-            }
-            // Fake transport object: returns invalid XML
-            const transport = async function() {
-                return "Invalid XML responsse";
-            }
-            // Call reques and make sure it does not fail
-            const fn = transportWrapper.call(that, transport);
-            var body = await fn({body: "Invalid XML request"});
-            expect(body).toBe("Invalid XML responsse");
-        })
-    })
 });
