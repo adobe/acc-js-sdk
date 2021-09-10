@@ -1,4 +1,8 @@
 "use strict";
+
+const { Util } = require("./util.js");
+
+
 /*
 Copyright 2020 Adobe. All rights reserved.
 This file is licensed to you under the Apache License, Version 2.0 (the "License");
@@ -45,7 +49,7 @@ governing permissions and limitations under the License.
   static SOAP_UNKNOWN_METHOD(schema, method, details)     { return new CampaignException(undefined, 400, 16384, `SDK-000009 Unknown method '${method}' of schema '${schema}'`, details); }
   static NOT_LOGGED_IN(call, details)                     { return new CampaignException(     call, 400, 16384, `SDK-000010 Cannot call API because client is not logged in`, details); }
   static DECRYPT_ERROR(details)                           { return new CampaignException(undefined, 400, 16384, `SDK-000011 "Cannot decrypt password: password marker is missing`, details); }
-  
+ 
   constructor(call, statusCode, faultCode, faultString, detail, cause) {
 
       // Provides a shorter and more friendly description of the call and method name
@@ -57,6 +61,7 @@ governing permissions and limitations under the License.
           if (ctor && ctor.name == "SoapMethodCall") {
               methodCall = {
                   type: "SOAP",
+                  url: call.url,
                   urn: call.urn,                              // Campaign schema id (ex: "xtk:session")
                   methodName: call.methodName,
                   request: call.request,                      // raw text of SOAP request
@@ -64,7 +69,8 @@ governing permissions and limitations under the License.
               };
               methodName = `${call.urn}#${call.methodName}`;  // Example: "xtk:session#Logon"
           }
-          else { // HTTP call
+          else { 
+              // HTTP call
               // Extract the path of the request URL if there's one
               // If it's a relative URL, use the URL itself
               // https://test.com/hello => "/hello"
@@ -169,7 +175,12 @@ governing permissions and limitations under the License.
       /** 
        * The cause of the error, such as the root cause exception 
        */
-      this.cause = cause;
+      //this.cause = cause;
+
+      for (const p in this) {
+        var text = this[p];
+        this[p] = Util.trim(text);
+      }
   }
 }
 
@@ -194,6 +205,16 @@ function makeCampaignException(call, err) {
       return new CampaignException(call, 500, err.code, `DOMException (${err.name})`, err.message, err);
   }
 
+  if (err.statusCode && err.request) {
+    var faultString = err.statusText;
+    var details = err.data;
+    if (!faultString) {
+      faultString = err.data;
+      details = undefined;
+    }
+    return new CampaignException(call, err.statusCode, "", faultString, details, err);
+  }
+
   // Wraps other type of exceptions, including when a String is used as an exception
   const statusCode = err.statusCode || 500;
   var error = err.error || err.message;
@@ -201,9 +222,7 @@ function makeCampaignException(call, err) {
       error = err;
   else
       error = `${ctor.name} (${error})`;
-  
-      // TODO: this is depending on the "request" library. Should abstract this away
-  return new CampaignException(call, statusCode, "", error, undefined, err);
+    return new CampaignException(call, statusCode, "", error, undefined, err);
 }
 
 exports.CampaignException = CampaignException;

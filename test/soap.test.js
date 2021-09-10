@@ -107,6 +107,18 @@ function makeSOAPFault(faultcode, faultstring, detail) {
         </SOAP-ENV:Envelope>`);
     return DomUtil.toXMLString(doc);
 }
+function makeSOAPFaultNoDetail(faultcode, faultstring) {
+    const doc = DomUtil.parse(`<?xml version='1.0' encoding='UTF-8'?>
+        <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/' xmlns:ns='http://xml.apache.org/xml-soap'>
+            <SOAP-ENV:Body>
+                <SOAP-ENV:Fault>
+                <faultcode>${faultcode}</faultcode>
+                <faultstring>${faultstring}</faultstring>
+                </SOAP-ENV:Fault>
+            </SOAP-ENV:Body>
+        </SOAP-ENV:Envelope>`);
+    return DomUtil.toXMLString(doc);
+}
 
 describe('SOAP', function() {
 
@@ -141,7 +153,7 @@ describe('SOAP', function() {
             assert.equal(request.headers["SoapAction"], "xtk:session#Empty");
             assert.equal(request.headers["X-Security-Token"], "");
             assert.equal(request.headers["Cookie"], "__sessiontoken=");
-            const env = DomUtil.parse(request.body).documentElement;
+            const env = DomUtil.parse(request.data).documentElement;
             const header = hasChildElement(env, "SOAP-ENV:Header");
             hasChildElement(header, "Cookie", "__sessiontoken=");
             hasChildElement(header, "X-Security-Token");
@@ -155,7 +167,7 @@ describe('SOAP', function() {
             const request = call._createHTTPRequest(URL);
             assert.equal(request.headers["X-Security-Token"], "$security$", "Security token matches");
             assert.equal(request.headers["Cookie"], "__sessiontoken=$session$", "Session token matches");
-            const env = DomUtil.parse(request.body).documentElement;
+            const env = DomUtil.parse(request.data).documentElement;
             const header = hasChildElement(env, "SOAP-ENV:Header");
             hasChildElement(header, "Cookie", "__sessiontoken=$session$");
             hasChildElement(header, "X-Security-Token", "$security$");
@@ -171,7 +183,7 @@ describe('SOAP', function() {
             for (var i=0; i<values.length; i++)
                 call.writeBoolean(`p${i}`, values[i]);
             const request = call._createHTTPRequest(URL);
-            const env = DomUtil.parse(request.body).documentElement;
+            const env = DomUtil.parse(request.data).documentElement;
             const body = hasChildElement(env, "SOAP-ENV:Body");
             const method = hasChildElement(body, "m:Boolean");
             for (i=0; i<values.length; i++) {
@@ -186,7 +198,7 @@ describe('SOAP', function() {
             for (var i=0; i<values.length; i++)
                 call.writeByte(`p${i}`, values[i]);
             const request = call._createHTTPRequest(URL);
-            const env = DomUtil.parse(request.body).documentElement;
+            const env = DomUtil.parse(request.data).documentElement;
             const body = hasChildElement(env, "SOAP-ENV:Body");
             const method = hasChildElement(body, "m:Byte");
             for (i=0; i<values.length; i++) {
@@ -201,7 +213,7 @@ describe('SOAP', function() {
             for (var i=0; i<values.length; i++)
                 call.writeShort(`p${i}`, values[i]);
             const request = call._createHTTPRequest(URL);
-            const env = DomUtil.parse(request.body).documentElement;
+            const env = DomUtil.parse(request.data).documentElement;
             const body = hasChildElement(env, "SOAP-ENV:Body");
             const method = hasChildElement(body, "m:Short");
             for (i=0; i<values.length; i++) {
@@ -216,7 +228,7 @@ describe('SOAP', function() {
             for (var i=0; i<values.length; i++)
                 call.writeLong(`p${i}`, values[i]);
             const request = call._createHTTPRequest(URL);
-            const env = DomUtil.parse(request.body).documentElement;
+            const env = DomUtil.parse(request.data).documentElement;
             const body = hasChildElement(env, "SOAP-ENV:Body");
             const method = hasChildElement(body, "m:Long");
             for (i=0; i<values.length; i++) {
@@ -231,7 +243,7 @@ describe('SOAP', function() {
             for (var i=0; i<values.length; i++)
                 call.writeInt64(`p${i}`, values[i]);
             const request = call._createHTTPRequest(URL);
-            const env = DomUtil.parse(request.body).documentElement;
+            const env = DomUtil.parse(request.data).documentElement;
             const body = hasChildElement(env, "SOAP-ENV:Body");
             const method = hasChildElement(body, "m:Int64");
             for (i=0; i<values.length; i++) {
@@ -246,7 +258,7 @@ describe('SOAP', function() {
             for (var i=0; i<values.length; i++)
                 call.writeFloat(`p${i}`, values[i]);
             const request = call._createHTTPRequest(URL);
-            const env = DomUtil.parse(request.body).documentElement;
+            const env = DomUtil.parse(request.data).documentElement;
             const body = hasChildElement(env, "SOAP-ENV:Body");
             const method = hasChildElement(body, "m:Float");
             for (i=0; i<values.length; i++) {
@@ -261,7 +273,7 @@ describe('SOAP', function() {
             for (var i=0; i<values.length; i++)
                 call.writeDouble(`p${i}`, values[i]);
             const request = call._createHTTPRequest(URL);
-            const env = DomUtil.parse(request.body).documentElement;
+            const env = DomUtil.parse(request.data).documentElement;
             const body = hasChildElement(env, "SOAP-ENV:Body");
             const method = hasChildElement(body, "m:Double");
             for (i=0; i<values.length; i++) {
@@ -276,7 +288,7 @@ describe('SOAP', function() {
             for (var i=0; i<values.length; i++)
                 call.writeString(`p${i}`, values[i]);
             const request = call._createHTTPRequest(URL);
-            const env = DomUtil.parse(request.body).documentElement;
+            const env = DomUtil.parse(request.data).documentElement;
             const body = hasChildElement(env, "SOAP-ENV:Body");
             const method = hasChildElement(body, "m:String");
             for (i=0; i<values.length; i++) {
@@ -294,7 +306,7 @@ describe('SOAP', function() {
             for (var i=0; i<values.length; i++)
                 call.writeTimestamp(`p${i}`, values[i]);
             const request = call._createHTTPRequest(URL);
-            const env = DomUtil.parse(request.body).documentElement;
+            const env = DomUtil.parse(request.data).documentElement;
             const body = hasChildElement(env, "SOAP-ENV:Body");
             const method = hasChildElement(body, "m:Timestamp");
             for (i=0; i<values.length; i++) {
@@ -312,7 +324,7 @@ describe('SOAP', function() {
             for (var i=0; i<values.length; i++)
                 call.writeDate(`p${i}`, values[i]);
             const request = call._createHTTPRequest(URL);
-            const env = DomUtil.parse(request.body).documentElement;
+            const env = DomUtil.parse(request.data).documentElement;
             const body = hasChildElement(env, "SOAP-ENV:Body");
             const method = hasChildElement(body, "m:Date");
             for (i=0; i<values.length; i++) {
@@ -327,7 +339,7 @@ describe('SOAP', function() {
             const call = makeSoapMethodCall("xtk:session", "Element", "$session$", "$security$");
             call.writeElement("p", element);
             const request = call._createHTTPRequest(URL);
-            const env = DomUtil.parse(request.body).documentElement;
+            const env = DomUtil.parse(request.data).documentElement;
             const body = hasChildElement(env, "SOAP-ENV:Body");
             const method = hasChildElement(body, "m:Element");
             const param = hasChildElement(method, "p");
@@ -343,7 +355,7 @@ describe('SOAP', function() {
             element.setAttribute("att", "Hello");
             call.writeElement("p", element);
             const request = call._createHTTPRequest(URL);
-            const env = DomUtil.parse(request.body).documentElement;
+            const env = DomUtil.parse(request.data).documentElement;
             const body = hasChildElement(env, "SOAP-ENV:Body");
             const method = hasChildElement(body, "m:Element");
             const param = hasChildElement(method, "p");
@@ -357,7 +369,7 @@ describe('SOAP', function() {
             call.writeElement("p", null);
             call.writeElement("q", undefined);
             const request = call._createHTTPRequest(URL);
-            const env = DomUtil.parse(request.body).documentElement;
+            const env = DomUtil.parse(request.data).documentElement;
             const body = hasChildElement(env, "SOAP-ENV:Body");
             const method = hasChildElement(body, "m:Element");
             var param = hasChildElement(method, "p");
@@ -373,7 +385,7 @@ describe('SOAP', function() {
             const call = makeSoapMethodCall("xtk:session", "Document", "$session$", "$security$");
             call.writeDocument("p", doc);
             const request = call._createHTTPRequest(URL);
-            const env = DomUtil.parse(request.body).documentElement;
+            const env = DomUtil.parse(request.data).documentElement;
             const body = hasChildElement(env, "SOAP-ENV:Body");
             const method = hasChildElement(body, "m:Document");
             const param = hasChildElement(method, "p");
@@ -387,7 +399,7 @@ describe('SOAP', function() {
             call.writeDocument("p", null);
             call.writeDocument("q", undefined);
             const request = call._createHTTPRequest(URL);
-            const env = DomUtil.parse(request.body).documentElement;
+            const env = DomUtil.parse(request.data).documentElement;
             const body = hasChildElement(env, "SOAP-ENV:Body");
             const method = hasChildElement(body, "m:Document");
             var param = hasChildElement(method, "p");
@@ -655,6 +667,17 @@ describe('SOAP', function() {
                 expect(e.faultString).toBe("failed");
             });
         });
+
+        it("Should simulate a SOAP fault without a detail node", () => {
+            const delegate = function() { 
+                return Promise.resolve(makeSOAPFaultNoDetail("-53", "failed")); 
+            };
+            const call = makeSoapMethodCall("xtk:session", "Date", "$session$", "$security$", delegate);
+            return call.execute(URL).catch(e => {
+                expect(e.faultCode).toBe("-53");
+                expect(e.faultString).toBe("failed");
+            });
+        })
     });
     
 });

@@ -20,6 +20,7 @@ governing permissions and limitations under the License.
 
 const JSDOM = require("jsdom").JSDOM;
 const XtkCaster = require('./xtkCaster.js').XtkCaster;
+const { Util } = require("./util.js");
 
 /**
  * @namespace XML
@@ -34,7 +35,7 @@ const XtkCaster = require('./xtkCaster.js').XtkCaster;
 function _toBadgerFish(json) {
     if (!json) return json;
 
-    if (DomUtil.isArray(json)) {
+    if (Util.isArray(json)) {
         const result = [];
         for (const i of json)
             result.push(_toBadgerFish(i));
@@ -68,31 +69,6 @@ class DomException {
  */
 class DomUtil {
     
-    constructor() {
-    }
-
-    /**
-     * Test if a object is an array
-     * @todo: does not really belong to domUtil.js. Move it to a better place
-     * 
-     * @param {*} o the object to test
-     * @returns {boolean} indicates if the object is an array
-     */
-    static isArray(o) {
-        if (o === null || o === undefined) return false;
-        // JavaScript arrays are objects
-        if (typeof o != "object") return false;
-        // They also have a length property. But checking the length is not enough
-        // since, it can also be an object litteral with a "length" property. Campaign
-        // schema attributes typically have a "length" attribute and are not arrays
-        if (o.length === undefined || o.length === null) return false;
-        // So check for a "push" function
-        if (o.push === undefined || o.push === null) return false;
-        if (typeof o.push != "function") 
-            return false;
-        return true;
-    }
-
     /**
      * Parse an XML string as a DOM Document
      * 
@@ -401,7 +377,7 @@ class DomUtil {
             if (isCollection && (json[childName] === null || json[childName] === undefined))
                 json[childName] = [ ];
             var isArray = !!json[childName];
-            if (isArray && !this.isArray(json[childName]))
+            if (isArray && !Util.isArray(json[childName]))
                 json[childName] = [ json[childName] ];
             if (child.nodeType == 1) {  // element
                 const jsonChild = flavor == "BadgerFish" ? new BadgerFishObject() : {};

@@ -838,7 +838,7 @@ describe('ACC Client', function () {
 
             client._soapTransport.mockReturnValueOnce(Mock.GET_XTK_WORKFLOW_SCHEMA_RESPONSE);
             client._soapTransport.mockImplementationOnce(options => {
-                const doc = DomUtil.parse(options.body);
+                const doc = DomUtil.parse(options.data);
                 const body = DomUtil.findElement(doc.documentElement, "SOAP-ENV:Body");
                 const method = DomUtil.getFirstChildElement(body);
                 const parameters = DomUtil.findElement(method, "parameters");
@@ -1313,7 +1313,7 @@ describe('ACC Client', function () {
 
             client._soapTransport.mockReturnValueOnce(Mock.GET_NMS_RTEVENT_SCHEMA_RESPONSE);
             client._soapTransport.mockImplementationOnce(options => {
-                const doc = DomUtil.parse(options.body);
+                const doc = DomUtil.parse(options.data);
                 const body = DomUtil.findElement(doc.documentElement, "SOAP-ENV:Body");
                 const method = DomUtil.getFirstChildElement(body);
                 const event = DomUtil.findElement(method, "event");

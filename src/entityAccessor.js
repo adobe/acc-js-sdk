@@ -19,6 +19,7 @@ governing permissions and limitations under the License.
  *********************************************************************************/
 const XtkCaster = require('./xtkCaster.js').XtkCaster;
 const { DomUtil, BadgerFishObject } = require('./domUtil.js');
+const { Util } = require("./util.js");
 
 /**
  * @namespace XML
@@ -159,7 +160,7 @@ class EntityAccessor {
         }
         else {
             var elements = entity[tagName] || [];
-            if (!DomUtil.isArray(elements)) elements = [ elements ];
+            if (!Util.isArray(elements)) elements = [ elements ];
             return elements;
         }
     }

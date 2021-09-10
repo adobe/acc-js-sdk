@@ -23,16 +23,17 @@ governing permissions and limitations under the License.
  * Client to ACC instance
  */
 const { SoapMethodCall } = require('./soap.js');
-const { CampaignException } = require('./campaign.js');
+const { CampaignException, makeCampaignException } = require('./campaign.js');
 const XtkCaster = require('./xtkCaster.js').XtkCaster;
 const XtkEntityCache = require('./xtkEntityCache.js').XtkEntityCache;
 const Cipher = require('./crypto.js').Cipher;
 const DomUtil = require('./domUtil.js').DomUtil;
 const MethodCache = require('./methodCache.js').MethodCache;
 const OptionCache = require('./optionCache.js').OptionCache;
-const request = require('request-promise-native');
+const request = require('./transport.js').request;
 const Application = require('./application.js').Application;
 const EntityAccessor = require('./entityAccessor.js').EntityAccessor;
+const { Util } = require('./util.js');
 
 /**
  * @namespace Campaign
@@ -158,7 +159,7 @@ const clientHandler = {
  * and returning a promise. When resolved, the promise returns the request result
  * 
  * @private
- * @param {Request} transport the transport layer, or an request (see request-promise-native)
+ * @param {Request} transport the transport layer, or an request
  * @memberof Campaign
  */
 function transportWrapper(transport) {
@@ -168,14 +169,14 @@ function transportWrapper(transport) {
         if (traceSOAPCalls) {
             if (browser) {
                 try {
-                    var requestBody = DomUtil.parse(options.body);
-                    console.log("SOAP//request", options.headers["SoapAction"], requestBody);
+                    var requestBody = DomUtil.parse(options.data);
+                    console.log("SOAP//request", options.headers["SoapAction"], Util.trim(requestBody));
                 } catch(ex) {
                     console.log("Failed to trace SOAP call", ex);
                 }
             }
             else 
-                console.log("SOAP//request", options.headers["SoapAction"], options.body);
+                console.log("SOAP//request", options.headers["SoapAction"], Util.trim(options.data));
         }
     
 
@@ -191,13 +192,13 @@ function transportWrapper(transport) {
                 if (browser) {
                     try {
                         var responseBody = DomUtil.parse(body);
-                        console.log("SOAP//response", options.headers["SoapAction"], responseBody);
+                        console.log("SOAP//response", options.headers["SoapAction"], Util.trim(responseBody));
                     } catch(ex) {
                         console.log("Failed to trace SOAP call", ex);
                     }
                 }
                 else
-                    console.log("SOAP//response", options.headers["SoapAction"], body);
+                    console.log("SOAP//response", options.headers["SoapAction"], Util.trim(body));
             }
 
             return body;
@@ -1123,20 +1124,20 @@ class Client {
      */
     test() {
         const that = this;
-        return that._soapTransport({
+        const request = {
             url: `${that._connectionParameters._endpoint}/r/test`, 
             method: 'GET',
             headers: {
                 'User-Agent': that.getUserAgentString()
             }
-        }).then((body) => {
+        };
+        return that._soapTransport(request).then((body) => {
             const xml = DomUtil.parse(body);
             const result = that.toRepresentation(xml);
             return result;
 
         }).catch((err) => {
-            // TODO: this is depending on the "request" library. Should abstract this away
-            throw new CampaignException({ request:err.options, response: err.response.body }, err.statusCode, "", err.error, undefined);
+            throw makeCampaignException({ request:request, reqponse:err.response }, err);
         });
     }
 
@@ -1147,7 +1148,7 @@ class Client {
      */
     ping() {
         const that = this;
-        return that._soapTransport({
+        const request = {
             url: `${that._connectionParameters._endpoint}/nl/jsp/ping.jsp`, 
             method: 'GET',
             headers: {
@@ -1155,7 +1156,8 @@ class Client {
                 'X-Security-Token': that._securityToken,
                 'Cookie': '__sessiontoken=' + this._sessionToken
             }
-        }).then((body) => {
+        };
+        return that._soapTransport(request).then((body) => {
             const lines = body.split('\n');
             const doc = DomUtil.newDocument("ping");
             const root = doc.documentElement;
@@ -1169,8 +1171,7 @@ class Client {
             const result = that.toRepresentation(doc);
             return result;
         }).catch((err) => {
-            // TODO: this is depending on the "request" library. Should abstract this away}
-            throw new CampaignException({ request:err.options, response: err.response.body }, err.statusCode, "", err.error, undefined);
+            throw makeCampaignException({ request:request, reqponse:err.response }, err);
         });
     }
 
@@ -1182,7 +1183,7 @@ class Client {
      */
     mcPing() {
         const that = this;
-        return that._soapTransport({
+        const request = {
             url: `${that._connectionParameters._endpoint}/nl/jsp/mcPing.jsp`, 
             method: 'GET',
             headers: {
@@ -1190,7 +1191,8 @@ class Client {
                 'X-Security-Token': that._securityToken,
                 'Cookie': '__sessiontoken=' + this._sessionToken
             }
-        }).then((body) => {
+        };
+        return that._soapTransport(request).then((body) => {
             const lines = body.split('\n');
             const doc = DomUtil.newDocument("ping");
             const root = doc.documentElement;
@@ -1230,8 +1232,7 @@ class Client {
             const result = that.toRepresentation(doc);
             return result;
         }).catch((err) => {
-            // TODO: this is depending on the "request" library. Should abstract this away
-            throw new CampaignException({ request:err.options, response: err.response.body }, err.statusCode, "", err.error, undefined, err);
+            throw makeCampaignException({ request:request, reqponse:err.response }, err);
         });
     }
 

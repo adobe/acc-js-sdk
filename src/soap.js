@@ -47,7 +47,7 @@ governing permissions and limitations under the License.
 const { DomUtil, DomException } = require('./domUtil.js');
 const XtkCaster = require('./xtkCaster.js').XtkCaster;
 const { CampaignException, makeCampaignException } = require('./campaign.js');
-const request = require('request-promise-native');
+const request = require('./transport.js');
 const SOAP_ENCODING_NATIVE = "http://schemas.xmlsoap.org/soap/encoding/";
 const SOAP_ENCODING_XML = "http://xml.apache.org/xml-soap/literalxml";
 const NS_ENV = "http://schemas.xmlsoap.org/soap/envelope/";
@@ -84,12 +84,13 @@ class SoapMethodCall {
         this.sessionToken = sessionToken || "";
         this.securityToken = securityToken || "";
         this.userAgentString = userAgentString;
+        this.url = undefined;
 
         // THe SOAP call being built
         this.doc = undefined;
         this.root = undefined;
         this.header = undefined;
-        this.body = undefined;
+        this.data = undefined;
         this.method = undefined;
 
         this._initMessage(urn, methodName, SOAP_ENCODING_NATIVE);
@@ -125,13 +126,13 @@ class SoapMethodCall {
         this.header = this.doc.createElement(`SOAP-ENV:Header`);
         this.root.appendChild(this.header);
 
-        this.body = this.doc.createElement(`SOAP-ENV:Body`);
-        this.root.appendChild(this.body);
+        this.data = this.doc.createElement(`SOAP-ENV:Body`);
+        this.root.appendChild(this.data);
 
         this.method = this.doc.createElement(`m:${method}`);
         this.method.setAttribute(`xmlns:m`, urnPath);
         this.method.setAttribute(`SOAP-ENV:encodingStyle`, encoding);
-        this.body.appendChild(this.method);
+        this.data.appendChild(this.method);
 
         const cookieHeader = this.doc.createElement("Cookie");
         cookieHeader.textContent = `__sessiontoken=${this.sessionToken}`;
@@ -511,7 +512,7 @@ class SoapMethodCall {
                 'X-Security-Token': this.securityToken,
                 'Cookie': '__sessiontoken=' + this.sessionToken
             },
-            body: DomUtil.toXMLString(this.doc)
+            data: DomUtil.toXMLString(this.doc)
         };
         return options;
     }
@@ -525,9 +526,10 @@ class SoapMethodCall {
      */
     async execute(url) {
         const that = this;
+        this.url = url;
         const options = this._createHTTPRequest(url);
         const promise = this.transport(options);
-        that.request = options.body;
+        that.request = options.data;
         return promise.then(function(body) {
             that.response = body;
             // Response is a serialized XML document with the following structure
@@ -564,7 +566,8 @@ class SoapMethodCall {
             if (that.elemCurrent.nodeName == "SOAP-ENV:Fault") {
                 const faultCode = DomUtil.findElement(that.elemCurrent, "faultcode").textContent;
                 const faultString = DomUtil.findElement(that.elemCurrent, "faultstring").textContent;
-                const detail = DomUtil.findElement(that.elemCurrent, "detail").textContent;
+                const detailNode = DomUtil.findElement(that.elemCurrent, "detail");
+                const detail = detailNode ? detailNode.textContent : undefined;
                 throw new CampaignException(that, 500, faultCode, faultString, detail);
             }
             // Set current element for subsequent calls to getNext* 

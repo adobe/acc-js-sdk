@@ -27,9 +27,11 @@ console.log("ACC client-side SDK compiler version " + pjson.version);
 var resources = [
     { name: "../package.json" },
     { name: "jsdom", file: "./web/jsdom.js" },
+    { name: "./util.js" },
     { name: "./campaign.js" },
     { name: "crypto", file: "./web/crypto.js" },
-    { name: "request-promise-native", file: "./web/request.js" },
+    //{ name: "./transport.js" },       // explicitely ignore since we use web/request.js
+    { name: "axios", file: "./web/request.js" },
     { name: "./xtkCaster.js" },
     { name: "./domUtil.js" },
     { name: "./entityAccessor.js" },
