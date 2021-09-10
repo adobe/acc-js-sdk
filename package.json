@@ -10,7 +10,8 @@
     "test": "test"
   },
   "dependencies": {
-    "jsdom": "^16.2.0"
+    "jsdom": "^16.7.0",
+    "request-promise-native": "^1.0.9"
   },
   "devDependencies": {
     "docdash": "^1.2.0",
