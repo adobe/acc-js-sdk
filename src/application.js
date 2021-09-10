@@ -18,8 +18,8 @@ governing permissions and limitations under the License.
  * https://docs.adobe.com/content/help/en/campaign-classic/technicalresources/api/c-Application.html
  * 
  *********************************************************************************/
- const { DomException } = require('./domUtil.js');
- const XtkCaster = require('./xtkCaster.js').XtkCaster;
+const { DomException, XPath, XPathElement } = require('../src/domUtil.js');
+const XtkCaster = require('./xtkCaster.js').XtkCaster;
 const EntityAccessor = require('./entityAccessor.js').EntityAccessor;
 
 /**
@@ -50,162 +50,6 @@ function newSchema(xml) {
     return schema;
 }
 
-
-// ========================================================================================
-// XPath
-// This is currently an internal helper structure
-//
-// A XPath can be either of:
-//      - null, undefined or empty, which represents a relative path to self
-//      - "." a relative path to self
-//      - ".." a relative path to the parent node
-//      - "/" a absolute path to the top level node (the schema node)
-//      - A "/" separate list of path elements, optionally starting with "/" to indicate an absolute xpath
-//
-// XPathElement
-// This is currently an internal helper structure
-//
-// An XPathElement represents an element in a XPath. It can never be null, undefined or empty
-// (this should not be possible by construction as XPath elements are created from the XPath
-// object)
-//      - A attribute name, starting with "@"
-//      - An element name
-// 
-// ========================================================================================
-
-/**
- * Represents an element of a XPath
- * 
- * @private
- * @class
- * @constructor
- * @param {string} pathElement the element as a string
- * @memberof XML
- */
-class XPathElement {
-    
-    constructor(pathElement) {
-        if (pathElement == null || pathElement == undefined || pathElement.trim() == "")
-            throw new DomException(`Invalid empty xpath element`);
-        this._pathElement = pathElement;
-    }
-
-    /**
-     * Tests if the XPath element represents the current node ("self" or ".")
-     * @returns {boolean} a boolean indicating if the element represents the current node
-     */
-    isSelf() {
-        return this._pathElement == ".";
-    }
-
-    /**
-     * Tests if the XPath element represents the parent node ("..")
-     * @returns {boolean} a boolean indicating if the element represents the parent node
-     */
-    isParent() {
-        return this._pathElement == "..";
-    }
-
-    /**
-     * Get the string representation of the XPath element
-     * @returns {string} the XPath element as a string
-     */
-    asString() {
-        return this._pathElement;
-    }
-
-    toString() {
-        return this.asString();
-    }
-}
-
-/**
- * Represents a XPath
- * 
- * @private
- * @class
- * @constructor
- * @param {string} path the XPath, as a string
- * @memberof XML
- */
-class XPath {
-
-    constructor(path) {
-        this._path = (path || "").trim();
-    }
-
-    /**
-     * Get the string representation of the XPath
-     * @returns {string} the XPath as a string
-     */
-    asString() {
-        return this._path;
-    }
-
-    toString() {
-        return this.asString();
-    }
-
-    /**
-     * Tests if the XPath is empty ("")
-     * @returns {boolean} a boolean indicating whether the XPath is empty or not
-     */
-    isEmpty() {
-        return this._path.length == 0;
-    }
-
-    /**
-     * Tests if the XPath is an absolute XPath (starts with "/")
-     * @returns {boolean} a boolean indicating whether the XPath is an absolute XPath or not
-     */
-    isAbsolute() {
-        return this._path.length > 0 && this._path[0] == '/';
-    }
-
-    /**
-     * Tests if the XPath represents the current node ("self" or ".")
-     * @returns {boolean} a boolean indicating whether the XPath is the current node
-     */
-    isSelf() {
-        return this._path == ".";
-    }
-
-    /**
-     * Tests if the XPath represents the root node ("/")
-     * @returns {boolean} a boolean indicating whether the XPath is the root node
-     */
-    isRootPath() {
-        return this._path == "/";
-    }
-
-    /**
-     * Get an array of the elements making up the path
-     * @returns {XPathElement[]} an array of XPath elements, which may be empty. Will never be null or undefined.
-     */
-    getElements() {
-        const elements = [];
-        const first = this.isAbsolute() ? 1 : 0;
-        const path = this._path.substr(first);
-        if (path != "") {
-            const tokens = path.split('/');
-            for (var i=0; i<tokens.length; i++) {
-                const element = new XPathElement(tokens[i]);
-                elements.push(element);
-            }
-        }
-        return elements;
-    }
-
-    /**
-     * Get an XPath representing a relative path corresponding to the path. In other words, removing
-     * the starting "/" if there is one
-     * @returns {XPath} the relative XPaht
-     */
-    getRelativePath() {
-        if (!this.isAbsolute()) return this;
-        return new XPath(this._path.substring(1));
-    }
-}
 
 // ========================================================================================
 // Keys
@@ -893,5 +737,3 @@ exports.Application = Application;
 // For tests
 exports.newSchema = newSchema;
 exports.newCurrentLogin = newCurrentLogin;
-exports.XPath = XPath;
-exports.XPathElement = XPathElement;
