@@ -91,10 +91,9 @@ const utils = require("./utils.js");
   await utils.sample({
     title: "Getting the current server time",
     labels: [ "Basics", "GetServerTime", "Date", "xtk:session", "GetDate", "CurrentDate" ],
-    description: `Get the current timestamp in the server database clock`,
+    description: `The static method xtk:session#GetServerTime returns the server current date+time as a JavaScript date. When printing the date, it will be localized by JavaScipt to your local settings, but the actual timestamp is available in UTC`,
     code: async() => {
       return await utils.logon(async (client, NLWS) => {
-        console.log(`The static method xtk:session#GetServerTime returns the server current date+time as a JavaScript date.\nWhen printing the date, it will be localized by JavaScipt to your local settings, but the actual timestamp is available in UTC`);
         var result = await NLWS.xtkSession.getServerTime();
         console.log(`>> Server timestamp (UTC): ${result.toUTCString()}`);
         console.log(`>> Server timestamp (localized): ${result}`);
