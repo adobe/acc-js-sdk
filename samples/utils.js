@@ -34,7 +34,7 @@ async function attempt(callback) {
 
 async function run(main) {
   return main.apply(this).then(() => {
-    console.log("Done.");
+    //console.log("Done.");
   })
   .catch((err) => {
     console.error(err);
@@ -44,8 +44,8 @@ async function run(main) {
 async function logon(callback) {
 
   var main = async () => {
-    var version = sdk.getSDKVersion();
-    console.log(`${version.description} version ${version.version}`);
+    //var version = sdk.getSDKVersion();
+    //console.log(`${version.description} version ${version.version}`);
     const connectionParameters = sdk.ConnectionParameters.ofUserAndPassword(url, user, password);
     const client = await sdk.init(connectionParameters);
     const NLWS = client.NLWS;
@@ -54,21 +54,29 @@ async function logon(callback) {
     console.log(`Connected to Campaign instance '${client.getSessionInfo().serverInfo.instanceName}' build '${client.getSessionInfo().serverInfo.buildNumber}' with user '${client.application.operator.login}'`);
   
     await callback.apply(this, [client, NLWS]);
-    console.log("Logging off");
+    //console.log("Logging off");
     await client.logoff();
   };
 
   return run(main);
 }
 
-module.exports = {
-    url: url,
-    user: user,
-    password: password,
-    rt1_url: rt1_url,
+async function sample(options) {
+  console.log(`================================================================================
+Sample ........... ${options.title}
+Labels ........... ${options.labels.map((i) => `[${i}]`).join(" ")}
+Description ...... ${options.description || ""}
+`);
+  return options.code.apply(this, []);
+}
 
-    run: run,
-    logon: logon,
-    attempt: attempt
-};
 
+module.exports.url = url;
+module.exports.user = user;
+module.exports.password = password;
+module.exports.rt1_url = rt1_url;
+
+module.exports.run = run;
+module.exports.logon = logon;
+module.exports.sample = sample;
+module.exports.attempt = attempt;
