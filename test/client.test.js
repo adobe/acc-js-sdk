@@ -74,6 +74,21 @@ describe('ACC Client', function () {
             expect(client.isLogged()).toBe(false);
         });
 
+        it('Should fail with traces', async () => {
+            const client = await Mock.makeClient();
+            client.traceAPICalls(true);
+            client._soapTransport.mockReturnValueOnce(Promise.resolve(`<?xml version='1.0' encoding='UTF-8'?>
+            <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/' xmlns:ns='http://xml.apache.org/xml-soap'>
+                <SOAP-ENV:Body>
+                    <SOAP-ENV:Fault>
+                    <faultcode>faultcode</faultcode>
+                    <faultstring>XXX-000000</faultstring>
+                    <detail>detail</detail>
+                    </SOAP-ENV:Fault>
+                </SOAP-ENV:Body>
+            </SOAP-ENV:Envelope>`));
+            await expect(client.NLWS.xtkSession.logon()).rejects.toMatchObject({ errorCode: "XXX-000000" });
+        });
 
         it('Should logon and logoff (remember me)', async () => {
             const client = await Mock.makeClient({ rememberMe: true });
@@ -1510,4 +1525,131 @@ describe('ACC Client', function () {
         });
     });
 
+    describe("Observers", () => {
+
+        it("Should observe SOAP api Call (getOption)", async () => {
+            const client = await Mock.makeClient();
+            const expected = [
+                "xtk:session#Logon", true,
+                "xtk:persist#GetEntityIfMoreRecent", true,
+                "xtk:session#GetOption", true,
+            ];
+            const observed = [];
+            
+            client.registerObserver({
+                onSOAPCall: (soapCall, safeCallData) => {
+                    const request = soapCall.request;
+                    const soapAction = request.headers["SoapAction"];
+                    observed.push(soapAction);
+                },
+                onSOAPCallSuccess: (soapCall, safeCallResponse) => {
+                    observed.push(true);
+                }
+            });
+            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            client._soapTransport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+            client._soapTransport.mockReturnValueOnce(Mock.GET_DATABASEID_RESPONSE);
+            var databaseId = await client.getOption("XtkDatabaseId");
+            expect(databaseId).toBe("uFE80000000000000F1FA913DD7CC7C480041161C");
+
+            expect(observed).toStrictEqual(expected);
+        });
+
+        it("Should observe SOAP call failure", async () => {
+            const client = await Mock.makeClient();
+
+            var observedException = undefined;
+            client.registerObserver({
+                onSOAPCallFailure: (soapCall, exception) => {
+                    observedException = exception;
+                }
+            });
+            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            client._soapTransport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+            client._soapTransport.mockReturnValueOnce(Promise.resolve(`<?xml version='1.0' encoding='UTF-8'?>
+                        <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/' xmlns:ns='http://xml.apache.org/xml-soap'>
+                            <SOAP-ENV:Body>
+                                <SOAP-ENV:Fault>
+                                <faultcode>faultcode</faultcode>
+                                <faultstring>XXX-000000</faultstring>
+                                <detail>detail</detail>
+                                </SOAP-ENV:Fault>
+                            </SOAP-ENV:Body>
+                        </SOAP-ENV:Envelope>`));
+            await expect(client.getOption("XtkDatabaseId")).rejects.toMatchObject({ errorCode: "XXX-000000" });
+            expect(observedException).toMatchObject({ errorCode: "XXX-000000" });
+            
+        });
+
+        it("Should ignore unregistering non-existant observers", async () => {
+            const client = await Mock.makeClient();
+            client.registerObserver({ onSOAPCall: () => {} });
+            expect(client._observers.length).toBe(1);
+            client.unregisterObserver({ onSOAPCall: () => {} });
+            expect(client._observers.length).toBe(1);
+        });
+
+        it("Should unregister observer", async () => {
+            const client = await Mock.makeClient();
+            var countCalls = 0;
+            var countSuccesses = 0;
+            
+            const observer1 = {
+                onSOAPCall: () => { countCalls = countCalls + 1; },
+                onSOAPCallSuccess: () => { countSuccesses = countSuccesses + 1; }
+            };
+            const observer2 = {
+                onSOAPCallSuccess: () => { countSuccesses = countSuccesses + 1; }
+            };
+            client.registerObserver(observer1);
+            client.registerObserver(observer2);
+            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+
+            expect(countCalls).toBe(1);
+            expect(countSuccesses).toBe(2);
+
+            client.unregisterObserver(observer1);
+            expect(client._observers.length).toBe(1);
+
+            client._soapTransport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
+            client._soapTransport.mockReturnValueOnce(Mock.GET_DATABASEID_RESPONSE);
+            await client.getOption("XtkDatabaseId");
+            expect(countCalls).toBe(1);
+            expect(countSuccesses).toBe(4);
+        });
+
+        it("Should unregister all observers", async () => {
+            const client = await Mock.makeClient();
+            var countCalls = 0;
+            var countSuccesses = 0;
+            
+            const observer1 = {
+                onSOAPCall: () => { countCalls = countCalls + 1; },
+                onSOAPCallSuccess: () => { countSuccesses = countSuccesses + 1; }
+            };
+            const observer2 = {
+                onSOAPCallSuccess: () => { countSuccesses = countSuccesses + 1; }
+            };
+            client.registerObserver(observer1);
+            client.registerObserver(observer2);
+            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+
+            expect(countCalls).toBe(1);
+            expect(countSuccesses).toBe(2);
+
+            client.unregisterAllObservers();
+            expect(client._observers.length).toBe(0);
+
+            client._soapTransport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
+            client._soapTransport.mockReturnValueOnce(Mock.GET_DATABASEID_RESPONSE);
+            await client.getOption("XtkDatabaseId");
+            expect(countCalls).toBe(1);
+            expect(countSuccesses).toBe(2);
+        });
+        
+    })
 });

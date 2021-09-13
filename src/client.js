@@ -528,7 +528,7 @@ class Client {
     unregisterObserver(observer) {
         for (var i=0; i<this._observers.length; i++) {
             if (this._observers[i] == observer) {
-                this._observers = this._observers.splice(i, 1);
+                this._observers.splice(i, 1);
                 break;
             }
         }
@@ -602,20 +602,20 @@ class Client {
         const safeCallData = Util.trim(soapCall.request.data);
         if (that._traceAPICalls)
             console.log(`SOAP//request ${safeCallData}`);
-        that._notifyObservers((observer) => { observer.onSOAPCall(soapCall, safeCallData); });
+        that._notifyObservers((observer) => { observer.onSOAPCall && observer.onSOAPCall(soapCall, safeCallData); });
         
         return soapCall.execute()
             .then(() => {
                 const safeCallResponse = Util.trim(soapCall.response);
                 if (that._traceAPICalls)
                     console.log(`SOAP//response ${safeCallResponse}`);
-                that._notifyObservers((observer) => { observer.onSOAPCallSuccess(soapCall, safeCallResponse); });
+                that._notifyObservers((observer) => { observer.onSOAPCallSuccess && observer.onSOAPCallSuccess(soapCall, safeCallResponse); });
                 return Promise.resolve();
             })
             .catch((ex) => {
                 if (that._traceAPICalls)
                     console.log(`SOAP//failure ${ex.toString()}`);
-                that._notifyObservers((observer) => { observer.onSOAPCallFailure(soapCall, ex); });
+                that._notifyObservers((observer) => { observer.onSOAPCallFailure && observer.onSOAPCallFailure(soapCall, ex); });
                 return Promise.reject(ex);
             });
     }
