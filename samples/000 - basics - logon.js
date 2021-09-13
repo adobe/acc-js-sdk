@@ -12,6 +12,11 @@ governing permissions and limitations under the License.
 const sdk = require('../src/index.js');
 const utils = require("./utils.js");
 
+
+/* Basic samples illustrating how to log on and log off, how to get information about the
+ * server and the logged user, etc.
+ */
+
 ( async () => {
 
   await utils.sample({

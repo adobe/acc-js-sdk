@@ -11,6 +11,9 @@ governing permissions and limitations under the License.
 */
 const utils = require("./utils.js");
 
+/* Basic samples illustrating how to perform queries
+ */
+
 ( async () => {
 
   await utils.sample({
