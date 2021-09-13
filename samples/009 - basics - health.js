@@ -14,38 +14,57 @@ const utils = require("./utils.js");
 
 
 console.log(`================================================================================================
-This sample illustrates how to call the various ping / health / ... PAIs
+This sample illustrates how to call the various ping / health / ... APIs
 
 ================================================================================================
 `);
 
-utils.run(async () => {
-  await utils.attempt(async () => {
-    var version = sdk.getSDKVersion();
-    console.log(`>> ${version.description} version ${version.version}`);
-    console.log(`Connecting anonymously to Campaign instance '${utils.url}'`);
-    const connectionParameters = sdk.ConnectionParameters.ofAnonymousUser(utils.url);
-    const client = await sdk.init(connectionParameters);
-  
-    console.log(`\nThe application.test() method can be used to ping the instance (/r/test API)`);
-    const test = await client.test();
-    console.log(`>> Result: ${JSON.stringify(test)}`);  
+( async () => {
+
+  await utils.sample({
+    title: "Testing if the redirection server is up (/r/test)",
+    labels: [ "Basics", "Health", "Ping", "Test" ],
+    description: `The application.test() method can be used to ping the instance (/r/test API)`,
+    code: async() => {
+      console.log(`Connecting anonymously to Campaign instance '${utils.url}'`);
+      const connectionParameters = sdk.ConnectionParameters.ofAnonymousUser(utils.url);
+      const client = await sdk.init(connectionParameters);
+      const test = await client.test();
+      console.log(`>> Result: ${JSON.stringify(test)}`);  
+    }
   });
 
-  console.log(`\nLogging in to Campaign for authenticated health methods`);
-  await utils.logon(async (client) => {
 
-    await utils.attempt(async () => {
-      console.log(`\nCalling the ping API (/nl/jsp/ping.jsp)`);
-      const ping = await client.ping();
-      console.log(`>> Result: ${JSON.stringify(ping)}`);
-    });
-  
-    await utils.attempt(async () => {
-      console.log(`\nCalling the mcPing API (/nl/jsp/mcPing.jsp). Note: only available if Message Center is installed`);
-      const mcPing = await client.mcPing();
-      console.log(`>> Result: ${JSON.stringify(mcPing)}`);
-    });
+  await utils.sample({
+    title: "Calling the 'ping' JSP",
+    labels: [ "Basics", "Health", "Ping" ],
+    description: `Calling the ping API (/nl/jsp/ping.jsp)`,
+    code: async() => {
+      return await utils.logon(async (client, NLWS) => {
+        const ping = await client.ping();
+        console.log(`>> Result: ${JSON.stringify(ping)}`);
+      });
+    }
   });
-});
+
+
+  await utils.sample({
+    title: "Calling the Message Center ping API",
+    labels: [ "Basics", "Health", "Ping", "MessageCenter", "MC", "McPing" ],
+    description: `nCalling the mcPing API (/nl/jsp/mcPing.jsp). Note: only available if Message Center is installed`,
+    code: async() => {
+      return await utils.logon(async (client, NLWS) => {
+        if (client.application.hasPackage("nms:messageCenter")) {
+          const mcPing = await client.mcPing();
+          console.log(`>> Result: ${JSON.stringify(mcPing)}`);
+        }
+        else {
+          console.log("Message Center not insalled. mcPing API is not available");
+        }
+      });
+    }
+  });
+
+
+})();
 

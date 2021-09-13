@@ -17,21 +17,28 @@ governing permissions and limitations under the License.
  *********************************************************************************/
 const utils = require("./utils.js");
 
-utils.logon(async (client, NLWS) => {
-  const password = "Hello, World";
+( async () => {
 
-  console.log(`The xtk:session API provides several function to encrypt secrets and passwords
-  - xtk:session#Encrypt                 AESEncryptString (old XtkKey)
-  - xtk:session#EncryptPassword         AESEncryptString (new XtkSecretKey)
-  - xtk:session#EncryptServerPassword   EncryptServerPassword
-  - xtk:session#HashPassword            Creates a hash for the password
-  - xtk:session#ReEncryptPassword       for old key (can be XtkKey or XtkSecretKey) to XtkSecretKey
-  `);
+  await utils.sample({
+    title: "Password encryption and hashing",
+    labels: [ "Basics", "Encrypt", "Hash", "EncryptPassword", "EncryptServerPassword", "HashPassword", "ReEncryptPassword", "xtk:session" ],
+    description: `The xtk:session API provides several function to encrypt secrets and passwords
+    - xtk:session#Encrypt                 AESEncryptString (old XtkKey)
+    - xtk:session#EncryptPassword         AESEncryptString (new XtkSecretKey)
+    - xtk:session#EncryptServerPassword   EncryptServerPassword
+    - xtk:session#HashPassword            Creates a hash for the password
+    - xtk:session#ReEncryptPassword       for old key (can be XtkKey or XtkSecretKey) to XtkSecretKey`,
+    code: async() => {
+      return await utils.logon(async (client, NLWS) => {
+        const password = "Hello, World";
+        console.log(`xtk:session#Encrypt => ${await NLWS.xtkSession.encrypt(password)}`);
+        console.log(`xtk:session#EncryptPassword => ${await NLWS.xtkSession.encryptPassword(password)}`);
+        console.log(`xtk:session#EncryptServerPassword => ${await NLWS.xtkSession.encryptServerPassword(password)}`);
+        console.log(`xtk:session#HashPassword => ${await NLWS.xtkSession.hashPassword(password)}`);
+        console.log(`xtk:session#ReEncryptPassword => ${await NLWS.xtkSession.reEncryptPassword(await NLWS.xtkSession.encryptPassword(password))}`);
+      });
+    }
+  });
 
-  console.log(`xtk:session#Encrypt => ${await NLWS.xtkSession.encrypt(password)}`);
-  console.log(`xtk:session#EncryptPassword => ${await NLWS.xtkSession.encryptPassword(password)}`);
-  console.log(`xtk:session#EncryptServerPassword => ${await NLWS.xtkSession.encryptServerPassword(password)}`);
-  console.log(`xtk:session#HashPassword => ${await NLWS.xtkSession.hashPassword(password)}`);
-  console.log(`xtk:session#ReEncryptPassword => ${await NLWS.xtkSession.reEncryptPassword(await NLWS.xtkSession.encryptPassword(password))}`);
-});
+})();
 
