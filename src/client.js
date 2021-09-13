@@ -860,7 +860,7 @@ class Client {
             var doc = soapCall.getNextDocument();
             soapCall.checkNoMoreArgs();
             doc = that.toRepresentation(doc, representation);
-        return doc;
+            return doc;
         });
     }
 

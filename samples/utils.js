@@ -19,8 +19,7 @@ const sdk = require('../src/index.js');
  *********************************************************************************/
 'use strict'
 
-const rt1_url = "http://accaepxl-rt1.rd.campaign.adobe.com:8080";
-const url = "http://accaepxl.rd.campaign.adobe.com:8080";
+const url = "http://accaepxl-rt1.rd.campaign.adobe.com:8080";
 const user = "admin";
 const password = "put password here";
 
@@ -77,7 +76,6 @@ Description ...... ${options.description || ""}
 module.exports.url = url;
 module.exports.user = user;
 module.exports.password = password;
-module.exports.rt1_url = rt1_url;
 
 module.exports.run = run;
 module.exports.logon = logon;

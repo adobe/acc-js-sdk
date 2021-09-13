@@ -79,7 +79,7 @@ Campaign supports authenticating with a session token in some contexts. This is 
 In this example, the session token is a string composed of the user name, a slash sign, and the password (often empty)
 
 ```js
-const connectionParameters = sdk.ConnectionParameters.ofSessionToken(utils.rt1_url, "mc/mc");
+const connectionParameters = sdk.ConnectionParameters.ofSessionToken(url, "mc/mc");
 ```
 
 Note that this authentication mode is very specific and does not actually performs a Logon: the session token will be passed to each API calls as-is (with an empty security token) and requires proper setup of the security zones for access to be granted.
@@ -952,7 +952,7 @@ Another common authentication strategy is to define a trusted Security Zone for 
 
 Here's an example of authentication with this method
 ```js
-const connectionParameters = sdk.ConnectionParameters.ofSessionToken(utils.rt1_url, "mc/mc");
+const connectionParameters = sdk.ConnectionParameters.ofSessionToken(url, "mc/mc");
 const client = await sdk.init(connectionParameters);
 ```
 
