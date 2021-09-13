@@ -580,7 +580,7 @@ class Client {
     prepareSoapCall(urn, method, internal) {
         const soapCall = new SoapMethodCall(urn, method, this._sessionToken, this._securityToken);
         soapCall.transport = this._soapTransport;
-        soapCall._internal = internal;
+        soapCall._internal = !!internal;
         return soapCall;
     }
 

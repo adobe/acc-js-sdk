@@ -519,8 +519,7 @@ class SoapMethodCall {
                 'X-Security-Token': this.securityToken,
                 'Cookie': '__sessiontoken=' + this.sessionToken
             },
-            data: DomUtil.toXMLString(this.doc),
-            _internal: this._internal,
+            data: DomUtil.toXMLString(this.doc)
         };
         return options;
     }

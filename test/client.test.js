@@ -1650,6 +1650,31 @@ describe('ACC Client', function () {
             expect(countCalls).toBe(1);
             expect(countSuccesses).toBe(2);
         });
-        
+      
+        it("Should observe internal SOAP calls", async () => {
+            const client = await Mock.makeClient();
+            const expected = [
+                "xtk:session#Logon", false,
+                // This call is internal (issued by the framework, not by the called)
+                "xtk:persist#GetEntityIfMoreRecent", true,
+                "xtk:session#GetOption", false,
+            ];
+            const observed = [];
+            
+            client.registerObserver({
+                onSOAPCall: (soapCall) => {
+                    const request = soapCall.request;
+                    const soapAction = request.headers["SoapAction"];
+                    observed.push(soapAction);
+                    observed.push(soapCall._internal);
+                },
+            });
+            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            client._soapTransport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+            client._soapTransport.mockReturnValueOnce(Mock.GET_DATABASEID_RESPONSE);
+            await client.getOption("XtkDatabaseId");
+            expect(observed).toStrictEqual(expected);
+        });
     })
 });
