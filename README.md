@@ -8,19 +8,28 @@ See the [Change log](./CHANGELOG.md) for more information about the different ve
 
 # Overview
 
-The ACC JavaScript SDK is a JavaScript SDK which allows you to simply call Campaign APIs in a simple, expressive and JavaScript idiomatic way. It hides away the Campaign complexities associated with having to make SOAP calls, XML to JSON conversion, type formatting, etc.
+    The ACC JavaScript SDK is a JavaScript SDK which allows you to call Campaign APIs in a simple, expressive and JavaScript idiomatic way. It hides away the Campaign complexities associated with having to make SOAP calls, XML to JSON conversion, type formatting, etc.
 
 The API is fully asynchronous using promises and works as well on the server side than on the client side in the browser.
 
 The SDK entrypoint is the `sdk` object from which everything else can be created.
 
 ```js
-const sdk = require('./src/index.js');
+const sdk = require('@adobe/acc-js-sdk');
 ```
 
 You can get version information about the SDK
 ```js
 console.log(sdk.getSDKVersion());
+```
+
+which will return the SDK name and version (the actual name and version number will depend on the version you have installed)
+```
+{
+  version: "1.0.0",
+  name: "@adobe/acc-js-sdk",
+  description: "ACC Javascript SDK",
+}
 ```
 
 
@@ -30,7 +39,7 @@ console.log(sdk.getSDKVersion());
 In order to call any Campaign  API, you need to create a `Client` object first. You pass it the Campaign URL, as well as your credentials. 
 
 ```js
-const sdk = require('./src/index.js');
+const sdk = require('@adobe/acc-js-sdk');
 const connectionParameters = sdk.ConnectionParameters.ofUserAndPassword(
                                     "https://myInstance.campaign.adobe.com", 
                                     "admin", "admin");
@@ -54,7 +63,9 @@ const connectionParameters = sdk.ConnectionParameters.ofUserAndPassword(
 
 ## Login with IMS
 
-The SDK also supports IMS service token with the `ofUserAndServiceToken` function. Pass it a user to impersonate and the IMS token.
+The SDK also supports IMS service token with the `ofUserAndServiceToken` function. Pass it a user to impersonate and the IMS service token.
+
+In that context, the IMS service token grants admin-level privileges, and the user indicates which Campaign user to impersonate. 
 ```js
 const connectionParameters = sdk.ConnectionParameters.ofUserAndPassword(
                                     "https://myInstance.campaign.adobe.com", 
@@ -71,8 +82,9 @@ In this example, the session token is a string composed of the user name, a slas
 const connectionParameters = sdk.ConnectionParameters.ofSessionToken(utils.rt1_url, "mc/mc");
 ```
 
-Note that this authentication mode is very specific and does not actually performs a Logon: the passed session token will be passed to each API calls (with an empty security token) and requires proper setup of the security zones.
-Another consequence is that the Application object will not be availeble in this case either.
+Note that this authentication mode is very specific and does not actually performs a Logon: the session token will be passed to each API calls as-is (with an empty security token) and requires proper setup of the security zones for access to be granted.
+
+Another consequence is that the Application object will not be available (client.application will be undefined) when using this authentication mode. The reason is that the application object requires an actual login call to be made to be populated.
 
 
 ## Anonymous logon
@@ -87,7 +99,7 @@ const client = await sdk.init(connectionParameters);
 
 ## LogOn / LogOff
 
-The `sdk.init` call will not actually connect to Campaign, you can call the `logon` method for this.
+The `sdk.init` call will not actually connect to Campaign, you can call the `logon` method for this. Logon does not need to be called when using session-token authentication or anonymous authentication.
 
 ```js
 await client.logon();
@@ -192,6 +204,15 @@ Text of a child element
 If an element contains both text, and children, you need to use the alternative `$` syntax
 * XML: `<root><item>Hello<child id="1"/></item></root>`
 * JSON: `{ item: { $: "Hello", child: { id:1 } }`
+
+
+## BadgerFish format
+
+To distinguish between BadgerFish and SimpleJson format, all BadgerFish objects will have the BadgerFishObject class, that includes the top-level object, but also all children objects. A badgerfish object can be created as follows. It will automatically convert all the object literals into BadgerFishObjet class.
+
+```
+const obj = new DomuUtil.BadgerFishObject({ "@att":"value });
+```
 
 
 ## Returning multiple values
@@ -402,12 +423,12 @@ const json = DomUtil.toJSON(documentOrElement, "BadgerFish");
 If an API call fails (SOAP fault or HTTP error), a `CampaignException` object is thrown. This object contains the following attributes
 
 * `message` a message describing the error
-* `stack` the stack trace
 * `statusCode` a HTTP status code. In case of a SOAP fault, the status code will be 500
 * `errorCode` the Campaign error code if one is available (ex: XSV-350013)
 * `methodCall` the SOAP call which caused the error. It will contain the following attributes
     * `type` the type of the API call ("SOAP" or "HTTP")
     * `urn` the SOAP call URN, i.e. the schema id. Will be empty for HTTP methods
+    * `url` the HTTP URL
     * `methodName` the name of the SOAP method. For HTTP methods, the query path
     * `request` the raw SOAP request, as text. For HTTP requests, this is an option object containing details about the request
     * `response` the raw SOAP/HTTP response, as text
@@ -424,8 +445,9 @@ In general all errors are mapped to a CampaignException and we try to keep the s
   } catch (ex) {
     console.log(ex.message);
   }
-
 ```
+
+It's also noteworthy that all the data returned in a CampaignException is trimmed, i.e. session and security token values are hidden, so that the exception object can be safely logged.
 
 ## Caches
 
@@ -606,10 +628,10 @@ will return
 
 ## Tracking all SOAP calls
 
-SOAP calls can be logged by setting the `traceSOAPCalls` attribute on the client at any time.
+SOAP calls can be logged by setting the `traceAPICalls` attribute on the client at any time. For security reasons, the security and session tokens values will be replaced by "***" to avoid leaking them
 
 ```js
-client.traceSOAPCalls = true;
+client.traceAPICalls(true);
 ```
 
 This is an example of the logs
@@ -619,12 +641,12 @@ xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/"
 xmlns:ns="http://xml.apache.org/xml-soap">
 <SOAP-ENV:Header>
-    <Cookie>__sessiontoken=___3033D619-6710-450D-9194-CEB718D9F57B</Cookie>
-    <X-Security-Token>@p4IgqV7etc_liq15zAq59iYRLcCh6_tQkRC5WHbhIA8RTHkFt6VIc9R9RYA4NPwFcqtGh9-LmvrdplXgiiLWNA==</X-Security-Token>
+    <Cookie>__sessiontoken=***</Cookie>
+    <X-Security-Token>***</X-Security-Token>
 </SOAP-ENV:Header>
 <SOAP-ENV:Body>
     <m:GetOption xmlns:m="urn:xtk:session" SOAP-ENV:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">
-        <sessiontoken xsi:type="xsd:string">___3033D619-6710-450D-9194-CEB718D9F57B</sessiontoken>
+        <sessiontoken xsi:type="xsd:string">***</sessiontoken>
         <name xsi:type="xsd:string">XtkDatabaseId</name>
     </m:GetOption>
 </SOAP-ENV:Body>
@@ -1126,6 +1148,21 @@ This return a schema object of class `XtkSchema`
 
 ## The EntityAccessor
 
+An `EntityAccessor` provides a simple interface to access entity objects regardless of their representation. For instance, a query result may be a DOM Element, or a object literal, or a BadgerFish objet. Accessing attribute values and sub elements requires to know which representation is used and which representation specific API to call. For instance, to get the "name" attribute of an entity, you'll write:
+
+* for Simple Json representation, access as JavaScript properties: entity.name or entity["name"]
+* for the XML representation, use the DOM API: entity.DomUtil.getAttribute("name)"
+* for Badget fish, access as JavaScript properties, but do not forget the "@" sign; entity["@name"]
+
+Once done, you'll probably want to cast the value to an XTK type using the XtkCaster.
+
+If you need to access entity attributes (or child elements) in a generic way, you can use the `EntityAccessor`. It has the following static methods:
+
+* `getAttributeAsString`, `getAttributeAsLong`, `getAttributeAsBoolean` to get typed attribute values
+* `getChildElements` to get the child elements. The result can be iterated on with a `for...of...` loop
+* `getElement` to get a child element whose attributes and child elements can also be accessed by the EntityAccessor API
+
+
 
 # Build & Run
 
@@ -1204,16 +1241,18 @@ Include the SDK
 <script src="accSDK.js"></script>
 ````
 
-Use the SDK
+Use the SDK. Note that the SDK variable is now called `document.accSDK` to avoid potential name collision with the common name "sdk".
 ````
 <script>
 
     (async () => {
+        const sdk = document.accSDK;
+
         const connectionParameters = sdk.ConnectionParameters.ofUserAndPassword(
                 "http://ffdamid:8080", "admin", "admin");
         const client = await sdk.init(connectionParameters);
   
-        console.log(accSDK.getSDKVersion());
+        console.log(sdk.getSDKVersion());
         await client.logon();
 
         var databaseId = await client.getOption("XtkDatabaseId");

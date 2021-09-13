@@ -418,28 +418,23 @@ describe('SOAP', function() {
 */
     describe("Invalid SOAP responses", function() {
 
-        it("Should fail on empty return value", function() {
+        it("Should fail on empty return value", async () => {
             const delegate = function() { return Promise.resolve(""); };
             const call = makeSoapMethodCall("xtk:session", "Date", "$session$", "$security$", delegate);
-            return call.execute(URL).catch(e => {
-                expect(e.faultString).toMatch('SyntaxError');      // "" cannot be parsed as XML
-            });
+            await expect(call.execute(URL)).rejects.toMatchObject({ statusCode: 500 });      // "" cannot be parsed as XML
         });
 
-        it("Should fail on non-XML return value", function() {
+
+        it("Should fail on non-XML return value", async () => {
             const delegate = function() { return Promise.resolve("{'this':'is', 'not':'xml'}"); };
             const call = makeSoapMethodCall("xtk:session", "Date", "$session$", "$security$", delegate);
-            return call.execute(URL).catch(e => {
-                expect(e.faultString).toMatch('SyntaxError');      // cannot be parsed as XML
-            });
+            await expect(call.execute(URL)).rejects.toMatchObject({ statusCode: 500 });      // cannot be parsed as XML
         });
 
-        it("Should fail if no SOAP body", function() {
+        it("Should fail if no SOAP body", async () => {
             const delegate = function() { return Promise.resolve(makeSOAPResponseWithNoBody()); };
             const call = makeSoapMethodCall("xtk:session", "Date", "$session$", "$security$", delegate);
-            return call.execute(URL).catch(e => {
-                expect(e.faultString).toMatch('Malformed SOAP response');      // body missing
-            });
+            await expect(call.execute(URL)).rejects.toMatchObject({ statusCode: 500 });      // body missing
         });
 
         it("Should fail if empty SOAP body", function() {

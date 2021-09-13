@@ -90,6 +90,8 @@ class Util {
           text = this._removeBetween(text, "<Cookie>__sessiontoken=", "</Cookie>");
           text = this._removeBetween(text, "<X-Security-Token>", "</X-Security-Token>");
           text = this._removeBetween(text, '<sessiontoken xsi:type="xsd:string">', '</sessiontoken>');
+          text = this._removeBetween(text, "<pstrSessionToken xsi:type='xsd:string'>", "</pstrSessionToken>");
+          text = this._removeBetween(text, "<pstrSecurityToken xsi:type='xsd:string'>", "</pstrSecurityToken>");
         }
         return text;
       }

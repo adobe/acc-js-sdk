@@ -49,7 +49,11 @@ governing permissions and limitations under the License.
   static SOAP_UNKNOWN_METHOD(schema, method, details)     { return new CampaignException(undefined, 400, 16384, `SDK-000009 Unknown method '${method}' of schema '${schema}'`, details); }
   static NOT_LOGGED_IN(call, details)                     { return new CampaignException(     call, 400, 16384, `SDK-000010 Cannot call API because client is not logged in`, details); }
   static DECRYPT_ERROR(details)                           { return new CampaignException(undefined, 400, 16384, `SDK-000011 "Cannot decrypt password: password marker is missing`, details); }
- 
+
+  toString() {
+      return this.message;
+  }
+
   constructor(call, statusCode, faultCode, faultString, detail, cause) {
 
       // Provides a shorter and more friendly description of the call and method name
@@ -89,6 +93,7 @@ governing permissions and limitations under the License.
               methodCall = {
                   type: "HTTP",
                   urn: "",
+                  url: call.request.url,
                   methodName: path,
                   request: call.request,                      // the "options" object making up the HTTP request
                   response: call.response                     // the raw response text
@@ -168,18 +173,16 @@ governing permissions and limitations under the License.
        */
       this.detail = detail;
       /** 
-       * The call stack 
-       * @type {string}
-       */
-      //this.stack = (new Error()).stack;
-      /** 
        * The cause of the error, such as the root cause exception 
        */
-      //this.cause = cause;
+      this.cause = cause;
 
+      // Remove trailing space, and replace tokens by ***
       for (const p in this) {
-        var text = this[p];
-        this[p] = Util.trim(text);
+        if (p != "cause") {
+          var text = this[p];
+          this[p] = Util.trim(text);
+        }
       }
   }
 }

@@ -87,11 +87,14 @@ class SoapMethodCall {
         this.url = undefined;
 
         // THe SOAP call being built
-        this.doc = undefined;
-        this.root = undefined;
-        this.header = undefined;
-        this.data = undefined;
-        this.method = undefined;
+        this.doc = undefined;           // XML document for SOAP call
+        this.root = undefined;          // Root of the document
+        this.header = undefined;        // SOAP-ENV:Header
+        this.data = undefined;          // SOAP-ENV:Body
+        this.method = undefined;        // XML element for the method
+
+        this.request = undefined;       // The HTTP request (object litteral passed to the transport layer)
+        this.response = undefined;      // The HTTP response object (in case of success)
 
         this._initMessage(urn, methodName, SOAP_ENCODING_NATIVE);
 
@@ -104,6 +107,10 @@ class SoapMethodCall {
 
         // Transport object to perform HTTP request (request or mock)
         this.transport = request;
+
+        // Soap calls marked as internal are calls performed by the framework internally
+        // (such as GetEntityIfMoreRecent calls needed to lookup schemas)
+        this._internal = false;
     }
 
     /**
@@ -512,9 +519,17 @@ class SoapMethodCall {
                 'X-Security-Token': this.securityToken,
                 'Cookie': '__sessiontoken=' + this.sessionToken
             },
-            data: DomUtil.toXMLString(this.doc)
+            data: DomUtil.toXMLString(this.doc),
+            _internal: this._internal,
         };
         return options;
+    }
+
+    finalize(url) {
+        this.url = url;
+        const options = this._createHTTPRequest(url);
+        this.request = options;
+        this.response = undefined;
     }
 
     /**
@@ -524,12 +539,9 @@ class SoapMethodCall {
      * 
      * @param {string} url the Campaign endpoint, such as "http://ffdamkt:8080/nl/jsp/soaprouter.jsp"
      */
-    async execute(url) {
+    async execute() {
         const that = this;
-        this.url = url;
-        const options = this._createHTTPRequest(url);
-        const promise = this.transport(options);
-        that.request = options.data;
+        const promise = this.transport(this.request);
         return promise.then(function(body) {
             that.response = body;
             // Response is a serialized XML document with the following structure

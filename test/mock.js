@@ -22,7 +22,7 @@ governing permissions and limitations under the License.
     const connectionParameters = sdk.ConnectionParameters.ofAnonymousUser("http://acc-sdk:8080", options);
     const client = await sdk.init(connectionParameters);
     client._soapTransport = jest.fn();
-    //client.traceSOAPCalls(true);
+    //client.traceAPICalls(true);
     return client;
 }
 
@@ -30,7 +30,7 @@ async function makeClient(options) {
     const connectionParameters = sdk.ConnectionParameters.ofUserAndPassword("http://acc-sdk:8080", "admin", "admin", options);
     const client = await sdk.init(connectionParameters);
     client._soapTransport = jest.fn();
-    //client.traceSOAPCalls(true);
+    //client.traceAPICalls(true);
     return client;
 }
 

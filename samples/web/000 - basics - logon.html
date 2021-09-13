@@ -8,12 +8,13 @@
         <script>
 
 (async () => {
+    const sdk = document.accSDK;
 
-    const connectionParameters = accSDK.ConnectionParameters.ofUserAndPassword("http://localhost:3000", "admin", "neo");
-    const client = await accSDK.init(connectionParameters);
+    const connectionParameters = sdk.ConnectionParameters.ofUserAndPassword("http://localhost:3000", "admin", "neo");
+    const client = await sdk.init(connectionParameters);
     const NLWS = client.NLWS;
 
-    console.log(accSDK.getSDKVersion());
+    console.log(sdk.getSDKVersion());
     await client.logon();
     var databaseId = await client.getOption("XtkDatabaseId");
     console.log(databaseId);

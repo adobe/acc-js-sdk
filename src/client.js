@@ -52,6 +52,15 @@ const { Util } = require('./util.js');
  */
 
 
+/**
+ * Observers are called when certain internals of the SDK happen
+ * @memberof Campaign
+ */
+class Observer {
+    onSOAPCall(soapCall, safeCallData) {}
+    onSOAPCallSuccess(soapCall, safeCallResponse) {}
+    onSOAPCallFailure(soapCall, exception) {}
+}
 
 /**
  * Java Script Proxy handler for an XTK object. An XTK object is one constructed with the following syntax:
@@ -153,40 +162,6 @@ const clientHandler = {
         });
     }
 };
-
-/**
- * Wraps the transport for SOAP calls. The transport is a function taking a request (options)
- * and returning a promise. When resolved, the promise returns the request result
- * 
- * @private
- * @param {Request} transport the transport layer, or an request
- * @memberof Campaign
- */
-function transportWrapper(transport) {
-    const traceSOAPCalls = !!this._traceSOAPCalls;
-    return (options) => {
-        if (traceSOAPCalls) {
-            console.log("SOAP//request", options.headers["SoapAction"], Util.trim(options.data));
-        }
-
-        var promise = transport(options);
-
-        // If you fail here during a test, with "promise" being null or undefined, it means that the test execture SOAP calls which
-        // were not mocked => the promise to resolve is null. When this happens, run the test again with soap calls activated to
-        // display which SOAP calls are executed and their response. See Client.traceSOAPCalls(true);
-
-        promise.then((body) => {
-            
-            if (traceSOAPCalls) {
-                console.log("SOAP//response", options.headers["SoapAction"], Util.trim(body));
-            }
-
-            return body;
-        });
-        return promise;
-    }
-}
-
 
 // ========================================================================================
 // Campaign credentials
@@ -425,7 +400,8 @@ class Client {
         this.NLWS = new Proxy(this, clientHandler);
 
         this._soapTransport = request;
-        this._traceSOAPCalls = false;
+        this._traceAPICalls = false;
+        this._observers = [];
 
         // expose utilities
 
@@ -529,12 +505,41 @@ class Client {
     }
 
     /**
-     * Activate / deactivate tracing of SOAP calls
+     * Activate / deactivate tracing of API calls
      * 
      * @param {boolean} trace indicates whether to activate tracing or not
      */
-    traceSOAPCalls(trace) {
-        this._traceSOAPCalls = !!trace;
+    traceAPICalls(trace) {
+        this._traceAPICalls = !!trace;
+    }
+
+    /**
+     * Registers an observer
+     * @param {Campaign.Observer} observer
+     */
+    registerObserver(observer) {
+        this._observers.push(observer);
+    }
+
+    /**
+     * Unregisters an observer
+     * @param {Campaign.Observer} observer
+     */
+    unregisterObserver(observer) {
+        for (var i=0; i<this._observers.length; i++) {
+            if (this._observers[i] == observer) {
+                this._observers = this._observers.splice(i, 1);
+                break;
+            }
+        }
+    }
+
+    unregisterAllObservers() {
+        this._observers = [];
+    }
+
+    _notifyObservers(callback) {
+        this._observers.map((observer) => callback(observer));
     }
 
     /**
@@ -572,9 +577,10 @@ class Client {
      * @return {SOAP.SoapMethodCall} a SoapMethodCall which have been initialized with security tokens... and to which the method
      * parameters should be set
      */
-    prepareSoapCall(urn, method) {
+    prepareSoapCall(urn, method, internal) {
         const soapCall = new SoapMethodCall(urn, method, this._sessionToken, this._securityToken);
-        soapCall.transport = transportWrapper.call(this, this._soapTransport);
+        soapCall.transport = this._soapTransport;
+        soapCall._internal = internal;
         return soapCall;
     }
 
@@ -586,12 +592,34 @@ class Client {
      * @param {SOAP.SoapMethodCall} soapCall the SOAP method to call
      */
     makeSoapCall(soapCall) {
+        const that = this;
         const requiresLogon = !(soapCall.urn === "xtk:session" && soapCall.methodName === "Logon");
-        if (requiresLogon && !this.isLogged())
+        if (requiresLogon && !that.isLogged())
             throw CampaignException.NOT_LOGGED_IN(soapCall, `Cannot execute SOAP call ${soapCall.urn}#${soapCall.methodName}: you are not logged in. Use the Logon function first`);
-        var soapEndpoint = this._connectionParameters._endpoint + "/nl/jsp/soaprouter.jsp";
-        return soapCall.execute(soapEndpoint);
+        var soapEndpoint = that._connectionParameters._endpoint + "/nl/jsp/soaprouter.jsp";
+        soapCall.finalize(soapEndpoint);
+        
+        const safeCallData = Util.trim(soapCall.request.data);
+        if (that._traceAPICalls)
+            console.log(`SOAP//request ${safeCallData}`);
+        that._notifyObservers((observer) => { observer.onSOAPCall(soapCall, safeCallData); });
+        
+        return soapCall.execute()
+            .then(() => {
+                const safeCallResponse = Util.trim(soapCall.response);
+                if (that._traceAPICalls)
+                    console.log(`SOAP//response ${safeCallResponse}`);
+                that._notifyObservers((observer) => { observer.onSOAPCallSuccess(soapCall, safeCallResponse); });
+                return Promise.resolve();
+            })
+            .catch((ex) => {
+                if (that._traceAPICalls)
+                    console.log(`SOAP//failure ${ex.toString()}`);
+                that._notifyObservers((observer) => { observer.onSOAPCallFailure(soapCall, ex); });
+                return Promise.reject(ex);
+            });
     }
+
 
     /**
      * Login to an instance
@@ -822,9 +850,9 @@ class Client {
      * @param {string} representation the expected representation, or undefined to set the default
      * @return A DOM representation of the entity, or null if the entity is not found
      */
-     async getEntityIfMoreRecent(entityType, fullName, representation) {
+     async getEntityIfMoreRecent(entityType, fullName, representation, internal) {
         const that = this;
-        const soapCall = this.prepareSoapCall("xtk:persist", "GetEntityIfMoreRecent");
+        const soapCall = this.prepareSoapCall("xtk:persist", "GetEntityIfMoreRecent", internal);
         soapCall.writeString("pk", entityType + "|" + fullName);
         soapCall.writeString("md5", "");
         soapCall.writeBoolean("mustExist", false);
@@ -843,11 +871,11 @@ class Client {
      * @param {string} representation an optional representation of the schema: "BadgerFish", "SimpleJson" or "xml". If not set, we'll use the client default representation
      * @returns {*} the schema definition, as either a DOM document or a JSON object
      */
-    async getSchema(schemaId, representation) {
+    async getSchema(schemaId, representation, internal) {
         var that = this;
         var entity = that._entityCache.get("xtk:schema", schemaId);
         if (!entity) {
-            entity = await that.getEntityIfMoreRecent("xtk:schema", schemaId, "xml");
+            entity = await that.getEntityIfMoreRecent("xtk:schema", schemaId, "xml", internal);
         }
         if (entity)
             that._entityCache.put("xtk:schema", schemaId, entity);
@@ -883,7 +911,7 @@ class Client {
             const index = optionalStartSchemaOrSchemaName.lastIndexOf(':');
             if (index == -1)
                 throw CampaignException.BAD_PARAMETER("optionalStartSchemaOrSchemaName", optionalStartSchemaOrSchemaName, `getEnum expects a valid schema name. '${optionalStartSchemaOrSchemaName}' is not a valid name.`);
-            optionalStartSchemaOrSchemaName = await this.getSchema(optionalStartSchemaOrSchemaName);
+            optionalStartSchemaOrSchemaName = await this.getSchema(optionalStartSchemaOrSchemaName, undefined, true);
             if (!optionalStartSchemaOrSchemaName) 
                 throw CampaignException.BAD_PARAMETER("optionalStartSchemaOrSchemaName", optionalStartSchemaOrSchemaName, `Schema '${optionalStartSchemaOrSchemaName}' not found.`);
         }
@@ -912,7 +940,7 @@ class Client {
         const result = [];
         const schemaId = callContext.schemaId;
         
-        var schema = await that.getSchema(schemaId, "xml");
+        var schema = await that.getSchema(schemaId, "xml", true);
         if (!schema)
             throw CampaignException.SOAP_UNKNOWN_METHOD(schemaId, methodName, `Schema '${schemaId}' not found`);
         var schemaName = schema.getAttribute("name");
@@ -1223,5 +1251,4 @@ Client.CampaignException = CampaignException;
 exports.Client = Client;
 exports.Credentials = Credentials;
 exports.ConnectionParameters = ConnectionParameters;
-// Private
-exports.transportWrapper = transportWrapper;
+exports.Observer = Observer;

@@ -18,7 +18,7 @@ governing permissions and limitations under the License.
  *********************************************************************************/
 
 const sdk = require('../src/index.js');
-const { Client, ConnectionParameters, transportWrapper } = require('../src/client.js');
+const { Client, ConnectionParameters } = require('../src/client.js');
 const DomUtil = require('../src/domUtil.js').DomUtil;
 const Mock = require('./mock.js').Mock;
 
@@ -63,7 +63,7 @@ describe('ACC Client', function () {
 
         it('Should logon and logoff with traces', async () => {
             const client = await Mock.makeClient();
-            client.traceSOAPCalls(true);
+            client.traceAPICalls(true);
             client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             client._soapTransport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
             await client.NLWS.xtkSession.logon();
@@ -300,7 +300,7 @@ describe('ACC Client', function () {
 
             it("Should set existing option with type", async () => {
                 const client = await Mock.makeClient();
-                client.traceSOAPCalls(true);
+                client.traceAPICalls(true);
                 client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
                 client._soapTransport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
                 await client.NLWS.xtkSession.logon();
