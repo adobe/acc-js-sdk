@@ -126,10 +126,11 @@ governing permissions and limitations under the License.
       // Extract Campaign error code. For instance, the fault string may look like
       // "XSV-350013 The '193.104.215.11' IP address via which...", we extract the "XSV-350013" code
       var errorCode = "";
-      const match = faultString.match(/(\w{3}-\d{6}) (.*)/);
+      const match = faultString.match(/(\w{3}-\d{6})(.*)/);
       if (match && match.length >= 2) {
           errorCode = match[1];
-          faultString = match[2];
+          faultString = match[2] || "";
+          faultString = faultString.trim();
       }
 
       /** 
