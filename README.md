@@ -624,6 +624,20 @@ will return
 ```
 
 
+## Observers
+
+The Campaign client implements an observer mechanism that you can use to hook into what's hapenning internally.
+
+An `Observer` is an object having any of the following methods:
+* onSOAPCall(soapCall, safeCallData)
+* onSOAPCallSuccess(soapCall, safeCallResponse) {}
+* onSOAPCallFailure(soapCall, exception) {}
+
+The `soapCall` parameter is the SOAP call which is being observed. In the `onSOAPCall` callback, the SOAP call has not been executed yet.
+The `safeCallData` and `safeCallResponse` represent the text XML of the SOAP request and response, but in which all session and security tokens have been replaced with "***" string. Hence the name "safe". You should use those parameters for any logging purpose to avoid leaking credentials.
+
+
+
 # Configuration
 
 ## Tracking all SOAP calls
