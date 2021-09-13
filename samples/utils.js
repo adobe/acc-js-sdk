@@ -67,7 +67,10 @@ Sample ........... ${options.title}
 Labels ........... ${options.labels.map((i) => `[${i}]`).join(" ")}
 Description ...... ${options.description || ""}
 `);
-  return options.code.apply(this, []);
+  await options.code.apply(this, [])
+    .catch((ex) => {
+      console.error("Failed to run sample:", ex);
+    });
 }
 
 
