@@ -40,7 +40,7 @@ This sample illustrates how to call the various ping / health / ... APIs
     labels: [ "Basics", "Health", "Ping" ],
     description: `Calling the ping API (/nl/jsp/ping.jsp)`,
     code: async() => {
-      return await utils.logon(async (client, NLWS) => {
+      return await utils.logon(async (client) => {
         const ping = await client.ping();
         console.log(`>> Result: ${JSON.stringify(ping)}`);
       });
@@ -53,7 +53,7 @@ This sample illustrates how to call the various ping / health / ... APIs
     labels: [ "Basics", "Health", "Ping", "MessageCenter", "MC", "McPing" ],
     description: `nCalling the mcPing API (/nl/jsp/mcPing.jsp). Note: only available if Message Center is installed`,
     code: async() => {
-      return await utils.logon(async (client, NLWS) => {
+      return await utils.logon(async (client) => {
         if (client.application.hasPackage("nms:messageCenter")) {
           const mcPing = await client.mcPing();
           console.log(`>> Result: ${JSON.stringify(mcPing)}`);
