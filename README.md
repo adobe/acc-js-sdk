@@ -33,6 +33,66 @@ which will return the SDK name and version (the actual name and version number w
 ```
 
 
+# QuickStart
+Here's a small node.js application which displays all the target mappings in Campaign.
+
+Create a new node.js application
+```sh
+mkdir acc-js-sdk-qstart
+cd acc-js-sdk-qstart
+npm i --save @adobe/acc-js-sdk
+```
+
+Now create a simple `index.js` flle. Replace the endppoint and credentials with your own
+```js
+const sdk = require('@adobe/acc-js-sdk');
+
+(async () => {
+    // Display the SDK version
+    const version = sdk.getSDKVersion();
+    console.log(`${version.description} version ${version.version}`);
+
+    // Logon to a Campaign instance with user and password
+    const connectionParameters = sdk.ConnectionParameters.ofUserAndPassword(
+                                        "https://myInstance.campaign.adobe.com", 
+                                        "admin", "admin");
+    const client = await sdk.init(connectionParameters);
+    await client.logon();
+    const NLWS = client.NLWS;
+
+    // Get and display the list of target mappings
+    const queryDef = {
+        schema: "nms:deliveryMapping",
+        operation: "select",
+        select: {
+            node: [
+                { expr: "@id" },
+                { expr: "@name" },
+                { expr: "@label" },
+                { expr: "@schema" }
+            ]
+        }
+    };
+    const query = NLWS.xtkQueryDef.create(queryDef);
+    const mappings = await query.executeQuery();
+    console.log(`Target mappings: ${JSON.stringify(mappings)}`);
+})().catch((error) => {
+    console.log(error);
+});
+```
+
+Run it
+```sh
+node index.js
+```
+
+It will display something like this
+```
+ACC Javascript SDK version 1.0.0
+Target mappings: {"deliveryMapping":[{"id":"1747","label":"Recipients","name":"mapRecipient","schema":"nms:recipient"},{"id":"1826","label":"Subscriptions","name":"mapSubscribe","schema":"nms:subscription"},{"id":"1827","label":"Operators","name":"mapOperator","schema":"xtk:operator"},{"id":"1828","label":"External file","name":"mapAny","schema":""},{"id":"1830","label":"Visitors","name":"mapVisitor","schema":"nms:visitor"},{"id":"2035","label":"Real time event","name":"mapRtEvent","schema":"nms:rtEvent"},{"id":"2036","label":"Batch event","name":"mapBatchEvent","schema":"nms:batchEvent"},{"id":"2070","label":"Subscriber applications","name":"mapAppSubscriptionRcp","schema":"nms:appSubscriptionRcp"}]}
+````
+
+
 
 # API Basics
 
