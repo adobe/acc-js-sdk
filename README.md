@@ -623,19 +623,62 @@ will return
 }
 ```
 
+## The Transport Protocol
+
+The SDK uses `axios` library internally to perform HTTP calls. This can be customized and one can use any other (async) protocol, which is implemented in the `transport.js` file.
+The transport protocol defines
+- What is an HTTP request
+- What is the corresponding response
+- How errors are handled
+
+The transport protocol exports a single asynchronous function `request` which takes a `Request` literal object with the following attributes. Note that it matches axios requests.
+* `method` is the HTTP verb
+* `url` is the URL to call
+* `headers` is an object containing key value pairs with http headers and their values
+* `data` is the request payload
+
+If the request is successful, a promise is returned with the result payload, as a string.
+
+If the request fails, the promise is rejected with an error object with class `HttpError`, a litteral with the following attributes:
+* `statusCode` is the HTTP status code, such as 404, 500, etc.
+* `statusText` is the HTTP status text coming with the error
+* `data` is the response data, if any
+
+For proper error handling by the ACC SDK, it's important that the actual class of returned objects is names "HttpError"
+
+
+
 
 ## Observers
 
 The Campaign client implements an observer mechanism that you can use to hook into what's hapenning internally.
 
 An `Observer` is an object having any of the following methods:
+
+For SOAP calls
 * onSOAPCall(soapCall, safeCallData)
 * onSOAPCallSuccess(soapCall, safeCallResponse) {}
 * onSOAPCallFailure(soapCall, exception) {}
 
+For HTTP calls (such as JSP, JSSP...). Note that despite SOAP calls are also HTTP calls, the following callbacks will not be called for SOAP calls.
+* onHTTPCall(request, safeCallData)
+* onHTTPCallSuccess(request, safeCallResponse) {}
+* onHTTPCallFailure(request, exception) {}
+
 The `soapCall` parameter is the SOAP call which is being observed. In the `onSOAPCall` callback, the SOAP call has not been executed yet.
+
+The `request` parameter is the HTTP request (as defined in the transport protocol above)
+
 The `safeCallData` and `safeCallResponse` represent the text XML of the SOAP request and response, but in which all session and security tokens have been replaced with "***" string. Hence the name "safe". You should use those parameters for any logging purpose to avoid leaking credentials.
 
+
+The `soapCall` parameter is a `SoapMethodCall` object which describes the SOAP call. It has the following public attributes. 
+
+* `urn` is the SOAP URN which corresponds to the Campaign schema id. For instance "xtk:session"
+* `methodName` is the name of the method to call. For instance "Logon"
+* `internal` is true or false, depending if the SOAP call is an internal SOAP call performed by the framework itself, or if it's a SOAP call issued by a SDK user
+* `request` is a literal corresponding to the HTTP request. It's compatible with the `transport` protocol. It may be undefined if the SOAP call has need been completely built
+* `response` is a string containing the XML result of the SOAP call if the call was successful. It may be undefined if the call was not executed yet or if the call failed
 
 
 # Configuration
