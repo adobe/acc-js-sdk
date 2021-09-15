@@ -44,7 +44,7 @@ governing permissions and limitations under the License.
     labels: [ "Basics", "Logon", "Message Center", "SessionToken" ],
     description: `How to use the session token authentication mode for message center`,
     code: async() => {
-      const connectionParameters = sdk.ConnectionParameters.ofSessionToken(utils.rt1_url, "mc/mc");
+      const connectionParameters = sdk.ConnectionParameters.ofSessionToken(utils.url, "mc/mc");
       const client = await sdk.init(connectionParameters);
       await client.logon();
       console.log("Logged on with session token");
@@ -58,7 +58,7 @@ governing permissions and limitations under the License.
     labels: [ "Basics", "Logon", "Message Center", "EventType" ],
     description: `How to use the session token authentication mode for message center`,
     code: async() => {
-      const connectionParameters = sdk.ConnectionParameters.ofSessionToken(utils.rt1_url, "mc/mc");
+      const connectionParameters = sdk.ConnectionParameters.ofSessionToken(utils.url, "mc/mc");
       const client = await sdk.init(connectionParameters);
       await client.logon();
       const NLWS = client.NLWS;
@@ -89,7 +89,7 @@ governing permissions and limitations under the License.
     labels: [ "Basics", "Logon", "Message Center", "PushEvent" ],
     description: `Calling the message center API to push an event. Will return an event id. Although the event id looks like a number, it should be considered as an opaque string.`,
     code: async() => {
-      const connectionParameters = sdk.ConnectionParameters.ofSessionToken(utils.rt1_url, "mc/mc");
+      const connectionParameters = sdk.ConnectionParameters.ofSessionToken(utils.url, "mc/mc");
       const client = await sdk.init(connectionParameters);
       await client.logon();
       const NLWS = client.NLWS;
@@ -115,7 +115,7 @@ governing permissions and limitations under the License.
     The eventId returned by the PushEvent API is a 64 bit number (returned as a string by the SDK). The high byte is the message center cell number, and the lower bytes represent the primary key of the event. To get the event, we need to remove the high byte (and this only works if there's a single execution cell)
     In the next example, we're retreiving the list of message center instances, and in particular the @executionInstanceId. This id can be used to match the high order byte of the 64 event id and then used to determine which server to ask the status to.`,
     code: async() => {
-      const connectionParameters = sdk.ConnectionParameters.ofSessionToken(utils.rt1_url, "mc/mc");
+      const connectionParameters = sdk.ConnectionParameters.ofSessionToken(utils.url, "mc/mc");
       const client = await sdk.init(connectionParameters);
       await client.logon();
       const NLWS = client.NLWS;
