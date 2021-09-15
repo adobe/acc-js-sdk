@@ -508,10 +508,10 @@ describe("CurrentLogin", () => {
     describe("application.getSchema", () => {
         it("Should return a XtkSchema object", async () => {
             const client = await Mock.makeClient();
-            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
 
-            client._soapTransport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
             const schema = await client.application.getSchema("xtk:session");
             expect(schema.namespace).toBe("xtk");
             expect(schema.name).toBe("session");
@@ -519,10 +519,10 @@ describe("CurrentLogin", () => {
 
         it("Should handle non-existing schemas", async () => {
             const client = await Mock.makeClient();
-            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
 
-            client._soapTransport.mockReturnValueOnce(Mock.GET_MISSING_SCHEMA_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_MISSING_SCHEMA_RESPONSE);
             const schema = await client.application.getSchema("xtk:dummy")
             expect(schema).toBeNull();
         })
@@ -531,7 +531,7 @@ describe("CurrentLogin", () => {
     describe("application.hasPackage", () => {
         it("Should verify if a package is installed", async () => {
             const client = await Mock.makeClient();
-            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
             expect(client.application.hasPackage("nms:core")).toBe(true);
             expect(client.application.hasPackage("nms:campaign")).toBe(true);

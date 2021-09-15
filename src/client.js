@@ -49,18 +49,11 @@ const { Util } = require('./util.js');
  * 
  * @typedef {Object} McPingStatus
  * @memberOf Campaign
- */
+ *
+ * @typedef {Object} Observer
+ * @memberOf Campaign
+*/
 
-
-/**
- * Observers are called when certain internals of the SDK happen
- * @memberof Campaign
- */
-class Observer {
-    onSOAPCall(soapCall, safeCallData) {}
-    onSOAPCallSuccess(soapCall, safeCallResponse) {}
-    onSOAPCallFailure(soapCall, exception) {}
-}
 
 /**
  * Java Script Proxy handler for an XTK object. An XTK object is one constructed with the following syntax:
@@ -399,7 +392,7 @@ class Client {
         this._optionCache = new OptionCache();
         this.NLWS = new Proxy(this, clientHandler);
 
-        this._soapTransport = request;
+        this._transport = request;
         this._traceAPICalls = false;
         this._observers = [];
 
@@ -578,9 +571,8 @@ class Client {
      * parameters should be set
      */
     prepareSoapCall(urn, method, internal) {
-        const soapCall = new SoapMethodCall(urn, method, this._sessionToken, this._securityToken);
-        soapCall.transport = this._soapTransport;
-        soapCall._internal = !!internal;
+        const soapCall = new SoapMethodCall(this._transport, urn, method, this._sessionToken, this._securityToken);
+        soapCall.internal = !!internal;
         return soapCall;
     }
 
@@ -593,8 +585,7 @@ class Client {
      */
     makeSoapCall(soapCall) {
         const that = this;
-        const requiresLogon = !(soapCall.urn === "xtk:session" && soapCall.methodName === "Logon");
-        if (requiresLogon && !that.isLogged())
+        if (soapCall.requiresLogon() && !that.isLogged())
             throw CampaignException.NOT_LOGGED_IN(soapCall, `Cannot execute SOAP call ${soapCall.urn}#${soapCall.methodName}: you are not logged in. Use the Logon function first`);
         var soapEndpoint = that._connectionParameters._endpoint + "/nl/jsp/soaprouter.jsp";
         soapCall.finalize(soapEndpoint);
@@ -1122,6 +1113,26 @@ class Client {
         });
     }
 
+    async _makeHttpCall(request) {
+        try {
+            const safeCallData = Util.trim(request.data);
+            if (this._traceAPICalls)
+                console.log(`HTTP//request ${request.method} ${request.url}${safeCallData ? " " + safeCallData : ""}`);
+            this._notifyObservers((observer) => { observer.onHTTPCall && observer.onHTTPCall(request, safeCallData); });
+            const body = await this._transport(request);
+
+            const safeCallResponse = Util.trim(body);
+            if (this._traceAPICalls)
+                console.log(`HTTP//response${safeCallResponse ? " " + safeCallResponse : ""}`);
+            this._notifyObservers((observer) => { observer.onHTTPCallSuccess && observer.onHTTPCallSuccess(request, safeCallResponse); });
+            return body;
+        } catch(err) {
+            if (this._traceAPICalls)
+                console.log("HTTP//failure", err);
+            this._notifyObservers((observer) => { observer.onHTTPCallFailure && observer.onHTTPCallFailure(request, err); });
+            throw makeCampaignException({ request:request, reqponse:err.response }, err);
+        }
+    }
 
     /**
      * Tests if the Campaign redirection server is up (/r/test).
@@ -1129,23 +1140,18 @@ class Client {
      * 
      * @returns {Campaign.RedirStatus} an object describing the status of the redirection server
      */
-    test() {
-        const that = this;
+    async test() {
         const request = {
-            url: `${that._connectionParameters._endpoint}/r/test`, 
+            url: `${this._connectionParameters._endpoint}/r/test`, 
             method: 'GET',
             headers: {
-                'User-Agent': that.getUserAgentString()
+                'User-Agent': this.getUserAgentString()
             }
         };
-        return that._soapTransport(request).then((body) => {
-            const xml = DomUtil.parse(body);
-            const result = that.toRepresentation(xml);
-            return result;
-
-        }).catch((err) => {
-            throw makeCampaignException({ request:request, reqponse:err.response }, err);
-        });
+        const body = await this._makeHttpCall(request);
+        const xml = DomUtil.parse(body);
+        const result = this.toRepresentation(xml);
+        return result;
     }
 
     /**
@@ -1153,33 +1159,29 @@ class Client {
      * 
      * @returns {Campaign.PingStatus} an object describing the server status
      */
-    ping() {
-        const that = this;
+    async ping() {
         const request = {
-            url: `${that._connectionParameters._endpoint}/nl/jsp/ping.jsp`, 
+            url: `${this._connectionParameters._endpoint}/nl/jsp/ping.jsp`, 
             method: 'GET',
             headers: {
-                'User-Agent': that.getUserAgentString(),
-                'X-Security-Token': that._securityToken,
+                'User-Agent': this.getUserAgentString(),
+                'X-Security-Token': this._securityToken,
                 'Cookie': '__sessiontoken=' + this._sessionToken
             }
         };
-        return that._soapTransport(request).then((body) => {
-            const lines = body.split('\n');
-            const doc = DomUtil.newDocument("ping");
-            const root = doc.documentElement;
-            const status = lines[0].trim();
-            if (status != "") root.setAttribute("status", status);
+        const body = await this._makeHttpCall(request);
+        const lines = body.split('\n');
+        const doc = DomUtil.newDocument("ping");
+        const root = doc.documentElement;
+        const status = lines[0].trim();
+        if (status != "") root.setAttribute("status", status);
 
-            if (lines.length > 1) {
-                const timestamp = lines[1].trim();
-                if (timestamp != "") root.setAttribute("timestamp", timestamp);
-            }
-            const result = that.toRepresentation(doc);
-            return result;
-        }).catch((err) => {
-            throw makeCampaignException({ request:request, reqponse:err.response }, err);
-        });
+        if (lines.length > 1) {
+            const timestamp = lines[1].trim();
+            if (timestamp != "") root.setAttribute("timestamp", timestamp);
+        }
+        const result = this.toRepresentation(doc);
+        return result;
     }
 
     /**
@@ -1188,59 +1190,55 @@ class Client {
      * 
      * @returns {Campaign.McPingStatus} an object describing Message Center server status
      */
-    mcPing() {
-        const that = this;
+    async mcPing() {
         const request = {
-            url: `${that._connectionParameters._endpoint}/nl/jsp/mcPing.jsp`, 
+            url: `${this._connectionParameters._endpoint}/nl/jsp/mcPing.jsp`, 
             method: 'GET',
             headers: {
-                'User-Agent': that.getUserAgentString(),
-                'X-Security-Token': that._securityToken,
+                'User-Agent': this.getUserAgentString(),
+                'X-Security-Token': this._securityToken,
                 'Cookie': '__sessiontoken=' + this._sessionToken
             }
         };
-        return that._soapTransport(request).then((body) => {
-            const lines = body.split('\n');
-            const doc = DomUtil.newDocument("ping");
-            const root = doc.documentElement;
-            var status = lines[0].trim();
-            if (status != "") root.setAttribute("status", status);
-            
-            var rtCount = undefined;
-            var threshold = undefined;
-            if (status == "Error") {
-                const error = lines.length > 1 ? lines[1] : "";
-                root.setAttribute("error", error);
-                const index1 = error.indexOf('(');
-                const index2 = error.indexOf('/');
-                const index3 = error.indexOf(')');
-                if (index1 != -1 && index2 != -1 && index3 != -1) {
-                    rtCount = error.substring(index1+1, index2);
-                    threshold = error.substring(index2+1, index3);
+        const body = await this._makeHttpCall(request);
+        const lines = body.split('\n');
+        const doc = DomUtil.newDocument("ping");
+        const root = doc.documentElement;
+        var status = lines[0].trim();
+        if (status != "") root.setAttribute("status", status);
+        
+        var rtCount = undefined;
+        var threshold = undefined;
+        if (status == "Error") {
+            const error = lines.length > 1 ? lines[1] : "";
+            root.setAttribute("error", error);
+            const index1 = error.indexOf('(');
+            const index2 = error.indexOf('/');
+            const index3 = error.indexOf(')');
+            if (index1 != -1 && index2 != -1 && index3 != -1) {
+                rtCount = error.substring(index1+1, index2);
+                threshold = error.substring(index2+1, index3);
+            }
+        }
+        else {
+            if (lines.length > 1) {
+                const timestamp = lines[1].trim();
+                if (timestamp != "") root.setAttribute("timestamp", timestamp);
+            }
+            if (lines.length > 2) {
+                const queue = lines[2];
+                const index2 = queue.indexOf('/');
+                const index3 = queue.indexOf(' pending events');
+                if (index2 != -1 && index3 != -1) {
+                    rtCount = queue.substring(0, index2);
+                    threshold = queue.substring(index2+1, index3);
                 }
             }
-            else {
-                if (lines.length > 1) {
-                    const timestamp = lines[1].trim();
-                    if (timestamp != "") root.setAttribute("timestamp", timestamp);
-                }
-                if (lines.length > 2) {
-                    const queue = lines[2];
-                    const index2 = queue.indexOf('/');
-                    const index3 = queue.indexOf(' pending events');
-                    if (index2 != -1 && index3 != -1) {
-                        rtCount = queue.substring(0, index2);
-                        threshold = queue.substring(index2+1, index3);
-                    }
-                }
-            }
-            if (rtCount !== undefined && rtCount.trim() != "") root.setAttribute("eventQueueSize", rtCount);
-            if (threshold !== undefined && rtCount.trim() != "") root.setAttribute("eventQueueMaxSize", threshold);
-            const result = that.toRepresentation(doc);
-            return result;
-        }).catch((err) => {
-            throw makeCampaignException({ request:request, reqponse:err.response }, err);
-        });
+        }
+        if (rtCount !== undefined && rtCount.trim() != "") root.setAttribute("eventQueueSize", rtCount);
+        if (threshold !== undefined && rtCount.trim() != "") root.setAttribute("eventQueueMaxSize", threshold);
+        const result = this.toRepresentation(doc);
+        return result;
     }
 
 }
@@ -1251,4 +1249,3 @@ Client.CampaignException = CampaignException;
 exports.Client = Client;
 exports.Credentials = Credentials;
 exports.ConnectionParameters = ConnectionParameters;
-exports.Observer = Observer;

@@ -21,6 +21,7 @@ const sdk = require('../src/index.js');
 const { Client, ConnectionParameters } = require('../src/client.js');
 const DomUtil = require('../src/domUtil.js').DomUtil;
 const Mock = require('./mock.js').Mock;
+const { HttpError } = require('../src/transport.js');
 
 
 describe('ACC Client', function () {
@@ -51,8 +52,8 @@ describe('ACC Client', function () {
 
         it('Should logon and logoff', async () => {
             const client = await Mock.makeClient();
-            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
-            client._soapTransport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
             await client.NLWS.xtkSession.logon();
             expect(client.isLogged()).toBe(true);
             var sessionInfoXml = client.getSessionInfo("xml");
@@ -63,43 +64,55 @@ describe('ACC Client', function () {
 
         it('Should logon and logoff with traces', async () => {
             const client = await Mock.makeClient();
-            client.traceAPICalls(true);
-            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
-            client._soapTransport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
-            await client.NLWS.xtkSession.logon();
-            expect(client.isLogged()).toBe(true);
-            var sessionInfoXml = client.getSessionInfo("xml");
-            expect(DomUtil.findElement(sessionInfoXml, "serverInfo", true).getAttribute("buildNumber")).toBe("9219");
-            await client.NLWS.xtkSession.logoff();
-            expect(client.isLogged()).toBe(false);
+            const logs = await Mock.withMockConsole(async () => {
+                client.traceAPICalls(true);
+                client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+                client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
+                await client.NLWS.xtkSession.logon();
+                expect(client.isLogged()).toBe(true);
+                var sessionInfoXml = client.getSessionInfo("xml");
+                expect(DomUtil.findElement(sessionInfoXml, "serverInfo", true).getAttribute("buildNumber")).toBe("9219");
+                await client.NLWS.xtkSession.logoff();
+                expect(client.isLogged()).toBe(false);    
+            })
+            expect(logs.length).toBe(4);
+            expect(logs[0]).toMatch(/SOAP.*request.*Logon/is)
+            expect(logs[1]).toMatch(/SOAP.*response.*LogonResponse/is)
+            expect(logs[2]).toMatch(/SOAP.*request.*Logoff/is)
+            expect(logs[3]).toMatch(/SOAP.*response.*LogoffResponse/is)
         });
 
         it('Should fail with traces', async () => {
             const client = await Mock.makeClient();
-            client.traceAPICalls(true);
-            client._soapTransport.mockReturnValueOnce(Promise.resolve(`<?xml version='1.0' encoding='UTF-8'?>
-            <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/' xmlns:ns='http://xml.apache.org/xml-soap'>
-                <SOAP-ENV:Body>
-                    <SOAP-ENV:Fault>
-                    <faultcode>faultcode</faultcode>
-                    <faultstring>XXX-000000</faultstring>
-                    <detail>detail</detail>
-                    </SOAP-ENV:Fault>
-                </SOAP-ENV:Body>
-            </SOAP-ENV:Envelope>`));
-            await expect(client.NLWS.xtkSession.logon()).rejects.toMatchObject({ errorCode: "XXX-000000" });
+            const logs = await Mock.withMockConsole(async () => {
+                client.traceAPICalls(true);
+                client._transport.mockReturnValueOnce(Promise.resolve(`<?xml version='1.0' encoding='UTF-8'?>
+                <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/' xmlns:ns='http://xml.apache.org/xml-soap'>
+                    <SOAP-ENV:Body>
+                        <SOAP-ENV:Fault>
+                        <faultcode>faultcode</faultcode>
+                        <faultstring>XXX-000000</faultstring>
+                        <detail>detail</detail>
+                        </SOAP-ENV:Fault>
+                    </SOAP-ENV:Body>
+                </SOAP-ENV:Envelope>`));
+                await expect(client.NLWS.xtkSession.logon()).rejects.toMatchObject({ errorCode: "XXX-000000" });
+            });
+            expect(logs.length).toBe(2);
+            expect(logs[0]).toMatch(/SOAP.*request.*Logon/is)
+            expect(logs[1]).toMatch(/SOAP.*failure.*500.*XXX-000000/is)
         });
 
         it('Should logon and logoff (remember me)', async () => {
             const client = await Mock.makeClient({ rememberMe: true });
 
-            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
             expect(client.isLogged()).toBe(true);
             var sessionInfoXml = client.getSessionInfo("xml");
             expect(DomUtil.findElement(sessionInfoXml, "serverInfo", true).getAttribute("buildNumber")).toBe("9219");
 
-            client._soapTransport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
             await client.NLWS.xtkSession.logoff();
             expect(client.isLogged()).toBe(false);
         });
@@ -119,14 +132,14 @@ describe('ACC Client', function () {
 
         it('Should fail if logon does not return a session token', async () => {
             const client = await Mock.makeClient();
-            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE_NO_SESSIONTOKEN);
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE_NO_SESSIONTOKEN);
             await expect(client.NLWS.xtkSession.logon()).rejects.toMatchObject({ errorCode: "SDK-000007" });
             expect(client.isLogged()).toBe(false);
         });
 
         it('Should fail if logon does not return a security token', async () => {
             const client = await Mock.makeClient();
-            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE_NO_SECURITYTOKEN);
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE_NO_SECURITYTOKEN);
             await expect(client.NLWS.xtkSession.logon()).rejects.toMatchObject({ errorCode: "SDK-000007" });
             expect(client.isLogged()).toBe(false);
         });
@@ -135,12 +148,12 @@ describe('ACC Client', function () {
             /* eslint no-global-assign: "off" */
             document = {};
             const client = await Mock.makeClient();
-            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
             expect(client.isLogged()).toBe(true);
             var sessionInfoXml = client.getSessionInfo("xml");
             expect(DomUtil.findElement(sessionInfoXml, "serverInfo", true).getAttribute("buildNumber")).toBe("9219");
-            client._soapTransport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
             await client.NLWS.xtkSession.logoff();
             expect(client.isLogged()).toBe(false);
             document = undefined;
@@ -148,7 +161,7 @@ describe('ACC Client', function () {
 
         it('Should fail if Logon does not return an UserInfo struture', async () => {
             const client = await Mock.makeClient();
-            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE_NO_USERINFO);
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE_NO_USERINFO);
             await expect(client.NLWS.xtkSession.logon()).rejects.toMatchObject({ errorCode: "SDK-000007" });
             expect(client.isLogged()).toBe(false);
         });
@@ -169,7 +182,7 @@ describe('ACC Client', function () {
 
         it('Should get session info with default representation', async () => {
             const client = await Mock.makeClient({ rememberMe: true });
-            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
             var sessionInfo = client.getSessionInfo();
             expect(sessionInfo.serverInfo.buildNumber).toBe("9219");
@@ -177,7 +190,7 @@ describe('ACC Client', function () {
 
         it('Should get session info with BadgerFish representation', async () => {
             const client = await Mock.makeClient({ rememberMe: true });
-            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
             var sessionInfo = client.getSessionInfo("BadgerFish");
             expect(sessionInfo.serverInfo['@buildNumber']).toBe("9219");
@@ -188,9 +201,9 @@ describe('ACC Client', function () {
     describe('API calls', () => {
         it('Should getEntityIfMoreRecent', async () => {
             const client = await Mock.makeClient({ representation: "xml" });
-            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
-            client._soapTransport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
-            client._soapTransport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
             await client.NLWS.xtkSession.logon();
             const schema = await client.getEntityIfMoreRecent("xtk:schema", "xtk:session");
             var element = DomUtil.getFirstChildElement(schema);
@@ -210,16 +223,16 @@ describe('ACC Client', function () {
 
         it('Should getOption', async () => {
             const client = await Mock.makeClient();
-            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
-            client._soapTransport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
             await client.NLWS.xtkSession.logon();
 
             // Method 1: convenience function
-            client._soapTransport.mockReturnValueOnce(Mock.GET_DATABASEID_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_DATABASEID_RESPONSE);
             var databaseId = await client.getOption("XtkDatabaseId");
             expect(databaseId).toBe("uFE80000000000000F1FA913DD7CC7C480041161C");
             // Method 2 : SOAP call - will not use cache to get, but will cache result
-            client._soapTransport.mockReturnValueOnce(Mock.GET_DATABASEID_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_DATABASEID_RESPONSE);
             var option = await client.NLWS.xtkSession.getOption("XtkDatabaseId");
             expect(option[0]).toBe("uFE80000000000000F1FA913DD7CC7C480041161C");
             expect(option[1]).toBe(6);
@@ -228,12 +241,12 @@ describe('ACC Client', function () {
              databaseId = await client.getOption("XtkDatabaseId");
             expect(databaseId).toBe("uFE80000000000000F1FA913DD7CC7C480041161C");
             // Force not using cache
-            client._soapTransport.mockReturnValueOnce(Mock.GET_DATABASEID_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_DATABASEID_RESPONSE);
              databaseId = await client.getOption("XtkDatabaseId", false);
             expect(databaseId).toBe("uFE80000000000000F1FA913DD7CC7C480041161C");
             // Clear cache
             client.clearOptionCache();
-            client._soapTransport.mockReturnValueOnce(Mock.GET_DATABASEID_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_DATABASEID_RESPONSE);
              databaseId = await client.getOption("XtkDatabaseId");
             expect(databaseId).toBe("uFE80000000000000F1FA913DD7CC7C480041161C");
 
@@ -244,13 +257,13 @@ describe('ACC Client', function () {
 
             // representations
             client._representation = "json";
-            client._soapTransport.mockReturnValueOnce(Mock.GET_DATABASEID_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_DATABASEID_RESPONSE);
             option = await client.NLWS.xtkSession.getOption("XtkDatabaseId");
             expect(option[0]).toBe("uFE80000000000000F1FA913DD7CC7C480041161C");
             expect(option[1]).toBe(6);
 
             client._representation = "xml";
-            client._soapTransport.mockReturnValueOnce(Mock.GET_DATABASEID_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_DATABASEID_RESPONSE);
             option = await client.NLWS.xtkSession.getOption("XtkDatabaseId");
             expect(option[0]).toBe("uFE80000000000000F1FA913DD7CC7C480041161C");
             expect(option[1]).toBe(6);
@@ -260,7 +273,7 @@ describe('ACC Client', function () {
                 expect(e.name).toMatch('Error');
             });
 
-            client._soapTransport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
             await client.NLWS.xtkSession.logoff();
         });
 
@@ -269,15 +282,15 @@ describe('ACC Client', function () {
 
             it("Should set option when it does not exist", async () => {
                 const client = await Mock.makeClient();
-                client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
-                client._soapTransport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
+                client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+                client._transport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
                 await client.NLWS.xtkSession.logon();
     
                 // Setting an option for the first time will
                 // - try to read the option from the database (as it's not in cache yet): xtk:session#GetOption
                 // - use a writer to write the result to the database
-                client._soapTransport.mockReturnValueOnce(Mock.GET_OPTION_NOTFOUND_RESPONSE);
-                client._soapTransport.mockReturnValueOnce(Promise.resolve(`<?xml version='1.0'?>
+                client._transport.mockReturnValueOnce(Mock.GET_OPTION_NOTFOUND_RESPONSE);
+                client._transport.mockReturnValueOnce(Promise.resolve(`<?xml version='1.0'?>
                             <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:wpp:default' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
                             <SOAP-ENV:Body>
                             <WriteResponse xmlns='urn:wpp:default' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
@@ -292,15 +305,15 @@ describe('ACC Client', function () {
 
             it("Should set option with description", async () => {
                 const client = await Mock.makeClient();
-                client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
-                client._soapTransport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
+                client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+                client._transport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
                 await client.NLWS.xtkSession.logon();
     
                 // Setting an option for the first time will
                 // - try to read the option from the database (as it's not in cache yet): xtk:session#GetOption
                 // - use a writer to write the result to the database
-                client._soapTransport.mockReturnValueOnce(Mock.GET_OPTION_NOTFOUND_RESPONSE);
-                client._soapTransport.mockReturnValueOnce(Promise.resolve(`<?xml version='1.0'?>
+                client._transport.mockReturnValueOnce(Mock.GET_OPTION_NOTFOUND_RESPONSE);
+                client._transport.mockReturnValueOnce(Promise.resolve(`<?xml version='1.0'?>
                             <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:wpp:default' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
                             <SOAP-ENV:Body>
                             <WriteResponse xmlns='urn:wpp:default' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
@@ -315,15 +328,14 @@ describe('ACC Client', function () {
 
             it("Should set existing option with type", async () => {
                 const client = await Mock.makeClient();
-                client.traceAPICalls(true);
-                client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
-                client._soapTransport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
+                client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+                client._transport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
                 await client.NLWS.xtkSession.logon();
     
                 // Setting an option for the first time will
                 // - try to read the option from the database (as it's not in cache yet): xtk:session#GetOption. In this case, it will return a numeric option
                 // - use a writer to write the result to the database
-                client._soapTransport.mockReturnValueOnce(Promise.resolve(`<?xml version='1.0'?>
+                client._transport.mockReturnValueOnce(Promise.resolve(`<?xml version='1.0'?>
                         <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:xtk:session' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
                         <SOAP-ENV:Body>
                             <GetOptionResponse xmlns='urn:xtk:session' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
@@ -332,7 +344,7 @@ describe('ACC Client', function () {
                             </GetOptionResponse>
                         </SOAP-ENV:Body>
                         </SOAP-ENV:Envelope>`));
-                client._soapTransport.mockReturnValueOnce(Promise.resolve(`<?xml version='1.0'?>
+                client._transport.mockReturnValueOnce(Promise.resolve(`<?xml version='1.0'?>
                             <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:wpp:default' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
                             <SOAP-ENV:Body>
                             <WriteResponse xmlns='urn:wpp:default' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
@@ -349,12 +361,12 @@ describe('ACC Client', function () {
 
         it("Should return missing options", async () => {
             const client = await Mock.makeClient();
-            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
 
             // Get missing option
-            client._soapTransport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
-            client._soapTransport.mockReturnValueOnce(Mock.GET_OPTION_NOTFOUND_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_OPTION_NOTFOUND_RESPONSE);
             var value = await client.getOption("ZZ");
             expect(value).toBeNull();
 
@@ -364,7 +376,7 @@ describe('ACC Client', function () {
 
             // Defense case where resulting parameters are missing. This is a forged answer, should not happen
             // in reality
-            client._soapTransport.mockReturnValueOnce(Mock.GET_OPTION_MISSING_DATA_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_OPTION_MISSING_DATA_RESPONSE);
             await client.getOption("YY").catch(e => {
                 expect(e.statusCode).toBe(400);
                 expect(e.faultCode).toMatch('Missing parameter for method');
@@ -373,10 +385,10 @@ describe('ACC Client', function () {
 
         it("Should return schema definition", async () => {
             const client = await Mock.makeClient();
-            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
 
-            client._soapTransport.mockReturnValueOnce(Mock.GET_NMS_EXTACCOUNT_SCHEMA_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_NMS_EXTACCOUNT_SCHEMA_RESPONSE);
             var schema = await client.getSchema("nms:extAccount");
             expect(schema["namespace"]).toBe("nms");
             expect(schema["name"]).toBe("extAccount");
@@ -388,7 +400,7 @@ describe('ACC Client', function () {
 
             // Clear cache and ask again
             client.clearEntityCache();
-            client._soapTransport.mockReturnValueOnce(Mock.GET_NMS_EXTACCOUNT_SCHEMA_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_NMS_EXTACCOUNT_SCHEMA_RESPONSE);
             schema = await client.getSchema("nms:extAccount");
             expect(schema["namespace"]).toBe("nms");
             expect(schema["name"]).toBe("extAccount");
@@ -408,24 +420,24 @@ describe('ACC Client', function () {
 
             // Get missing schema
             client.clearAllCaches();
-            client._soapTransport.mockReturnValueOnce(Mock.GET_MISSING_SCHEMA_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_MISSING_SCHEMA_RESPONSE);
             schema = await client.getSchema("nms:dummy", "BadgerFish");
             expect(schema).toBeNull();
             client.clearAllCaches();
-            client._soapTransport.mockReturnValueOnce(Mock.GET_MISSING_SCHEMA_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_MISSING_SCHEMA_RESPONSE);
             schema = await client.getSchema("nms:dummy", "xml");
             expect(schema).toBeNull();
 
-            client._soapTransport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
             await client.NLWS.xtkSession.logoff();
         });
 
         it("Should return sys enum definition", async () => {
             const client = await Mock.makeClient({ representation: "BadgerFish" });
-            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
 
-            client._soapTransport.mockReturnValueOnce(Mock.GET_NMS_EXTACCOUNT_SCHEMA_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_NMS_EXTACCOUNT_SCHEMA_RESPONSE);
             var sysEnum = await client.getSysEnum("nms:extAccount:encryptionType");
             expect(sysEnum["@basetype"]).toBe("byte");
             expect(sysEnum["@name"]).toBe("encryptionType");
@@ -464,26 +476,26 @@ describe('ACC Client', function () {
 
             // Get non-cached XML representation 
             client.clearAllCaches();
-            client._soapTransport.mockReturnValueOnce(Mock.GET_NMS_EXTACCOUNT_SCHEMA_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_NMS_EXTACCOUNT_SCHEMA_RESPONSE);
             sysEnum = await client.getSysEnum("nms:extAccount:encryptionType");
             expect(sysEnum.getAttribute("basetype")).toBe("byte");
 
             // Schema does not exist
             client.clearAllCaches();
-            client._soapTransport.mockReturnValueOnce(Mock.GET_MISSING_SCHEMA_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_MISSING_SCHEMA_RESPONSE);
             await expect(client.getSysEnum("nms:dummy:encryptionType")).rejects.toMatchObject({ errorCode: "SDK-000006" });
 
-            client._soapTransport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
             await client.NLWS.xtkSession.logoff();
         });
 
         it("getSysEnum should support schemas which do not have enumerations (BadgerFish representation)", async () => {
             const client = await Mock.makeClient();
             client._representation = "BadgerFish";
-            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
 
-            client._soapTransport.mockReturnValueOnce(Mock.GET_XTK_ALL_SCHEMA_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_XTK_ALL_SCHEMA_RESPONSE);
             var sysEnum = await client.getSysEnum("xtk:all:encryptionType");
             expect(sysEnum).toBeUndefined();
         });
@@ -491,38 +503,38 @@ describe('ACC Client', function () {
         it("getSysEnum should support schemas which do not have enumerations (XML representation)", async () => {
             const client = await Mock.makeClient();
             client._representation = "xml";
-            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
 
-            client._soapTransport.mockReturnValueOnce(Mock.GET_XTK_ALL_SCHEMA_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_XTK_ALL_SCHEMA_RESPONSE);
             var sysEnum = await client.getSysEnum("xtk:all:encryptionType");
             expect(sysEnum).toBeUndefined();
         });
 
         it("getSysEnum should support schemas which do not have enumerations (SimpleJson representation)", async () => {
             const client = await Mock.makeClient();
-            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
 
-            client._soapTransport.mockReturnValueOnce(Mock.GET_XTK_ALL_SCHEMA_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_XTK_ALL_SCHEMA_RESPONSE);
             var sysEnum = await client.getSysEnum("xtk:all:encryptionType");
             expect(sysEnum).toBeUndefined();
         });
 
         it("getSysEnum should fail if schema not found", async () => {
             const client = await Mock.makeClient();
-            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
 
-            client._soapTransport.mockReturnValueOnce(Mock.GET_XTK_ALL_SCHEMA_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_XTK_ALL_SCHEMA_RESPONSE);
             await expect(client.getSysEnum(":")).rejects.toMatchObject({ errorCode: "SDK-000006" });
         });
 
         it("getSysEnum should fail on invalid representation)", async () => {
             const client = await Mock.makeClient();
-            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
-            client._soapTransport.mockReturnValueOnce(Mock.GET_XTK_ALL_SCHEMA_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_XTK_ALL_SCHEMA_RESPONSE);
             await client.getSysEnum("xtk:all:encryptionType"); // cache schema before setting invalid representation
             client._representation = "Dummy";
             await expect(client.getSysEnum("xtk:all:encryptionType")).rejects.toMatchObject({ errorCode: "SDK-000004" });
@@ -533,10 +545,10 @@ describe('ACC Client', function () {
     describe("Should return sys enum definition with the right representation", () => {
         it("Should return sys enum definition with the default representation", async () => {
             const client = await Mock.makeClient();
-            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
 
-            client._soapTransport.mockReturnValueOnce(Mock.GET_NMS_EXTACCOUNT_SCHEMA_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_NMS_EXTACCOUNT_SCHEMA_RESPONSE);
             var sysEnum = await client.getSysEnum("nms:extAccount:encryptionType");
             expect(sysEnum["basetype"]).toBe("byte");
             expect(sysEnum["name"]).toBe("encryptionType");
@@ -546,10 +558,10 @@ describe('ACC Client', function () {
 
         it("Should return sys enum definition with the 'BadgerFish' representation", async () => {
             const client = await Mock.makeClient({ representation: "BadgerFish" });
-            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
 
-            client._soapTransport.mockReturnValueOnce(Mock.GET_NMS_EXTACCOUNT_SCHEMA_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_NMS_EXTACCOUNT_SCHEMA_RESPONSE);
             var sysEnum = await client.getSysEnum("nms:extAccount:encryptionType");
             expect(sysEnum["@basetype"]).toBe("byte");
             expect(sysEnum["@name"]).toBe("encryptionType");
@@ -559,10 +571,10 @@ describe('ACC Client', function () {
 
         it("Should return sys enum definition with the 'SimpleJson' representation", async () => {
             const client = await Mock.makeClient();
-            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
 
-            client._soapTransport.mockReturnValueOnce(Mock.GET_NMS_EXTACCOUNT_SCHEMA_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_NMS_EXTACCOUNT_SCHEMA_RESPONSE);
             var sysEnum = await client.getSysEnum("nms:extAccount:encryptionType");
             expect(sysEnum["basetype"]).toBe("byte");
             expect(sysEnum["@basetype"]).toBeUndefined();
@@ -573,14 +585,11 @@ describe('ACC Client', function () {
 
         it("Should return sys enum definition with the 'xml' representation", async () => {
             const client = await Mock.makeClient({ representation: "xml" });
-            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
 
-            client._soapTransport.mockReturnValueOnce(Mock.GET_NMS_EXTACCOUNT_SCHEMA_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_NMS_EXTACCOUNT_SCHEMA_RESPONSE);
             var sysEnum = await client.getSysEnum("nms:extAccount:encryptionType");
-
-            console.log(DomUtil.toXMLString(sysEnum));
-
             expect(sysEnum.getAttribute("basetype")).toBe("byte");
             expect(sysEnum.getAttribute("name")).toBe("encryptionType");
             var value = DomUtil.getFirstChildElement(sysEnum, "value");
@@ -594,39 +603,39 @@ describe('ACC Client', function () {
 
         it("Should get mid connection", async () => {
             const client = await Mock.makeClient();
-            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
 
-            client._soapTransport.mockReturnValueOnce(Mock.GET_XTK_QUERY_SCHEMA_RESPONSE);
-            client._soapTransport.mockReturnValueOnce(Mock.GET_MID_EXT_ACCOUNT_RESPONSE);
-            client._soapTransport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
-            client._soapTransport.mockReturnValueOnce(Mock.GET_SECRET_KEY_OPTION_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_XTK_QUERY_SCHEMA_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_MID_EXT_ACCOUNT_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_SECRET_KEY_OPTION_RESPONSE);
             var connectionParameters = await sdk.ConnectionParameters.ofExternalAccount(client, "defaultEmailMid");
             var midClient = await sdk.init(connectionParameters);
-            midClient._soapTransport = jest.fn();
+            midClient._transport = jest.fn();
 
-            midClient._soapTransport.mockReturnValueOnce(Mock.GET_LOGON_MID_RESPONSE);
+            midClient._transport.mockReturnValueOnce(Mock.GET_LOGON_MID_RESPONSE);
             await midClient.NLWS.xtkSession.logon();
 
-            midClient._soapTransport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
-            midClient._soapTransport.mockReturnValueOnce(Mock.GET_TSTCNX_RESPONSE);
+            midClient._transport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
+            midClient._transport.mockReturnValueOnce(Mock.GET_TSTCNX_RESPONSE);
             await midClient.NLWS.xtkSession.testCnx();
 
-            midClient._soapTransport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
+            midClient._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
             await midClient.NLWS.xtkSession.logoff();
-            client._soapTransport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
             await client.NLWS.xtkSession.logoff();
         });
 
         it("Should fail to get connection for external account which is not a mid-sourcing account", async () => {
             const client = await Mock.makeClient();
-            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
 
-            client._soapTransport.mockReturnValueOnce(Mock.GET_XTK_QUERY_SCHEMA_RESPONSE);
-            client._soapTransport.mockReturnValueOnce(Mock.GET_BAD_EXT_ACCOUNT_RESPONSE);
-            client._soapTransport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
-            client._soapTransport.mockReturnValueOnce(Mock.GET_SECRET_KEY_OPTION_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_XTK_QUERY_SCHEMA_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_BAD_EXT_ACCOUNT_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_SECRET_KEY_OPTION_RESPONSE);
             await expect(async () => {
                 return sdk.ConnectionParameters.ofExternalAccount(client, "bad");
             }).rejects.toMatchObject({ errorCode: "SDK-000005" });
@@ -635,13 +644,13 @@ describe('ACC Client', function () {
         it("Should fail if invalid representation", async () => {
             const client = await Mock.makeClient();
 
-            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
 
-            client._soapTransport.mockReturnValueOnce(Mock.GET_XTK_QUERY_SCHEMA_RESPONSE);
-            client._soapTransport.mockReturnValueOnce(Mock.GET_MID_EXT_ACCOUNT_RESPONSE);
-            client._soapTransport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
-            client._soapTransport.mockReturnValueOnce(Mock.GET_SECRET_KEY_OPTION_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_XTK_QUERY_SCHEMA_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_MID_EXT_ACCOUNT_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_SECRET_KEY_OPTION_RESPONSE);
 
             await expect(async () => {
                 client._representation = "Dummy";
@@ -656,13 +665,13 @@ describe('ACC Client', function () {
             const client = await Mock.makeClient();
             client._representation = "SimpleJson";
 
-            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
 
-            client._soapTransport.mockReturnValueOnce(Mock.GET_XTK_QUERY_SCHEMA_RESPONSE);
-            client._soapTransport.mockReturnValueOnce(Mock.GET_MID_EXT_ACCOUNT_RESPONSE);
-            client._soapTransport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
-            client._soapTransport.mockReturnValueOnce(Mock.GET_SECRET_KEY_OPTION_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_XTK_QUERY_SCHEMA_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_MID_EXT_ACCOUNT_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_SECRET_KEY_OPTION_RESPONSE);
 
             var connectionParameters = await sdk.ConnectionParameters.ofExternalAccount(client, "defaultEmailMid");
             await sdk.init(connectionParameters);
@@ -670,11 +679,11 @@ describe('ACC Client', function () {
 
         it("Should get cached cipher", async () => {
             const client = await Mock.makeClient();
-            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
 
-            client._soapTransport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
-            client._soapTransport.mockReturnValueOnce(Mock.GET_SECRET_KEY_OPTION_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_SECRET_KEY_OPTION_RESPONSE);
             var cipher = await client._getSecretKeyCipher();
             expect(cipher).not.toBeNull();
             expect(cipher.key).not.toBeNull();
@@ -687,7 +696,7 @@ describe('ACC Client', function () {
             expect(cipher.key).not.toBeNull();
             expect(cipher.iv).not.toBeNull();
 
-            client._soapTransport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
             await client.NLWS.xtkSession.logoff();
         });
     });
@@ -698,11 +707,11 @@ describe('ACC Client', function () {
         it("Should call with all parameter types", async () => {
             const client = await Mock.makeClient({ representation: "BadgerFish" });
 
-            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
 
-            client._soapTransport.mockReturnValueOnce(Mock.GET_XTK_ALL_SCHEMA_RESPONSE);
-            client._soapTransport.mockReturnValueOnce(Mock.GET_XTK_ALL_TYPES_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_XTK_ALL_SCHEMA_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_XTK_ALL_TYPES_RESPONSE);
 
             const element = { "@type": "element", "@xtkschema": "nms:recipient" };          // @xtkschema needed to determine root name
             const document = { "@type": "document", "@xtkschema": "nms:recipient" };
@@ -723,18 +732,18 @@ describe('ACC Client', function () {
             expect(result[9]["@type"]).toBe("document");
             expect(result[9]["@result"]).toBe("true");
 
-            client._soapTransport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
             await client.NLWS.xtkSession.logoff();
         });
 
         it("Should check xtkschema attribute", async () => {
             const client = await Mock.makeClient();
 
-            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
 
-            client._soapTransport.mockReturnValueOnce(Mock.GET_XTK_ALL_SCHEMA_RESPONSE);
-            client._soapTransport.mockReturnValueOnce(Mock.GET_XTK_ALL_TYPES_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_XTK_ALL_SCHEMA_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_XTK_ALL_TYPES_RESPONSE);
 
             const element = { "@type": "element" };          // @xtkschema needed to determine root name, missing on purpose
             const document = { "@type": "document", "@xtkschema": "nms:recipient" };
@@ -743,103 +752,103 @@ describe('ACC Client', function () {
                 expect(e.name).toMatch('Error');
             });
 
-            client._soapTransport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
             await client.NLWS.xtkSession.logoff();
         });
         it("Should fail on unsupported type", async () => {
             const client = await Mock.makeClient();
-            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
 
-            client._soapTransport.mockReturnValueOnce(Mock.GET_XTK_ALL_SCHEMA_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_XTK_ALL_SCHEMA_RESPONSE);
 
             // unsupported input parameter
             await expect(client.NLWS.xtkAll.unsupportedInput()).rejects.toMatchObject({ errorCode: "SDK-000008" });
 
             // unsupported output parameter
-            client._soapTransport.mockReturnValueOnce(Mock.GET_XTK_TYPE_UNSUPPORTED_TYPE_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_XTK_TYPE_UNSUPPORTED_TYPE_RESPONSE);
             await expect(client.NLWS.xtkAll.unsupported()).rejects.toMatchObject({ errorCode: "SDK-000007" });
 
-            client._soapTransport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
             await client.NLWS.xtkSession.logoff();
         });
 
         it("Should support local return type", async () => {
             const client = await Mock.makeClient();
-            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
 
-            client._soapTransport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
-            client._soapTransport.mockReturnValueOnce(Mock.GET_USER_INFO_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_USER_INFO_RESPONSE);
             const userInfo = await client.NLWS.xtkSession.getUserInfo();
             expect(userInfo["login"]).toBe("admin");
 
-            client._soapTransport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
             await client.NLWS.xtkSession.logoff();
         });
 
         it("Should support XML representation", async () => {
             const client = await Mock.makeClient({ representation: "xml" });
-            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
 
-            client._soapTransport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
-            client._soapTransport.mockReturnValueOnce(Mock.GET_USER_INFO_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_USER_INFO_RESPONSE);
             const userInfo = await client.NLWS.xtkSession.getUserInfo();
             expect(userInfo.getAttribute("login")).toBe("admin");
 
-            client._soapTransport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
             await client.NLWS.xtkSession.logoff();
         });
 
         it("Should fail if schema does not exist", async () => {
             const client = await Mock.makeClient();
-            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
 
-            client._soapTransport.mockReturnValueOnce(Mock.GET_MISSING_SCHEMA_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_MISSING_SCHEMA_RESPONSE);
             await expect(client.NLWS.xtkNotFound.unsupported()).rejects.toMatchObject({ errorCode: "SDK-000009" });
 
             // Call directly
-            client._soapTransport.mockReturnValueOnce(Mock.GET_MISSING_SCHEMA_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_MISSING_SCHEMA_RESPONSE);
             const callContext = { schemaId: "xtk:notFound" };
             await expect(client._callMethod("dummy", callContext)).rejects.toMatchObject({ errorCode: "SDK-000009" });
 
-            client._soapTransport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
             await client.NLWS.xtkSession.logoff();
         });
 
         it("Should fail if method does not exist", async () => {
             const client = await Mock.makeClient();
-            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
 
-            client._soapTransport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
             await expect(client.NLWS.xtkSession.unsupported()).rejects.toMatchObject({ errorCode: "SDK-000009" });
 
-            client._soapTransport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
             await client.NLWS.xtkSession.logoff();
         });
 
         it("Should fail if calling non static function without object", async () => {
             const client = await Mock.makeClient();
-            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
 
-            client._soapTransport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
             await expect(client.NLWS.xtkSession.nonStatic()).rejects.toMatchObject({ errorCode: "SDK-000009" });
 
-            client._soapTransport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
             await client.NLWS.xtkSession.logoff();
         });
 
         it("Should start workflow (hack)", async () => {
             const client = await Mock.makeClient();
-            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
 
-            client._soapTransport.mockReturnValueOnce(Mock.GET_XTK_WORKFLOW_SCHEMA_RESPONSE);
-            client._soapTransport.mockImplementationOnce(options => {
+            client._transport.mockReturnValueOnce(Mock.GET_XTK_WORKFLOW_SCHEMA_RESPONSE);
+            client._transport.mockImplementationOnce(options => {
                 const doc = DomUtil.parse(options.data);
                 const body = DomUtil.findElement(doc.documentElement, "SOAP-ENV:Body");
                 const method = DomUtil.getFirstChildElement(body);
@@ -860,17 +869,17 @@ describe('ACC Client', function () {
             });
             await client.NLWS.xtkWorkflow.startWithParameters(4900, { "hello": "world" });
 
-            client._soapTransport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
             await client.NLWS.xtkSession.logoff();
         });
 
         it("Should call non static method", async () => {
             const client = await Mock.makeClient();
-            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
 
-            client._soapTransport.mockReturnValueOnce(Mock.GET_XTK_QUERY_SCHEMA_RESPONSE);
-            client._soapTransport.mockReturnValueOnce(Mock.GET_QUERY_EXECUTE_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_XTK_QUERY_SCHEMA_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_QUERY_EXECUTE_RESPONSE);
             var queryDef = {
                 "schema": "nms:extAccount",
                 "operation": "select",
@@ -891,7 +900,7 @@ describe('ACC Client', function () {
                     </select>
                 </queryDef>`);
             client._representation = "xml";
-            client._soapTransport.mockReturnValueOnce(Mock.GET_QUERY_EXECUTE_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_QUERY_EXECUTE_RESPONSE);
             query = client.NLWS.xtkQueryDef.create(queryDef);
             await query.executeQuery();
 
@@ -901,91 +910,91 @@ describe('ACC Client', function () {
                 return query.executeQuery();
             }).rejects.toMatchObject({ errorCode: "SDK-000004" });
 
-            client._soapTransport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
             await client.NLWS.xtkSession.logoff();
 
         });
 
         it("Should fail to return DOMDocument with unsupported representation", async () => {
             const client = await Mock.makeClient();
-            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
-            client._soapTransport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
 
-            client._soapTransport.mockReturnValueOnce(Mock.GET_GETDOCUMENT_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_GETDOCUMENT_RESPONSE);
             client._representation = "xml";
             await client.NLWS.xtkPersist.getDocument();
 
-            client._soapTransport.mockReturnValueOnce(Mock.GET_GETDOCUMENT_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_GETDOCUMENT_RESPONSE);
             client._representation = "invalid";
             await expect(async() => {
                 return client.NLWS.xtkPersist.getDocument();
             }).rejects.toMatchObject({ errorCode: "SDK-000004" });
 
-            client._soapTransport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
             await client.NLWS.xtkSession.logoff();
         });
 
         it("Should fail to return DOMElement with unsupported representation", async () => {
             const client = await Mock.makeClient();
-            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
-            client._soapTransport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
 
-            client._soapTransport.mockReturnValueOnce(Mock.GET_GETELEMENT_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_GETELEMENT_RESPONSE);
             client._representation = "xml";
             await client.NLWS.xtkPersist.getElement();
 
-            client._soapTransport.mockReturnValueOnce(Mock.GET_GETELEMENT_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_GETELEMENT_RESPONSE);
             client._representation = "invalid";
             await expect(async() => {
                 return client.NLWS.xtkPersist.getElement();
             }).rejects.toMatchObject({ errorCode: "SDK-000004" });
 
-            client._soapTransport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
             await client.NLWS.xtkSession.logoff();
         });
 
         it("Should fail to pass DOMDocument with unsupported representation", async () => {
             const client = await Mock.makeClient();
-            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
-            client._soapTransport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
 
             const document = DomUtil.parse("<root/>");
-            client._soapTransport.mockReturnValueOnce(Mock.GET_SETDOCUMENT_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_SETDOCUMENT_RESPONSE);
             client._representation = "xml";
             await client.NLWS.xtkPersist.setDocument(document);
 
-            client._soapTransport.mockReturnValueOnce(Mock.GET_SETDOCUMENT_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_SETDOCUMENT_RESPONSE);
             client._representation = "invalid";
             await expect(async() => {
                 return client.NLWS.xtkPersist.setDocument(document);
             }).rejects.toMatchObject({ errorCode: "SDK-000004" });
 
-            client._soapTransport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
             await client.NLWS.xtkSession.logoff();
         });
 
 
         it("Should fail to pass DOMElement with unsupported representation", async () => {
             const client = await Mock.makeClient();
-            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
-            client._soapTransport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
 
             const element = DomUtil.parse("<root/>").documentElement;
-            client._soapTransport.mockReturnValueOnce(Mock.GET_SETELEMENT_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_SETELEMENT_RESPONSE);
             client._representation = "xml";
             await client.NLWS.xtkPersist.setElement(element);
 
-            client._soapTransport.mockReturnValueOnce(Mock.GET_SETELEMENT_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_SETELEMENT_RESPONSE);
             client._representation = "invalid";
             await expect(async() => {
                 return client.NLWS.xtkPersist.setElement(element);
             }).rejects.toMatchObject({ errorCode: "SDK-000004" });
 
-            client._soapTransport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
             await client.NLWS.xtkSession.logoff();
         });
 
@@ -994,17 +1003,17 @@ describe('ACC Client', function () {
             // You call it on a queryDef, and it internally returns a new query definition which contain select nodes for all the nodes of the schema. 
             // When such a method is called, the SDK will know how to "mutate" the corresponding object.
             const client = await Mock.makeClient();
-            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
             
             var queryDef = {
                 "schema": "xtk:option",
                 "operation": "getIfExists",
             };
-            client._soapTransport.mockReturnValueOnce(Mock.GET_XTK_QUERY_SCHEMA_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_XTK_QUERY_SCHEMA_RESPONSE);
             var query = client.NLWS.xtkQueryDef.create(queryDef);
 
-            client._soapTransport.mockReturnValueOnce(Promise.resolve(`<?xml version='1.0'?>
+            client._transport.mockReturnValueOnce(Promise.resolve(`<?xml version='1.0'?>
                     <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:xtk:queryDef' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
                     <SOAP-ENV:Body>
                     <SelectAllResponse xmlns='urn:xtk:queryDef' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
@@ -1046,12 +1055,12 @@ describe('ACC Client', function () {
 
         it("getIfExists with empty result", async () => {
             const client = await Mock.makeClient();
-            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
 
-            client._soapTransport.mockReturnValueOnce(Mock.GET_XTK_QUERY_SCHEMA_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_XTK_QUERY_SCHEMA_RESPONSE);
 
-            client._soapTransport.mockReturnValueOnce(Promise.resolve(`<?xml version='1.0'?>
+            client._transport.mockReturnValueOnce(Promise.resolve(`<?xml version='1.0'?>
             <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:xtk:queryDef' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
             <SOAP-ENV:Body>
             <ExecuteQueryResponse xmlns='urn:xtk:queryDef' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
@@ -1080,12 +1089,12 @@ describe('ACC Client', function () {
 
         it("select with empty result", async () => {
             const client = await Mock.makeClient();
-            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
 
-            client._soapTransport.mockReturnValueOnce(Mock.GET_XTK_QUERY_SCHEMA_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_XTK_QUERY_SCHEMA_RESPONSE);
 
-            client._soapTransport.mockReturnValueOnce(Promise.resolve(`<?xml version='1.0'?>
+            client._transport.mockReturnValueOnce(Promise.resolve(`<?xml version='1.0'?>
             <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:xtk:queryDef' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
             <SOAP-ENV:Body>
             <ExecuteQueryResponse xmlns='urn:xtk:queryDef' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
@@ -1114,12 +1123,12 @@ describe('ACC Client', function () {
 
         it("getIfExists with a result of exactly one element", async () => {
             const client = await Mock.makeClient();
-            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
 
-            client._soapTransport.mockReturnValueOnce(Mock.GET_XTK_QUERY_SCHEMA_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_XTK_QUERY_SCHEMA_RESPONSE);
 
-            client._soapTransport.mockReturnValueOnce(Promise.resolve(`<?xml version='1.0'?>
+            client._transport.mockReturnValueOnce(Promise.resolve(`<?xml version='1.0'?>
             <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:xtk:queryDef' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
             <SOAP-ENV:Body>
             <ExecuteQueryResponse xmlns='urn:xtk:queryDef' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
@@ -1148,12 +1157,12 @@ describe('ACC Client', function () {
 
         it("select with a result of exactly one element", async () => {
             const client = await Mock.makeClient();
-            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
 
-            client._soapTransport.mockReturnValueOnce(Mock.GET_XTK_QUERY_SCHEMA_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_XTK_QUERY_SCHEMA_RESPONSE);
 
-            client._soapTransport.mockReturnValueOnce(Promise.resolve(`<?xml version='1.0'?>
+            client._transport.mockReturnValueOnce(Promise.resolve(`<?xml version='1.0'?>
             <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:xtk:queryDef' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
             <SOAP-ENV:Body>
             <ExecuteQueryResponse xmlns='urn:xtk:queryDef' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
@@ -1236,32 +1245,32 @@ describe('ACC Client', function () {
 
         it("Should work with SimpleJson representation", async () => {
             const client = await Mock.makeClient();
-            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
 
-            client._soapTransport.mockReturnValueOnce(Mock.GET_GETSCHEMA_HELLO_RESPONSE);
-            client._soapTransport.mockReturnValueOnce(Mock.GET_HELLO_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_GETSCHEMA_HELLO_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_HELLO_RESPONSE);
             var doc = await client.NLWS.xtkHello.world();
             expect(doc).toEqual({ world: "cruel" });
         });
 
         it("Should fail with Xml representation", async () => {
             const client = await Mock.makeClient();
-            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
 
             // Make a successful call with "SimpleJson" first to make sure the schema
             // and method are cached. If not, getting the schema will fail when we
             // pass an incorrect representation and hence, we'll not reach the code
             // that should fail decodeing the DOM document returned by the "World" function
-            client._soapTransport.mockReturnValueOnce(Mock.GET_GETSCHEMA_HELLO_RESPONSE);
-            client._soapTransport.mockReturnValueOnce(Mock.GET_HELLO_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_GETSCHEMA_HELLO_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_HELLO_RESPONSE);
             var doc = await client.NLWS.xtkHello.world();
             expect(doc).toEqual({ world: "cruel" });
 
             await expect(async () => {
                 client._representation = "Dummy";
-                client._soapTransport.mockReturnValueOnce(Mock.GET_HELLO_RESPONSE);
+                client._transport.mockReturnValueOnce(Mock.GET_HELLO_RESPONSE);
                 var doc = await client.NLWS.xtkHello.world();
                 expect(doc).toEqual({ world: "cruel" });
             }).rejects.toMatchObject({ errorCode: "SDK-000004" });
@@ -1274,7 +1283,7 @@ describe('ACC Client', function () {
         it("Should create logged client", async() => {
             const connectionParameters = sdk.ConnectionParameters.ofSessionToken("http://acc-sdk:8080", "mc/");
             const client = await sdk.init(connectionParameters);
-            client._soapTransport = jest.fn();
+            client._transport = jest.fn();
             expect(client.isLogged()).toBeFalsy();
             await client.logon();
             expect(client.isLogged()).toBeTruthy();
@@ -1290,7 +1299,7 @@ describe('ACC Client', function () {
         it("Should create anonymous client", async() => {
             const connectionParameters = sdk.ConnectionParameters.ofAnonymousUser("http://acc-sdk:8080");
             const client = await sdk.init(connectionParameters);
-            client._soapTransport = jest.fn();
+            client._transport = jest.fn();
             expect(client.isLogged()).toBeTruthy();
             await client.logon();
             expect(client.isLogged()).toBeTruthy();
@@ -1310,11 +1319,11 @@ describe('ACC Client', function () {
     describe("PushEvent API", () => {
         it("Should generate the corect document root", async () => {
             const client = await Mock.makeClient();
-            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
 
-            client._soapTransport.mockReturnValueOnce(Mock.GET_NMS_RTEVENT_SCHEMA_RESPONSE);
-            client._soapTransport.mockImplementationOnce(options => {
+            client._transport.mockReturnValueOnce(Mock.GET_NMS_RTEVENT_SCHEMA_RESPONSE);
+            client._transport.mockImplementationOnce(options => {
                 const doc = DomUtil.parse(options.data);
                 const body = DomUtil.findElement(doc.documentElement, "SOAP-ENV:Body");
                 const method = DomUtil.getFirstChildElement(body);
@@ -1343,7 +1352,7 @@ describe('ACC Client', function () {
                 }
               });
 
-            client._soapTransport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
             await client.NLWS.xtkSession.logoff();
         });
     });
@@ -1351,10 +1360,10 @@ describe('ACC Client', function () {
     describe("/r/test API", () => {
         it("Should call test API", async () => {
             const client = await Mock.makeClient();
-            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
 
-            client._soapTransport.mockReturnValueOnce(Mock.R_TEST);
+            client._transport.mockReturnValueOnce(Mock.R_TEST);
             const test = await client.test();
             expect(test.build).toBe("9236");
             expect(test.date).toBe("2021-08-27 08:02:07.963-07");
@@ -1365,67 +1374,67 @@ describe('ACC Client', function () {
             expect(test.sourceIP).toBe("193.104.215.11");
             expect(test.status).toBe("OK");
 
-            client._soapTransport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
             await client.NLWS.xtkSession.logoff();
         });
 
         it("Should fail to call test API", async () => {
             const client = await Mock.makeClient();
-            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
 
-            client._soapTransport.mockRejectedValueOnce({ statusCode: 504, error: "This call failed", response:{}, options:{} });
-            expect(client.test()).rejects.toMatchObject({ statusCode:504, message:"504 - Error calling method '': This call failed" });
+            client._transport.mockRejectedValueOnce(new HttpError(504, "This call failed"));
+            await expect(client.test()).rejects.toMatchObject({ statusCode:504, message:"504 - Error calling method '/r/test': This call failed" });
         });
     })
 
     describe("/nl/jsp/ping.jsp API", () => {
         it("Should call ping API", async () => {
             const client = await Mock.makeClient();
-            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
 
-            client._soapTransport.mockReturnValueOnce(Mock.PING);
+            client._transport.mockReturnValueOnce(Mock.PING);
             const ping = await client.ping();
             expect(ping.status).toBe("OK");
             expect(ping.timestamp).toBe("2021-08-27 15:43:48.862Z");
 
-            client._soapTransport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
             await client.NLWS.xtkSession.logoff();
         });
 
         it("Truncated result from ping API", async () => {
             const client = await Mock.makeClient();
-            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
 
-            client._soapTransport.mockReturnValueOnce(Promise.resolve("OK"));
+            client._transport.mockReturnValueOnce(Promise.resolve("OK"));
             var ping = await client.ping();
             expect(ping.status).toBe("OK");
             expect(ping.timestamp).toBeUndefined();
 
 
-            client._soapTransport.mockReturnValueOnce(Promise.resolve("OK\n"));
+            client._transport.mockReturnValueOnce(Promise.resolve("OK\n"));
             ping = await client.ping();
             expect(ping.status).toBe("OK");
             expect(ping.timestamp).toBeUndefined();
 
-            client._soapTransport.mockReturnValueOnce( Promise.resolve(""));
+            client._transport.mockReturnValueOnce( Promise.resolve(""));
             ping = await client.ping();
             expect(ping.status).toBeUndefined();
             expect(ping.timestamp).toBeUndefined();
 
-            client._soapTransport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
             await client.NLWS.xtkSession.logoff();
         });
 
         it("Should fail to call ping API", async () => {
             const client = await Mock.makeClient();
-            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
 
-            client._soapTransport.mockRejectedValueOnce({ statusCode: 504, error: "This call failed", response:{}, options:{} });
-            expect(client.ping()).rejects.toMatchObject({ statusCode:504, message:"504 - Error calling method '': This call failed" });
+            client._transport.mockRejectedValueOnce(new HttpError(504, "This call failed"));
+            await expect(client.ping()).rejects.toMatchObject({ statusCode:504, message:"504 - Error calling method '/nl/jsp/ping.jsp': This call failed" });
         });
 
     });
@@ -1433,94 +1442,94 @@ describe('ACC Client', function () {
     describe("/nl/jsp/mcPing.jsp API", () => {
         it("Should call mcPing API", async () => {
             const client = await Mock.makeClient();
-            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
 
-            client._soapTransport.mockReturnValueOnce(Mock.MC_PING);
+            client._transport.mockReturnValueOnce(Mock.MC_PING);
             const ping = await client.mcPing();
             expect(ping.status).toBe("Ok");
             expect(ping.timestamp).toBe("2021-08-27 15:48:07.893Z");
             expect(ping.eventQueueSize).toBe("7");
             expect(ping.eventQueueMaxSize).toBe("400");
 
-            client._soapTransport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
             await client.NLWS.xtkSession.logoff();
         });
 
         it("Should return an error", async () => {
             const client = await Mock.makeClient();
-            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
 
-            client._soapTransport.mockReturnValueOnce(Mock.MC_PING_ERROR);
+            client._transport.mockReturnValueOnce(Mock.MC_PING_ERROR);
             const ping = await client.mcPing();
             expect(ping.status).toBe("Error");
             expect(ping.timestamp).toBeUndefined();
             expect(ping.eventQueueSize).toBe("7");
             expect(ping.eventQueueMaxSize).toBe("400");
 
-            client._soapTransport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
             await client.NLWS.xtkSession.logoff();
         });
 
         it("Should fail to call MC ping API", async () => {
             const client = await Mock.makeClient();
-            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
 
-            client._soapTransport.mockRejectedValueOnce({ statusCode: 504, error: "This call failed", response:{}, options:{} });
-            expect(client.mcPing()).rejects.toMatchObject({ statusCode:504, message:"504 - Error calling method '': This call failed" });
+            client._transport.mockRejectedValueOnce(new HttpError(504, "This call failed"));
+            await expect(client.mcPing()).rejects.toMatchObject({ statusCode:504, message:"504 - Error calling method '/nl/jsp/mcPing.jsp': This call failed" });
         });
 
 
         it("Truncated result from mcping API", async () => {
             const client = await Mock.makeClient();
-            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
 
-            client._soapTransport.mockReturnValueOnce(Promise.resolve("OK"));
+            client._transport.mockReturnValueOnce(Promise.resolve("OK"));
             var ping = await client.mcPing();
             expect(ping.status).toBe("OK");
             expect(ping.timestamp).toBeUndefined();
             expect(ping.eventQueueSize).toBeUndefined();
             expect(ping.eventQueueMaxSize).toBeUndefined();
 
-            client._soapTransport.mockReturnValueOnce(Promise.resolve("OK\n"));
+            client._transport.mockReturnValueOnce(Promise.resolve("OK\n"));
             ping = await client.mcPing();
             expect(ping.status).toBe("OK");
             expect(ping.timestamp).toBeUndefined();
             expect(ping.eventQueueSize).toBeUndefined();
             expect(ping.eventQueueMaxSize).toBeUndefined();
 
-            client._soapTransport.mockReturnValueOnce(Promise.resolve("OK\n\n"));
+            client._transport.mockReturnValueOnce(Promise.resolve("OK\n\n"));
             ping = await client.mcPing();
             expect(ping.status).toBe("OK");
             expect(ping.timestamp).toBeUndefined();
             expect(ping.eventQueueSize).toBeUndefined();
             expect(ping.eventQueueMaxSize).toBeUndefined();
 
-            client._soapTransport.mockReturnValueOnce(Promise.resolve("OK\n\n7/"));
+            client._transport.mockReturnValueOnce(Promise.resolve("OK\n\n7/"));
             ping = await client.mcPing();
             expect(ping.status).toBe("OK");
             expect(ping.timestamp).toBeUndefined();
             expect(ping.eventQueueSize).toBeUndefined();
             expect(ping.eventQueueMaxSize).toBeUndefined();
 
-            client._soapTransport.mockReturnValueOnce( Promise.resolve(""));
+            client._transport.mockReturnValueOnce( Promise.resolve(""));
             ping = await client.mcPing();
             expect(ping.status).toBeUndefined();
             expect(ping.timestamp).toBeUndefined();
             expect(ping.eventQueueSize).toBeUndefined();
             expect(ping.eventQueueMaxSize).toBeUndefined();
 
-            client._soapTransport.mockReturnValueOnce( Promise.resolve("Error"));
+            client._transport.mockReturnValueOnce( Promise.resolve("Error"));
             ping = await client.mcPing();
             expect(ping.status).toBe("Error");
             expect(ping.timestamp).toBeUndefined();
             expect(ping.eventQueueSize).toBeUndefined();
             expect(ping.eventQueueMaxSize).toBeUndefined();
 
-            client._soapTransport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
             await client.NLWS.xtkSession.logoff();
         });
     });
@@ -1537,19 +1546,19 @@ describe('ACC Client', function () {
             const observed = [];
             
             client.registerObserver({
-                onSOAPCall: (soapCall, safeCallData) => {
+                onSOAPCall: (soapCall) => {
                     const request = soapCall.request;
                     const soapAction = request.headers["SoapAction"];
                     observed.push(soapAction);
                 },
-                onSOAPCallSuccess: (soapCall, safeCallResponse) => {
+                onSOAPCallSuccess: () => {
                     observed.push(true);
                 }
             });
-            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
-            client._soapTransport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
             await client.NLWS.xtkSession.logon();
-            client._soapTransport.mockReturnValueOnce(Mock.GET_DATABASEID_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_DATABASEID_RESPONSE);
             var databaseId = await client.getOption("XtkDatabaseId");
             expect(databaseId).toBe("uFE80000000000000F1FA913DD7CC7C480041161C");
 
@@ -1565,10 +1574,10 @@ describe('ACC Client', function () {
                     observedException = exception;
                 }
             });
-            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
-            client._soapTransport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
             await client.NLWS.xtkSession.logon();
-            client._soapTransport.mockReturnValueOnce(Promise.resolve(`<?xml version='1.0' encoding='UTF-8'?>
+            client._transport.mockReturnValueOnce(Promise.resolve(`<?xml version='1.0' encoding='UTF-8'?>
                         <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/' xmlns:ns='http://xml.apache.org/xml-soap'>
                             <SOAP-ENV:Body>
                                 <SOAP-ENV:Fault>
@@ -1605,7 +1614,7 @@ describe('ACC Client', function () {
             };
             client.registerObserver(observer1);
             client.registerObserver(observer2);
-            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
 
             expect(countCalls).toBe(1);
@@ -1614,8 +1623,8 @@ describe('ACC Client', function () {
             client.unregisterObserver(observer1);
             expect(client._observers.length).toBe(1);
 
-            client._soapTransport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
-            client._soapTransport.mockReturnValueOnce(Mock.GET_DATABASEID_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_DATABASEID_RESPONSE);
             await client.getOption("XtkDatabaseId");
             expect(countCalls).toBe(1);
             expect(countSuccesses).toBe(4);
@@ -1635,7 +1644,7 @@ describe('ACC Client', function () {
             };
             client.registerObserver(observer1);
             client.registerObserver(observer2);
-            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
 
             expect(countCalls).toBe(1);
@@ -1644,8 +1653,8 @@ describe('ACC Client', function () {
             client.unregisterAllObservers();
             expect(client._observers.length).toBe(0);
 
-            client._soapTransport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
-            client._soapTransport.mockReturnValueOnce(Mock.GET_DATABASEID_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_DATABASEID_RESPONSE);
             await client.getOption("XtkDatabaseId");
             expect(countCalls).toBe(1);
             expect(countSuccesses).toBe(2);
@@ -1666,15 +1675,154 @@ describe('ACC Client', function () {
                     const request = soapCall.request;
                     const soapAction = request.headers["SoapAction"];
                     observed.push(soapAction);
-                    observed.push(soapCall._internal);
+                    observed.push(soapCall.internal);
                 },
             });
-            client._soapTransport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
-            client._soapTransport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
             await client.NLWS.xtkSession.logon();
-            client._soapTransport.mockReturnValueOnce(Mock.GET_DATABASEID_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_DATABASEID_RESPONSE);
             await client.getOption("XtkDatabaseId");
             expect(observed).toStrictEqual(expected);
         });
     })
+
+    describe("Tracing Http calls", () => {
+        it('Should trace HTTP successful call', async () => {
+            const logs = await Mock.withMockConsole(async () => {
+                const client = await Mock.makeClient();
+                client.traceAPICalls(true);
+                client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+                await client.NLWS.xtkSession.logon();
+    
+                client._transport.mockReturnValueOnce(Mock.PING);
+                const ping = await client.ping();
+                expect(ping.status).toBe("OK");
+                expect(ping.timestamp).toBe("2021-08-27 15:43:48.862Z");
+            })
+            expect(logs.length).toBe(4);
+            expect(logs[0]).toMatch(/SOAP.*request.*Logon/is)
+            expect(logs[1]).toMatch(/SOAP.*response.*LogonResponse/is)
+            expect(logs[2]).toMatch(/HTTP.*request.*nl.jsp.ping.jsp/is)
+            expect(logs[3]).toMatch(/HTTP.*response.*OK/is)
+        });
+
+        it("Should trace HTTP call with no data and no answer", async () => {
+            const logs = await Mock.withMockConsole(async () => {
+                const client = await Mock.makeClient();
+                client.traceAPICalls(true);
+                client._transport.mockReturnValueOnce(Promise.resolve());
+                client._makeHttpCall({ method:"GET", url:"http://test.com" });
+            });
+            expect(logs.length).toBe(2);
+            expect(logs[0]).toMatch(/HTTP.*request.*GET.*test.com/is)
+            expect(logs[1]).toMatch(/HTTP.*response/is)
+        })
+        
+        it("Should trace HTTP call with data and no answer", async () => {
+            const logs = await Mock.withMockConsole(async () => {
+                const client = await Mock.makeClient();
+                client.traceAPICalls(true);
+                client._transport.mockReturnValueOnce(Promise.resolve());
+                client._makeHttpCall({ method:"GET", url:"http://test.com", data:"Hello" });
+            });
+            expect(logs.length).toBe(2);
+            expect(logs[0]).toMatch(/HTTP.*request.*GET.*test.com.*Hello/is)
+            expect(logs[1]).toMatch(/HTTP.*response/is)
+        })
+
+        it('Should trace HTTP failed call', async () => {
+            const logs = await Mock.withMockConsole(async () => {
+                const client = await Mock.makeClient();
+                client.traceAPICalls(true);
+                client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+                await client.NLWS.xtkSession.logon();
+
+                client._transport.mockRejectedValueOnce(new HttpError(504, "This call failed"));
+                await expect(client.ping()).rejects.toMatchObject({ statusCode:504, message:"504 - Error calling method '/nl/jsp/ping.jsp': This call failed" });
+            });
+            expect(logs.length).toBe(4);
+            expect(logs[0]).toMatch(/SOAP.*request.*Logon/is)
+            expect(logs[1]).toMatch(/SOAP.*response.*LogonResponse/is)
+            expect(logs[2]).toMatch(/HTTP.*request.*nl.jsp.ping.jsp/is)
+            expect(logs[3]).toMatch(/HTTP.*failure/is)
+        });
+    })
+
+    describe("Observing Http calls", () => {
+        it('Should observe HTTP successful call', async () => {
+
+            const observer = {
+                onHTTPCall: jest.fn(),
+                onHTTPCallSuccess: jest.fn()
+            };
+
+            const client = await Mock.makeClient();
+            client.traceAPICalls(true);
+            client.registerObserver(observer);
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+
+            client._transport.mockReturnValueOnce(Mock.PING);
+            await client.ping();
+
+            expect(observer.onHTTPCall.mock.calls.length).toBe(1);
+            expect(observer.onHTTPCall.mock.calls[0].length).toBe(2);    // 2 arguments
+            expect(observer.onHTTPCall.mock.calls[0][0]).toMatchObject({
+                headers: { },
+                method: "GET",
+                url: "http://acc-sdk:8080/nl/jsp/ping.jsp"
+            });
+            expect(observer.onHTTPCall.mock.calls[0][1]).toBeUndefined();
+            
+            expect(observer.onHTTPCallSuccess.mock.calls.length).toBe(1);
+            expect(observer.onHTTPCallSuccess.mock.calls[0].length).toBe(2);    // 2 arguments
+            expect(observer.onHTTPCallSuccess.mock.calls[0][0]).toMatchObject({
+                headers: { },
+                method: "GET",
+                url: "http://acc-sdk:8080/nl/jsp/ping.jsp"
+            });
+            expect(observer.onHTTPCallSuccess.mock.calls[0][1]).toMatch("OK");
+        });
+
+        it('Should observe HTTP failed call', async () => {
+            const observer = {
+                onHTTPCallFailure: jest.fn()
+            };
+
+            const client = await Mock.makeClient();
+            client.traceAPICalls(true);
+            client.registerObserver(observer);
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+
+            client._transport.mockRejectedValueOnce(new HttpError(504, "This call failed"));
+            await expect(client.ping()).rejects.toMatchObject({ statusCode:504, message:"504 - Error calling method '/nl/jsp/ping.jsp': This call failed" });
+
+            expect(observer.onHTTPCallFailure.mock.calls.length).toBe(1);
+            expect(observer.onHTTPCallFailure.mock.calls[0].length).toBe(2);    // 2 arguments
+            expect(observer.onHTTPCallFailure.mock.calls[0][0]).toMatchObject({
+                headers: { },
+                method: "GET",
+                url: "http://acc-sdk:8080/nl/jsp/ping.jsp"
+            });
+            expect(observer.onHTTPCallFailure.mock.calls[0][1]).toMatchObject({ statusCode:504, statusText: "This call failed" });
+        });
+    });
+
+    it('Should support empty observers', async () => {
+
+        const observer = { };   // none of the functions are implemented
+
+        const client = await Mock.makeClient();
+        client.traceAPICalls(true);
+        client.registerObserver(observer);
+        client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+        await client.NLWS.xtkSession.logon();
+
+        client._transport.mockReturnValueOnce(Mock.PING);
+        await client.ping();
+
+        expect(true).toBe(true);    // should reach here without failures
+    });
 });

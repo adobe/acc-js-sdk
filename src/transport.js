@@ -12,6 +12,18 @@ governing permissions and limitations under the License.
 
 const { Util } = require('./util.js');
 
+class HttpError {
+  constructor(statusCode, statusText, data) {
+      this.statusCode = statusCode;
+      this.statusText = statusText || "";
+      this.data = data;
+  }
+
+  toString() {
+    return `${this.statusCode}${this.statusText ? " " + this.statusText : ""}`;
+  }
+}
+
 /**********************************************************************************
  * 
  * Node implementation
@@ -22,7 +34,6 @@ if (!Util.isBrowser()) {
 
   // Transport layer using axios library
   const axios = require('axios');
-
 
   /**
    * 
@@ -53,21 +64,17 @@ if (!Util.isBrowser()) {
     })
     .catch((error) => {
       // Not an HTTP error
-      const response = error.response;
+      const response = error && error.response;
       if (!response)
-        return Promise.reject(error);
+        return Promise.reject(new HttpError(500, error));
       // HTTP errors (400, 404, 500, etc.) are returned here
-      return Promise.reject({
-        statusCode: response.status,
-        statusText: response.statusText,
-        data: response.data,
-        request: request
-      });
+      return Promise.reject(new HttpError(response.status, response.statusText, response.data));
     })
   }
 
 
   exports.request = request;
+  exports.HttpError = HttpError;
 
 }
 
@@ -94,7 +101,7 @@ if (!Util.isBrowser()) {
 
     const p = fetch(r).then((response) => {
         if (!response.ok)
-            throw new Error(`HTTP error ${response.status}: ${response.statusText}`);
+            throw new HttpError(response.status, response.statusText);
         return response.blob().then((blob) => {
             return blob.text();
         });

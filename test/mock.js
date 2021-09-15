@@ -21,17 +21,33 @@ governing permissions and limitations under the License.
  async function makeAnonymousClient(options) {
     const connectionParameters = sdk.ConnectionParameters.ofAnonymousUser("http://acc-sdk:8080", options);
     const client = await sdk.init(connectionParameters);
-    client._soapTransport = jest.fn();
-    //client.traceAPICalls(true);
+    client._transport = jest.fn();
     return client;
 }
 
 async function makeClient(options) {
     const connectionParameters = sdk.ConnectionParameters.ofUserAndPassword("http://acc-sdk:8080", "admin", "admin", options);
     const client = await sdk.init(connectionParameters);
-    client._soapTransport = jest.fn();
-    //client.traceAPICalls(true);
+    client._transport = jest.fn();
     return client;
+}
+
+/**
+ * Calls an async function and intercepts calls to console.log at the same time, and put the result in an array.
+ * @param {*} fn the async function to call
+ * @returns an array of logged messages
+ */
+async function withMockConsole(fn) {
+    const logs = [];
+    jest.spyOn(console, 'log').mockImplementation((message) => {
+        logs.push(message);
+    });
+    try {
+        await fn();
+        return logs;
+    } finally {
+        console.log.mockRestore();   
+    }
 }
 
 const R_TEST = Promise.resolve(`<redir status='OK' date='2021-08-27 08:02:07.963-07' build='9236' sha1='cc45440' instance='xxx_mkt_prod1' sourceIP='193.104.215.11' host='xxxol.campaign.adobe.com' localHost='xxxol-mkt-prod1-1'/>`);
@@ -554,6 +570,7 @@ const GET_HELLO_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
 exports.Mock = {
   makeClient: makeClient,
   makeAnonymousClient: makeAnonymousClient,
+  withMockConsole: withMockConsole,
   R_TEST: R_TEST,
   PING: PING,
   MC_PING: MC_PING,

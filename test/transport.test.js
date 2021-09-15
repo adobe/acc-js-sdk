@@ -21,6 +21,7 @@ jest.mock('axios');
 const axios = require('axios');
 
 const request = require('../src/transport.js').request;
+const { HttpError } = require('../src/transport.js');
 
 describe("Transport layer", () => {
 
@@ -31,11 +32,46 @@ describe("Transport layer", () => {
 
     it("Should call unsuccessful HTTP with response", async () => {
         axios.mockReturnValue(Promise.reject({ response:{ status:500, statusText:"Error", data:"No data" } }));
-        await expect(request({ url: "http://" })).rejects.toMatchObject({ statusCode:500, statusText:"Error", data:"No data", request: { url: "http://" }});
+        await expect(request({ url: "http://" })).rejects.toMatchObject({ statusCode:500, statusText:"Error", data:"No data" });
     })
 
     it("Should call unsuccessful HTTP with non-HTTP error", async () => {
         axios.mockReturnValue(Promise.reject("Failed"));
-        await expect(request({ url: "http://" })).rejects.toBe("Failed");
+        await expect(request({ url: "http://" })).rejects.toMatchObject({ statusCode:500, statusText: "Failed" });
     })
+
+    it("Should call unsuccessful HTTP with non-HTTP error and no message", async () => {
+        axios.mockReturnValue(Promise.reject());
+        await expect(request({ url: "http://" })).rejects.toMatchObject({ statusCode:500, statusText: "" });
+    })
+
+    describe("HttpError", () => {
+        it("Should create http error", () => {
+            const error = new HttpError(500, "Hello");
+            expect(error.statusCode).toBe(500);
+            expect(error.statusText).toBe("Hello");
+        });
+
+        it("Should create http error with data", () => {
+            const error = new HttpError(500, "Hello", "World");
+            expect(error.statusCode).toBe(500);
+            expect(error.statusText).toBe("Hello");
+        });
+
+        it("Should create http error with no text", () => {
+            const error = new HttpError(500);
+            expect(error.statusCode).toBe(500);
+            expect(error.statusText).toBe("");
+        });
+
+        it("Should get http error string", () => {
+            const error = new HttpError(500, "Hello");
+            expect(error.toString()).toBe("500 Hello");
+        });
+
+        it("Should get http error string with no text", () => {
+            const error = new HttpError(500);
+            expect(error.toString()).toBe("500");
+        });
+    });
 });

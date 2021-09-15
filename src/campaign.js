@@ -65,7 +65,7 @@ governing permissions and limitations under the License.
           if (ctor && ctor.name == "SoapMethodCall") {
               methodCall = {
                   type: "SOAP",
-                  url: call.url,
+                  url: call.request ? call.request.url : undefined,
                   urn: call.urn,                              // Campaign schema id (ex: "xtk:session")
                   methodName: call.methodName,
                   request: call.request,                      // raw text of SOAP request
@@ -209,7 +209,7 @@ function makeCampaignException(call, err) {
       return new CampaignException(call, 500, err.code, `DOMException (${err.name})`, err.message, err);
   }
 
-  if (err.statusCode && err.request) {
+  if (err.statusCode && ctor && ctor.name == "HttpError") {
     var faultString = err.statusText;
     var details = err.data;
     if (!faultString) {

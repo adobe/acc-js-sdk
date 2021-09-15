@@ -22,7 +22,7 @@ governing permissions and limitations under the License.
  * Creates a SOAP call, passing it a session token and security token.
  * The tokens can be obtained with the xtk:session:Logon call
  * 
- *     const soapCall = new SoapMethodCall("xtk:session", "GetOption", sessionToken, securityToken);
+ *     const soapCall = new SoapMethodCall(transport, "xtk:session", "GetOption", sessionToken, securityToken);
  * 
  * Fill in input parameters, using the write* functions according to their type
  * 
@@ -31,7 +31,8 @@ governing permissions and limitations under the License.
  * 
  * Executes the SOAP call
  * 
- *      promise = soapCall.execute("http://ffdamkt:8080/nl/jsp/soaprouter.jsp")
+ *      soapCall.finalize("http://ffdamkt:8080/nl/jsp/soaprouter.jsp")
+ *      promise = soapCall.execute()
  * 
  * Once the promise is resolved, extract results according to their type
  * 
@@ -47,7 +48,6 @@ governing permissions and limitations under the License.
 const { DomUtil, DomException } = require('./domUtil.js');
 const XtkCaster = require('./xtkCaster.js').XtkCaster;
 const { CampaignException, makeCampaignException } = require('./campaign.js');
-const request = require('./transport.js');
 const SOAP_ENCODING_NATIVE = "http://schemas.xmlsoap.org/soap/encoding/";
 const SOAP_ENCODING_XML = "http://xml.apache.org/xml-soap/literalxml";
 const NS_ENV = "http://schemas.xmlsoap.org/soap/envelope/";
@@ -71,6 +71,7 @@ const NS_XSD = "http://www.w3.org/2001/XMLSchema";
  * the call and decode the result.
  * 
  * @constructor SoapMethodCall
+ * @param {} transport The transport layer (axios...)
  * @param {string} urn Campaign method namespace, ex: "xtk:session"
  * @param {string} methodName Method name, ex: "Logon"
  * @param {string} sessionToken Campaign session token
@@ -80,37 +81,45 @@ const NS_XSD = "http://www.w3.org/2001/XMLSchema";
  */
 class SoapMethodCall {
     
-    constructor(urn, methodName, sessionToken, securityToken, userAgentString) {
-        this.sessionToken = sessionToken || "";
-        this.securityToken = securityToken || "";
-        this.userAgentString = userAgentString;
-        this.url = undefined;
-
-        // THe SOAP call being built
-        this.doc = undefined;           // XML document for SOAP call
-        this.root = undefined;          // Root of the document
-        this.header = undefined;        // SOAP-ENV:Header
-        this.data = undefined;          // SOAP-ENV:Body
-        this.method = undefined;        // XML element for the method
-
+    constructor(transport, urn, methodName, sessionToken, securityToken, userAgentString) {
         this.request = undefined;       // The HTTP request (object litteral passed to the transport layer)
         this.response = undefined;      // The HTTP response object (in case of success)
+
+        // Current URN and method (for error reporting)
+        this.urn = urn;
+        this.methodName = methodName;
+
+        // Soap calls marked as internal are calls performed by the framework internally
+        // (such as GetEntityIfMoreRecent calls needed to lookup schemas)
+        this.internal = false;
+
+        this._sessionToken = sessionToken || "";
+        this._securityToken = securityToken || "";
+        this._userAgentString = userAgentString;
+
+        // THe SOAP call being built
+        this._doc = undefined;           // XML document for SOAP call
+        this._root = undefined;          // Root of the document
+        this._header = undefined;        // SOAP-ENV:Header
+        this._data = undefined;          // SOAP-ENV:Body
+        this._method = undefined;        // XML element for the method
 
         this._initMessage(urn, methodName, SOAP_ENCODING_NATIVE);
 
         // Current DOM element for reading result (getNext* functions) 
         this.elemCurrent = undefined;
 
-        // Current URN and method (for error reporting)
-        this.urn = urn;
-        this.methodName = methodName;
-
         // Transport object to perform HTTP request (request or mock)
-        this.transport = request;
+        this._transport = transport;
+    }
 
-        // Soap calls marked as internal are calls performed by the framework internally
-        // (such as GetEntityIfMoreRecent calls needed to lookup schemas)
-        this._internal = false;
+    /**
+     * Does this call require a logon?
+     * @returns {boolean} indicates if the call requires a Logon first
+     */
+    requiresLogon() {
+        const requiresLogon = !(this.urn === "xtk:session" && this.methodName === "Logon");
+        return requiresLogon;
     }
 
     /**
@@ -127,29 +136,29 @@ class SoapMethodCall {
         this.encoding = encoding;
         var urnPath = "urn:" + urn;
 
-        this.doc = DomUtil.parse(`<?xml version='1.0' encoding='UTF-8'?><SOAP-ENV:Envelope xmlns:xsd='${NS_XSD}' xmlns:xsi='${NS_XSI}' xmlns:SOAP-ENV='${NS_ENV}' xmlns:ns='http://xml.apache.org/xml-soap'></SOAP-ENV:Envelope>`);
-        this.root = this.doc.documentElement;
+        this._doc = DomUtil.parse(`<?xml version='1.0' encoding='UTF-8'?><SOAP-ENV:Envelope xmlns:xsd='${NS_XSD}' xmlns:xsi='${NS_XSI}' xmlns:SOAP-ENV='${NS_ENV}' xmlns:ns='http://xml.apache.org/xml-soap'></SOAP-ENV:Envelope>`);
+        this._root = this._doc.documentElement;
 
-        this.header = this.doc.createElement(`SOAP-ENV:Header`);
-        this.root.appendChild(this.header);
+        this._header = this._doc.createElement(`SOAP-ENV:Header`);
+        this._root.appendChild(this._header);
 
-        this.data = this.doc.createElement(`SOAP-ENV:Body`);
-        this.root.appendChild(this.data);
+        this._data = this._doc.createElement(`SOAP-ENV:Body`);
+        this._root.appendChild(this._data);
 
-        this.method = this.doc.createElement(`m:${method}`);
-        this.method.setAttribute(`xmlns:m`, urnPath);
-        this.method.setAttribute(`SOAP-ENV:encodingStyle`, encoding);
-        this.data.appendChild(this.method);
+        this._method = this._doc.createElement(`m:${method}`);
+        this._method.setAttribute(`xmlns:m`, urnPath);
+        this._method.setAttribute(`SOAP-ENV:encodingStyle`, encoding);
+        this._data.appendChild(this._method);
 
-        const cookieHeader = this.doc.createElement("Cookie");
-        cookieHeader.textContent = `__sessiontoken=${this.sessionToken}`;
-        this.header.appendChild(cookieHeader);
+        const cookieHeader = this._doc.createElement("Cookie");
+        cookieHeader.textContent = `__sessiontoken=${this._sessionToken}`;
+        this._header.appendChild(cookieHeader);
 
-        const securityTokenHeader = this.doc.createElement("X-Security-Token");
-        securityTokenHeader.textContent = this.securityToken;
-        this.header.appendChild(securityTokenHeader);
+        const securityTokenHeader = this._doc.createElement("X-Security-Token");
+        securityTokenHeader.textContent = this._securityToken;
+        this._header.appendChild(securityTokenHeader);
 
-        this.writeString("sessiontoken", this.sessionToken);
+        this.writeString("sessiontoken", this._sessionToken);
     }
 
     /**
@@ -163,13 +172,13 @@ class SoapMethodCall {
      * @returns the XML element to be added to the SOAP call
      */
     _addNode(tag, type, value, encoding) {
-        const node = this.doc.createElement(tag);
+        const node = this._doc.createElement(tag);
         node.setAttribute("xsi:type", type);
         if (encoding != this.encoding)
         node.setAttribute("SOAP-ENV:encodingStyle", encoding);
         if (value !== null && value !== undefined)
             node.textContent = value;
-        this.method.appendChild(node);
+        this._method.appendChild(node);
         return node;
     }
 
@@ -281,7 +290,7 @@ class SoapMethodCall {
     writeElement(tag, element) {
         const node = this._addNode(tag, "ns:Element", null, SOAP_ENCODING_XML);
         if (element !== null && element !== undefined) {
-            const child = this.doc.importNode(element, true);
+            const child = this._doc.importNode(element, true);
             node.appendChild(child);
         }
     }
@@ -294,7 +303,7 @@ class SoapMethodCall {
     writeDocument(tag, document) {
         const node = this._addNode(tag, "", null, SOAP_ENCODING_XML);
         if (document !== null && document !== undefined) {
-            const child = this.doc.importNode(document.documentElement, true);
+            const child = this._doc.importNode(document.documentElement, true);
             node.appendChild(child);
         }
     }
@@ -516,17 +525,21 @@ class SoapMethodCall {
                 'Content-type': 'application/soap+xml',
                 'User-Agent': this.userAgentString,
                 'SoapAction': `${this.urn}#${this.methodName}`,
-                'X-Security-Token': this.securityToken,
-                'Cookie': '__sessiontoken=' + this.sessionToken
+                'X-Security-Token': this._securityToken,
+                'Cookie': '__sessiontoken=' + this._sessionToken
             },
-            data: DomUtil.toXMLString(this.doc)
+            data: DomUtil.toXMLString(this._doc)
         };
         return options;
     }
 
+    /**
+     * Finalize a SOAP call just before sending
+     * @param {string} url the endpoint (/nl/jsp/soaprouter.jsp)
+     */
     finalize(url) {
-        this.url = url;
         const options = this._createHTTPRequest(url);
+        // Prepare request and empty response objects
         this.request = options;
         this.response = undefined;
     }
@@ -540,7 +553,7 @@ class SoapMethodCall {
      */
     async execute() {
         const that = this;
-        const promise = this.transport(this.request);
+        const promise = this._transport(this.request);
         return promise.then(function(body) {
             that.response = body;
             // Response is a serialized XML document with the following structure
@@ -608,7 +621,7 @@ class SoapMethodCall {
      * @returns {Element} the XML element (empty)
      */
     createElement(tagName) {
-        return this.doc.createElement(tagName);
+        return this._doc.createElement(tagName);
     }
 
 }

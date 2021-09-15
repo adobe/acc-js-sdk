@@ -23,7 +23,7 @@ governing permissions and limitations under the License.
 async function makeClient(options) {
     const connectionParameters = sdk.ConnectionParameters.ofUserAndPassword("http://acc-sdk:8080", "admin", "admin", options);
     const client = await sdk.init(connectionParameters);
-    client._soapTransport = jest.fn();
+    client._transport = jest.fn();
     return client;
 }
 
@@ -53,7 +53,7 @@ describe('ACC Client (has package)', () => {
 
   it('should find packages', async () => {
     const client = await makeClient();
-    client._soapTransport.mockReturnValueOnce(LOGON_RESPONSE);
+    client._transport.mockReturnValueOnce(LOGON_RESPONSE);
     await client.NLWS.xtkSession.logon();
 
     expect(client.hasPackage("nms:campaign"));

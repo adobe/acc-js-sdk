@@ -24,12 +24,10 @@ const assert = require('assert');
 
 const URL = "https://soap-test/nl/jsp/soaprouter.jsp";
 
-function makeSoapMethodCall(urn, methodName, sessionToken, securityToken, delegate) {
-    const call = new SoapMethodCall(urn, methodName, sessionToken, securityToken);
-    call.transport = delegate;
+function makeSoapMethodCall(transport, urn, methodName, sessionToken, securityToken) {
+    const call = new SoapMethodCall(transport, urn, methodName, sessionToken, securityToken);
     return call;
 }
-
 
 function makeSOAPResponseWithNoBody() {
     const doc = DomUtil.parse(`<?xml version='1.0' encoding='UTF-8'?>
@@ -145,7 +143,7 @@ describe('SOAP', function() {
         }
 
         it('Should build an mostly empty SOAP call', function() {
-            const call = makeSoapMethodCall("xtk:session", "Empty");        // no auth
+            const call = makeSoapMethodCall(undefined, "xtk:session", "Empty");        // no auth
             const request = call._createHTTPRequest(URL);
             assert.equal(request.url, URL);
             assert.equal(request.method, "POST");
@@ -163,7 +161,7 @@ describe('SOAP', function() {
         });
 
         it('Should have set authentication tokens', function() {
-            const call = makeSoapMethodCall("xtk:session", "Empty", "$session$", "$security$");
+            const call = makeSoapMethodCall(undefined, "xtk:session", "Empty", "$session$", "$security$");
             const request = call._createHTTPRequest(URL);
             assert.equal(request.headers["X-Security-Token"], "$security$", "Security token matches");
             assert.equal(request.headers["Cookie"], "__sessiontoken=$session$", "Session token matches");
@@ -177,7 +175,7 @@ describe('SOAP', function() {
         });
 
         it('Should set boolean parameters', function() {
-            const call = makeSoapMethodCall("xtk:session", "Boolean", "$session$", "$security$");
+            const call = makeSoapMethodCall(undefined, "xtk:session", "Boolean", "$session$", "$security$");
             const values = [null, undefined, 0, 1, 2, true, false, "true", "false"];
             const expected = [ "false", "false", "false", "true", "true", "true", "false", "true", "false"];
             for (var i=0; i<values.length; i++)
@@ -192,7 +190,7 @@ describe('SOAP', function() {
         });
 
         it('Should set byte parameters', function() {
-            const call = makeSoapMethodCall("xtk:session", "Byte", "$session$", "$security$");
+            const call = makeSoapMethodCall(undefined, "xtk:session", "Byte", "$session$", "$security$");
             const values = [null, undefined, 0, 1, 2, -3, true, false, NaN, +7, 500, "12", "1.e2", 5.1, 5.9, -5.1, -5.9];
             const expected = [ "0", "0", "0", "1", "2", "-3", "1", "0", "0", "7", "127", "12", "100", "5", "6", "-5", "-6"];
             for (var i=0; i<values.length; i++)
@@ -207,7 +205,7 @@ describe('SOAP', function() {
         });
 
         it('Should set short parameters', function() {
-            const call = makeSoapMethodCall("xtk:session", "Short", "$session$", "$security$");
+            const call = makeSoapMethodCall(undefined, "xtk:session", "Short", "$session$", "$security$");
             const values = [null, undefined, 0, 1, 2, -3, true, false, NaN, +7, 500, "12", "1.e2", 5.1, 5.9, -5.1, -5.9];
             const expected = [ "0", "0", "0", "1", "2", "-3", "1", "0", "0", "7", "500", "12", "100", "5", "6", "-5", "-6"];
             for (var i=0; i<values.length; i++)
@@ -222,7 +220,7 @@ describe('SOAP', function() {
         });
 
         it('Should set long parameters', function() {
-            const call = makeSoapMethodCall("xtk:session", "Long", "$session$", "$security$");
+            const call = makeSoapMethodCall(undefined, "xtk:session", "Long", "$session$", "$security$");
             const values = [null, undefined, 0, 1, 2, -3, true, false, NaN, +7, 500, "12", "1.e2", 5.1, 5.9, -5.1, -5.9];
             const expected = [ "0", "0", "0", "1", "2", "-3", "1", "0", "0", "7", "500", "12", "100", "5", "6", "-5", "-6"];
             for (var i=0; i<values.length; i++)
@@ -237,7 +235,7 @@ describe('SOAP', function() {
         });
 
         it('Should set int64 parameters', function() {
-            const call = makeSoapMethodCall("xtk:session", "Int64", "$session$", "$security$");
+            const call = makeSoapMethodCall(undefined, "xtk:session", "Int64", "$session$", "$security$");
             const values = [null, undefined, 0, 1, 2, -3, true, false, NaN, +7, 500, "12"];
             const expected = [ "0", "0", "0", "1", "2", "-3", "1", "0", "0", "7", "500", "12"];
             for (var i=0; i<values.length; i++)
@@ -252,7 +250,7 @@ describe('SOAP', function() {
         });
 
         it('Should set float parameters', function() {
-            const call = makeSoapMethodCall("xtk:session", "Float", "$session$", "$security$");
+            const call = makeSoapMethodCall(undefined, "xtk:session", "Float", "$session$", "$security$");
             const values = [null, undefined, 0, 1, 2, -3, true, false, NaN, +7, 500, "12", "1.e2", 5.1, 5.9, -5.1, -5.9];
             const expected = [ "0", "0", "0", "1", "2", "-3", "1", "0", "0", "7", "500", "12", "100", "5.1", "5.9", "-5.1", "-5.9"];
             for (var i=0; i<values.length; i++)
@@ -267,7 +265,7 @@ describe('SOAP', function() {
         });
 
         it('Should set double parameters', function() {
-            const call = makeSoapMethodCall("xtk:session", "Double", "$session$", "$security$");
+            const call = makeSoapMethodCall(undefined, "xtk:session", "Double", "$session$", "$security$");
             const values = [null, undefined, 0, 1, 2, -3, true, false, NaN, +7, 500, "12", "1.e2", 5.1, 5.9, -5.1, -5.9];
             const expected = [ "0", "0", "0", "1", "2", "-3", "1", "0", "0", "7", "500", "12", "100", "5.1", "5.9", "-5.1", "-5.9"];
             for (var i=0; i<values.length; i++)
@@ -282,7 +280,7 @@ describe('SOAP', function() {
         });
 
         it('Should set string parameters', function() {
-            const call = makeSoapMethodCall("xtk:session", "String", "$session$", "$security$");
+            const call = makeSoapMethodCall(undefined, "xtk:session", "String", "$session$", "$security$");
             const values = [null, undefined, 0, 1, 2, -3, true, false, NaN, +7, 500, "12", "1.e2", 5.1, 5.9, -5.1, -5.9, "Hello", "<>\""];
             const expected = [ "", "", "0", "1", "2", "-3", "true", "false", "", "7", "500", "12", "1.e2", "5.1", "5.9", "-5.1", "-5.9", "Hello", "<>\""];
             for (var i=0; i<values.length; i++)
@@ -297,7 +295,7 @@ describe('SOAP', function() {
         });
 
         it('Should set timestamp parameters', function() {
-            const call = makeSoapMethodCall("xtk:session", "Timestamp", "$session$", "$security$");
+            const call = makeSoapMethodCall(undefined, "xtk:session", "Timestamp", "$session$", "$security$");
             const values = [null, undefined, "2020-12-31T12:34:56.789Z", 
                 new Date(Date.UTC(2020, 12-1, 31, 12, 34, 56, 789)),
                 new Date(Date.UTC(2020, 12-1, 31))
@@ -315,7 +313,7 @@ describe('SOAP', function() {
         });
 
         it('Should set date parameters', function() {
-            const call = makeSoapMethodCall("xtk:session", "Date", "$session$", "$security$");
+            const call = makeSoapMethodCall(undefined, "xtk:session", "Date", "$session$", "$security$");
             const values = [null, undefined, "2020-12-31T12:34:56.789Z", 
                 new Date(Date.UTC(2020, 12-1, 31, 12, 34, 56, 789)),
                 new Date(Date.UTC(2020, 12-1, 31))
@@ -336,7 +334,7 @@ describe('SOAP', function() {
             const xml = '<root att="Hello"><child/></root>';
             const element = DomUtil.parse(xml).documentElement;
 
-            const call = makeSoapMethodCall("xtk:session", "Element", "$session$", "$security$");
+            const call = makeSoapMethodCall(undefined, "xtk:session", "Element", "$session$", "$security$");
             call.writeElement("p", element);
             const request = call._createHTTPRequest(URL);
             const env = DomUtil.parse(request.data).documentElement;
@@ -350,7 +348,7 @@ describe('SOAP', function() {
 
 
         it('Should set element parameters using createElement', function() {
-            const call = makeSoapMethodCall("xtk:session", "Element", "$session$", "$security$");
+            const call = makeSoapMethodCall(undefined, "xtk:session", "Element", "$session$", "$security$");
             const element = call.createElement("root");
             element.setAttribute("att", "Hello");
             call.writeElement("p", element);
@@ -365,7 +363,7 @@ describe('SOAP', function() {
         });
 
         it('Should write null element', function() {
-            const call = makeSoapMethodCall("xtk:session", "Element", "$session$", "$security$");
+            const call = makeSoapMethodCall(undefined, "xtk:session", "Element", "$session$", "$security$");
             call.writeElement("p", null);
             call.writeElement("q", undefined);
             const request = call._createHTTPRequest(URL);
@@ -382,7 +380,7 @@ describe('SOAP', function() {
             const xml = '<root att="Hello"><child/></root>';
             const doc = DomUtil.parse(xml);
 
-            const call = makeSoapMethodCall("xtk:session", "Document", "$session$", "$security$");
+            const call = makeSoapMethodCall(undefined, "xtk:session", "Document", "$session$", "$security$");
             call.writeDocument("p", doc);
             const request = call._createHTTPRequest(URL);
             const env = DomUtil.parse(request.data).documentElement;
@@ -395,7 +393,7 @@ describe('SOAP', function() {
         });
 
         it('Should write null document', function() {
-            const call = makeSoapMethodCall("xtk:session", "Document", "$session$", "$security$");
+            const call = makeSoapMethodCall(undefined, "xtk:session", "Document", "$session$", "$security$");
             call.writeDocument("p", null);
             call.writeDocument("q", undefined);
             const request = call._createHTTPRequest(URL);
@@ -409,69 +407,70 @@ describe('SOAP', function() {
         });
 
     });
-/*
-    it("Should delegate execution", function() {
-        const delegate = function(options) { return Promise.resolve(makeSOAPResponse("Date")); };
-        const call = makeSoapMethodCall("xtk:session", "Date", "$session$", "$security$");
-        return call.execute(URL, delegate);
-    });
-*/
+
     describe("Invalid SOAP responses", function() {
 
         it("Should fail on empty return value", async () => {
-            const delegate = function() { return Promise.resolve(""); };
-            const call = makeSoapMethodCall("xtk:session", "Date", "$session$", "$security$", delegate);
-            await expect(call.execute(URL)).rejects.toMatchObject({ statusCode: 500 });      // "" cannot be parsed as XML
+            const transport = function() { return Promise.resolve(""); };
+            const call = makeSoapMethodCall(transport, "xtk:session", "Date", "$session$", "$security$");
+            call.finalize(URL);
+            await expect(call.execute()).rejects.toMatchObject({ statusCode: 500 });      // "" cannot be parsed as XML
         });
 
 
         it("Should fail on non-XML return value", async () => {
-            const delegate = function() { return Promise.resolve("{'this':'is', 'not':'xml'}"); };
-            const call = makeSoapMethodCall("xtk:session", "Date", "$session$", "$security$", delegate);
-            await expect(call.execute(URL)).rejects.toMatchObject({ statusCode: 500 });      // cannot be parsed as XML
+            const transport = function() { return Promise.resolve("{'this':'is', 'not':'xml'}"); };
+            const call = makeSoapMethodCall(transport, "xtk:session", "Date", "$session$", "$security$");
+            call.finalize(URL);
+            await expect(call.execute()).rejects.toMatchObject({ statusCode: 500 });      // cannot be parsed as XML
         });
 
         it("Should fail if no SOAP body", async () => {
-            const delegate = function() { return Promise.resolve(makeSOAPResponseWithNoBody()); };
-            const call = makeSoapMethodCall("xtk:session", "Date", "$session$", "$security$", delegate);
-            await expect(call.execute(URL)).rejects.toMatchObject({ statusCode: 500 });      // body missing
+            const transport = function() { return Promise.resolve(makeSOAPResponseWithNoBody()); };
+            const call = makeSoapMethodCall(transport, "xtk:session", "Date", "$session$", "$security$");
+            call.finalize(URL);
+            await expect(call.execute()).rejects.toMatchObject({ statusCode: 500 });      // body missing
         });
 
         it("Should fail if empty SOAP body", function() {
-            const delegate = function() { return Promise.resolve(makeSOAPResponseWithEmptyBody()); };
-            const call = makeSoapMethodCall("xtk:session", "Date", "$session$", "$security$", delegate);
-            return call.execute(URL).catch(e => {
+            const transport = function() { return Promise.resolve(makeSOAPResponseWithEmptyBody()); };
+            const call = makeSoapMethodCall(transport, "xtk:session", "Date", "$session$", "$security$");
+            call.finalize(URL);
+            return call.execute().catch(e => {
                 expect(e.faultString).toMatch('Malformed SOAP response');      // body present but empty
             });
         });
 
         it("Should handle no response parameters", function() {
-            const delegate = function() { return Promise.resolve(makeSOAPResponse("Date")); };
-            const call = makeSoapMethodCall("xtk:session", "Date", "$session$", "$security$", delegate);
-            return call.execute(URL).then(() => {
+            const transport = function() { return Promise.resolve(makeSOAPResponse("Date")); };
+            const call = makeSoapMethodCall(transport, "xtk:session", "Date", "$session$", "$security$");
+            call.finalize(URL);
+            return call.execute().then(() => {
                 expect(call.checkNoMoreArgs()).toBe(true);
                 expect(() => call.getNextString()).toThrow();
             });
         });
 
         it("Should handle no extra elements", function() {
-            const delegate = function() { return Promise.resolve(makeSOAPResponseWithExtraElements("Extra")); };
-            const call = makeSoapMethodCall("xtk:session", "Extra", "$session$", "$security$", delegate);
-            return call.execute(URL).then(() => {
+            const transport = function() { return Promise.resolve(makeSOAPResponseWithExtraElements("Extra")); };
+            const call = makeSoapMethodCall(transport, "xtk:session", "Extra", "$session$", "$security$");
+            call.finalize(URL);
+            return call.execute().then(() => {
                 expect(call.checkNoMoreArgs()).toBe(true);
                 expect(() => call.getNextString()).toThrow();
             });
         });
         it("Should should fail on unread responses", function() {
-            const delegate = function() { return Promise.resolve(makeSOAPResponse("Date", "p", "xsd:string", "dummy")); };
-            const call = makeSoapMethodCall("xtk:session", "Date", "$session$", "$security$", delegate);
-            return call.execute(URL).then(() => {
+            const transport = function() { return Promise.resolve(makeSOAPResponse("Date", "p", "xsd:string", "dummy")); };
+            const call = makeSoapMethodCall(transport, "xtk:session", "Date", "$session$", "$security$");
+            call.finalize(URL);
+            return call.execute().then(() => {
                 expect(call.checkNoMoreArgs()).toBe(false);
             });
         });
 
         it("Should should read response", function() {
-            const delegate = function() { 
+            const transport = function() { 
                 return Promise.resolve(makeSOAPResponse("Date", 
                     "p", "xsd:string", "Hello",
                     "p", "xsd:string", "World",         // a second string
@@ -487,8 +486,9 @@ describe('SOAP', function() {
                     "p", "xsd:long", "1234567890123456789",
                 )); 
             };
-            const call = makeSoapMethodCall("xtk:session", "Date", "$session$", "$security$", delegate);
-            return call.execute(URL).then(() => {
+            const call = makeSoapMethodCall(transport, "xtk:session", "Date", "$session$", "$security$");
+            call.finalize(URL);
+            return call.execute().then(() => {
                 expect(call.getNextString()).toBe("Hello");
                 expect(call.checkNoMoreArgs()).toBe(false);
 
@@ -529,22 +529,24 @@ describe('SOAP', function() {
 
         it("Should should read Element response", function() {
             const xml = '<root att="Hello"><child/></root>';
-            const delegate = function() { 
+            const transport = function() { 
                 return Promise.resolve(makeSOAPResponse("Date", "p", "ns:Element", xml)); 
             };
-            const call = makeSoapMethodCall("xtk:session", "Date", "$session$", "$security$", delegate);
-            return call.execute(URL).then(() => {
+            const call = makeSoapMethodCall(transport, "xtk:session", "Date", "$session$", "$security$");
+            call.finalize(URL);
+            return call.execute().then(() => {
                 expect(DomUtil.toXMLString(call.getNextElement())).toBe(xml);
                 expect(call.checkNoMoreArgs()).toBe(true);
             });
         });
 
         it("Should check response type", function() {
-            const delegate = function() { 
+            const transport = function() { 
                 return Promise.resolve(makeSOAPResponse("Date", "p", "xsd:string", "Hello" )); 
             };
-            const call = makeSoapMethodCall("xtk:session", "Date", "$session$", "$security$", delegate);
-            return call.execute(URL).then(() => {
+            const call = makeSoapMethodCall(transport, "xtk:session", "Date", "$session$", "$security$");
+            call.finalize(URL);
+            return call.execute().then(() => {
                 expect(() => call.getNextByte()).toThrow();         // should use getNextString
             });
         });
@@ -552,80 +554,88 @@ describe('SOAP', function() {
 
         it("Should read Document response", function() {
             const xml = '<root att="Hello"><child/></root>';
-            const delegate = function() { 
+            const transport = function() { 
                 return Promise.resolve(makeSOAPResponse("Date", "p", "ns:Document", xml)); 
             };
-            const call = makeSoapMethodCall("xtk:session", "Date", "$session$", "$security$", delegate);
-            return call.execute(URL).then(() => {
+            const call = makeSoapMethodCall(transport, "xtk:session", "Date", "$session$", "$security$");
+            call.finalize(URL);
+            return call.execute().then(() => {
                 expect(DomUtil.toXMLString(call.getNextDocument())).toBe(xml);
                 expect(call.checkNoMoreArgs()).toBe(true);
             });
         });
 
         it("Should should read empty Element response", function() {
-            const delegate = function() { 
+            const transport = function() { 
                 return Promise.resolve(makeSOAPResponse("Date", "p", "ns:Element", "")); 
             };
-            const call = makeSoapMethodCall("xtk:session", "Date", "$session$", "$security$", delegate);
-            return call.execute(URL).then(() => {
+            const call = makeSoapMethodCall(transport, "xtk:session", "Date", "$session$", "$security$");
+            call.finalize(URL);
+            return call.execute().then(() => {
                 expect(call.getNextElement()).toBeNull();
             });
         });
 
         it("Should should read empty Document response", function() {
-            const delegate = function() { 
+            const transport = function() { 
                 return Promise.resolve(makeSOAPResponse("Date", "p", "ns:Document", "")); 
             };
-            const call = makeSoapMethodCall("xtk:session", "Date", "$session$", "$security$", delegate);
-            return call.execute(URL).then(() => {
+            const call = makeSoapMethodCall(transport, "xtk:session", "Date", "$session$", "$security$");
+            call.finalize(URL);
+            return call.execute().then(() => {
                 expect(call.getNextDocument()).toBeNull();
             });
         });
 
         it("Should not read element past end", function() {
-            const delegate = function() { return Promise.resolve(makeSOAPResponse("Date")); };
-            const call = makeSoapMethodCall("xtk:session", "Date", "$session$", "$security$", delegate);
-            return call.execute(URL).then(() => {
+            const transport = function() { return Promise.resolve(makeSOAPResponse("Date")); };
+            const call = makeSoapMethodCall(transport, "xtk:session", "Date", "$session$", "$security$");
+            call.finalize(URL);
+            return call.execute().then(() => {
                 expect(() => call.getNextElement()).toThrow();
             });
         });
 
         it("Should not read document past end", function() {
-            const delegate = function() { return Promise.resolve(makeSOAPResponse("Date")); };
-            const call = makeSoapMethodCall("xtk:session", "Date", "$session$", "$security$", delegate);
-            return call.execute(URL).then(() => {
+            const transport = function() { return Promise.resolve(makeSOAPResponse("Date")); };
+            const call = makeSoapMethodCall(transport, "xtk:session", "Date", "$session$", "$security$");
+            call.finalize(URL);
+            return call.execute().then(() => {
                 expect(() => call.getNextDocument()).toThrow();
             });
         });
 
         describe("Read entity for mutable calls", () => {
             it("Should support not having an entity (non-mutable call)", () => {
-                const delegate = function() { 
+                const transport = function() { 
                     return Promise.resolve(makeSOAPResponse("SelectAll")); 
                 };
-                const call = makeSoapMethodCall("xtk:session", "SelectAll", "$session$", "$security$", delegate);
-                return call.execute(URL).then(() => {
+                const call = makeSoapMethodCall(transport, "xtk:session", "SelectAll", "$session$", "$security$");
+                call.finalize(URL);
+                return call.execute().then(() => {
                     const entity = call.getEntity();
                     expect(entity).toBeNull();
                 });
             })
             it("Should read entity if that's the only element returned", () => {
-                const delegate = function() { 
+                const transport = function() { 
                     return Promise.resolve(makeSOAPResponse("SelectAll", "entity", "ns:Element", "<queryDef/>")); 
                 };
-                const call = makeSoapMethodCall("xtk:session", "SelectAll", "$session$", "$security$", delegate);
-                return call.execute(URL).then(() => {
+                const call = makeSoapMethodCall(transport, "xtk:session", "SelectAll", "$session$", "$security$");
+                call.finalize(URL);
+                return call.execute().then(() => {
                     const entity = call.getEntity();
                     expect(DomUtil.toXMLString(entity)).toBe("<queryDef/>");
                 });
             })
 
             it("Should read entity if there are returned values too", () => {
-                const delegate = function() { 
+                const transport = function() { 
                     return Promise.resolve(makeSOAPResponse("SelectAll", "entity", "ns:Element", "<queryDef/>", "p", "xsd:string", "Hello")); 
                 };
-                const call = makeSoapMethodCall("xtk:session", "SelectAll", "$session$", "$security$", delegate);
-                return call.execute(URL).then(() => {
+                const call = makeSoapMethodCall(transport, "xtk:session", "SelectAll", "$session$", "$security$");
+                call.finalize(URL);
+                return call.execute().then(() => {
                     const entity = call.getEntity();
                     expect(DomUtil.toXMLString(entity)).toBe("<queryDef/>");
                     // Read first return value
@@ -634,11 +644,12 @@ describe('SOAP', function() {
             })
 
             it("Should ignore entity element if it is not of the expected element type. This will be considered as a parameter", () => {
-                const delegate = function() { 
+                const transport = function() { 
                     return Promise.resolve(makeSOAPResponse("SelectAll", "entity", "xsd:string", "<queryDef/>")); 
                 };
-                const call = makeSoapMethodCall("xtk:session", "SelectAll", "$session$", "$security$", delegate);
-                return call.execute(URL).then(() => {
+                const call = makeSoapMethodCall(transport, "xtk:session", "SelectAll", "$session$", "$security$");
+                call.finalize(URL);
+                return call.execute().then(() => {
                     const entity = call.getEntity();
                     expect(entity).toBeNull();
                     expect(call.getNextString()).toBe("<queryDef/>");
@@ -653,22 +664,24 @@ describe('SOAP', function() {
     describe("Handle SOAP faults", function() {
 
         it("Should simulate SOAP fault", function() {
-            const delegate = function() { 
+            const transport = function() { 
                 return Promise.resolve(makeSOAPFault("-53", "failed", "The SOAP call failed")); 
             };
-            const call = makeSoapMethodCall("xtk:session", "Date", "$session$", "$security$", delegate);
-            return call.execute(URL).catch(e => {
+            const call = makeSoapMethodCall(transport, "xtk:session", "Date", "$session$", "$security$");
+            call.finalize(URL);
+            return call.execute().catch(e => {
                 expect(e.faultCode).toBe("-53");
                 expect(e.faultString).toBe("failed");
             });
         });
 
         it("Should simulate a SOAP fault without a detail node", () => {
-            const delegate = function() { 
+            const transport = function() { 
                 return Promise.resolve(makeSOAPFaultNoDetail("-53", "failed")); 
             };
-            const call = makeSoapMethodCall("xtk:session", "Date", "$session$", "$security$", delegate);
-            return call.execute(URL).catch(e => {
+            const call = makeSoapMethodCall(transport, "xtk:session", "Date", "$session$", "$security$");
+            call.finalize(URL);
+            return call.execute().catch(e => {
                 expect(e.faultCode).toBe("-53");
                 expect(e.faultString).toBe("failed");
             });
@@ -745,7 +758,24 @@ describe("Campaign exception", () => {
         expect(makeCampaignException(undefined, "Hello").faultString).toBe("Hello");
         expect(makeCampaignException(undefined, new Error("Hello")).faultString).toBe("Error (Hello)");
     })
-    
+
+    describe("Public interface", () => {
+        it("Should have public member variables", () => {
+            const call = makeSoapMethodCall(undefined, "xtk:session", "Date", "$session$", "$security$");
+            expect(call.urn).toBe("xtk:session");
+            expect(call.methodName).toBe("Date");
+            expect(call.internal).toStrictEqual(false);
+            expect(call.request).toBeUndefined();
+            expect(call.response).toBeUndefined();
+        })
+
+        it("Should have HTTP request", () => {
+            const call = makeSoapMethodCall(undefined, "xtk:session", "Date", "$session$", "$security$");
+            const request = call._createHTTPRequest(URL);
+            assert.equal(request.url, URL);
+        })
+
+    })
     
 });
 
