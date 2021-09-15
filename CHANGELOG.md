@@ -8,10 +8,11 @@ This is a node.js SDK for Campaign API. It exposes the Campaign API exactly like
 ## Version 1.0.0
 _2021/07/29_
 * Support for a simpler flavor of JSON (see SimpleJson vs. BadgerFish) which is now the default
+* New `EntityAccessor` object to access entity properties regardless of their representation
 * Finalize the implementation to support int64
 * Add 100% coverage for all tests
 * Make some members of the Client object private to clarify what is the public API
-* Fixed bug in JSON serialization for XML elments having an attribute named "length" (see `DomUtil.isArray`)
+* Fixed bug in JSON serialization for XML elments having an attribute named "length" (see `isArray` utility)
 * New `application` object to mimic the public SDK (can be accessed via `client.application`)
 * New schema API (`application.getSchema`) to easily navigate schemas
 * New Campaign enumeration constants (`campaign.js`) for better readability of code using numerical enumeration values
@@ -32,10 +33,17 @@ _2021/07/29_
 * Added support for anonymous authentication via the "ofAnonymousUser" credentials function
 * Implement SDK functions for /r/test, /nl/jsp/ping.jsp, nl/jsp/mcPing.jsp (health check functions)
 * All HTTP request now add a user agent string identifying the SDK and it's version
-* CampaignException has been improved to report errors on both SOAP and HTTP requests
-* Added full jsdoc documentation of the SDK (run with `npm run jsdoc`)
+* CampaignException has been improved to report errors on both SOAP and HTTP requests. It's now defined in `campaign.js`
+* Added full jsdoc documentation of the SDK (run with `npm run jsdoc`). Result is saved in the `doc/jsdoc` folder
 * Use "strict" mode
 * Use E6 classes instead of prototype based inheritance
+* Using `axios` as the default protocol instead of `request-promise-native` which is deprecated
+* Added the notion of observer that can be called on any SOAP or HTTP request
+* SOAP calls now have an "internal" flag, which indicates if the SOAP calls comes from the framework itself (for example, the framework will load schemas) or from a client app
+* All session and security tokens are removed from logs 
+* Moved to DomUtil.isArray helper function to a new Utils package (internal)
+* Fixed many tests which were not executed corresctly (assertion was not executed, leading to think the test was successful)
+* Fixed CVE-2021-23343 in dependencies
 
 _Breaking changes in 1.0.0_
 * The default representation is now `SimpleJson` instead of `BadgerFish`
@@ -45,6 +53,9 @@ _Breaking changes in 1.0.0_
 * Options cache internal strucutre change: option values in the cache are now object litterals containing the option value, type, and raw value (which may not be casted to the expected type yet)
 * Connecting to mid-sourcing (or other Campaign instances which are defined by an external account) is now done with the `ConnectionParameters.ofExternalAccount` function. As a consequence, `getSecretKeyCipher` is now private and deprecated
 * CampaignException object signature changed (but was not previously exposed)
+* The client-side bundle is now generated in the `dist/bundle.js` file instead of `bundle.js``
+* The main global object for the client SDK is now `document.accSDK` and not `accSDK`
+* The client.traceSOAPCalls() function is now named client.traceAPICalls because it traces both SOAP and HTTP calls
 
 ---
 
