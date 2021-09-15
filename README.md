@@ -721,7 +721,10 @@ If the request fails, the promise is rejected with an error object with class `H
 
 For proper error handling by the ACC SDK, it's important that the actual class of returned objects is names "HttpError"
 
-
+The transport can be overriden by using the `client.setTransport` call and passing it a transport function, i.e. an async function which
+* Takes a `Request` object litteral as a parameter
+* Returns a the request result in a promise
+* Returns a rejected promise containing an `HttpError` in case of failure
 
 
 ## Observers

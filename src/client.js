@@ -415,6 +415,14 @@ class Client {
         this.application = null;
     }
 
+    /**
+     * Override the transport. By default, we are using axios, but this can be customised.
+     * See transport.js and documentation in the README for more details
+     * @param {*} transport 
+     */
+    setTransport(transport) {
+        this._transport = transport;
+    }
 
     /**
      * Get the user agent string to use in all HTTP requests

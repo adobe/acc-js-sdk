@@ -1864,4 +1864,17 @@ describe('ACC Client', function () {
             expect(request).toMatchObject({ headers: { 'User-Agent': "My user agent" } });
         })
     });
+
+    describe("Override transport", () => {
+        it("Should override transport" , async() => {
+            const client = await Mock.makeClient();
+            const transport = jest.fn();
+            client.setTransport(transport);
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+            const calls = transport.mock.calls;
+            expect(calls.length).toBe(1);
+            expect(calls[0][0].data).toMatch("Logon");
+        });
+    })
 });
