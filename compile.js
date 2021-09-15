@@ -85,7 +85,7 @@ document.accSDK = (function() {
 
 
 function bundleFile(fileName, above, below, before) {
-    above = above || '';
+    above = above || '';
     below = below || '';
     before = before || '';
     fs.writeSync(outFile, `
@@ -117,7 +117,7 @@ resources.forEach(resource => {
 
 // Bundle modules
 resources.forEach(resource => {
-    const fileName = resource.file || resource.name;
+    const fileName = resource.file || resource.name;
     console.log(`Bundling ${fileName}`);
     const above = `(function(module, exports) {
 `;
