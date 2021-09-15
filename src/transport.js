@@ -55,7 +55,8 @@ if (!Util.isBrowser()) {
       method: options.method,
       url: options.url,
       headers: options.headers,
-      data: options.data
+      data: options.data,
+      timeout: 5000,
     };
     return axios(request)
     .then((response) => {
@@ -66,7 +67,7 @@ if (!Util.isBrowser()) {
       // Not an HTTP error
       const response = error && error.response;
       if (!response)
-        return Promise.reject(new HttpError(500, error));
+        return Promise.reject(new HttpError(500, error ? error.toString() : undefined));
       // HTTP errors (400, 404, 500, etc.) are returned here
       return Promise.reject(new HttpError(response.status, response.statusText, response.data));
     })
