@@ -99,13 +99,17 @@ if (!Util.isBrowser()) {
         body: options.data
     });
 
-    const p = fetch(r).then((response) => {
+    const p = fetch(r).then(async (response) => {
         if (!response.ok)
-            throw new HttpError(response.status, response.statusText);
+            throw new HttpError(response.status, response.statusText, await response.text());
         return response.blob().then((blob) => {
             return blob.text();
         });
-    });
+    }).catch((ex) => {
+      if (ex.__proto__.constructor.name == "HttpError")
+        throw ex;
+      throw new HttpError(ex.status, ex.statusText);
+    })
     return p;
   }
 
