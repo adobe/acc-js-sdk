@@ -1,27 +1,57 @@
 <html>
     <head>
-        <script src="../../bundle.js"></script>
+        <script src="../../dist/bundle.js"></script>
     </head>
     <body>
-        <h1>Hello</h1>
-        <div id="hello"></div>
+        <h1>Campaign JS SDK client-side sample</h1>
+        <div id="version"></div>
+        <div>
+            <label>URL</label>
+            <input id="url" value="http://accaepxl-rt1.rd.campaign.adobe.com:8080">
+        </div>
+        <div>
+            <label>User</label>
+            <input id="user" value="admin">
+        </div>
+        <div>
+            <label>Password</label>
+            <input id="password">
+        </div>
+        <button id="GetDatabaseId">Get Database Id</button>
+        <div id="databaseId"></div>
+
+        <script>
+            // Display the SDK version
+            (async () => {
+                const sdk = document.accSDK;
+                const version = sdk.getSDKVersion();
+                document.getElementById("version").textContent = JSON.stringify(version);
+            })();
+        </script>
+
         <script>
 
-(async () => {
-    const sdk = document.accSDK;
+        document.getElementById("GetDatabaseId").addEventListener("click", () => {
+            const url = document.getElementById("url").value;
+            const user = document.getElementById("user").value;
+            const password = document.getElementById("password").value;
+            (async () => {
+                try {
+                    const sdk = document.accSDK;
 
-    const connectionParameters = sdk.ConnectionParameters.ofUserAndPassword("http://localhost:3000", "admin", "neo");
-    const client = await sdk.init(connectionParameters);
-    const NLWS = client.NLWS;
+                    const connectionParameters = sdk.ConnectionParameters.ofUserAndPassword(url, user, password);
+                    const client = await sdk.init(connectionParameters);
+                    const NLWS = client.NLWS;
 
-    console.log(sdk.getSDKVersion());
-    await client.logon();
-    var databaseId = await client.getOption("XtkDatabaseId");
-    console.log(databaseId);
-    document.getElementById("hello").textContent = databaseId;
-    await client.logoff();
-
-})();
+                    await client.logon();
+                    var databaseId = await client.getOption("XtkDatabaseId");
+                    document.getElementById("databaseId").textContent = databaseId;
+                    await client.logoff();
+                } catch(ex) {
+                    document.getElementById("databaseId").textContent = ex.toString();
+                }
+            })();
+        })
 
         </script>
     </body>

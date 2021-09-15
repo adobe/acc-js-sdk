@@ -1333,7 +1333,7 @@ The SDK can also be used client side.
 ## Compile the client-side SDK
 Go to the root folder of the SDK and compile the SDK
 ````sh
-node compile.js
+node ./compile.js
 ````
 
 It generates a file named `dist/bundle.js`
@@ -1355,18 +1355,23 @@ Bundling ./index.js
 Client-side SDK generated in ./dist/bundle.js
 ````
 
-## Deploy the SDK
+## Use a proxy
+Using the client side SDK cannot be done directly because the Campaign server has CORS configured to reject HTTP requests from resources not served by Campaign. 
+Therefore a server-side proxy is need to relay the calls to Campaign, or you need to serve the SDK and corresponding web pages from Campaign itself
+
+## Deploy the SDK to a Campaign server
 Once compiled, copy it to the Campaign server (here on a dev environment).
 ````sh
 cd /c/cygwin64/home/neolane/ac
 cp "Z:\amorin On My Mac\Documents\dev\git\ac7\acc-js-sdk\dist/bundle.js" nl/web/accSDK.js
-cp "Z:\amorin On My Mac\Documents\dev\git\ac7\acc-js-sdk\index.html" nl/web/index.html
 ````
 
-This makes them available on
+This makes them available on the following endpoint
 ````
 /nl/accSDK.js
 ````
+
+
 
 
 ## Usage
