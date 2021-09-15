@@ -482,6 +482,81 @@ const password = cipher.decryptPassword(encryptedPassword);
 > **warning** This function is deprecated in version 1.0.0 of the SDK because it may break as we deploy Vault.
 
 
+
+# Samples
+
+The `samples` folder contains several samples illustrating how to use the various Campaing APIs.
+
+A sample file looks like this
+* It includes the `utils` library which contains a few helper functions.s
+* It starts with an asynchronous auto-execute function that is used to run the sample from the command line
+* This function contains one or more calls to the `utils.sample` function. Each such call describes and execute a sample.
+* A sample file should not do anything else or have any side effect: all the actual sample code should be inside calls to `utils.sample`
+
+| Note the use of `await` when calling `utils.sample`
+
+```js
+const utils = require("./utils.js");
+( async () => {
+  await utils.sample({
+    title: "The Sample title",
+    labels: [ "xtk:queryDef", "Basics", "Query", "QueryDef", "Get" ],
+    description: `A description of the sample`,
+    code: async() => {
+      //... Sample code goes there
+    }
+  });
+
+  await utils.sample({
+    title: "A Second sample",
+    labels: [ "xtk:queryDef", "Basics", "Query", "QueryDef", "Get" ],
+    description: `A description of the sample`,
+    code: async() => {
+      //... Sample code goes there
+    }
+  });
+})();
+```
+
+The `utils.sample` function takes 1 parameters describing the sample:
+* `title` is the sample title, a short, human friendly name for the sample
+* `labels` is a list of keywords that can be used to retreive the samples in a large list
+* `description` is a longer, multi-line description of the sample
+* `code` is an async function, the code of the sample
+
+Most of the samples - actually all of them except some specific samples needing specific logon - will also use the `utils.logon` function. This is a helper function which will perform the Campaign Logon and Logoff for you, and call your callback function with pre-initialized `client` and `NLWS` objects
+
+| Note the use of `await` when calling `utils.logon`
+
+```js
+  await utils.sample({
+    title: "The Sample title",
+    labels: [ "xtk:queryDef", "Basics", "Query", "QueryDef", "Get" ],
+    description: `A description of the sample`,
+    code: async() => {
+      return await utils.logon(async (client, NLWS) => {
+          //... Sample code goes there
+      });
+    }
+  });
+```
+
+### Running samples
+Samples can be run from the command line. First, set 3 environment variables with your instance credentials:
+```sh
+export ACC_URL=https://myInstance.campaign.adobe.com
+export ACC_USERadmin
+export ACC_PASSWORD=...
+```
+
+and then run the samples
+```sh
+node samples/000\ -\ basics\ -\ logon.js
+````
+
+
+
+
 # Core API
 
 ## Get option value

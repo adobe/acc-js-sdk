@@ -13,11 +13,9 @@ const sdk = require('../src/index.js');
 const utils = require("./utils.js");
 
 
-console.log(`================================================================================================
-This sample illustrates how to call the various ping / health / ... APIs
-
-================================================================================================
-`);
+/**
+ * This sample illustrates how to call the various ping / health / ... APIs
+ */
 
 ( async () => {
 

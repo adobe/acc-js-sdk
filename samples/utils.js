@@ -19,32 +19,34 @@ const sdk = require('../src/index.js');
  *********************************************************************************/
 'use strict'
 
-const url = "http://accaepxl-rt1.rd.campaign.adobe.com:8080";
-const user = "admin";
-const password = "put password here";
-
-async function attempt(callback) {
-  try {
-    await callback();
-  } catch(ex) {
-    console.error(ex);
-  }
+const url = process.env.ACC_URL;    // "http://accaepxl-rt1.rd.campaign.adobe.com:8080";
+if (!url) {
+  console.error(`Environment variable ACC_URL is not defined`);
+  process.exit(1);
 }
+const user = process.env.ACC_USER;  //"admin";
+if (!user) {
+  console.error(`Environment variable ACC_USER is not defined`)
+  process.exit(1);
+}
+const password = process.env.ACC_PASSWORD || "";
+
 
 async function run(main) {
   return main.apply(this).then(() => {
-    //console.log("Done.");
   })
   .catch((err) => {
     console.error(err);
   });
 }
 
+/**
+ * Logon to Campaign, execute code, and logoff
+ * @param {*} callback 
+ * @returns 
+ */
 async function logon(callback) {
-
   var main = async () => {
-    //var version = sdk.getSDKVersion();
-    //console.log(`${version.description} version ${version.version}`);
     const connectionParameters = sdk.ConnectionParameters.ofUserAndPassword(url, user, password);
     const client = await sdk.init(connectionParameters);
     const NLWS = client.NLWS;
@@ -53,13 +55,15 @@ async function logon(callback) {
     console.log(`Connected to Campaign instance '${client.getSessionInfo().serverInfo.instanceName}' build '${client.getSessionInfo().serverInfo.buildNumber}' with user '${client.application.operator.login}'`);
   
     await callback.apply(this, [client, NLWS]);
-    //console.log("Logging off");
     await client.logoff();
   };
-
   return run(main);
 }
 
+/**
+ * Defines and executes a sample
+ * @param {Sample} options 
+ */
 async function sample(options) {
   console.log(`================================================================================
 Sample ........... ${options.title}
@@ -80,4 +84,4 @@ module.exports.password = password;
 module.exports.run = run;
 module.exports.logon = logon;
 module.exports.sample = sample;
-module.exports.attempt = attempt;
+
