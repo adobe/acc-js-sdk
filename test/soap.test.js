@@ -24,8 +24,8 @@ const assert = require('assert');
 
 const URL = "https://soap-test/nl/jsp/soaprouter.jsp";
 
-function makeSoapMethodCall(transport, urn, methodName, sessionToken, securityToken) {
-    const call = new SoapMethodCall(transport, urn, methodName, sessionToken, securityToken);
+function makeSoapMethodCall(transport, urn, methodName, sessionToken, securityToken, userAgentString) {
+    const call = new SoapMethodCall(transport, urn, methodName, sessionToken, securityToken, userAgentString);
     return call;
 }
 
@@ -776,6 +776,20 @@ describe("Campaign exception", () => {
         })
 
     })
-    
+
+    describe("User agent", () => {
+        it("Should set user agent", () => {
+            const call = makeSoapMethodCall(undefined, "xtk:session", "Date", "$session$", "$security$", "My User Agent");
+            const request = call._createHTTPRequest(URL);
+            expect(request.headers['User-Agent']).toBe("My User Agent");
+        })
+
+        it("Should support no user agent", () => {
+            const call = makeSoapMethodCall(undefined, "xtk:session", "Date", "$session$", "$security$", undefined);
+            const request = call._createHTTPRequest(URL);
+            expect(request.headers['User-Agent']).toBeUndefined();
+        })
+    })
+
 });
 

@@ -22,7 +22,7 @@ governing permissions and limitations under the License.
  * Creates a SOAP call, passing it a session token and security token.
  * The tokens can be obtained with the xtk:session:Logon call
  * 
- *     const soapCall = new SoapMethodCall(transport, "xtk:session", "GetOption", sessionToken, securityToken);
+ *     const soapCall = new SoapMethodCall(transport, "xtk:session", "GetOption", sessionToken, securityToken, userAgentString);
  * 
  * Fill in input parameters, using the write* functions according to their type
  * 
@@ -523,13 +523,14 @@ class SoapMethodCall {
             method: 'POST',
             headers: {
                 'Content-type': 'application/soap+xml',
-                'User-Agent': this.userAgentString,
                 'SoapAction': `${this.urn}#${this.methodName}`,
                 'X-Security-Token': this._securityToken,
                 'Cookie': '__sessiontoken=' + this._sessionToken
             },
             data: DomUtil.toXMLString(this._doc)
         };
+        if (this._userAgentString)
+            options.headers['User-Agent'] = this._userAgentString;
         return options;
     }
 

@@ -571,7 +571,7 @@ class Client {
      * parameters should be set
      */
     prepareSoapCall(urn, method, internal) {
-        const soapCall = new SoapMethodCall(this._transport, urn, method, this._sessionToken, this._securityToken);
+        const soapCall = new SoapMethodCall(this._transport, urn, method, this._sessionToken, this._securityToken, this.getUserAgentString());
         soapCall.internal = !!internal;
         return soapCall;
     }
@@ -1114,6 +1114,10 @@ class Client {
     }
 
     async _makeHttpCall(request) {
+        request.method = request.method || "GET";
+        request.headers = request.headers || [];
+        if (!request.headers['User-Agent'])
+            request.headers['User-Agent'] = this.getUserAgentString();
         try {
             const safeCallData = Util.trim(request.data);
             if (this._traceAPICalls)
@@ -1142,11 +1146,7 @@ class Client {
      */
     async test() {
         const request = {
-            url: `${this._connectionParameters._endpoint}/r/test`, 
-            method: 'GET',
-            headers: {
-                'User-Agent': this.getUserAgentString()
-            }
+            url: `${this._connectionParameters._endpoint}/r/test`
         };
         const body = await this._makeHttpCall(request);
         const xml = DomUtil.parse(body);
@@ -1162,9 +1162,7 @@ class Client {
     async ping() {
         const request = {
             url: `${this._connectionParameters._endpoint}/nl/jsp/ping.jsp`, 
-            method: 'GET',
             headers: {
-                'User-Agent': this.getUserAgentString(),
                 'X-Security-Token': this._securityToken,
                 'Cookie': '__sessiontoken=' + this._sessionToken
             }
@@ -1193,9 +1191,7 @@ class Client {
     async mcPing() {
         const request = {
             url: `${this._connectionParameters._endpoint}/nl/jsp/mcPing.jsp`, 
-            method: 'GET',
             headers: {
-                'User-Agent': this.getUserAgentString(),
                 'X-Security-Token': this._securityToken,
                 'Cookie': '__sessiontoken=' + this._sessionToken
             }

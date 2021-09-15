@@ -1712,7 +1712,7 @@ describe('ACC Client', function () {
                 const client = await Mock.makeClient();
                 client.traceAPICalls(true);
                 client._transport.mockReturnValueOnce(Promise.resolve());
-                client._makeHttpCall({ method:"GET", url:"http://test.com" });
+                await client._makeHttpCall({ method:"GET", url:"http://test.com" });
             });
             expect(logs.length).toBe(2);
             expect(logs[0]).toMatch(/HTTP.*request.*GET.*test.com/is)
@@ -1724,7 +1724,7 @@ describe('ACC Client', function () {
                 const client = await Mock.makeClient();
                 client.traceAPICalls(true);
                 client._transport.mockReturnValueOnce(Promise.resolve());
-                client._makeHttpCall({ method:"GET", url:"http://test.com", data:"Hello" });
+                await client._makeHttpCall({ method:"GET", url:"http://test.com", data:"Hello" });
             });
             expect(logs.length).toBe(2);
             expect(logs[0]).toMatch(/HTTP.*request.*GET.*test.com.*Hello/is)
@@ -1758,7 +1758,6 @@ describe('ACC Client', function () {
             };
 
             const client = await Mock.makeClient();
-            client.traceAPICalls(true);
             client.registerObserver(observer);
             client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
@@ -1791,7 +1790,6 @@ describe('ACC Client', function () {
             };
 
             const client = await Mock.makeClient();
-            client.traceAPICalls(true);
             client.registerObserver(observer);
             client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
@@ -1811,11 +1809,9 @@ describe('ACC Client', function () {
     });
 
     it('Should support empty observers', async () => {
-
         const observer = { };   // none of the functions are implemented
 
         const client = await Mock.makeClient();
-        client.traceAPICalls(true);
         client.registerObserver(observer);
         client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
         await client.NLWS.xtkSession.logon();
@@ -1824,5 +1820,48 @@ describe('ACC Client', function () {
         await client.ping();
 
         expect(true).toBe(true);    // should reach here without failures
+    });
+
+    describe("HTTP call defaults", () => {
+        it("Should default to GET method", async () => {
+            const client = await Mock.makeClient();
+            const observer = { onHTTPCall: jest.fn() };
+            client.registerObserver(observer);
+            client._transport.mockReturnValueOnce(Promise.resolve());
+            await client._makeHttpCall({ url:"http://test.com"  });
+            const request = observer.onHTTPCall.mock.calls[0][0];
+            expect(request).toMatchObject({ method: "GET" });
+        })
+
+
+        it("Default to GET method should not override method", async () => {
+            const client = await Mock.makeClient();
+            const observer = { onHTTPCall: jest.fn() };
+            client.registerObserver(observer);
+            client._transport.mockReturnValueOnce(Promise.resolve());
+            await client._makeHttpCall({ method: "POST", url:"http://test.com"  });
+            const request = observer.onHTTPCall.mock.calls[0][0];
+            expect(request).toMatchObject({ method: "POST" });
+        })
+
+        it("Should default to user agent header", async () => {
+            const client = await Mock.makeClient();
+            const observer = { onHTTPCall: jest.fn() };
+            client.registerObserver(observer);
+            client._transport.mockReturnValueOnce(Promise.resolve());
+            await client._makeHttpCall({ url:"http://test.com"  });
+            const request = observer.onHTTPCall.mock.calls[0][0];
+            expect(request.headers['User-Agent']).toMatch('@adobe/acc-js-sdk');
+        })
+
+        it("Should support overwriting the user agent header", async () => {
+            const client = await Mock.makeClient();
+            const observer = { onHTTPCall: jest.fn() };
+            client.registerObserver(observer);
+            client._transport.mockReturnValueOnce(Promise.resolve());
+            await client._makeHttpCall({ url:"http://test.com", headers:{'User-Agent': "My user agent"}  });
+            const request = observer.onHTTPCall.mock.calls[0][0];
+            expect(request).toMatchObject({ headers: { 'User-Agent': "My user agent" } });
+        })
     });
 });
