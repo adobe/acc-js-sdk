@@ -5,6 +5,10 @@ This is a node.js SDK for Campaign API. It exposes the Campaign API exactly like
 
 # Changelog
 
+## Version 0.1.24
+_2021_09_16_
+* Fix potential security vulnerabilities in the dependencies
+
 ## Versin 0.1.23
 _2021/07/27_
 * Support for int64 type (represented as a string to avoid rounding errors)
