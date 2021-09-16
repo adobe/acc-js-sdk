@@ -6,7 +6,7 @@ This is a node.js SDK for Campaign API. It exposes the Campaign API exactly like
 # Changelog
 
 ## Version 0.1.24
-_2021_09_16_
+_2021/09/16_
 * Fix potential security vulnerabilities in the dependencies
 
 ## Versin 0.1.23
