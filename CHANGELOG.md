@@ -5,6 +5,10 @@ This is a node.js SDK for Campaign API. It exposes the Campaign API exactly like
 
 # Changelog
 
+## Version 1.0.1
+_2021/09/16_
+* Dummy version to fix NPM build
+
 ## Version 1.0.0
 _2021/09/16_
 * Support for a simpler flavor of JSON (see SimpleJson vs. BadgerFish) which is now the default
