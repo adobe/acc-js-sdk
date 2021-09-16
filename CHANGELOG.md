@@ -6,7 +6,7 @@ This is a node.js SDK for Campaign API. It exposes the Campaign API exactly like
 # Changelog
 
 ## Version 1.0.0
-_2021/07/29_
+_2021/09/16_
 * Support for a simpler flavor of JSON (see SimpleJson vs. BadgerFish) which is now the default
 * New `EntityAccessor` object to access entity properties regardless of their representation
 * Finalize the implementation to support int64
@@ -58,6 +58,10 @@ _Breaking changes in 1.0.0_
 * The client.traceSOAPCalls() function is now named client.traceAPICalls because it traces both SOAP and HTTP calls
 
 ---
+
+## Version 0.1.24
+_2021/09/16_
+* Fix potential security vulnerabilities in the dependencies
 
 ## Versin 0.1.23
 _2021/07/27_
