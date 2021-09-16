@@ -1,6 +1,6 @@
 {
   "name": "@adobe/acc-js-sdk",
-  "version": "0.1.22",
+  "version": "0.1.23",
   "description": "ACC Javascript SDK",
   "main": "src/index.js",
   "homepage": "https://github.com/adobe/acc-js-sdk#readme",
@@ -10,7 +10,9 @@
     "test": "test"
   },
   "dependencies": {
-    "jsdom": "^16.2.0"
+    "jsdom": "^16.7.0",
+    "request-promise": "^4.2.6",
+    "request-promise-native": "^1.0.9"
   },
   "devDependencies": {
     "jest": "^26.6.3",

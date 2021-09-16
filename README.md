@@ -5,6 +5,10 @@ This is a node.js SDK for Campaign API. It exposes the Campaign API exactly like
 
 # Changelog
 
+## Version 0.1.23
+_2021_09_16_
+* Fix potential security vulnerabilities in the dependencies
+
 ## Version 0.1.22
 _2021/02/23_
 * Update node-notifier library (used by jest) to version 8.0.1 to fix a possible injection
