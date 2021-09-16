@@ -17,3 +17,6 @@ coverage
 junit.xml
 
 bundle.js
+scratch.js
+.npmrc
+yarn-error.log

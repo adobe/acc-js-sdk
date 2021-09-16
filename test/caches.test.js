@@ -36,7 +36,7 @@ describe('Caches', function() {
 
         it("Should cache interfaces", function() {
             const cache = new XtkEntityCache();
-            const schema = DomUtil.parse(`<schema namespace="xtk" name="session">
+            const schema = DomUtil.parse(`<schema namespace="xtk" name="session" implements="xtk:persist">
                     <interface name="persist"/>
                     <element name="session"/>
                 </schema>`);
@@ -110,12 +110,12 @@ describe('Caches', function() {
 
         it("Should cache interface methods", function() {
             const cache = new MethodCache();
-            var schema = DomUtil.parse("<schema namespace='nms' name='recipient'><interface name='i'><method name='Update'/></interface><element name='recipient'/><methods><method name='Delete'/><method name='Create'/></methods></schema>");
+            var schema = DomUtil.parse("<schema namespace='nms' name='recipient' implements='nms:i'><interface name='i'><method name='Update'/></interface><element name='recipient'/><methods><method name='Delete'/><method name='Create'/></methods></schema>");
             cache.cache(schema.documentElement);
-            // interface method should not be on schema
+            // interface method should be on schema
             var found = cache.get("nms:recipient", "Update");
-            assert.ok(found === undefined);
-            // but on interface
+            assert.ok(found !== null && found !== undefined);
+            // and on interface as well
             var found = cache.get("nms:i", "Update");
             assert.ok(found !== null && found !== undefined);
         });
@@ -144,6 +144,46 @@ describe('Caches', function() {
             assert.ok(found === undefined);
             var found = cache.get("nms:recipient", "Create");
             assert.ok(found !== null && found !== undefined);
+        });
+    });
+
+    describe("Method cache for interfaces", function() {
+        it("Should cache methods", function() {
+            const cache = new MethodCache();
+            // Test for fix in verion 0.1.23. The xtk:session schema has a direct method "Logon" but also implements the
+            // xtk:persist interface.
+            var schema = DomUtil.parse("<schema namespace='xtk' name='session' implements='xtk:persist'><interface name='persist'><method name='Write' static='true'/></interface><methods><method name='Logon'/></methods></schema>");
+            cache.cache(schema.documentElement);
+
+            // Logon method should be found in xtk:session and have the xtk:session URN (for SOAP action)
+            var found = cache.get("xtk:session", "Logon");
+            var urn = cache.getSoapUrn("xtk:session", "Logon");
+            assert.ok(found !== null && found !== undefined);
+            assert.strictEqual(found.nodeName, "method");
+            assert.strictEqual(found.getAttribute("name"), "Logon");
+            assert.strictEqual(urn, "xtk:session");
+
+            // Logon method should not exist on the xtk:persist interface
+            var found = cache.get("xtk:persist", "Logon");
+            var urn = cache.getSoapUrn("xtk:persist", "Logon");
+            assert.ok(found === undefined);
+            assert.ok(urn === undefined);
+
+            // The Write method should also be on xtk:session but use xtk:persist as a URN
+            var found = cache.get("xtk:session", "Write");
+            var urn = cache.getSoapUrn("xtk:session", "Write");
+            assert.ok(found !== null && found !== undefined);
+            assert.strictEqual(found.nodeName, "method");
+            assert.strictEqual(found.getAttribute("name"), "Write");
+            assert.strictEqual(urn, "xtk:persist");
+
+            // For compatibility reasons (SDK versions earlier than 0.1.23), keep the Write method on the interface too
+            var found = cache.get("xtk:persist", "Write");
+            var urn = cache.getSoapUrn("xtk:persist", "Write");
+            assert.ok(found !== null && found !== undefined);
+            assert.strictEqual(found.nodeName, "method");
+            assert.strictEqual(found.getAttribute("name"), "Write");
+            assert.strictEqual(urn, "xtk:persist");
         });
     });
 });

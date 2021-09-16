@@ -5,9 +5,20 @@ This is a node.js SDK for Campaign API. It exposes the Campaign API exactly like
 
 # Changelog
 
-## Version 0.1.23
+## Version 0.1.24
 _2021_09_16_
 * Fix potential security vulnerabilities in the dependencies
+
+## Versin 0.1.23
+_2021/07/27_
+* Support for int64 type (represented as a string to avoid rounding errors)
+* Fix issue with the SoapAction header for interface methods. When calling a method which is defined on an interface (for instance xtk:persist), the SoapAction
+  header must use the interface id and not the schema id. For instance, when one calls the xtk:session Write method, one should call NLWS.xtkSession.Write, but
+  the SoapAction header must be "xtk:persist#Write" and not "xtk:session#Write" for the call to complete successfully. In older SDK versions, one had to call
+  NLWS.xtkPersist.Write which would only work if the xtk:persist interface schema was cached before. As there's no xtk:schema entity for the interfaces, the only
+  way to cache such an interface is to have previously called a method on xtk:session. This call will indirectly cache the xtk:session schema and its interfaces,
+  hence xtk:persist. From SDK 0.1.23 on, while the previous (incorrect) syntax NLWS.xtkPersist.Write still works, it's recommended to use NLWS.xtkSession.Write
+* Upgrade 3rd parties (browserslist, hosted-git-info, lodash, ws) to fix vulnerabilities
 
 ## Version 0.1.22
 _2021/02/23_
@@ -469,7 +480,7 @@ var doc = {
     "@type": "png",
     "data": { "$": data }
 };
-await NLWS.xtkPersist.write(doc);
+await NLWS.xtkSession.write(doc);
 ````
 
 Creates a folder (with image previously created)
@@ -486,7 +497,7 @@ const folder = {
     "@image-namespace": "cus",
     "@image-name": "test.png"
 };
-await NLWS.xtkPersist.write(folder);
+await NLWS.xtkSession.write(folder);
 ````
 
 # Workflow API
@@ -521,7 +532,7 @@ Create a recipient
         "@lastName": "Jordy",
         "@email": "jordy@adobe.com"
     };
-    await NLWS.xtkPersist.write(recipient);
+    await NLWS.xtkSession.write(recipient);
 ```
 
 Create multiple recipients
@@ -543,7 +554,7 @@ Create multiple recipients
             }
         ]
     };
-    await NLWS.xtkPersist.writeCollection(recipients);
+    await NLWS.xtkSession.writeCollection(recipients);
 ```
 
 List all recipients in Adobe
@@ -591,7 +602,7 @@ Update a profile. In this case, use the "@email" attribute as a key. If the `@_k
         "@firstName": "Alexandre",
         "@email": "amorin@adobe.com"
     };
-    await NLWS.xtkPersist.write(recipient);
+    await NLWS.xtkSession.write(recipient);
 ```
 
 Deletes a profile
@@ -602,12 +613,12 @@ Deletes a profile
         "@_operation": "delete",
         "@email": "amorin@adobe.com"
     };
-    await NLWS.xtkPersist.write(recipient);
+    await NLWS.xtkSession.write(recipient);
 ```
 
 Deletes a set of profiles, based on condition. For instance delete everyone having an email address in adobe.com domain
 ```js
-    await NLWS.xtkPersist.deleteCollection("nms:recipient", { condition: { "@expr": "GetEmailDomain(@email)='adobe.com'"} });
+    await NLWS.xtkSession.deleteCollection("nms:recipient", { condition: { "@expr": "GetEmailDomain(@email)='adobe.com'"} });
 ```
 
 ## Subscriptions

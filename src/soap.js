@@ -327,6 +327,18 @@ SoapMethodCall.prototype.getNextLong = function() {
 }
 
 /**
+ * Extracts the next result value as a 64 bit integer
+ * Will be returned as a string to ensure no precision is lost
+ * @returns {string} the int64 result value as a string
+ */
+SoapMethodCall.prototype.getNextInt64 = function() {
+    this._checkTypeMatch("xsd:long");
+    var value = DomUtil.elementValue(this.elemCurrent);
+    this.elemCurrent = DomUtil.getNextSiblingElement(this.elemCurrent);
+    return value;
+}
+
+/**
  * Extracts the next result value as an float
  * @returns {number} the float result value
  */
