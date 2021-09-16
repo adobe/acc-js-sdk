@@ -1,6 +1,6 @@
 {
   "name": "@adobe/acc-js-sdk",
-  "version": "0.1.24",
+  "version": "1.0.0",
   "description": "ACC Javascript SDK",
   "main": "src/index.js",
   "homepage": "https://github.com/adobe/acc-js-sdk#readme",
@@ -10,17 +10,21 @@
     "test": "test"
   },
   "dependencies": {
-    "jsdom": "^16.7.0",
-    "request-promise": "^4.2.6",
-    "request-promise-native": "^1.0.9"
+    "axios": "^0.21.4",
+    "jsdom": "^16.7.0"
   },
   "devDependencies": {
+    "docdash": "^1.2.0",
+    "eslint": "^7.32.0",
     "jest": "^27.2.0",
-    "jest-junit": "^12.2.0"
+    "jest-junit": "^12.2.0",
+    "jsdoc": "^3.6.7",
+    "jsdoc-to-markdown": "^7.0.1"
   },
   "author": "",
   "scripts": {
     "publish:npm": "npm publish --access public",
-    "unit-tests": "jest --config test/jest.config.js --maxWorkers=2"
+    "unit-tests": "jest --config test/jest.config.js --maxWorkers=2",
+    "jsdoc": "jsdoc -a all -c jsdoc.json -r -R README.md src/*.js -d docs/jsdoc"
   }
 }

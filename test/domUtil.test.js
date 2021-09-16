@@ -18,8 +18,8 @@ governing permissions and limitations under the License.
  *********************************************************************************/
 
 const assert = require('assert');
-const { DomUtil } = require('../src/dom.js');
-const { isRegExp } = require('util');
+const { DomUtil } = require('../src/domUtil.js');
+const { Util } = require('../src/util.js');
 
 
 describe('DomUtil', function() {
@@ -40,15 +40,15 @@ describe('DomUtil', function() {
         { xml: '<root int="-37"/>', json:'{"@int":-37}', altJSON:'{"@int":"-37"}'},
     ];
 
-    describe('toJSON', function() {
+    describe('toJSON (BadgerFish)', function() {
         test.each(ref) (
             "XML to JSON %p",
             (item) => {
                 var xml = DomUtil.parse(item.xml);
-                var json = JSON.stringify(DomUtil.toJSON(xml));
+                var json = JSON.stringify(DomUtil.toJSON(xml, "BadgerFish"));
                 if (item.altXML) {
-                    var xml = DomUtil.parse(item.altXML);
-                    var json = JSON.stringify(DomUtil.toJSON(xml));
+                    xml = DomUtil.parse(item.altXML);
+                    json = JSON.stringify(DomUtil.toJSON(xml, "BadgerFish"));
                 }
                 var expected = item.altJSON || item.json;
                 assert.equal(json, expected);
@@ -57,46 +57,46 @@ describe('DomUtil', function() {
 
             it("Should convert text nodes", function() {
                 var xml = DomUtil.parse("<root>Hello</root>");
-                assert.equal(DomUtil.toJSON(xml)["$"], "Hello");
+                assert.equal(DomUtil.toJSON(xml, "BadgerFish")["$"], "Hello");
                 xml = DomUtil.parse("<root>Hello<child> cruel</child> World</root>");
-                assert.equal(DomUtil.toJSON(xml)["$"], "Hello World");
+                assert.equal(DomUtil.toJSON(xml, "BadgerFish")["$"], "Hello World");
           });
 
           it("Should convert CDATA nodes", function() {
             var xml = DomUtil.parse("<root>Hello</root>");
-            assert.equal(DomUtil.toJSON(xml)["$"], "Hello");
+            assert.equal(DomUtil.toJSON(xml, "BadgerFish")["$"], "Hello");
             xml = DomUtil.parse("<root>Hello<child></child> cruel<![CDATA[ <World>]]></root>");
-            assert.equal(DomUtil.toJSON(xml)["$"], "Hello cruel <World>");
+            assert.equal(DomUtil.toJSON(xml, "BadgerFish")["$"], "Hello cruel <World>");
         });
 
         it("Should support empty CDATA nodes", function() {
             var xml = DomUtil.parse("<root><![CDATA[]]></root>");
-            assert.equal(DomUtil.toJSON(xml)["$"], "");
+            assert.equal(DomUtil.toJSON(xml, "BadgerFish")["$"], "");
         });
 
         it("Should support elements", function() {
             const xml = DomUtil.parse("<root>Hello<main test='1'></main>World</root>");
             const main = DomUtil.findElement(xml.documentElement, "main");
-            assert.equal(DomUtil.toJSON(main)["@test"], "1");
+            assert.equal(DomUtil.toJSON(main, "BadgerFish")["@test"], "1");
         });
 
         it("Should skip comments", function() {
             const xml = DomUtil.parse("<root>Hello<!-- cruel --> World</root>");
-            assert.equal(DomUtil.toJSON(xml)["$"], "Hello World");
+            assert.equal(DomUtil.toJSON(xml, "BadgerFish")["$"], "Hello World");
         });
 
         it("Should support nulls", function() {
-            expect(DomUtil.toJSON(null)).toBeNull();
-            expect(DomUtil.toJSON(undefined)).toBeUndefined();
+            expect(DomUtil.toJSON(null, "BadgerFish")).toBeNull();
+            expect(DomUtil.toJSON(undefined, "BadgerFish")).toBeUndefined();
         });
     });
 
-    describe('fromJSON', function() {
+    describe('fromJSON (BadgerFish)', function() {
         test.each(ref) (
-            "JSON to XML %p",
+            "JSON (BadgerFish) to XML %p",
             (item) => {
                 var json = JSON.parse(item.json);
-                var xml = DomUtil.toXMLString(DomUtil.fromJSON("root", json));
+                var xml = DomUtil.toXMLString(DomUtil.fromJSON("root", json, "BadgerFish"));
                 var expected = item.altXML || item.xml;
                 assert.equal(xml, expected);
             }
@@ -105,34 +105,152 @@ describe('DomUtil', function() {
           it("Should fail for unsupported attribute type", function() {
             const json = { "@hello": new Error("failed") };            // value is an unsupported type "Error"
             assert.throws(() => {
-                DomUtil.fromJSON("root", json)
+                DomUtil.fromJSON("root", json, "BadgerFish")
             });
         });
 
-            it("Should fail for unsupported element type", function() {
-                const json = { "hello": (x) => x+1 };            // value is an unsupported type "function"
-                assert.throws(() => {
-                    DomUtil.fromJSON("root", json)
-                });
+        it("Should fail for unsupported element type", function() {
+            const json = { "hello": (x) => x+1 };            // value is an unsupported type "function"
+            assert.throws(() => {
+                DomUtil.fromJSON("root", json, "BadgerFish")
             });
+        });
+
+    });
+
+    describe('fromJSON (errors)', function() {
+
+        it("Invalid flavor", () => {
+            expect(() => { DomUtil.fromJSON("root", {}, "Dummy"); }).toThrow("Invalid JSON flavor");
+            // in this function "json" is not a valid flavor, it should have been transformed
+            // to "BaderFish" by the caller
+            expect(() => { DomUtil.fromJSON("root", {}, "json"); }).toThrow("Invalid JSON flavor");
+            // XML is not a JSON flavor either
+            expect(() => { DomUtil.fromJSON("root", {}, "xml"); }).toThrow("Invalid JSON flavor");
+            expect(() => { DomUtil.fromJSON("root", {}, "Xml"); }).toThrow("Invalid JSON flavor");
+        });
+
+        it("No XML root", () => {
+            expect(() => { DomUtil.fromJSON("", {}, "BadgerFish"); }).toThrow("no XML root name was given");
+            expect(() => { DomUtil.fromJSON(null, {}, "BadgerFish"); }).toThrow("no XML root name was given");
+            expect(() => { DomUtil.fromJSON(undefined, {}, "BadgerFish"); }).toThrow("no XML root name was given");
+        });
         
     });
 
+    describe('fromJSON (SimpleJson)', function() {
+
+        function fromJSON(json) {
+            var xml = DomUtil.fromJSON("root", json, "SimpleJson");
+            return DomUtil.toXMLString(xml);
+        }
+
+        assert.strictEqual(fromJSON({}), '<root/>');
+        assert.strictEqual(fromJSON({ "a":2, "b":"zz", "c": true }), '<root a="2" b="zz" c="true"/>');
+        assert.strictEqual(fromJSON({ "a":{ x:3 } }), '<root><a x="3"/></root>');
+        assert.strictEqual(fromJSON({ "$": "Hello" }), '<root>Hello</root>');
+        assert.strictEqual(fromJSON({ "$a": "Hello" }), '<root><a>Hello</a></root>');
+        assert.strictEqual(fromJSON({ a: { "$": "Hello" } }), '<root><a>Hello</a></root>');
+        assert.strictEqual(fromJSON({ a: "World", "$a": "Hello" }), '<root a="World"><a>Hello</a></root>');
+        assert.strictEqual(fromJSON({ "a": [ { "i":1 }, { "i": 2 } ] }), '<root><a i="1"/><a i="2"/></root>');
+        assert.strictEqual(fromJSON({ "a": [ ] }), '<root/>');
+        assert.strictEqual(fromJSON({ "a": null }), '<root/>');
+        assert.strictEqual(fromJSON({ "a": undefined }), '<root/>');
+    });
+
+    describe('fromJSON (default)', function() {
+
+        function fromJSON(json) {
+            var xml = DomUtil.fromJSON("root", json);
+            return DomUtil.toXMLString(xml);
+        }
+
+        assert.strictEqual(fromJSON({}), '<root/>');
+        assert.strictEqual(fromJSON({ "a":2, "b":"zz", "c": true }), '<root a="2" b="zz" c="true"/>');
+        assert.strictEqual(fromJSON({ "a":{ x:3 } }), '<root><a x="3"/></root>');
+        assert.strictEqual(fromJSON({ "$": "Hello" }), '<root>Hello</root>');
+        assert.strictEqual(fromJSON({ "$a": "Hello" }), '<root><a>Hello</a></root>');
+        assert.strictEqual(fromJSON({ a: { "$": "Hello" } }), '<root><a>Hello</a></root>');
+        assert.strictEqual(fromJSON({ a: "World", "$a": "Hello" }), '<root a="World"><a>Hello</a></root>');
+        assert.strictEqual(fromJSON({ "a": [ { "i":1 }, { "i": 2 } ] }), '<root><a i="1"/><a i="2"/></root>');
+        assert.strictEqual(fromJSON({ "a": [ ] }), '<root/>');
+        assert.strictEqual(fromJSON({ "a": null }), '<root/>');
+        assert.strictEqual(fromJSON({ "a": undefined }), '<root/>');
+    });
+
+    describe('toJSON (SimpleJson)', function() {
+
+        function toJSON(xml) {
+            xml = DomUtil.parse(xml);
+            var json = DomUtil.toJSON(xml, "SimpleJson");
+            return json;
+        }
+
+        assert.deepStrictEqual(toJSON('<root/>'), {});
+        assert.deepStrictEqual(toJSON('<root a="1"/>'), { a:"1" });
+        assert.deepStrictEqual(toJSON('<root a="1" b="2"/>'), { a:"1", b:"2" });
+        assert.deepStrictEqual(toJSON('<root><a/></root>'), { a:{} });
+        assert.deepStrictEqual(toJSON('<root><a/><a/></root>'), { a:[{},{}] });
+    });
+
+    describe('fromJSON (invalid flavor)', function() {
+        try {
+            DomUtil.fromJSON("root", {}, "InvalidFlavor");
+            assert.fail("Should have failed");
+        } catch(ex) {
+            assert.ok(true);
+        }
+    });
+
+    describe('toJson (errors)', function() {
+
+        
+        it("Invalid flavor", () => {
+            var xml = DomUtil.parse('<root/>');
+            expect(() => { DomUtil.toJSON(xml, "Dummy"); }).toThrow("Invalid JSON flavor");
+            // in this function "json" is not a valid flavor, it should have been transformed
+            // to "BaderFish" by the caller
+            expect(() => { DomUtil.toJSON(xml, "json"); }).toThrow("Invalid JSON flavor");
+            // XML is not a JSON flavor either
+            expect(() => { DomUtil.toJSON(xml, "xml"); }).toThrow("Invalid JSON flavor");
+            expect(() => { DomUtil.toJSON(xml, "Xml"); }).toThrow("Invalid JSON flavor");
+        });
+        
+    });
+    
+
     describe('toXMLString', function() {
+
         test.each(ref) (
             "toXMLString %p",
             (item) => {
                 var expected = item.altXML || item.xml;
                 var xml = DomUtil.parse(item.xml);
-                var xml = DomUtil.toXMLString(xml);
+                xml = DomUtil.toXMLString(xml);
                 assert.equal(xml, expected);
                 if (item.altXML) {
-                    var xml = DomUtil.parse(item.altXML);
-                    var xml = DomUtil.toXMLString(xml);
+                    xml = DomUtil.parse(item.altXML);
+                    xml = DomUtil.toXMLString(xml);
                     assert.equal(xml, expected);
                 }
             }
-          );
+        );
+
+        it("Should serialize document", () => {
+            var doc = DomUtil.parse("<hello/>");
+            expect(DomUtil.toXMLString(doc)).toBe("<hello/>");
+        })
+
+        it("Should serialize document if __jsdom__ is not defined", () => {
+            var doc = DomUtil.parse("<hello/>");
+            delete doc.__jsdom__;
+            expect(DomUtil.toXMLString(doc)).toBe("<hello/>");
+        })
+
+        it("Should serialize the document element", () => {
+            var doc = DomUtil.parse("<hello/>");
+            expect(DomUtil.toXMLString(doc.documentElement)).toBe("<hello/>");
+        })
     });
 
     describe('Escaping', function() {
@@ -181,8 +299,6 @@ describe('DomUtil', function() {
 
     describe('Element iterator', function() {
         it('Should support nulls', function() {
-            const dom = DomUtil.parse("<root><top>Hello</top>World<child><a x='1'/><b x='2'/><b x='3'/><c x='4'/></child></root>");
-            const root = dom.documentElement;
             assert.equal(DomUtil.getFirstChildElement(null), null);
             assert.equal(DomUtil.getFirstChildElement(undefined), null);
             assert.equal(DomUtil.getFirstChildElement(null, "a"), null);
@@ -325,25 +441,25 @@ describe('DomUtil', function() {
         it("Should get short attribute value", function() {
             const dom = DomUtil.parse("<root empty='' v1='Hello' v2='0' v3='1' v4='-2' v5='500'></root>");
             const root = dom.documentElement;
-            assert.equal(DomUtil.getAttributeAsShort(root, "empty"), 0);
-            assert.equal(DomUtil.getAttributeAsShort(root, "notFound"), 0);
-            assert.equal(DomUtil.getAttributeAsShort(root, "v1"), 0);
-            assert.equal(DomUtil.getAttributeAsShort(root, "v2"), 0);
-            assert.equal(DomUtil.getAttributeAsShort(root, "v3"), 1);
-            assert.equal(DomUtil.getAttributeAsShort(root, "v4"), -2);
-            assert.equal(DomUtil.getAttributeAsShort(root, "v5"), 500);
+            expect(DomUtil.getAttributeAsShort(root, "empty")).toBe(0);
+            expect(DomUtil.getAttributeAsShort(root, "notFound")).toBe(0);
+            expect(DomUtil.getAttributeAsShort(root, "v1")).toBe(0);
+            expect(DomUtil.getAttributeAsShort(root, "v2")).toBe(0);
+            expect(DomUtil.getAttributeAsShort(root, "v3")).toBe(1);
+            expect(DomUtil.getAttributeAsShort(root, "v4")).toBe(-2);
+            expect(DomUtil.getAttributeAsShort(root, "v5")).toBe(500);
         });
 
         it("Should get long attribute value", function() {
             const dom = DomUtil.parse("<root empty='' v1='Hello' v2='0' v3='1' v4='-2' v5='500'></root>");
             const root = dom.documentElement;
-            assert.equal(DomUtil.getAttributeAsLong(root, "empty"), 0);
-            assert.equal(DomUtil.getAttributeAsLong(root, "notFound"), 0);
-            assert.equal(DomUtil.getAttributeAsLong(root, "v1"), 0);
-            assert.equal(DomUtil.getAttributeAsLong(root, "v2"), 0);
-            assert.equal(DomUtil.getAttributeAsLong(root, "v3"), 1);
-            assert.equal(DomUtil.getAttributeAsLong(root, "v4"), -2);
-            assert.equal(DomUtil.getAttributeAsLong(root, "v5"), 500);
+            expect(DomUtil.getAttributeAsLong(root, "empty")).toBe(0);
+            expect(DomUtil.getAttributeAsLong(root, "notFound")).toBe(0);
+            expect(DomUtil.getAttributeAsLong(root, "v1")).toBe(0);
+            expect(DomUtil.getAttributeAsLong(root, "v2")).toBe(0);
+            expect(DomUtil.getAttributeAsLong(root, "v3")).toBe(1);
+            expect(DomUtil.getAttributeAsLong(root, "v4")).toBe(-2);
+            expect(DomUtil.getAttributeAsLong(root, "v5")).toBe(500);
         });
     });
 
@@ -386,24 +502,24 @@ describe('DomUtil', function() {
         it("Should parse collections with exactly one element", () => {
             const xml = DomUtil.parse("<root-collection><root id='1'/></root-collection>");
             const json = DomUtil.toJSON(xml);
-            expect(JSON.stringify(json)).toBe('{"root":[{"@id":"1"}]}');
+            expect(JSON.stringify(json)).toBe('{"root":[{"id":"1"}]}');
         });
 
         it("Should parse collections with more than one element", () => {
             const xml = DomUtil.parse("<root-collection><root id='1'/><root id='2'/></root-collection>");
             const json = DomUtil.toJSON(xml);
-            expect(JSON.stringify(json)).toBe('{"root":[{"@id":"1"},{"@id":"2"}]}');
+            expect(JSON.stringify(json)).toBe('{"root":[{"id":"1"},{"id":"2"}]}');
         });
 
         it("Should parse non-collections with exactly one element", () => {
             const xml = DomUtil.parse("<root-not-coll><root id='1'/></root-not-coll>");
             const json = DomUtil.toJSON(xml);
-            expect(JSON.stringify(json)).toBe('{"root":{"@id":"1"}}');
+            expect(JSON.stringify(json)).toBe('{"root":{"id":"1"}}');
         });
         it("Should parse non-collections with more than one element", () => {
             const xml = DomUtil.parse("<root-not-coll><root id='1'/><root id='2'/></root-not-coll>");
             const json = DomUtil.toJSON(xml);
-            expect(JSON.stringify(json)).toBe('{"root":[{"@id":"1"},{"@id":"2"}]}');
+            expect(JSON.stringify(json)).toBe('{"root":[{"id":"1"},{"id":"2"}]}');
         });
     });
 

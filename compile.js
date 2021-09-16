@@ -14,7 +14,7 @@ governing permissions and limitations under the License.
 /**********************************************************************************
  * 
  * Compiles the SDK for using in a browser
- * Runs without any parameters. Will create a file named "bundle.js"
+ * Runs without any parameters. Will create a file named "dist/bundle.js"
  * 
  *********************************************************************************/
 const fs = require('fs');
@@ -26,21 +26,24 @@ console.log("ACC client-side SDK compiler version " + pjson.version);
 // Add files / resources to bundle here in dependency order
 var resources = [
     { name: "../package.json" },
-    { name: "jsdom", file: "./web/jsdom.js" },
-    { name: "crypto", file: "./web/crypto.js" },
-    { name: "request-promise-native", file: "./web/request.js" },
+    { name: "./util.js" },
+    { name: "./campaign.js" },
+    { name: "./transport.js" },
     { name: "./xtkCaster.js" },
-    { name: "./dom.js" },
+    { name: "./domUtil.js" },
+    { name: "./entityAccessor.js" },
     { name: "./xtkEntityCache.js" },
     { name: "./methodCache.js" },
     { name: "./optionCache.js" },
     { name: "./soap.js" },
     { name: "./crypto.js" },
+    { name: "./application.js" },
     { name: "./client.js" },
     { name: "./index.js" },
 ];
 
-const outFileName = "./bundle.js";
+
+const outFileName = "./dist/bundle.js";
 const rootPath = "./src";
 
 
@@ -74,7 +77,7 @@ fs.writeSync(outFile, `/********************************************************
  * 
  *********************************************************************************/
 
-accSDK = (function() {
+document.accSDK = (function() {
 
     const module = { exports: {} };
 `);
@@ -82,7 +85,7 @@ accSDK = (function() {
 
 
 function bundleFile(fileName, above, below, before) {
-    above = above || '';
+    above = above || '';
     below = below || '';
     before = before || '';
     fs.writeSync(outFile, `
@@ -114,7 +117,7 @@ resources.forEach(resource => {
 
 // Bundle modules
 resources.forEach(resource => {
-    const fileName = resource.file || resource.name;
+    const fileName = resource.file || resource.name;
     console.log(`Bundling ${fileName}`);
     const above = `(function(module, exports) {
 `;

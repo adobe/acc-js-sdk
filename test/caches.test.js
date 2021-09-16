@@ -18,11 +18,10 @@ governing permissions and limitations under the License.
  *********************************************************************************/
 
 const assert = require('assert');
-const { isRegExp } = require('util');
 const OptionCache = require('../src/optionCache.js').OptionCache;
 const MethodCache = require('../src/methodCache.js').MethodCache;
 const XtkEntityCache = require('../src/xtkEntityCache.js').XtkEntityCache;
-const { DomUtil } = require('../src/dom.js');
+const { DomUtil } = require('../src/domUtil.js');
 
 describe('Caches', function() {
 
@@ -55,38 +54,46 @@ describe('Caches', function() {
 
         it("Should cache value", function() {
             const cache = new OptionCache();
-            assert.equal(cache.get("hello"), undefined);
-            cache.cache("hello", "world");
-            assert.equal(cache.get("hello"), "world");
+            expect(cache.get("hello")).toBeUndefined();
+            cache.cache("hello", ["world", 6]);
+            expect(cache.get("hello")).toBe("world");
+            expect(cache.getOption("hello")).toEqual({"rawValue": "world", "type": 6, "value": "world"});
         });
 
         it("Should cache multiple value", function() {
             const cache = new OptionCache();
-            cache.cache("hello", "world");
-            cache.cache("foo", "bar");
-            assert.equal(cache.get("hello"), "world");
-            assert.equal(cache.get("foo"), "bar");
+            cache.cache("hello", ["world", 6]);
+            cache.cache("foo", ["bar", 6]);
+            expect(cache.get("hello")).toBe("world");
+            expect(cache.getOption("hello")).toEqual({"rawValue": "world", "type": 6, "value": "world"});
+            expect(cache.get("foo")).toBe("bar");
+            expect(cache.getOption("foo")).toEqual({"rawValue": "bar", "type": 6, "value": "bar"});
         });
 
         it("Should overwrite cached value", function() {
             const cache = new OptionCache();
-            cache.cache("hello", "world");
-            assert.equal(cache.get("hello"), "world");
-            cache.cache("hello", "cruel world");
-            assert.equal(cache.get("hello"), "cruel world");
+            cache.cache("hello", ["world", 6]);
+            expect(cache.get("hello")).toBe( "world");
+            expect(cache.getOption("hello")).toEqual({"rawValue": "world", "type": 6, "value": "world"});
+            cache.cache("hello", ["cruel world", 6]);
+            expect(cache.get("hello")).toBe("cruel world");
+            expect(cache.getOption("hello")).toEqual({"rawValue": "cruel world", "type": 6, "value": "cruel world"});
         });
 
         it("Should clear cache", function() {
             const cache = new OptionCache();
-            cache.cache("hello", "world");
-            assert.equal(cache.get("hello"), "world");
+            cache.cache("hello", ["world", 6]);
+            expect(cache.get("hello")).toBe("world");
+            expect(cache.getOption("hello")).toEqual({"rawValue": "world", "type": 6, "value": "world"});
             cache.clear();
-            assert.equal(cache.get("hello"), undefined);
+            expect(cache.get("hello")).toBeUndefined();
+            expect(cache.getOption("hello")).toBeUndefined();
         });
 
-        if("Should not find", function() {
+        it("Should not find", function() {
             const cache = new OptionCache();
-            assert.equal(cache.get("hello"), undefined);
+            expect(cache.get("hello")).toBeUndefined();
+            expect(cache.getOption("hello")).toBeUndefined();
         });
 
     });
@@ -102,7 +109,7 @@ describe('Caches', function() {
             assert.equal(found.nodeName, "method");
             assert.equal(found.getAttribute("name"), "Delete");
 
-            var found = cache.get("nms:recipient", "Create");
+            found = cache.get("nms:recipient", "Create");
             assert.ok(found !== null && found !== undefined);
             assert.equal(found.nodeName, "method");
             assert.equal(found.getAttribute("name"), "Create");
@@ -116,7 +123,7 @@ describe('Caches', function() {
             var found = cache.get("nms:recipient", "Update");
             assert.ok(found !== null && found !== undefined);
             // and on interface as well
-            var found = cache.get("nms:i", "Update");
+            found = cache.get("nms:i", "Update");
             assert.ok(found !== null && found !== undefined);
         });
 
@@ -129,20 +136,20 @@ describe('Caches', function() {
             assert.ok(found !== null && found !== undefined);
 
             cache.clear();
-            var found = cache.get("nms:recipient", "Delete");
+            found = cache.get("nms:recipient", "Delete");
             assert.ok(found === undefined);
         });
 
-        if("Should ignore non-method nodes", function() {
+        it("Should ignore non-method nodes", function() {
             const cache = new MethodCache();
             var schema = DomUtil.parse("<schema namespace='nms' name='recipient'><methods><method name='Delete'/><dummy name='Update'/><method name='Create'/></methods></schema>");
             cache.cache(schema.documentElement);
 
             var found = cache.get("nms:recipient", "Delete");
             assert.ok(found !== null && found !== undefined);
-            var found = cache.get("nms:recipient", "Update");
+            found = cache.get("nms:recipient", "Update");
             assert.ok(found === undefined);
-            var found = cache.get("nms:recipient", "Create");
+            found = cache.get("nms:recipient", "Create");
             assert.ok(found !== null && found !== undefined);
         });
     });
@@ -164,26 +171,59 @@ describe('Caches', function() {
             assert.strictEqual(urn, "xtk:session");
 
             // Logon method should not exist on the xtk:persist interface
-            var found = cache.get("xtk:persist", "Logon");
-            var urn = cache.getSoapUrn("xtk:persist", "Logon");
+            found = cache.get("xtk:persist", "Logon");
+            urn = cache.getSoapUrn("xtk:persist", "Logon");
             assert.ok(found === undefined);
             assert.ok(urn === undefined);
 
             // The Write method should also be on xtk:session but use xtk:persist as a URN
-            var found = cache.get("xtk:session", "Write");
-            var urn = cache.getSoapUrn("xtk:session", "Write");
+            found = cache.get("xtk:session", "Write");
+            urn = cache.getSoapUrn("xtk:session", "Write");
             assert.ok(found !== null && found !== undefined);
             assert.strictEqual(found.nodeName, "method");
             assert.strictEqual(found.getAttribute("name"), "Write");
             assert.strictEqual(urn, "xtk:persist");
 
             // For compatibility reasons (SDK versions earlier than 0.1.23), keep the Write method on the interface too
-            var found = cache.get("xtk:persist", "Write");
-            var urn = cache.getSoapUrn("xtk:persist", "Write");
+            found = cache.get("xtk:persist", "Write");
+            urn = cache.getSoapUrn("xtk:persist", "Write");
             assert.ok(found !== null && found !== undefined);
             assert.strictEqual(found.nodeName, "method");
             assert.strictEqual(found.getAttribute("name"), "Write");
             assert.strictEqual(urn, "xtk:persist");
+        });
+
+        it("Edge cases for getSoapUrn", () => {
+            const cache = new MethodCache();
+            var schema = DomUtil.parse("<schema namespace='xtk' name='session' implements='xtk:persist'><interface name='persist'><method name='Write' static='true'/></interface><methods><method name='Logon'/></methods></schema>");
+            cache.cache(schema.documentElement);
+
+            // Schema and method exist
+            var urn = cache.getSoapUrn("xtk:session", "Logon");
+            expect(urn).toBe("xtk:session");
+
+            // Schema exists but method doesn't
+            urn = cache.getSoapUrn("xtk:session", "Dummy");
+            expect(urn).toBeUndefined();
+
+            // Neither schema nor method exist
+            urn = cache.getSoapUrn("xtk:dummy", "Dummy");
+            expect(urn).toBeUndefined();
+        });
+
+        it("Schema has interfaces that do not match what schema implements", () => {
+            const cache = new MethodCache();
+            // Schema has xtk:persist interface but does not implement it
+            var schema = DomUtil.parse("<schema namespace='xtk' name='session'><interface name='persist'><method name='Write' static='true'/></interface><methods><method name='Logon'/></methods></schema>");
+            cache.cache(schema.documentElement);
+
+            // Logon method should be found in xtk:session and have the xtk:session URN (for SOAP action)
+            var found = cache.get("xtk:session", "Logon");
+            var urn = cache.getSoapUrn("xtk:session", "Logon");
+            assert.ok(found !== null && found !== undefined);
+            assert.strictEqual(found.nodeName, "method");
+            assert.strictEqual(found.getAttribute("name"), "Logon");
+            assert.strictEqual(urn, "xtk:session");
         });
     });
 });

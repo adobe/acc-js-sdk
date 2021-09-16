@@ -21,8 +21,9 @@ governing permissions and limitations under the License.
 
 
 
-async function makeClient(rememberMe) {
-    const client = await sdk.init("http://acc-sdk:8080", "admin", "admin", rememberMe);
+async function makeClient(options) {
+    const connectionParameters = sdk.ConnectionParameters.ofUserAndPassword("http://acc-sdk:8080", "admin", "admin", options);
+    const client = await sdk.init(connectionParameters);
     client.soapTransport = jest.fn();
     return client;
 }
@@ -55,7 +56,7 @@ describe('ACC SDK', function() {
 
         it('Should get a DomUtil', async () => {
             const DomUtil = sdk.DomUtil;
-            expect(DomUtil.toJSON(DomUtil.parse("<root att='hello'/>"))["@att"]).toBe("hello");
+            expect(DomUtil.toJSON(DomUtil.parse("<root att='hello'/>"))["att"]).toBe("hello");
         });
     });
 

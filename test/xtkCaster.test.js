@@ -19,8 +19,6 @@ governing permissions and limitations under the License.
 
 const XtkCaster = require('../src/xtkCaster.js').XtkCaster;
 const assert = require('assert');
-const { isRegExp } = require('util');
-
 
 
 assert.myEquals = function(actual, expected) {
@@ -276,6 +274,68 @@ describe('XtkCaster', function() {
         }
     }),
 
+    describe('#asInt64', function() {
+        const expectedValues = [
+            // (value)   ==  expected
+            [ undefined,                     "0"   ],
+            [ null,                          "0"   ],
+            [ "",                            "0"   ],
+            [ " ",                           "0"   ],
+            [ "1.",                          "0"   ],
+            [ ".5",                          "0"   ],
+            [ 1,                             "1"   ],
+            [ 12.4,                         "0"   ],
+            [ -2.3,                         "0"   ],
+            [ "1",                           "1"   ],
+            [ "12.4",                       "0"   ],
+            [ "-2.3",                       "0"   ],
+            [ "--2.3",                       "0"   ],
+            [ "dummy",                       "0"   ],
+            [ "  1",                         "1"   ],
+            [ "  12.4",                     "0"   ],
+            [ "  -2.3",                     "0"   ],
+            [ "1  ",                         "1"   ],
+            [ "12.4  ",                     "0"   ],
+            [ "-2.3  ",                     "0"  ],
+            [ {},                            "0"   ],
+            [ NaN,                           "0"   ],
+            [ Number.POSITIVE_INFINITY,      "0"   ],
+            [ Number.NEGATIVE_INFINITY,      "0"   ],
+            [ new Date(),                    "0"   ],
+            [ new Date("hello"),             "0"   ],
+
+            // Rounding
+            [ "1.4",                         "0"   ],
+            [ "1.5",                         "0"   ],
+            [ "1.6",                         "0"   ],
+            [ "2147483647",                     "2147483647" ],
+            [ "2147483648",                     "2147483648" ],
+            [ "2147483649",                     "2147483649" ],
+            [ "-1.4",                       "0"   ],
+            [ "-1.5",                       "0"   ],
+            [ "-1.6",                       "0"   ],
+            [ "-2147483647",                   "-2147483647" ],
+            [ "-2147483648",                   "-2147483648" ],
+            [ "-2147483649",                   "-2147483649" ],
+        ];
+
+        function testOne(i) {
+            const expected = expectedValues[i];
+            const value = expected[0];
+            const expectedResult = expected[1];
+            it('Should return the value casted as a int64 ("' + value + '")', function() {
+                assert.myEquals(XtkCaster.asInt64(value), expectedResult);
+            });
+            it('Should return the value casted as type int64', function() {
+                assert.myEquals(XtkCaster.as(value, 'int64'), expectedResult);
+            });
+        }
+
+        for (var i=0; i<expectedValues.length; i++) {
+            testOne(i);
+        }
+    }),
+    
     describe('#asString', function() {
         const expectedValues = [
             // (value)   ==  expected
@@ -367,7 +427,6 @@ describe('XtkCaster', function() {
             const expected = expectedValues[i];
             const value = expected[0];
             const expectedResult = expected[1];
-            const nonStrict = !!expected[2];
             it('Should return the value casted as a timestamp ("' + value + '")', function() {
                 const actual = XtkCaster.asTimestamp(value);
                 assert.myEquals(actual, expectedResult);
@@ -424,7 +483,6 @@ describe('XtkCaster', function() {
             const expected = expectedValues[i];
             const value = expected[0];
             const expectedResult = expected[1];
-            const nonStrict = !!expected[2];
             it('Should return the value casted as a date ("' + value + '")', function() {
                 const actual = XtkCaster.asDate(value);
                 assert.myEquals(actual, expectedResult);
@@ -628,5 +686,34 @@ describe('XtkCaster', function() {
     it("Nan should cast to 0", function() {
         assert.equal(XtkCaster.asNumber("Invalid"), 0);     // will parse as "NaN"
         assert.equal(XtkCaster.asNumber(NaN), 0);           // real "NaN"
+    });
+
+    it("_variantStorageAttribute should return the field name where to store a variant value (for example in the xtk:option table)", () => {
+        expect(XtkCaster._variantStorageAttribute(null)).toBe(null);
+        expect(XtkCaster._variantStorageAttribute(undefined)).toBe(null);
+        expect(XtkCaster._variantStorageAttribute(0)).toBe(null);
+        expect(XtkCaster._variantStorageAttribute("")).toBe(null);
+        expect(XtkCaster._variantStorageAttribute(6)).toBe("stringValue");
+        expect(XtkCaster._variantStorageAttribute("string")).toBe("stringValue");
+        expect(XtkCaster._variantStorageAttribute("int64")).toBe("stringValue");
+        expect(XtkCaster._variantStorageAttribute(12)).toBe("memoValue");
+        expect(XtkCaster._variantStorageAttribute(13)).toBe("memoValue");
+        expect(XtkCaster._variantStorageAttribute("memo")).toBe("memoValue");
+        expect(XtkCaster._variantStorageAttribute("CDATA")).toBe("memoValue");
+        expect(XtkCaster._variantStorageAttribute(1)).toBe("longValue");
+        expect(XtkCaster._variantStorageAttribute(2)).toBe("longValue");
+        expect(XtkCaster._variantStorageAttribute(3)).toBe("longValue");
+        expect(XtkCaster._variantStorageAttribute(15)).toBe("longValue");
+        expect(XtkCaster._variantStorageAttribute(4)).toBe("doubleValue");
+        expect(XtkCaster._variantStorageAttribute(5)).toBe("doubleValue");
+        expect(XtkCaster._variantStorageAttribute("float")).toBe("doubleValue");
+        expect(XtkCaster._variantStorageAttribute("double")).toBe("doubleValue");
+        expect(XtkCaster._variantStorageAttribute(7)).toBe("timeStampValue");
+        expect(XtkCaster._variantStorageAttribute(10)).toBe("timeStampValue");
+        expect(XtkCaster._variantStorageAttribute("datetime")).toBe("timeStampValue");
+        expect(XtkCaster._variantStorageAttribute("datetimetz")).toBe("timeStampValue");
+        expect(XtkCaster._variantStorageAttribute("datetimenotz")).toBe("timeStampValue");
+        expect(XtkCaster._variantStorageAttribute("date")).toBe("timeStampValue");
+        expect(() => { XtkCaster._variantStorageAttribute(777); }).toThrow("Cannot get variant storage");
     });
 });
