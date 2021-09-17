@@ -1388,7 +1388,7 @@ To deploy to npm
 * Increase version in `package.json`
 * Push a commit with message `Release 1.2.3` in master
 
-| There's a publication action that will publish released automatically when there's a commit named "Release ..." in master
+| There's a publication action that will publish released automatically when there's a commit named "Release ..." in master AND the version matches the one in package.json
 | Do not create a git tag for this version, the publication hook will take care of it. If you have created a tag with the release name, the publication will fail
 
 
