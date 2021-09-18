@@ -1877,4 +1877,31 @@ describe('ACC Client', function () {
             expect(calls[0][0].data).toMatch("Logon");
         });
     })
+
+    describe("Should simulate server down", () => {
+        it("Should simulate server down and up again", async () => {
+            // Server is up and getOption
+            const client = await Mock.makeClient();
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+            client._transport.mockReturnValueOnce(Mock.GET_DATABASEID_RESPONSE);
+            var databaseId = await client.getOption("XtkDatabaseId", false);
+            expect(databaseId).toBe("uFE80000000000000F1FA913DD7CC7C480041161C");
+
+            // Now simulate a connection error (server is down)
+            const error = new Error("connect ECONNREFUSED 3.225.73.178:8080");
+            error.code="ECONNREFUSED";
+            error.errno="ECONNREFUSED";
+            client._transport.mockReturnValueOnce(Promise.reject(error));
+            await expect(client.getOption("XtkDatabaseId", false)).rejects.toMatchObject({
+                message: "500 - Error calling method 'xtk:session#GetOption': Error (connect ECONNREFUSED 3.225.73.178:8080)"
+            });
+
+            // Server is back up again
+            client._transport.mockReturnValueOnce(Mock.GET_DATABASEID_RESPONSE);
+            databaseId = await client.getOption("XtkDatabaseId", false);
+            expect(databaseId).toBe("uFE80000000000000F1FA913DD7CC7C480041161C")
+        });
+    })
 });
