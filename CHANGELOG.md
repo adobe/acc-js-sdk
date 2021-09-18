@@ -5,6 +5,8 @@ This is a node.js SDK for Campaign API. It exposes the Campaign API exactly like
 
 # Changelog
 
+## Version 1.1.0
+
 ## Version 1.0.2
 _2021/09/17_
 * Dummy version to fix NPM build. Need to have the version in both package.json and a commit message to be "Release x.y.z" in master
