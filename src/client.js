@@ -130,7 +130,7 @@ const clientHandler = {
                         var promise = callContext.client._callMethod(methodName, callContext, argumentsList);
                         return promise.then(function(optionAndValue) {
                             const optionName = argumentsList[0];
-                            client._optionCache.cache(optionName, optionAndValue);
+                            client._optionCache.put(optionName, optionAndValue);
                             return optionAndValue;
                         });
                     }
@@ -230,6 +230,10 @@ class Credentials {
 class ConnectionParameters {
     
     constructor(endpoint, credentials, options) {
+        // this._options will be populated with the data from "options" and with
+        // default values. But the "options" parameter will not be modified
+        this._options = {};
+
         // Default value
         if (options === undefined || options === null)
             options = { };
@@ -239,18 +243,24 @@ class ConnectionParameters {
         if (typeof options  != "object")
             throw CampaignException.INVALID_CONNECTION_OPTIONS(options);
 
-        if (options.representation === undefined || options.representation === null)
-            options.representation = "SimpleJson";
+        this._options.representation = options.representation;
+        if (this._options.representation === undefined || this._options.representation === null)
+            this._options.representation = "SimpleJson";
 
-        if (options.representation != "xml" && options.representation != "BadgerFish" && options.representation != "SimpleJson")
-            throw CampaignException.INVALID_REPRESENTATION(options.representation, "Cannot create Campaign client");
+        if (this._options.representation != "xml" && this._options.representation != "BadgerFish" && this._options.representation != "SimpleJson")
+            throw CampaignException.INVALID_REPRESENTATION(this._options.representation, "Cannot create Campaign client");
 
         // Defaults for rememberMe
-        options.rememberMe = !!options.rememberMe;
+        this._options.rememberMe = !!options.rememberMe;
+
+        this._options.entityCacheTTL = options.entityCacheTTL || 1000*300; // 5 mins
+        this._options.methodCacheTTL = options.methodCacheTTL || 1000*300; // 5 mins
+        this._options.optionCacheTTL = options.optionCacheTTL || 1000*300; // 5 mins 
+        this._options.traceAPICalls = options.traceAPICalls === null || options.traceAPICalls ? !!options.traceAPICalls : false;
+        this._options.transport = options.transport || request;
 
         this._endpoint = endpoint;
         this._credentials = credentials;
-        this._options = options;
     }
 
     /**
@@ -387,13 +397,13 @@ class Client {
         
         this._secretKeyCipher = undefined;
         
-        this._entityCache = new XtkEntityCache();
-        this._methodCache = new MethodCache();
-        this._optionCache = new OptionCache();
+        this._entityCache = new XtkEntityCache(connectionParameters._options.entityCacheTTL);
+        this._methodCache = new MethodCache(connectionParameters._options.methodCacheTTL);
+        this._optionCache = new OptionCache(connectionParameters._options.optionCacheTTL);
         this.NLWS = new Proxy(this, clientHandler);
 
-        this._transport = request;
-        this._traceAPICalls = false;
+        this._transport = connectionParameters._options.transport;
+        this._traceAPICalls = connectionParameters._options.traceAPICalls;
         this._observers = [];
 
         // expose utilities
@@ -740,8 +750,8 @@ class Client {
             value = this._optionCache.get(name);
         if (value === undefined) {
             const option = await this.NLWS.xtkSession.getOption(name);
-            value = this._optionCache.cache(name, option);
-            this._optionCache.cache(name, option);
+            value = this._optionCache.put(name, option);
+            this._optionCache.put(name, option);
         }
         return value;
     }
@@ -775,7 +785,7 @@ class Client {
         doc[attName] = value;
         return this.NLWS.xtkSession.write(doc).then(() => {
             // Once set, cache the value
-            this._optionCache.cache(name, [value, type]);
+            this._optionCache.put(name, [value, type]);
         });
     }
 
@@ -945,7 +955,7 @@ class Client {
         var schemaName = schema.getAttribute("name");
         var method = that._methodCache.get(schemaId, methodName);
         if (!method) {
-            this._methodCache.cache(schema);
+            this._methodCache.put(schema);
             method = that._methodCache.get(schemaId, methodName);
         }
         if (!method)

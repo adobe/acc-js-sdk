@@ -95,8 +95,69 @@ class Util {
         }
         return text;
       }
+}
 
+
+/**********************************************************************************
+ * 
+ * A simple cache for XtkEntities, options, etc.
+ * 
+ *********************************************************************************/
+
+/**
+ * An object in the cache.
+ */
+class CachedObject {
+  constructor(value, cachedAt, expiresAt) {
+      this.value = value;
+      this.cachedAt = cachedAt;
+      this.expiresAt = expiresAt
+  }
+}
+
+/**
+ * A general purpose cache with TTL
+ * @param {number} ttl is the TTL for objects in ms. Defaults to 5 mins
+ * @param {makeKeyFn} is an optional function which will generate a key for objects in the cache. It's passed the arguments of the cache 'get' function
+ */
+class Cache {
+  constructor(ttl, makeKeyFn) {
+      this._ttl = ttl || 1000*300;
+      this._makeKeyFn = makeKeyFn || ((x) => x);
+      this._cache = {};
+  }
+
+  _getIfActive(key) {
+      const cached = this._cache[key];
+      if (!cached) return undefined;
+      if (cached.expiresAt <= Date.now()) {
+          delete this._cache[key];
+          return undefined;
+      }
+      return cached.value;
+  }
+
+  get() {
+      const key = this._makeKeyFn.apply(this, arguments);
+      const cached = this._getIfActive(key);
+      return cached;
+  }
+
+  put() {
+      const value = arguments[arguments.length -1];
+      const key = this._makeKeyFn.apply(this, arguments);
+      const now = Date.now();
+      const expiresAt = now + this._ttl;
+      const cached = new CachedObject(value, now, expiresAt);
+      this._cache[key] = cached;
+      return cached;
+  }
+  
+  clear() {
+      this._cache = {};
+  }
 }
 
 // Public expots
 exports.Util = Util;
+exports.Cache = Cache;
