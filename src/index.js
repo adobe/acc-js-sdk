@@ -24,6 +24,7 @@ const pjson = require('../package.json');
 const DomUtil = require('./domUtil.js').DomUtil;
 const XtkCaster = require('./xtkCaster.js').XtkCaster;
 const { Client, Credentials, ConnectionParameters } = require('./client.js');
+const request = require('./transport.js').request;
 
 /**
  * @namespace Campaign
@@ -60,6 +61,15 @@ function getSDKVersion() {
         name: pjson.name,
         description: pjson.description
     }
+}
+
+/**
+ * Get the outbound IP address (https://api.db-ip.com/v2/free/self)
+ * Can be useful to troubleshoot IP whitelisting issues
+ */
+ async function ip() {
+    const ip = await request({ url: "https://api.db-ip.com/v2/free/self" });
+    return ip;
 }
 
 /** 
@@ -113,6 +123,7 @@ function escapeXtk(p1, ...p2)
 module.exports = {
     init: init,
     getSDKVersion: getSDKVersion,
+    ip: ip,
     escapeXtk: escapeXtk,
     XtkCaster: XtkCaster,
     DomUtil: DomUtil,

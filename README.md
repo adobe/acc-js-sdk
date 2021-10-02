@@ -171,6 +171,24 @@ await client.logon();
 await client.logoff();
 ```
 
+## IP Whitelisting
+
+Campaign includes an IP whitelisting component which prevents connections from unauthorized IP addresses. This is a common source of authentication errors. 
+
+A node application using the SDK must be whitelisted to be able to access Campaign. The SDK `ip` function is a helper function that can help you find the IP or IPs which need to be whitelisted.
+
+This API is only meant for troubleshooting purposes and uses the `https://api.db-ip.com/v2/free/self` service.
+
+```js
+const ip = await sdk.ip();
+```
+
+Will return something like
+
+```json
+{ "ipAddress":"AAA.BBB.CCC.DDD","continentCode":"EU","continentName":"Europe","countryCode":"FR","countryName":"France","stateProv":"Centre-Val de Loire","city":"Bourges" }
+```
+
 ## Calling static SOAP methods
 
 The NLWS object allows to dynamically perform SOAP calls on the targetted Campaign instance.
