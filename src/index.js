@@ -27,6 +27,31 @@ const { Client, Credentials, ConnectionParameters } = require('./client.js');
 const request = require('./transport.js').request;
 
 /**
+ * Get/Set the transport function (defaults to Axios). This function is used for testing / mocking the transport layer.
+ * Called without arguments, it returns the current transport function
+ * Called with an argument, it sets the current transport function and returns the previous one
+ * 
+ * const t = jest.fn();
+ * const old = sdk._transport(t);
+ * try {
+ *   t.mockReturnValueOnce(Promise.resolve(...);
+ *   ... call sdk function which uses the transport layer, for instance ip()
+ * } finally {
+ *   sdk._transport(old);
+ * }
+ */
+
+var transport = request;
+function _transport(t) {
+    if (t) {
+        const old = transport;
+        transport = t;
+        return old;
+    }
+    return transport;
+}
+
+/**
  * @namespace Campaign
  */
 
@@ -68,7 +93,8 @@ function getSDKVersion() {
  * Can be useful to troubleshoot IP whitelisting issues
  */
  async function ip() {
-    const ip = await request({ url: "https://api.db-ip.com/v2/free/self" });
+    const transport = _transport();
+    const ip = await transport({ url: "https://api.db-ip.com/v2/free/self" });
     return ip;
 }
 
@@ -128,6 +154,7 @@ module.exports = {
     XtkCaster: XtkCaster,
     DomUtil: DomUtil,
     Credentials: Credentials,
-    ConnectionParameters: ConnectionParameters
+    ConnectionParameters: ConnectionParameters,
+    _transport: _transport
 };
 
