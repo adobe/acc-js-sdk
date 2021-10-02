@@ -60,4 +60,19 @@ describe('ACC SDK', function() {
         });
     });
 
+
+    describe("IP", () => {
+        it("Should get IP address", async () => {
+            const t = jest.fn();
+            const old = sdk._transport(t);
+            try {
+                t.mockReturnValueOnce(Promise.resolve({ "ipAddress":"AAA.BBB.CCC.DDD","continentCode":"EU","continentName":"Europe","countryCode":"FR","countryName":"France","stateProv":"Centre-Val de Loire","city":"Bourges" }));
+                const ip = await sdk.ip();
+                expect(ip).toMatchObject({ "ipAddress":"AAA.BBB.CCC.DDD" });
+            } finally {
+                sdk._transport(old);
+            }
+        });
+    })
+
 });

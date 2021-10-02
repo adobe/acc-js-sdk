@@ -29,6 +29,15 @@ const utils = require("./utils.js");
   });
 
   await utils.sample({
+    title: "Display the outbound IP address (can be useful to troubleshoot IP whitelisting issues)",
+    labels: [ "Basics", "IP", "Whitelisting", "403" ],
+    code: async () => {
+      const ip = await sdk.ip();
+      console.log(`>> ${JSON.stringify(ip)}`);
+    }
+  });
+
+  await utils.sample({
     title: "Log on and log off",
     labels: [ "Basics", "connectionParameters", "ofUserAndPassword", "xtk:session", "logon", "logoff" ],
     description: `How to create a "ConnectionParameters" object and logon and logoff to Campaign using a user and password`,

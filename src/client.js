@@ -175,7 +175,8 @@ const clientHandler = {
 class Credentials {
 
     constructor(type, sessionToken, securityToken) {
-        if (type != "UserPassword" && type != "ImsServiceToken" && type != "SessionToken" && type != "AnonymousUser")
+        if (type != "UserPassword" && type != "ImsServiceToken" && type != "SessionToken" && 
+            type != "AnonymousUser" && type != "SecurityToken")
             throw CampaignException.INVALID_CREDENTIALS_TYPE(type);
         this._type = type;
         this._sessionToken = sessionToken || "";
@@ -292,6 +293,23 @@ class ConnectionParameters {
      */
     static ofSessionToken(endpoint, sessionToken, options) {
         const credentials = new Credentials("SessionToken", sessionToken, "");
+        return new ConnectionParameters(endpoint, credentials, options);
+    }
+
+    /**
+     * Creates connection parameters for a Campaign instance, using a security token.
+     * Typically, called when embedding the SDK in Campaign: the session token will be
+     * passed automatically as a cookie, so only the security token is actually needed
+     * to logon
+     * 
+     * @static
+     * @param {string} endpoint The campaign endpoint (URL)
+     * @param {string} securityToken The session token
+     * @param {*} options connection options
+     * @returns {ConnectionParameters} a ConnectionParameters object which can be used to create a Client
+     */
+    static ofSecurityToken(endpoint, securityToken, options) {
+        const credentials = new Credentials("SecurityToken", "", securityToken);
         return new ConnectionParameters(endpoint, credentials, options);
     }
 
@@ -558,15 +576,13 @@ class Client {
             return true;
 
         // with session token authentication, we do not expect a security token
-        const isSessionTokenAuth = credentialsType == "SessionToken";
+        // with security token authentication, we do not expect a session token
+        const needsSecurityToken = credentialsType != "SessionToken";
+        const hasSecurityToken = this._securityToken !== null && this._securityToken !== undefined && this._securityToken !== "";
+        const needsSessionToken = credentialsType != "SecurityToken";
+        const hasSessionToken = this._sessionToken !== null && this._sessionToken !== undefined && this._sessionToken !== "";
 
-        return this._sessionToken !== null && 
-            this._sessionToken !== undefined && 
-            this._sessionToken !== "" &&
-            (isSessionTokenAuth || (
-                this._securityToken !== null && 
-                this._securityToken !== undefined && 
-                this._securityToken !== ""));
+        return (!needsSecurityToken || hasSecurityToken) && (!needsSessionToken || hasSessionToken);
     }
 
     /**
@@ -629,18 +645,24 @@ class Client {
         this.application = null;
         this._sessionToken = "";
         this._securityToken = "";
+        const credentials = this._connectionParameters._credentials;
 
         // Clear session token cookie to ensure we're not inheriting an expired cookie. See NEO-26589
-        if (typeof document != "undefined") {
+        if (credentials._type != "SecurityToken" && typeof document != "undefined") {
             document.cookie = '__sessiontoken=;path=/;'
         }
-
-        const credentials = this._connectionParameters._credentials;
         if (credentials._type == "SessionToken" || credentials._type == "AnonymousUser") {
             that._sessionInfo = undefined;
             that._installedPackages = {};
             that._sessionToken = credentials._sessionToken;
             that._securityToken = "";
+            that.application = new Application(that);
+        }
+        else if (credentials._type == "SecurityToken") {
+            that._sessionInfo = undefined;
+            that._installedPackages = {};
+            that._sessionToken = "";
+            that._securityToken = credentials._securityToken;
             that.application = new Application(that);
         }
         else if (credentials._type == "UserPassword") {

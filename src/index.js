@@ -24,6 +24,32 @@ const pjson = require('../package.json');
 const DomUtil = require('./domUtil.js').DomUtil;
 const XtkCaster = require('./xtkCaster.js').XtkCaster;
 const { Client, Credentials, ConnectionParameters } = require('./client.js');
+const request = require('./transport.js').request;
+
+/**
+ * Get/Set the transport function (defaults to Axios). This function is used for testing / mocking the transport layer.
+ * Called without arguments, it returns the current transport function
+ * Called with an argument, it sets the current transport function and returns the previous one
+ * 
+ * const t = jest.fn();
+ * const old = sdk._transport(t);
+ * try {
+ *   t.mockReturnValueOnce(Promise.resolve(...);
+ *   ... call sdk function which uses the transport layer, for instance ip()
+ * } finally {
+ *   sdk._transport(old);
+ * }
+ */
+
+var transport = request;
+function _transport(t) {
+    if (t) {
+        const old = transport;
+        transport = t;
+        return old;
+    }
+    return transport;
+}
 
 /**
  * @namespace Campaign
@@ -60,6 +86,16 @@ function getSDKVersion() {
         name: pjson.name,
         description: pjson.description
     }
+}
+
+/**
+ * Get the outbound IP address (https://api.db-ip.com/v2/free/self)
+ * Can be useful to troubleshoot IP whitelisting issues
+ */
+ async function ip() {
+    const transport = _transport();
+    const ip = await transport({ url: "https://api.db-ip.com/v2/free/self" });
+    return ip;
 }
 
 /** 
@@ -113,10 +149,12 @@ function escapeXtk(p1, ...p2)
 module.exports = {
     init: init,
     getSDKVersion: getSDKVersion,
+    ip: ip,
     escapeXtk: escapeXtk,
     XtkCaster: XtkCaster,
     DomUtil: DomUtil,
     Credentials: Credentials,
-    ConnectionParameters: ConnectionParameters
+    ConnectionParameters: ConnectionParameters,
+    _transport: _transport
 };
 

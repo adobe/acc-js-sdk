@@ -1877,4 +1877,23 @@ describe('ACC Client', function () {
             expect(calls[0][0].data).toMatch("Logon");
         });
     })
+
+    describe("Security token authentication", () => {
+        // Security token authentication is used when embedding the SDK in Campaign: the session token
+        // is provided by the browser as a cookie. The cookie is not readable by JavaScript code and
+        // should be passed automatically by the browser, not by the SDK
+        it("Should create logged client", async() => {
+            const connectionParameters = sdk.ConnectionParameters.ofSecurityToken("http://acc-sdk:8080", "$security_token$");
+            const client = await sdk.init(connectionParameters);
+            client._transport = jest.fn();
+            expect(client.isLogged()).toBeFalsy();
+            await client.logon();
+            expect(client.isLogged()).toBeTruthy();
+            const logoff = client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
+            await client.logoff();
+            expect(client.isLogged()).toBeFalsy();
+            // Ensure logoff has been called
+            expect(logoff.mock.calls.length).toBe(1);
+        })   
+     })
 });

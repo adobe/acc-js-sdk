@@ -150,14 +150,15 @@ describe('SOAP', function() {
             assert.equal(request.headers["Content-type"], "application/soap+xml");
             assert.equal(request.headers["SoapAction"], "xtk:session#Empty");
             assert.equal(request.headers["X-Security-Token"], "");
-            assert.equal(request.headers["Cookie"], "__sessiontoken=");
+            expect(request.headers["Cookie"]).toBeUndefined();
             const env = DomUtil.parse(request.data).documentElement;
             const header = hasChildElement(env, "SOAP-ENV:Header");
-            hasChildElement(header, "Cookie", "__sessiontoken=");
+            expect(DomUtil.findElement(header, "Cookie")).toBeFalsy();
             hasChildElement(header, "X-Security-Token");
             const body = hasChildElement(env, "SOAP-ENV:Body");
             const method = hasChildElement(body, "m:Empty", undefined, "xmlns:m", "urn:xtk:session", "SOAP-ENV:encodingStyle", "http://schemas.xmlsoap.org/soap/encoding/");
-            hasChildElement(method, "sessiontoken", "", "xsi:type", "xsd:string");
+            // sessiontoken is always required as first parameter, even if not set
+            expect(DomUtil.findElement(method, "sessiontoken")).toBeTruthy();
         });
 
         it('Should have set authentication tokens', function() {

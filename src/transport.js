@@ -52,7 +52,7 @@ if (!Util.isBrowser()) {
 
   const request = (options) => {
     const request = {
-      method: options.method,
+      method: options.method || "GET",
       url: options.url,
       headers: options.headers,
       data: options.data,
