@@ -150,14 +150,20 @@ class SoapMethodCall {
         this._method.setAttribute(`SOAP-ENV:encodingStyle`, encoding);
         this._data.appendChild(this._method);
 
-        const cookieHeader = this._doc.createElement("Cookie");
-        cookieHeader.textContent = `__sessiontoken=${this._sessionToken}`;
-        this._header.appendChild(cookieHeader);
+        if (this._sessionToken) {
+            const cookieHeader = this._doc.createElement("Cookie");
+            cookieHeader.textContent = `__sessiontoken=${this._sessionToken}`;
+            this._header.appendChild(cookieHeader);
+        }
 
         const securityTokenHeader = this._doc.createElement("X-Security-Token");
         securityTokenHeader.textContent = this._securityToken;
         this._header.appendChild(securityTokenHeader);
 
+        // Always write a sessiontoken element as the first parameter. Even when using SecurityToken authentication
+        // and when the session token is actually passed implicitely as a cookie, one must write a sessiontoken
+        // element. If not, authentication will fail because the first parameter is interpreted as the "authentication mode"
+        // and eventually passed as the first parameter of CXtkLocalSessionPart::GetXtkSecurity
         this.writeString("sessiontoken", this._sessionToken);
     }
 
@@ -524,11 +530,12 @@ class SoapMethodCall {
             headers: {
                 'Content-type': 'application/soap+xml',
                 'SoapAction': `${this.urn}#${this.methodName}`,
-                'X-Security-Token': this._securityToken,
-                'Cookie': '__sessiontoken=' + this._sessionToken
+                'X-Security-Token': this._securityToken
             },
             data: DomUtil.toXMLString(this._doc)
         };
+        if (this._sessionToken)
+            options.headers['Cookie'] = '__sessiontoken=' + this._sessionToken;
         if (this._userAgentString)
             options.headers['User-Agent'] = this._userAgentString;
         return options;

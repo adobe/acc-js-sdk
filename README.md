@@ -158,6 +158,35 @@ const connectionParameters = sdk.ConnectionParameters.ofAnonymousUser(url);
 const client = await sdk.init(connectionParameters);
 ```
 
+## Logon with Security token
+
+If you want to use the SDK client-side in a web page returned by Campaign, you cannot use the previous authentication functions because you do not know the user and password, and because you cannot read the session token cookie.
+
+For this scenario, the `ofSecurityToken` function can be used. Pass it a security token (usually available as document.__securitytoken), and the SDK will let the browser handle the session token (cookie) for you.
+
+```html
+    <script src="acc-sdk.js"></script>
+    <script>
+        (async () => {
+            try {
+                const sdk = document.accSDK;
+                var securityToken = "@UyAN...";
+	            const connectionParameters = sdk.ConnectionParameters.ofSecurityToken(url, securityToken);
+                const client = await sdk.init(connectionParameters);
+                await client.logon();
+                const option = await client.getOption("XtkDatabaseId");
+                console.log(option);
+            } catch(ex) {
+                console.error(ex);
+            }
+        })();
+    </script>
+    </body>
+</html>
+```
+
+Note: if the HTML page is served by the Campaign server (which is normally the case in this situation), you can pass an empty url to the `ofSecurityToken` API call.
+
 
 ## LogOn / LogOff
 
