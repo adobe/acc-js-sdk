@@ -6,7 +6,7 @@ This is a node.js SDK for Campaign API. It exposes the Campaign API exactly like
 # Changelog
 
 ## Version 1.0.3
-_2021_09_25_
+_2021/10/06_
 * Added the `sdk.ip()` function to retreive the ouptbound IP to be whitelisted to access Campaign
 * New `ofSecurityToken` authentication method for the client-side SDK, which can be used to log on with a security token only. The session token will be passed automatically by the browser.
 
