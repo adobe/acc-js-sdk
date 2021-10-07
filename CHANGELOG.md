@@ -3,7 +3,13 @@
 This is a node.js SDK for Campaign API. It exposes the Campaign API exactly like it is used inside Campaign using the NLWS notation.
 
 
-# Changelog
+# Changelog 
+
+## Version 1.0.4
+_2021/10/07_
+* Fix a bug which caused XML text and cdata elements to be skipped during SimpleJson transformation
+* Make sure passwords are not logged (replace with "***") when activating traces
+
 
 ## Version 1.0.3
 _2021/10/06_

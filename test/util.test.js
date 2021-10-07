@@ -80,6 +80,10 @@ describe('Util', function() {
             expect(Util.trim({hello:'Lead<sessiontoken xsi:type="xsd:string">Stuff</sessiontoken>Trail'})).toStrictEqual({hello:'Lead<sessiontoken xsi:type="xsd:string">***</sessiontoken>Trail'});
         })
 
+        it("Should remove password", () => {
+            expect(Util.trim({hello:`<sessiontoken xsi:type="xsd:string"/><login xsi:type="xsd:string">admin</login><password xsi:type="xsd:string">password</password><parameters xsi:type="ns:Element" SOAP-ENV:encodingStyle="http://xml.apache.org/xml-soap/literalxml"/>`})).toStrictEqual({hello:`<sessiontoken xsi:type="xsd:string"/><login xsi:type="xsd:string">admin</login><password xsi:type="xsd:string">***</password><parameters xsi:type="ns:Element" SOAP-ENV:encodingStyle="http://xml.apache.org/xml-soap/literalxml"/>`});
+        })
+
     })
 
 });

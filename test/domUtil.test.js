@@ -523,4 +523,27 @@ describe('DomUtil', function() {
         });
     });
 
+    describe("Text and CDATA nodes", () => {
+        it("Should handle cdata node", () => {
+            const xml = DomUtil.parse(`<workflow-collection><workflow id="1840" internalName="cleanup" label="Database cleanup"><desc><![CDATA[Ensure that obsolete data are deleted from the database.]]></desc></workflow></workflow-collection>`);
+            const json = DomUtil.toJSON(xml);
+            expect(json.workflow[0]["$desc"]).toBe("Ensure that obsolete data are deleted from the database.");
+            expect(json.workflow[0]["desc"]).toBeUndefined();
+        });
+
+        it("Should handle text node", () => {
+            const xml = DomUtil.parse(`<workflow-collection><workflow id="1840" internalName="cleanup" label="Database cleanup"><desc>Ensure that obsolete data are deleted from the database.</desc></workflow></workflow-collection>`);
+            const json = DomUtil.toJSON(xml);
+            expect(json.workflow[0]["$desc"]).toBe("Ensure that obsolete data are deleted from the database.");
+            expect(json.workflow[0]["desc"]).toBeUndefined();
+        });
+
+        it("Should handle empty node", () => {
+            const xml = DomUtil.parse(`<workflow-collection><workflow id="1840" internalName="cleanup" label="Database cleanup"><desc/></workflow></workflow-collection>`);
+            const json = DomUtil.toJSON(xml);
+            expect(json.workflow[0]["$desc"]).toBeUndefined();
+            expect(json.workflow[0]["desc"]).toStrictEqual({});
+        });
+    });
+
 });
