@@ -377,6 +377,15 @@ class DomUtil {
         return doc;
     }
 
+    static _getTextIfTextNode(xml) {
+        const child = xml.firstChild;
+        if (!child) return null;                   // no children
+        if (child.nextSibling) return null;        // more than 1 child
+        if (child.nodeType !== 3 && child.nodeType !== 4) return null;
+        const text = child.nodeValue;
+        return text;
+    }
+
     /**
      * Internal recursive method to convert an XML element to a object literal (JSON)
      * This function does not return anything. Instead it creates children elements in the passed 'json' object
@@ -408,16 +417,32 @@ class DomUtil {
             if (isArray && !Util.isArray(json[childName]))
                 json[childName] = [ json[childName] ];
             if (child.nodeType == 1) {  // element
-                const jsonChild = flavor == "BadgerFish" ? new BadgerFishObject() : {};
-                this._toJSON(child, jsonChild, flavor);
-                if (isArray) 
-                    json[childName].push(jsonChild);
-                else
-                    json[childName] = jsonChild;
+                // In SimpleJson representation, ensure we have proper transformation
+                // of text and CDATA nodes. For instance, the following
+                //  <workflow><desc>Hello</desc></workflow>
+                // should be transformed into { "$desc": "Hello" }
+                // Note that an empty element such as
+                //  <workflow><desc></desc></workflow>
+                // will be transformed into { "desc": {} }
+                // because there is an ambiguity and, unless we have information
+                // from the schema, we cannot know if <desc></desc> should be
+                // transformed into "$desc": "" or into "desc": {}
+                const text = this._getTextIfTextNode(child);
+                if (text !== null && flavor == "SimpleJson") {
+                    json[`$${childName}`] = text;
+                }
+                else {
+                    const jsonChild = flavor == "BadgerFish" ? new BadgerFishObject() : {};
+                    this._toJSON(child, jsonChild, flavor);
+                    if (isArray) 
+                        json[childName].push(jsonChild);
+                    else
+                        json[childName] = jsonChild;
+                }
             }
             else if (child.nodeType === 3 || child.nodeType === 4) { // text and CDATA
                 if (flavor == "BadgerFish") {
-                    var text = child.nodeValue;
+                    const text = child.nodeValue;
                     if (json["$"] === undefined)
                         json["$"] = text;
                     else 
@@ -442,9 +467,9 @@ class DomUtil {
             throw new DomException(`Invalid JSON flavor '${flavor}'. Should be 'SimpleJson' or 'BadgerFish'`);
         if (xml.nodeType == 9)
             xml = xml.documentElement;
-        var json = flavor == "BadgerFish" ? new BadgerFishObject() : {};
-        this._toJSON(xml, json, flavor);
-        return json;
+            var json = flavor == "BadgerFish" ? new BadgerFishObject() : {};
+            this._toJSON(xml, json, flavor);
+            return json;
     }
 
 }
