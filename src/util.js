@@ -92,6 +92,7 @@ class Util {
           text = this._removeBetween(text, '<sessiontoken xsi:type="xsd:string">', '</sessiontoken>');
           text = this._removeBetween(text, "<pstrSessionToken xsi:type='xsd:string'>", "</pstrSessionToken>");
           text = this._removeBetween(text, "<pstrSecurityToken xsi:type='xsd:string'>", "</pstrSecurityToken>");
+          text = this._removeBetween(text, '<password xsi:type="xsd:string">', '</password>');
         }
         return text;
       }
