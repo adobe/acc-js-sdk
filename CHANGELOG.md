@@ -10,7 +10,6 @@ _2021/10/07_
 * Fix a bug which caused XML text and cdata elements to be skipped during SimpleJson transformation
 * Make sure passwords are not logged (replace with "***") when activating traces
 
-
 ## Version 1.0.3
 _2021/10/06_
 * Added the `sdk.ip()` function to retreive the ouptbound IP to be whitelisted to access Campaign
