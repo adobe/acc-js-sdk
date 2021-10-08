@@ -5,6 +5,10 @@ This is a node.js SDK for Campaign API. It exposes the Campaign API exactly like
 
 # Changelog 
 
+## Version 1.0.5
+_2021/10/08_
+* Fix an issue in the logon() function which was not always returning a promise. Some authentication methods such as SessionToken we returning synchronously. Made it so that logon always returns a promise. This should not be a breaking change as logon does not actually return a value
+
 ## Version 1.0.4
 _2021/10/07_
 * Fix a bug which caused XML text and cdata elements to be skipped during SimpleJson transformation

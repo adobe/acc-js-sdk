@@ -657,6 +657,7 @@ class Client {
             that._sessionToken = credentials._sessionToken;
             that._securityToken = "";
             that.application = new Application(that);
+            return Promise.resolve();
         }
         else if (credentials._type == "SecurityToken") {
             that._sessionInfo = undefined;
@@ -664,6 +665,7 @@ class Client {
             that._sessionToken = "";
             that._securityToken = credentials._securityToken;
             that.application = new Application(that);
+            return Promise.resolve();
         }
         else if (credentials._type == "UserPassword") {
             const user = credentials._getUser();
@@ -994,7 +996,7 @@ class Client {
             var param = DomUtil.getFirstChildElement(params, "param");
             var paramIndex = 0;
             while (param) {
-                const inout = DomUtil.getAttributeAsString(param, "inout");
+                   const inout = DomUtil.getAttributeAsString(param, "inout");
                 if (!inout || inout=="in") {
                     const type = DomUtil.getAttributeAsString(param, "type");
                     const paramName = DomUtil.getAttributeAsString(param, "name");
@@ -1266,7 +1268,6 @@ class Client {
         const result = this.toRepresentation(doc);
         return result;
     }
-
 }
 
 

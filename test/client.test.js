@@ -1896,4 +1896,57 @@ describe('ACC Client', function () {
             expect(logoff.mock.calls.length).toBe(1);
         })   
      })
+
+    describe("Logon should always return a promise", () => {
+
+        it("Should return a promise with UserPassword", async () => {
+            const connectionParameters = sdk.ConnectionParameters.ofUserAndPassword("http://acc-sdk:8080", "$user$", "$password$");
+            const client = await sdk.init(connectionParameters);
+            client._transport = jest.fn();
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            const result = client.logon();
+            expect(result instanceof Promise).toBe(true);
+            await result;
+        })
+
+        it("Should return a promise with UserAndServiceToken", async () => {
+            const connectionParameters = sdk.ConnectionParameters.ofUserAndServiceToken("http://acc-sdk:8080", "$user$", "$service_token$");
+            const client = await sdk.init(connectionParameters);
+            client._transport = jest.fn();
+            const result = client.logon();
+            expect(result instanceof Promise).toBe(true);
+            try {
+                await result;
+            } catch(ex) { /* result or exception is not handled */ }
+        })
+
+        it("Should return a promise with SessionToken", async () => {
+            const connectionParameters = sdk.ConnectionParameters.ofSessionToken("http://acc-sdk:8080", "$session_token$");
+            const client = await sdk.init(connectionParameters);
+            client._transport = jest.fn();
+            const result = client.logon();
+            expect(result instanceof Promise).toBe(true);
+            await result;
+        })
+
+        it("Should return a promise with SecurityToken", async () => {
+            const connectionParameters = sdk.ConnectionParameters.ofSecurityToken("http://acc-sdk:8080", "$security_token$");
+            const client = await sdk.init(connectionParameters);
+            client._transport = jest.fn();
+            const result = client.logon();
+            expect(result instanceof Promise).toBe(true);
+            await result;
+        })
+
+        it("Should return a promise with AnonymousUser", async () => {
+            const connectionParameters = sdk.ConnectionParameters.ofAnonymousUser("http://acc-sdk:8080");
+            const client = await sdk.init(connectionParameters);
+            client._transport = jest.fn();
+            const result = client.logon();
+            expect(result instanceof Promise).toBe(true);
+            await result;
+        })
+    })
+
+
 });
