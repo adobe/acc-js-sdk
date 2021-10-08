@@ -11,6 +11,7 @@ OF ANY KIND, either express or implied. See the License for the specific languag
 governing permissions and limitations under the License.
 */
 const DomUtil = require('./domUtil.js').DomUtil;
+const { Cache } = require('./util.js');
 
 
 /**********************************************************************************
@@ -19,14 +20,10 @@ const DomUtil = require('./domUtil.js').DomUtil;
  * 
  *********************************************************************************/
 
-function entityKey(entityType, entityFullName) {
-    return entityType + "|" + entityFullName;
-}
- 
-class XtkEntityCache {
+class XtkEntityCache extends Cache {
     
-    constructor() {
-        this.cache = {}
+    constructor(ttl) {
+        super(ttl, (entityType, entityFullName) => entityType + "|" + entityFullName);
     }
 
     /**
@@ -36,9 +33,7 @@ class XtkEntityCache {
      * @returns {*} the cached entity, or undefined if not found
      */
     get(entityType, entityFullName) {
-        const key = entityKey(entityType, entityFullName);
-        var entity = this.cache[key]
-        return entity;
+        return super.get(entityType, entityFullName);
     }
 
     /**
@@ -48,29 +43,18 @@ class XtkEntityCache {
      * @param {*} entity is the entity
      */
     put(entityType, entityFullName, entity) {
-        var key = entityKey(entityType, entityFullName);
-        this.cache[key] = entity;
-
+        super.put(entityType, entityFullName, entity);
         // For schemas, cache interfaces
         if (entityType == "xtk:schema") {
             const namespace = entity.getAttribute("namespace");
             var interfaceElement = DomUtil.getFirstChildElement(entity, "interface");
             while (interfaceElement) {
                 const name = `${namespace}:${interfaceElement.getAttribute("name")}`;
-                const key = entityKey(entityType, name);
-                this.cache[key] = interfaceElement;
+                super.put(entityType, name, interfaceElement);
                 interfaceElement = DomUtil.getNextSiblingElement(interfaceElement, "interface");
             }
         }
     }
-
-    /**
-     * Clears the cache
-     */
-    clear() {
-        this.cache = {};
-    }
-
 }
 
 

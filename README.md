@@ -14,6 +14,11 @@ See the [Change log](./CHANGELOG.md) for more information about the different ve
 
 The API is fully asynchronous using promises and works as well on the server side than on the client side in the browser.
 
+Install
+```js
+npm install --save @adobe/acc-js-sdk
+```
+
 The SDK entrypoint is the `sdk` object from which everything else can be created.
 
 ```js

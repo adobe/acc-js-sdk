@@ -1949,4 +1949,75 @@ describe('ACC Client', function () {
     })
 
 
+    describe("Should simulate server down", () => {
+        it("Should simulate server down and up again", async () => {
+            // Server is up and getOption
+            const client = await Mock.makeClient();
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+            client._transport.mockReturnValueOnce(Mock.GET_DATABASEID_RESPONSE);
+            var databaseId = await client.getOption("XtkDatabaseId", false);
+            expect(databaseId).toBe("uFE80000000000000F1FA913DD7CC7C480041161C");
+
+            // Now simulate a connection error (server is down)
+            const error = new Error("connect ECONNREFUSED 3.225.73.178:8080");
+            error.code="ECONNREFUSED";
+            error.errno="ECONNREFUSED";
+            client._transport.mockReturnValueOnce(Promise.reject(error));
+            await expect(client.getOption("XtkDatabaseId", false)).rejects.toMatchObject({
+                message: "500 - Error calling method 'xtk:session#GetOption': Error (connect ECONNREFUSED 3.225.73.178:8080)"
+            });
+
+            // Server is back up again
+            client._transport.mockReturnValueOnce(Mock.GET_DATABASEID_RESPONSE);
+            databaseId = await client.getOption("XtkDatabaseId", false);
+            expect(databaseId).toBe("uFE80000000000000F1FA913DD7CC7C480041161C")
+        });
+    })
+
+    describe("Connection options", () => {
+        it("Should set options cache TTL", async () => {
+           const client = await Mock.makeClient({ optionCacheTTL: -1 });
+           client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+           client._transport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
+           await client.NLWS.xtkSession.logon();
+           // Get Option and cache result. Check the value is in cache
+           client._transport.mockReturnValueOnce(Mock.GET_DATABASEID_RESPONSE);
+           await client.getOption("XtkDatabaseId", true);
+           expect(client._optionCache._cache["XtkDatabaseId"].value).toMatchObject({ type: 6, rawValue: "uFE80000000000000F1FA913DD7CC7C480041161C" });
+           // Get it again, it should not use the cache (=> it should make a SOAP call)
+           // To test if the SOAP call is made, we mock the SOAP call answer with a different result
+           client._transport.mockReturnValueOnce(Promise.resolve(`<?xml version='1.0'?>
+                    <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:xtk:session' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
+                    <SOAP-ENV:Body>
+                        <GetOptionResponse xmlns='urn:xtk:session' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
+                            <pstrValue xsi:type='xsd:string'>uFE80000000000000F1FA913DD7CC7C48004116FF</pstrValue>
+                            <pbtType xsi:type='xsd:byte'>6</pbtType>
+                        </GetOptionResponse>
+                    </SOAP-ENV:Body>
+                    </SOAP-ENV:Envelope>`));
+            await client.getOption("XtkDatabaseId", true);
+            expect(client._optionCache._cache["XtkDatabaseId"].value).toMatchObject({ type: 6, rawValue: "uFE80000000000000F1FA913DD7CC7C48004116FF" });
+        })
+
+        it("Should set default value for traceAPICalls", async () => {
+            var client = await Mock.makeClient({ traceAPICalls: undefined });
+            expect(client._traceAPICalls).toBeFalsy();
+            client = await Mock.makeClient({ traceAPICalls: null });
+            expect(client._traceAPICalls).toBeFalsy();
+            client = await Mock.makeClient({ traceAPICalls: false });
+            expect(client._traceAPICalls).toBeFalsy();
+            client = await Mock.makeClient({ traceAPICalls: true });
+            expect(client._traceAPICalls).toBeTruthy();
+        })
+
+        it("Should set default transport", async () => {
+            var client = await Mock.makeClient({ transport: async () => {
+                return "Hello";
+            }});
+            await expect(client._transport()).resolves.toBe("Hello");
+        });
+    })
+
 });
