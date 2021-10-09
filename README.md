@@ -1443,6 +1443,12 @@ To build this project, you need node and npm
 npm install
 ```
 
+## Check and resolve any security issues
+```sh
+npm audit
+npm audit fix --force
+```
+
 ## Check if there are any code warnings
 ```sh
 node_modules/jshint/bin/jshint src/
