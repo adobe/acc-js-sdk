@@ -91,12 +91,17 @@ class DomException {
 
 
 /**
- * Helpers for common manipulation of DOM documents
  * @memberof XML
  * @class
  * @constructor
  */
 class DomUtil {
+
+    /**
+     * Helpers for common manipulation of DOM documents. Al functions are static, it is not necessary to create new instances of this object
+     */
+    constructor() {
+    }
     
     /**
      * Parse an XML string as a DOM Document

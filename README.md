@@ -1462,6 +1462,7 @@ npm run unit-tests
 ## Build JavaScript documentation
 ```sh
 npm run jsdoc
+open ./docs/jsdoc/index.html
 ```
 
 The HTML doc will be generated in the docs/ folder

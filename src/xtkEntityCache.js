@@ -22,9 +22,23 @@ const { Cache } = require('./util.js');
  * 
  *********************************************************************************/
 
+/**
+ * @private
+ * @class
+ * @constructor
+ * @memberof Campaign
+ */
 class XtkEntityCache extends Cache {
     
-    constructor(storage, rootKey, ttl) {
+    /**
+     * A in-memory cache for xtk entities. Not intended to be used directly,
+     * but an internal cache for the Campaign.Client object
+     * 
+     * @param {Storage} storage is an optional Storage object, such as localStorage or sessionStorage
+     * @param {string} rootKey is an optional root key to use for the storage object
+     * @param {number} ttl is the TTL for objects in ms. Defaults to 5 mins
+     */
+     constructor(storage, rootKey, ttl) {
         super(storage, rootKey, ttl, (entityType, entityFullName) => entityType + "|" + entityFullName);
     }
 

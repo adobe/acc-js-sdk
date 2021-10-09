@@ -659,8 +659,6 @@ function newCurrentLogin(userInfo) {
 // ========================================================================================
 
 /**
- * The Application object provides access to certain properties of the Campaign server.
- * 
  * @class
  * @constructor
  * @param {Campaign.Client} client The Campaign Client from which this Application object is created
@@ -668,6 +666,12 @@ function newCurrentLogin(userInfo) {
  */
 class Application {
 
+    /**
+     * The Application object provides access to certain properties of the Campaign server.
+     * Do not create this object directly, it's automatically created by the Campaign.Client at Logon time
+     * @private
+     * @param {Campaign.Client} client the Campaign client representing the Campaign instance
+     */
     constructor(client) {
         this.client = client;
         const info = this.client.getSessionInfo();

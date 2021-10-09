@@ -19,18 +19,8 @@ const { Util } = require("./util.js");
  */
 
 /**
- * Represents a Campaign exception, i.e. any kind of error that can happen when calling Campaign APIs, 
- * ranging from HTTP errors, XML serialization errors, SOAP errors, authentication errors, etc.
- * 
- * @todo does not really belong to soap.js. Move it to a better place
  * @class
  * @constructor
- * @param {SoapMethodCall|request} call the call that triggered the error. It can be a SoapMethodCall object, a HTTP request object, or even be undefined if the exception is generated outside of the context of a call
- * @param {number} statusCode the HTTP status code (200, 500, etc.)
- * @param {string} faultCode the fault code, i.e. an error code
- * @param {string} faultString a short description of the error
- * @param {string} detail a more detailed description of the error
- * @param {*} cause an optional error object representing the cause of the exception
  * @memberof Campaign
  */
  class CampaignException {
@@ -48,10 +38,28 @@ const { Util } = require("./util.js");
   static NOT_LOGGED_IN(call, details)                     { return new CampaignException(     call, 400, 16384, `SDK-000010 Cannot call API because client is not logged in`, details); }
   static DECRYPT_ERROR(details)                           { return new CampaignException(undefined, 400, 16384, `SDK-000011 "Cannot decrypt password: password marker is missing`, details); }
   
+
+  /**
+   * Returns a short description of the exception
+   * @returns {string} a short description of the exception
+   */
   toString() {
       return this.message;
   }
 
+  /**
+   * Represents a Campaign exception, i.e. any kind of error that can happen when calling Campaign APIs, 
+   * ranging from HTTP errors, XML serialization errors, SOAP errors, authentication errors, etc.
+   * 
+   * Members of this object are trimmed, and all session tokens, security tokens, passwords, etc. are replaced by "***"
+   * 
+   * @param {SoapMethodCall|request} call the call that triggered the error. It can be a SoapMethodCall object, a HTTP request object, or even be undefined if the exception is generated outside of the context of a call
+   * @param {number} statusCode the HTTP status code (200, 500, etc.)
+   * @param {string} faultCode the fault code, i.e. an error code
+   * @param {string} faultString a short description of the error
+   * @param {string} detail a more detailed description of the error
+   * @param {Error|string} cause an optional error object representing the cause of the exception
+   */  
   constructor(call, statusCode, faultCode, faultString, detail, cause) {
 
       // Provides a shorter and more friendly description of the call and method name
@@ -190,6 +198,7 @@ const { Util } = require("./util.js");
 
 /**
  * Creates a CampaignException for a SOAP call and from a root exception
+ * 
  * @private
  * @param {SoapMethodCall} call the SOAP call
  * @param {*} err the exception causing the SOAP call.

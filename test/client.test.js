@@ -1193,13 +1193,13 @@ describe('ACC Client', function () {
 
         it("from default representation", async () => {
             const client = await Mock.makeClient();
-            var xml = DomUtil.toXMLString(client.fromRepresentation("root", {}));
+            var xml = DomUtil.toXMLString(client._fromRepresentation("root", {}));
             expect(xml).toBe("<root/>");
         })
 
         it("from SimpleJson representation", async () => {
             const client = await Mock.makeClient();
-            var xml = DomUtil.toXMLString(client.fromRepresentation("root", {}, "SimpleJson"));
+            var xml = DomUtil.toXMLString(client._fromRepresentation("root", {}, "SimpleJson"));
             expect(xml).toBe("<root/>");
         })
 
@@ -1208,14 +1208,14 @@ describe('ACC Client', function () {
             it("Should convert from BadgerFish to BadgerFish", async () => {
                 const client = await Mock.makeClient();
                 var from = { "@id": "1", "child": {} };
-                var to = client.convertToRepresentation(from, "BadgerFish", "BadgerFish");
+                var to = client._convertToRepresentation(from, "BadgerFish", "BadgerFish");
                 expect(to).toStrictEqual(from);
             })
 
             it("Should convert from BadgerFish to SimpleJson", async () => {
                 const client = await Mock.makeClient();
                 var from = { "@id": "1", "child": {} };
-                var to = client.convertToRepresentation(from, "BadgerFish", "SimpleJson");
+                var to = client._convertToRepresentation(from, "BadgerFish", "SimpleJson");
                 expect(to).toStrictEqual({ id: "1", child: {} });
             })
 
@@ -1224,20 +1224,20 @@ describe('ACC Client', function () {
 
         it("Compare representations", async () => {
             const client = await Mock.makeClient();
-            expect(() => { client.isSameRepresentation("json", "json") }).toThrow("SDK-000004");
-            expect(() => { client.isSameRepresentation("json", "BadgerFish") }).toThrow("SDK-000004");
-            expect(() => { client.isSameRepresentation("BadgerFish", "json") }).toThrow("SDK-000004");
-            expect(client.isSameRepresentation("SimpleJson", "SimpleJson")).toBeTruthy();
-            expect(client.isSameRepresentation("BadgerFish", "SimpleJson")).toBeFalsy();
-            expect(client.isSameRepresentation("SimpleJson", "BadgerFish")).toBeFalsy();
-            expect(client.isSameRepresentation("xml", "BadgerFish")).toBeFalsy();
-            expect(client.isSameRepresentation("SimpleJson", "xml")).toBeFalsy();
-            expect(() => { client.isSameRepresentation("Xml", "Xml") }).toThrow("SDK-000004");
-            expect(() => { client.isSameRepresentation("xml", "Xml") }).toThrow("SDK-000004");
-            expect(() => { client.isSameRepresentation("Xml", "xml") }).toThrow("SDK-000004");
-            expect(() => { client.isSameRepresentation("", "xml") }).toThrow("SDK-000004");
-            expect(() => { client.isSameRepresentation("xml", "") }).toThrow("SDK-000004");
-            expect(() => { client.isSameRepresentation("xml", null) }).toThrow("SDK-000004");
+            expect(() => { client._isSameRepresentation("json", "json") }).toThrow("SDK-000004");
+            expect(() => { client._isSameRepresentation("json", "BadgerFish") }).toThrow("SDK-000004");
+            expect(() => { client._isSameRepresentation("BadgerFish", "json") }).toThrow("SDK-000004");
+            expect(client._isSameRepresentation("SimpleJson", "SimpleJson")).toBeTruthy();
+            expect(client._isSameRepresentation("BadgerFish", "SimpleJson")).toBeFalsy();
+            expect(client._isSameRepresentation("SimpleJson", "BadgerFish")).toBeFalsy();
+            expect(client._isSameRepresentation("xml", "BadgerFish")).toBeFalsy();
+            expect(client._isSameRepresentation("SimpleJson", "xml")).toBeFalsy();
+            expect(() => { client._isSameRepresentation("Xml", "Xml") }).toThrow("SDK-000004");
+            expect(() => { client._isSameRepresentation("xml", "Xml") }).toThrow("SDK-000004");
+            expect(() => { client._isSameRepresentation("Xml", "xml") }).toThrow("SDK-000004");
+            expect(() => { client._isSameRepresentation("", "xml") }).toThrow("SDK-000004");
+            expect(() => { client._isSameRepresentation("xml", "") }).toThrow("SDK-000004");
+            expect(() => { client._isSameRepresentation("xml", null) }).toThrow("SDK-000004");
         })
     });
 
@@ -1310,7 +1310,7 @@ describe('ACC Client', function () {
 
     it("User agent string", async () => {
         const client = await Mock.makeClient();
-        const ua = client.getUserAgentString();
+        const ua = client._getUserAgentString();
         expect(ua.startsWith("@adobe/acc-js-sdk/")).toBeTruthy();
         expect(ua.endsWith(" ACC Javascript SDK")).toBeTruthy();
     })

@@ -14,6 +14,7 @@ _2021/10/09_
 * Make sure X-Security-Token header is hidden as well as session token cookies
 * Added jshint configuration and fixed warnings reported by jshint
 * Fixed vulnerability in ansi-regex; upgrade jest-junit to version 13 to fix
+* Small jsdoc improvements
 
 ## Version 1.0.4
 _2021/10/07_

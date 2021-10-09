@@ -161,20 +161,21 @@ const clientHandler = {
 // Campaign credentials
 // ========================================================================================
 
-/**
- * Credentials to a Campaign instance. Encapsulates the various types of credentials.
- * Do not create directly, use one of the methods in ConnectionParameters
- * 
+/** 
  * @class
  * @constructor
  * @private
- * @param {string} type the credentials type. Supported types are "UserPassword" and "ImsServiceToken" and "SessionToken" and "AnonymousUser"
- * @param {string} sessionToken the session token. It's exact form depends on the credentials type. For instance it can be "user/passord" for the "UserPassword" credentials type
- * @param {string} securityToken the security token. Will use an empty token if not specified
  * @memberof Campaign
  */
 class Credentials {
 
+    /**
+     * Credentials to a Campaign instance. Encapsulates the various types of credentials.
+     * Do not create directly, use one of the methods in ConnectionParameters
+     * @param {string} type the credentials type. Supported types are "UserPassword" and "ImsServiceToken" and "SessionToken" and "AnonymousUser"
+     * @param {string} sessionToken the session token. It's exact form depends on the credentials type. For instance it can be "user/passord" for the "UserPassword" credentials type
+     * @param {string} securityToken the security token. Will use an empty token if not specified
+     */
     constructor(type, sessionToken, securityToken) {
         if (type != "UserPassword" && type != "ImsServiceToken" && type != "SessionToken" && 
             type != "AnonymousUser" && type != "SecurityToken")
@@ -219,18 +220,34 @@ class Credentials {
 // ========================================================================================
 
 /**
- * Creates a connection parameters object which can be used to create a Client object
- * to connect to a Campaign instance
- * 
+ * @typedef {Object} ConnectionOptions
+ * @property {string} representation - the representation to use, i.e. "SimpleJson" (the default), "BadgerFish", or "xml"
+ * @property {boolean} rememberMe - The Campaign `rememberMe` attribute which can be used to extend the lifetime of session tokens
+ * @property {number} entityCacheTTL - The TTL (in milliseconds) after which cached XTK entities expire. Defaults to 5 minutes
+ * @property {number} methodCacheTTL - The TTL (in milliseconds) after which cached XTK methods expire. Defaults to 5 minutes
+ * @property {number} optionCacheTTL - The TTL (in milliseconds) after which cached XTK options expire. Defaults to 5 minutes
+ * @property {boolean} traceAPICalls - Activates the tracing of all API calls
+ * @property {Utils.Transport} transport - Overrides the transport (i.e. HTTP layer)
+ * @property {boolean} noStorage - De-activate using of local storage. By default, and in addition to in-memory cache, entities, methods, and options are also persisted in local storage if there is one.
+ * @property {Storage} storage - Overrides the storage interface (i.e. LocalStorage)
+ * @memberOf Campaign
+ */
+ 
+
+/**
  * @class
  * @constructor
- * @param {string} endpoint The campaign endpoint (URL)
- * @param {Credentials} credentials The credentials for the connection
- * @param {*} options connection options. Currently only contains a "representation" attribute which controls what type of entities (xml or json) the SDK handles
  * @memberof Campaign
  */
 class ConnectionParameters {
-    
+
+    /**
+     * Creates a connection parameters object which can be used to create a Client object
+     * to connect to a Campaign instance
+     * @param {string} endpoint The campaign endpoint (URL)
+     * @param {Campaign.Credentials} credentials The credentials for the connection
+     * @param {Campaign.ConnectionOptions} options connection options
+     */
     constructor(endpoint, credentials, options) {
         // this._options will be populated with the data from "options" and with
         // default values. But the "options" parameter will not be modified
@@ -283,7 +300,7 @@ class ConnectionParameters {
      * @param {string} endpoint The campaign endpoint (URL)
      * @param {string} user The user name
      * @param {string} password The user password
-     * @param {*} options connection options
+     * @param {Campaign.ConnectionOptions} options connection options
      * @returns {ConnectionParameters} a ConnectionParameters object which can be used to create a Client
      */
     static ofUserAndPassword(endpoint, user, password, options) {
@@ -297,7 +314,7 @@ class ConnectionParameters {
      * @param {string} endpoint The campaign endpoint (URL)
      * @param {string} user The user name
      * @param {string} serviceToken The IMS service token
-     * @param {*} options connection options
+     * @param {Campaign.ConnectionOptions} options connection options
      * @returns {ConnectionParameters} a ConnectionParameters object which can be used to create a Client
      */
     static ofUserAndServiceToken(endpoint, user, serviceToken, options) {
@@ -311,7 +328,7 @@ class ConnectionParameters {
      * @static
      * @param {string} endpoint The campaign endpoint (URL)
      * @param {string} sessionToken The session token
-     * @param {*} options connection options
+     * @param {Campaign.ConnectionOptions} options connection options
      * @returns {ConnectionParameters} a ConnectionParameters object which can be used to create a Client
      */
     static ofSessionToken(endpoint, sessionToken, options) {
@@ -328,7 +345,7 @@ class ConnectionParameters {
      * @static
      * @param {string} endpoint The campaign endpoint (URL)
      * @param {string} securityToken The session token
-     * @param {*} options connection options
+     * @param {Campaign.ConnectionOptions} options connection options
      * @returns {ConnectionParameters} a ConnectionParameters object which can be used to create a Client
      */
     static ofSecurityToken(endpoint, securityToken, options) {
@@ -340,7 +357,7 @@ class ConnectionParameters {
      * Creates connection parameters for a Campaign instance for an anonymous user
      * 
      * @param {string} endpoint The campaign endpoint (URL)
-     * @param {*} options connection options
+     * @param {Campaign.ConnectionOptions} options connection options
      * @returns {ConnectionParameters} a ConnectionParameters object which can be used to create a Client
      */
     static ofAnonymousUser(endpoint, options) {
@@ -381,7 +398,7 @@ class ConnectionParameters {
             }
         };
         // Convert to current representation
-        queryDef = client.convertToRepresentation(queryDef, "SimpleJson");
+        queryDef = client._convertToRepresentation(queryDef, "SimpleJson");
         const query = client.NLWS.xtkQueryDef.create(queryDef);
         const extAccount = await query.executeQuery();
 
@@ -404,18 +421,20 @@ class ConnectionParameters {
 // ========================================================================================
 
 /**
- * ACC API Client.
- * Do not create directly, use SDK.init instead
- * 
  * @private
  * @class
  * @constructor
- * @param {Campaign.SDK} sdk is the global sdk object used to create the client
- * @param {Campaign.ConnectionParameters} user user name, for instance admin
  * @memberof Campaign
  */
 class Client {
-    
+
+    /**
+     * ACC API Client.
+     * Do not create directly, use SDK.init instead
+     * 
+     * @param {Campaign.SDK} sdk is the global sdk object used to create the client
+     * @param {Campaign.ConnectionParameters} user user name, for instance admin
+     */
     constructor(sdk, connectionParameters) {
         this.sdk = sdk;
         this._connectionParameters = connectionParameters; // ## TODO security concern (password kept in memory)
@@ -477,7 +496,7 @@ class Client {
      * 
      * @returns {string} the user agent string
      */
-    getUserAgentString() {
+    _getUserAgentString() {
         const version = this.sdk.getSDKVersion();
         return `${version.name}/${version.version} ${version.description}`;
     }
@@ -490,7 +509,7 @@ class Client {
      * @param {string} representation the expected representation ('xml', 'BadgerFish', or 'SimpleJson'). If not set, will use the current representation
      * @returns {XML.XtkObject} the object converted in the requested representation
      */
-    toRepresentation(xml, representation) {
+    _toRepresentation(xml, representation) {
         representation = representation || this._representation;
         if (representation == "xml")
             return xml;
@@ -508,7 +527,7 @@ class Client {
      * @param {string} representation the expected representation ('xml', 'BadgerFish', or 'SimpleJson'). If not set, will use the current representation
      * @returns {DOMElement} the object converted to XML
      */
-    fromRepresentation(rootName, entity, representation) {
+    _fromRepresentation(rootName, entity, representation) {
         representation = representation || this._representation;
         if (representation == "xml")
             return entity;
@@ -528,12 +547,12 @@ class Client {
      * @param {string} toRepresentation the target representation ('xml', 'BadgerFish', or 'SimpleJson'). If not set, will use the current representation
      * @returns {DOMElement} the converted object
      */
-    convertToRepresentation(entity, fromRepresentation, toRepresentation) {
+    _convertToRepresentation(entity, fromRepresentation, toRepresentation) {
         toRepresentation = toRepresentation || this._representation;
-        if (this.isSameRepresentation(fromRepresentation, toRepresentation))
+        if (this._isSameRepresentation(fromRepresentation, toRepresentation))
             return entity;
-        var xml = this.fromRepresentation("root", entity, fromRepresentation);
-        entity = this.toRepresentation(xml, toRepresentation);
+        var xml = this._fromRepresentation("root", entity, fromRepresentation);
+        entity = this._toRepresentation(xml, toRepresentation);
         return entity;
     }
 
@@ -545,7 +564,7 @@ class Client {
      * @param {string} rep2 the second representation ('xml', 'BadgerFish', or 'SimpleJson')
      * @returns a boolean indicating if the 2 representations are the same or not
      */
-    isSameRepresentation(rep1, rep2) {
+    _isSameRepresentation(rep1, rep2) {
         if (!rep1 || !rep2) throw CampaignException.INVALID_REPRESENTATION(undefined, "Cannot compare to undefined representation");
         if (rep1 != "xml" && rep1 != "SimpleJson" && rep1 != "BadgerFish") throw CampaignException.INVALID_REPRESENTATION(rep1, "Cannot compare to invalid representation");
         if (rep2 != "xml" && rep2 != "SimpleJson" && rep2 != "BadgerFish") throw CampaignException.INVALID_REPRESENTATION(rep2, "Cannot compare to invalid representation");
@@ -624,20 +643,20 @@ class Client {
      * @return {SOAP.SoapMethodCall} a SoapMethodCall which have been initialized with security tokens... and to which the method
      * parameters should be set
      */
-    prepareSoapCall(urn, method, internal) {
-        const soapCall = new SoapMethodCall(this._transport, urn, method, this._sessionToken, this._securityToken, this.getUserAgentString());
+    _prepareSoapCall(urn, method, internal) {
+        const soapCall = new SoapMethodCall(this._transport, urn, method, this._sessionToken, this._securityToken, this._getUserAgentString());
         soapCall.internal = !!internal;
         return soapCall;
     }
 
     /**
-     * After a SOAP method call has been prepared with 'prepareSoapCall', and parameters have been added,
+     * After a SOAP method call has been prepared with '_prepareSoapCall', and parameters have been added,
      * this function actually executes the SOAP call
      * 
      * @private
      * @param {SOAP.SoapMethodCall} soapCall the SOAP method to call
      */
-    makeSoapCall(soapCall) {
+    _makeSoapCall(soapCall) {
         const that = this;
         if (soapCall.requiresLogon() && !that.isLogged())
             throw CampaignException.NOT_LOGGED_IN(soapCall, `Cannot execute SOAP call ${soapCall.urn}#${soapCall.methodName}: you are not logged in. Use the Logon function first`);
@@ -701,7 +720,7 @@ class Client {
             const user = credentials._getUser();
             const password = credentials._getPassword();
 
-            const soapCall = this.prepareSoapCall("xtk:session", "Logon");
+            const soapCall = this._prepareSoapCall("xtk:session", "Logon");
             soapCall.writeString("login", user);
             soapCall.writeString("password", password);
             var parameters = null;
@@ -711,7 +730,7 @@ class Client {
             }
             soapCall.writeElement("parameters", parameters);
             
-            return this.makeSoapCall(soapCall).then(function() {
+            return this._makeSoapCall(soapCall).then(function() {
                 const sessionToken = soapCall.getNextString();
                 
                 that._sessionInfo = soapCall.getNextDocument();
@@ -754,7 +773,7 @@ class Client {
      */
     getSessionInfo(representation) {
         representation = representation || this._representation;
-        return this.toRepresentation(this._sessionInfo, representation);
+        return this._toRepresentation(this._sessionInfo, representation);
     }
 
     /**
@@ -766,8 +785,8 @@ class Client {
         
         const credentials = this._connectionParameters._credentials;
         if (credentials._type != "SessionToken" && credentials._type != "AnonymousUser") {
-            var soapCall = that.prepareSoapCall("xtk:session", "Logoff");
-                return this.makeSoapCall(soapCall).then(function() {
+            var soapCall = that._prepareSoapCall("xtk:session", "Logoff");
+                return this._makeSoapCall(soapCall).then(function() {
                 that._sessionToken = "";
                 that._securityToken = "";
                 that.application = null;
@@ -895,34 +914,38 @@ class Client {
     }
 
     /**
-     * Fetches an entity (GetEntityIfMoreRecent)
+     * Gets an entity, such as a schema, a source schema, a form, a navtree, etc. Each Campaign entity has a MD5 which is used to determine
+     * if an entity has changed or not. The GetEntityIfMoreRecent SOAP call can use this MD5 to avoid returning entities that did not 
+     * actually changed. Currently, the SDK, however is not able to use the MD5 and will perform a SOAP call every time the function is
+     * called and return the whole entity
      * 
-     * @private
      * @param {string} entityType is the type of entity requested, such as "xtk:schema", "xtk:srcSchema", "xtk:navtree", "xtk:form", etc.
      * @param {string} fullName is the fully qualified name of the entity (i.e. <namespace>:<name>)
      * @param {string} representation the expected representation, or undefined to set the default
-     * @return A DOM representation of the entity, or null if the entity is not found
+     * @param {boolean} internal indicates an "internal" call, i.e. a call performed by the SDK itself rather than the user of the SDK. For instance, the SDK will dynamically load schemas to find method definitions
+     * @return {XML.XtkObject} A DOM or JSON representation of the entity, or null if the entity is not found
      */
      async getEntityIfMoreRecent(entityType, fullName, representation, internal) {
         const that = this;
-        const soapCall = this.prepareSoapCall("xtk:persist", "GetEntityIfMoreRecent", internal);
+        const soapCall = this._prepareSoapCall("xtk:persist", "GetEntityIfMoreRecent", internal);
         soapCall.writeString("pk", entityType + "|" + fullName);
         soapCall.writeString("md5", "");
         soapCall.writeBoolean("mustExist", false);
-        return this.makeSoapCall(soapCall).then(function() {
+        return this._makeSoapCall(soapCall).then(function() {
             var doc = soapCall.getNextDocument();
             soapCall.checkNoMoreArgs();
-            doc = that.toRepresentation(doc, representation);
+            doc = that._toRepresentation(doc, representation);
             return doc;
         });
     }
 
     /**
-     * Get a schema definition.
+     * Get a compiled schema (not a source schema) definition as a DOM or JSON object depending on hte current representation
      * 
      * @param {string} schemaId the schema id, such as "xtk:session", or "nms:recipient"
      * @param {string} representation an optional representation of the schema: "BadgerFish", "SimpleJson" or "xml". If not set, we'll use the client default representation
-     * @returns {*} the schema definition, as either a DOM document or a JSON object
+     * @param {boolean} internal indicates an "internal" call, i.e. a call performed by the SDK itself rather than the user of the SDK. For instance, the SDK will dynamically load schemas to find method definitions
+     * @returns {XML.XtkObject}  the schema definition, as either a DOM document or a JSON object
      */
     async getSchema(schemaId, representation, internal) {
         var that = this;
@@ -933,7 +956,7 @@ class Client {
         if (entity)
             that._entityCache.put("xtk:schema", schemaId, entity);
 
-        entity = that.toRepresentation(entity, representation);
+        entity = that._toRepresentation(entity, representation);
         return entity;
     }
 
@@ -942,7 +965,7 @@ class Client {
      * 
      * @param {string} enumName
      * @param {string} optionalStartSchemaOrSchemaName
-     * @returns the enumeration definition in the current representation
+     * @returns {XML.XtkObject} the enumeration definition in the current representation
      */
     async getSysEnum(enumName, optionalStartSchemaOrSchemaName) {
 
@@ -1007,7 +1030,7 @@ class Client {
         // console.log(method.toXMLString());
 
         var urn = that._methodCache.getSoapUrn(schemaId, methodName);
-        var soapCall = that.prepareSoapCall(urn, methodName);
+        var soapCall = that._prepareSoapCall(urn, methodName);
 
         const isStatic = DomUtil.getAttributeAsBoolean(method, "static");
         var object = callContext.object;
@@ -1016,7 +1039,7 @@ class Client {
                 throw CampaignException.SOAP_UNKNOWN_METHOD(schemaId, methodName, `Cannot call non-static method '${methodName}' of schema '${schemaId}' : no object was specified`);
 
             const rootName = schemaId.substr(schemaId.indexOf(':') + 1);
-            object = that.fromRepresentation(rootName, object);
+            object = that._fromRepresentation(rootName, object);
             soapCall.writeDocument("document", object);
         }
 
@@ -1064,7 +1087,7 @@ class Client {
                             const index = xtkschema.indexOf(":");
                             docName = xtkschema.substr(index+1);
                         }
-                        var xmlValue = that.fromRepresentation(docName, paramValue);
+                        var xmlValue = that._fromRepresentation(docName, paramValue);
                         if (type == "DOMDocument")
                             soapCall.writeDocument(paramName, xmlValue);
                         else
@@ -1077,13 +1100,13 @@ class Client {
             }
         }
         
-        return that.makeSoapCall(soapCall).then(function() {
+        return that._makeSoapCall(soapCall).then(function() {
             if (!isStatic) {
                 // Non static methods, such as xtk:query#SelectAll return a element named "entity" which is the object itself on which
                 // the method is called. This is the new version of the object (in XML form)
                 const entity = soapCall.getEntity();
                 if (entity) {
-                    callContext.object = that.toRepresentation(entity);
+                    callContext.object = that._toRepresentation(entity);
                 }
             }
 
@@ -1114,7 +1137,7 @@ class Client {
                             returnValue = soapCall.getNextDate();
                         else if (type == "DOMDocument") {
                             returnValue = soapCall.getNextDocument();
-                            returnValue = that.toRepresentation(returnValue);
+                            returnValue = that._toRepresentation(returnValue);
                             if (schemaId === "xtk:queryDef" && methodName === "ExecuteQuery" && paramName === "output") {
                                 // https://github.com/adobe/acc-js-sdk/issues/3
                                 // Check if query operation is "getIfExists". The "object" variable at this point
@@ -1134,7 +1157,7 @@ class Client {
                         }
                         else if (type == "DOMElement") {
                             returnValue = soapCall.getNextElement();
-                            returnValue = that.toRepresentation(returnValue);
+                            returnValue = that._toRepresentation(returnValue);
                         }
                         else {
                             // type can reference a schema element. The naming convension is that the type name
@@ -1148,7 +1171,7 @@ class Client {
                                     if (element.getAttribute("name") == shortTypeName) {
                                         // Type found in schema: Process as a DOM element
                                         returnValue = soapCall.getNextElement();
-                                        returnValue = that.toRepresentation(returnValue);
+                                        returnValue = that._toRepresentation(returnValue);
                                         break;
                                     }
                                     element = DomUtil.getNextSiblingElement(element, "element");
@@ -1174,7 +1197,7 @@ class Client {
         request.method = request.method || "GET";
         request.headers = request.headers || [];
         if (!request.headers['User-Agent'])
-            request.headers['User-Agent'] = this.getUserAgentString();
+            request.headers['User-Agent'] = this._getUserAgentString();
         try {
             const safeCallData = Util.trim(request.data);
             if (this._traceAPICalls)
@@ -1207,7 +1230,7 @@ class Client {
         };
         const body = await this._makeHttpCall(request);
         const xml = DomUtil.parse(body);
-        const result = this.toRepresentation(xml);
+        const result = this._toRepresentation(xml);
         return result;
     }
 
@@ -1235,7 +1258,7 @@ class Client {
             const timestamp = lines[1].trim();
             if (timestamp != "") root.setAttribute("timestamp", timestamp);
         }
-        const result = this.toRepresentation(doc);
+        const result = this._toRepresentation(doc);
         return result;
     }
 
@@ -1290,7 +1313,7 @@ class Client {
         }
         if (rtCount !== undefined && rtCount.trim() != "") root.setAttribute("eventQueueSize", rtCount);
         if (threshold !== undefined && rtCount.trim() != "") root.setAttribute("eventQueueMaxSize", threshold);
-        const result = this.toRepresentation(doc);
+        const result = this._toRepresentation(doc);
         return result;
     }
 }

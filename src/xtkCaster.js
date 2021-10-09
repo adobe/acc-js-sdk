@@ -56,15 +56,16 @@ governing permissions and limitations under the License.
  * @memberof Campaign
  */
 
-/**
- * Helpers to convert between JavaScript data types and Campaign XTK data types
- * 
+/** 
  * @memberof Campaign
  * @class
  * @constructor
  */
 class XtkCaster {
     
+    /**
+     * Helpers to convert between JavaScript data types and Campaign XTK data types
+     */
     constructor() {
     }
 
