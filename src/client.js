@@ -1,4 +1,3 @@
-"use strict";
 /*
 Copyright 2020 Adobe. All rights reserved.
 This file is licensed to you under the Apache License, Version 2.0 (the "License");
@@ -10,7 +9,9 @@ the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR REPRESENTA
 OF ANY KIND, either express or implied. See the License for the specific language
 governing permissions and limitations under the License.
 */
-
+(function() {
+"use strict";    
+    
 
 /**********************************************************************************
  * 
@@ -86,7 +87,7 @@ const xtkObjectHandler = {
         });
 
     }
-}
+};
 
 /**
  * Java Script Proxy handler for NLWS. 
@@ -143,7 +144,7 @@ const clientHandler = {
                     return function(body) {
                         callContext.object = body;
                         return new Proxy(callContext, xtkObjectHandler);
-                    }
+                    };
                 }
 
                 return new Proxy(caller, {
@@ -263,7 +264,7 @@ class ConnectionParameters {
         this._endpoint = endpoint;
         this._credentials = credentials;
 
-        var storage = undefined;
+        var storage;
         if (!options.noStorage) {
             storage = options.storage;
             try {
@@ -378,7 +379,7 @@ class ConnectionParameters {
                     { "expr": "@type=3" }
                 ]
             }
-        }
+        };
         // Convert to current representation
         queryDef = client.convertToRepresentation(queryDef, "SimpleJson");
         const query = client.NLWS.xtkQueryDef.create(queryDef);
@@ -646,20 +647,20 @@ class Client {
         const safeCallData = Util.trim(soapCall.request.data);
         if (that._traceAPICalls)
             console.log(`SOAP//request ${safeCallData}`);
-        that._notifyObservers((observer) => { observer.onSOAPCall && observer.onSOAPCall(soapCall, safeCallData); });
+        that._notifyObservers((observer) => observer.onSOAPCall && observer.onSOAPCall(soapCall, safeCallData) );
         
         return soapCall.execute()
             .then(() => {
                 const safeCallResponse = Util.trim(soapCall.response);
                 if (that._traceAPICalls)
                     console.log(`SOAP//response ${safeCallResponse}`);
-                that._notifyObservers((observer) => { observer.onSOAPCallSuccess && observer.onSOAPCallSuccess(soapCall, safeCallResponse); });
+                that._notifyObservers((observer) => observer.onSOAPCallSuccess && observer.onSOAPCallSuccess(soapCall, safeCallResponse) );
                 return Promise.resolve();
             })
             .catch((ex) => {
                 if (that._traceAPICalls)
                     console.log(`SOAP//failure ${ex.toString()}`);
-                that._notifyObservers((observer) => { observer.onSOAPCallFailure && observer.onSOAPCallFailure(soapCall, ex); });
+                that._notifyObservers((observer) => observer.onSOAPCallFailure && observer.onSOAPCallFailure(soapCall, ex) );
                 return Promise.reject(ex);
             });
     }
@@ -678,7 +679,7 @@ class Client {
 
         // Clear session token cookie to ensure we're not inheriting an expired cookie. See NEO-26589
         if (credentials._type != "SecurityToken" && typeof document != "undefined") {
-            document.cookie = '__sessiontoken=;path=/;'
+            document.cookie = '__sessiontoken=;path=/;';
         }
         if (credentials._type == "SessionToken" || credentials._type == "AnonymousUser") {
             that._sessionInfo = undefined;
@@ -788,7 +789,7 @@ class Client {
      * @return the option value, casted in the expected data type. If the option does not exist, it will return null.
      */
     async getOption(name, useCache = true) {
-        var value = undefined;
+        var value;
         if (useCache)
             value = this._optionCache.get(name);
         if (value === undefined) {
@@ -1139,9 +1140,10 @@ class Client {
                             // type can reference a schema element. The naming convension is that the type name
                             // is {schemaName}{elementNameCamelCase}. For instance, the type "sessionUserInfo"
                             // matches the "userInfo" element of the "xtkSession" schema
+                            let element;
                             if (type.substr(0, schemaName.length) == schemaName) {
                                 const shortTypeName = type.substr(schemaName.length, 1).toLowerCase() + type.substr(schemaName.length + 1);
-                                var element = DomUtil.getFirstChildElement(schema, "element");
+                                element = DomUtil.getFirstChildElement(schema, "element");
                                 while (element) {
                                     if (element.getAttribute("name") == shortTypeName) {
                                         // Type found in schema: Process as a DOM element
@@ -1149,16 +1151,10 @@ class Client {
                                         returnValue = that.toRepresentation(returnValue);
                                         break;
                                     }
-                                    element = DomUtil.getNextSiblingElement(element, "element")
+                                    element = DomUtil.getNextSiblingElement(element, "element");
                                 }
 
                             }
-    /*                    else if (type == "sessionUserInfo") {
-                            returnValue = soapCall.getNextElement();
-                            if (that._representation == "BadgerFish")
-                                returnValue = DomUtil.toJSON(returnValue);
-                        }
-                        */
                             if (!element)
                                 throw CampaignException.UNEXPECTED_SOAP_RESPONSE(soapCall, `Unsupported return type '${type}' for parameter '${paramName}' of method '${methodName}' of schema '${schemaId}'`);
                         }
@@ -1183,18 +1179,18 @@ class Client {
             const safeCallData = Util.trim(request.data);
             if (this._traceAPICalls)
                 console.log(`HTTP//request ${request.method} ${request.url}${safeCallData ? " " + safeCallData : ""}`);
-            this._notifyObservers((observer) => { observer.onHTTPCall && observer.onHTTPCall(request, safeCallData); });
+            this._notifyObservers((observer) => observer.onHTTPCall && observer.onHTTPCall(request, safeCallData) );
             const body = await this._transport(request);
 
             const safeCallResponse = Util.trim(body);
             if (this._traceAPICalls)
                 console.log(`HTTP//response${safeCallResponse ? " " + safeCallResponse : ""}`);
-            this._notifyObservers((observer) => { observer.onHTTPCallSuccess && observer.onHTTPCallSuccess(request, safeCallResponse); });
+            this._notifyObservers((observer) => observer.onHTTPCallSuccess && observer.onHTTPCallSuccess(request, safeCallResponse) );
             return body;
         } catch(err) {
             if (this._traceAPICalls)
                 console.log("HTTP//failure", err);
-            this._notifyObservers((observer) => { observer.onHTTPCallFailure && observer.onHTTPCallFailure(request, err); });
+            this._notifyObservers((observer) => observer.onHTTPCallFailure && observer.onHTTPCallFailure(request, err) );
             throw makeCampaignException({ request:request, reqponse:err.response }, err);
         }
     }
@@ -1264,8 +1260,8 @@ class Client {
         var status = lines[0].trim();
         if (status != "") root.setAttribute("status", status);
         
-        var rtCount = undefined;
-        var threshold = undefined;
+        var rtCount;
+        var threshold;
         if (status == "Error") {
             const error = lines.length > 1 ? lines[1] : "";
             root.setAttribute("error", error);
@@ -1305,3 +1301,5 @@ Client.CampaignException = CampaignException;
 exports.Client = Client;
 exports.Credentials = Credentials;
 exports.ConnectionParameters = ConnectionParameters;
+
+})();

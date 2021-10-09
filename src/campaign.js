@@ -1,8 +1,3 @@
-"use strict";
-
-const { Util } = require("./util.js");
-
-
 /*
 Copyright 2020 Adobe. All rights reserved.
 This file is licensed to you under the Apache License, Version 2.0 (the "License");
@@ -14,8 +9,11 @@ the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR REPRESENTA
 OF ANY KIND, either express or implied. See the License for the specific language
 governing permissions and limitations under the License.
 */
+(function() {
+"use strict";    
 
-
+const { Util } = require("./util.js");
+   
 /**
  * @namespace Campaign
  */
@@ -58,10 +56,10 @@ governing permissions and limitations under the License.
 
       // Provides a shorter and more friendly description of the call and method name
       // depending on whether the exception is thrown by a SOAP or HTTP call
-      var methodCall = undefined;
-      var methodName = undefined;
+      var methodCall;
+      var methodName;
       if (call) {
-          const ctor = call.__proto__.constructor;
+          const ctor = Object.getPrototypeOf(call).constructor;
           if (ctor && ctor.name == "SoapMethodCall") {
               methodCall = {
                   type: "SOAP",
@@ -204,7 +202,7 @@ function makeCampaignException(call, err) {
       return err;
   
   // Wraps DOM exceptions which can occur when dealing with malformed XML
-  const ctor = err.__proto__.constructor;
+  const ctor = Object.getPrototypeOf(err).constructor;
   if (ctor && ctor.name == "DOMException") {
       return new CampaignException(call, 500, err.code, `DOMException (${err.name})`, err.message, err);
   }
@@ -516,7 +514,7 @@ exports.OPERATOR_TYPE_GROUP = 1;
 exports.OPERATOR_TYPE_RIGHT = 2;
 
 exports.WORKFLOWTASK_STATUS_PENDING = 0;
-exports.WORKFLOWTASK_STATUS_COMPLETED = 1
+exports.WORKFLOWTASK_STATUS_COMPLETED = 1;
 
 exports.MOBILE_MSGTYPE_SMS     = 0;
 exports.MOBILE_MSGTYPE_WAPPUSH = 1;
@@ -662,3 +660,5 @@ exports.ACTION_TYPE_EXPIRED = 11;
 exports.CONTENT_EDITING_MODE_DEFAULT = 0;
 exports.CONTENT_EDITING_MODE_DCE = 1;
 exports.CONTENT_EDITING_MODE_AEM = 2;
+
+})();

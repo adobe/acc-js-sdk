@@ -1,4 +1,3 @@
-"use strict";
 /*
 Copyright 2020 Adobe. All rights reserved.
 This file is licensed to you under the Apache License, Version 2.0 (the "License");
@@ -10,6 +9,9 @@ the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR REPRESENTA
 OF ANY KIND, either express or implied. See the License for the specific language
 governing permissions and limitations under the License.
 */
+(function() {
+"use strict";
+
 const DomUtil = require('./domUtil.js').DomUtil;
 const { Cache } = require('./util.js');
 
@@ -60,3 +62,5 @@ class XtkEntityCache extends Cache {
 
 // Public exports
 exports.XtkEntityCache = XtkEntityCache;
+
+})();

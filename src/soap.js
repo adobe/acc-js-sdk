@@ -1,4 +1,3 @@
-"use strict";
 /*
 Copyright 2020 Adobe. All rights reserved.
 This file is licensed to you under the Apache License, Version 2.0 (the "License");
@@ -10,7 +9,9 @@ the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR REPRESENTA
 OF ANY KIND, either express or implied. See the License for the specific language
 governing permissions and limitations under the License.
 */
-
+(function() {
+"use strict";    
+    
 
 /**********************************************************************************
  * 
@@ -514,7 +515,7 @@ class SoapMethodCall {
      * @returns a boolean set to true if ther are no more response args to read
      */ 
     checkNoMoreArgs() {
-        return !this.elemCurrent
+        return !this.elemCurrent;
     }
 
     /**
@@ -535,7 +536,7 @@ class SoapMethodCall {
             data: DomUtil.toXMLString(this._doc)
         };
         if (this._sessionToken)
-            options.headers['Cookie'] = '__sessiontoken=' + this._sessionToken;
+            options.headers.Cookie = '__sessiontoken=' + this._sessionToken;
         if (this._userAgentString)
             options.headers['User-Agent'] = this._userAgentString;
         return options;
@@ -636,3 +637,5 @@ class SoapMethodCall {
 
 // Public exports
 exports.SoapMethodCall = SoapMethodCall;
+
+})();

@@ -1439,9 +1439,14 @@ If you need to access entity attributes (or child elements) in a generic way, yo
 
 To build this project, you need node and npm
 
-````
+```sh
 npm install
-````
+```
+
+## Check if there are any code warnings
+```sh
+node_modules/jshint/bin/jshint src/
+```
 
 ## Run tests
 ```sh

@@ -1,4 +1,3 @@
-"use strict";
 /*
 Copyright 2020 Adobe. All rights reserved.
 This file is licensed to you under the Apache License, Version 2.0 (the "License");
@@ -10,6 +9,8 @@ the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR REPRESENTA
 OF ANY KIND, either express or implied. See the License for the specific language
 governing permissions and limitations under the License.
 */
+(function() {
+"use strict";
 
 
 /**********************************************************************************
@@ -31,7 +32,7 @@ const EntityAccessor = require('./entityAccessor.js').EntityAccessor;
 // ========================================================================================
  
 // Determine if a name is an attribute name, i.e. if it starts with the "@" character
-const isAttributeName = function(name) { return name.length > 0 && name[0] == '@'; }
+const isAttributeName = function(name) { return name.length > 0 && name[0] == '@'; };
 
 
 /**
@@ -325,7 +326,7 @@ class XtkSchemaNode {
             else if (element.isParent())
                 childNode = node.parent;
             else
-                childNode = node._getChildDefAutoExpand(name, mustExist)
+                childNode = node._getChildDefAutoExpand(name, mustExist);
             node = childNode;
         }
         return node;
@@ -737,3 +738,4 @@ exports.Application = Application;
 // For tests
 exports.newSchema = newSchema;
 exports.newCurrentLogin = newCurrentLogin;
+})();
