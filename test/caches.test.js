@@ -34,13 +34,13 @@ describe('Caches', function() {
         })
 
         it("Should expires after TTL", () => {
-            const cache = new Cache(-1);    // negative TTL => will immediately expire
+            const cache = new Cache(undefined, undefined, -1);    // negative TTL => will immediately expire
             cache.put("Hello", "World");
             expect(cache.get("Hello")).toBeUndefined();
         })
 
         it("Should support custom key function", () => {
-            const cache = new Cache(300000, ((a, b) => a + "||" + b));
+            const cache = new Cache(undefined, undefined, 300000, ((a, b) => a + "||" + b));
             cache.put("key-part-1", "key-part-2", "value");
             expect(cache.get("key-part-1")).toBeUndefined();
             expect(cache.get("key-part-2")).toBeUndefined();

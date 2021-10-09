@@ -2020,4 +2020,79 @@ describe('ACC Client', function () {
         });
     })
 
+
+    describe("Local storage", () => {
+        it("Shoud read from local storage", async () => {
+            const storage = {
+                getItem: jest.fn(),
+                setItem: jest.fn(),
+            }
+            const client = await Mock.makeClient({ storage: storage });
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+            storage.getItem.mockReturnValueOnce(JSON.stringify({value: { value: "Hello", type: 6 }, cachedAt: 1633715996021 }));
+            const value = await client.getOption("XtkDatabaseId");
+            expect(value).toBe("Hello");
+        })
+
+        it("Should write to local storage", async () => {
+            const storage = {
+                getItem: jest.fn(),
+                setItem: jest.fn(),
+            }
+            const client = await Mock.makeClient({ storage: storage });
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+            storage.getItem.mockReturnValueOnce(JSON.stringify({value: { value: "Hello", type: 6 }, cachedAt: 1633715996021 }));
+            client._transport.mockReturnValueOnce(Promise.resolve(`<?xml version='1.0'?>
+                            <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:wpp:default' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
+                            <SOAP-ENV:Body>
+                            <WriteResponse xmlns='urn:wpp:default' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
+                            </WriteResponse>
+                            </SOAP-ENV:Body>
+                            </SOAP-ENV:Envelope>`));
+            await client.setOption("XtkDatabaseId", "World");
+            var call = undefined;
+            for (var i=0; i<storage.setItem.mock.calls.length; i++) {
+                if (storage.setItem.mock.calls[i][0].endsWith("OptionCache$XtkDatabaseId")) {
+                    call = storage.setItem.mock.calls[i];
+                    break;
+                }
+            }
+            expect(JSON.parse(call[1])).toMatchObject({
+                value: { value: "World", type: 6 }
+            })
+        });
+
+        it("Should ignore protocol for local storage root key", async () => {
+            var connectionParameters = sdk.ConnectionParameters.ofUserAndPassword("http://acc-sdk:8080", "admin", "admin", {});
+            var client = await sdk.init(connectionParameters);
+            expect(client._optionCache._storage._rootKey).toBe("acc.js.sdk.1.0.5.acc-sdk:8080.cache.OptionCache$");
+
+            connectionParameters = sdk.ConnectionParameters.ofUserAndPassword("https://acc-sdk:8080", "admin", "admin", {});
+            client = await sdk.init(connectionParameters);
+            expect(client._optionCache._storage._rootKey).toBe("acc.js.sdk.1.0.5.acc-sdk:8080.cache.OptionCache$");
+
+            connectionParameters = sdk.ConnectionParameters.ofUserAndPassword("acc-sdk:8080", "admin", "admin", {});
+            client = await sdk.init(connectionParameters);
+            expect(client._optionCache._storage._rootKey).toBe("acc.js.sdk.1.0.5.acc-sdk:8080.cache.OptionCache$");
+        })
+
+        it("Should support no storage", async () => {
+            const storage = {
+                getItem: jest.fn(),
+                setItem: jest.fn(),
+            }
+            const client = await Mock.makeClient({ storage: storage, noStorage: true });
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+            client._transport.mockReturnValueOnce(Mock.GET_DATABASEID_RESPONSE);
+            const value = await client.getOption("XtkDatabaseId");
+            expect(value).toBe('uFE80000000000000F1FA913DD7CC7C480041161C');
+            expect(storage.getItem.mock.calls.length).toBe(0); // storage is disabled and should not have been called
+        })
+    })
 });

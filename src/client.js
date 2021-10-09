@@ -262,6 +262,18 @@ class ConnectionParameters {
 
         this._endpoint = endpoint;
         this._credentials = credentials;
+
+        var storage = undefined;
+        if (!options.noStorage) {
+            storage = options.storage;
+            try {
+                if (!storage)
+                    storage = localStorage;    
+            } catch (ex) {
+                /* ignore error if localStorage not found */
+            }    
+        }
+        this._options._storage = storage;
     }
 
     /**
@@ -415,9 +427,16 @@ class Client {
         
         this._secretKeyCipher = undefined;
         
-        this._entityCache = new XtkEntityCache(connectionParameters._options.entityCacheTTL);
-        this._methodCache = new MethodCache(connectionParameters._options.methodCacheTTL);
-        this._optionCache = new OptionCache(connectionParameters._options.optionCacheTTL);
+        this._storage = connectionParameters._options._storage;
+        // TODO late cache initiallzation because need XtkDatabaseId / instance name
+        var instanceKey = connectionParameters._endpoint || "";
+        if (instanceKey.startsWith("http://")) instanceKey = instanceKey.substr(7);
+        if (instanceKey.startsWith("https://")) instanceKey = instanceKey.substr(8);
+        const rootKey = `acc.js.sdk.${sdk.getSDKVersion().version}.${instanceKey}.cache`;
+
+        this._entityCache = new XtkEntityCache(this._storage, `${rootKey}.XtkEntityCache`, connectionParameters._options.entityCacheTTL);
+        this._methodCache = new MethodCache(this._storage, `${rootKey}.MethodCache`, connectionParameters._options.methodCacheTTL);
+        this._optionCache = new OptionCache(this._storage, `${rootKey}.OptionCache`, connectionParameters._options.optionCacheTTL);
         this.NLWS = new Proxy(this, clientHandler);
 
         this._transport = connectionParameters._options.transport;

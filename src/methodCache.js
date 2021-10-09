@@ -39,8 +39,8 @@ const { Cache } = require('./util.js');
  */
 class MethodCache extends Cache {
     
-    constructor(ttl) {
-        super(ttl, ((schemaId, methodName) => schemaId + "#" + methodName ));
+    constructor(storage, rootKey, ttl) {
+        super(storage, rootKey, ttl, ((schemaId, methodName) => schemaId + "#" + methodName ));
     }
 
     /**

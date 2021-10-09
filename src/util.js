@@ -105,6 +105,56 @@ class Util {
  * 
  *********************************************************************************/
 
+
+// Wrapper to LocalStorage which is "safe"
+// - Will never throw / support local stroage to be undefined or not accessible
+// - Handle the notion of "root key", i.e. prefix 
+// - Set/get values as JSON only
+class SafeStorage {
+
+  constructor(delegate, rootKey) {
+    this._delegate = delegate;
+    this._rootKey = rootKey ? `${rootKey}$` : "";
+  }
+
+  getItem(key) {
+    if (!this._delegate || this._rootKey === undefined || this._rootKey === null)
+      return;
+    const itemKey = `${this._rootKey}${key}`;
+    const raw = this._delegate.getItem(itemKey);
+    if (!raw)
+      return undefined;
+    try {
+      return JSON.parse(raw);
+    } catch(ex) {
+      this.removeItem(key);
+    }
+  }
+
+  setItem(key, json) {
+    if (!this._delegate || this._rootKey === undefined || this._rootKey === null)
+      return;
+    try {
+      if (json && typeof json === "object") {
+        const raw = JSON.stringify(json);
+        this._delegate.setItem(`${this._rootKey}${key}`, raw);
+        return;
+      }
+    } catch(ex) { /* Ignore errors in safe class */
+    }
+    this.removeItem(key);
+  }
+
+  removeItem(key) {
+    if (!this._delegate || this._rootKey === undefined || this._rootKey === null)
+      return;
+    try {
+      this._delegate.removeItem(`${this._rootKey}${key}`);
+    } catch(ex) { /* Ignore errors in safe class */
+    }
+  }
+}
+
 /**
  * An object in the cache.
  */
@@ -118,24 +168,69 @@ class CachedObject {
 
 /**
  * A general purpose cache with TTL
+ * @param {Storage} storage is an optional Storage object, such as localStorage or sessionStorage
+ * @param {string} rootKey is an optional root key to use for the storage object
  * @param {number} ttl is the TTL for objects in ms. Defaults to 5 mins
  * @param {makeKeyFn} is an optional function which will generate a key for objects in the cache. It's passed the arguments of the cache 'get' function
  */
 class Cache {
-  constructor(ttl, makeKeyFn) {
+  constructor(storage, rootKey, ttl, makeKeyFn) {
+      this._storage = new SafeStorage(storage, rootKey);
       this._ttl = ttl || 1000*300;
       this._makeKeyFn = makeKeyFn || ((x) => x);
       this._cache = {};
+      // timestamp at which the cache was last cleared
+      this._lastCleared = this._loadLastCleared();
+  }
+
+  // Load timestamp at which the cache was last cleared
+  _loadLastCleared() {
+    const json = this._storage.getItem("lastCleared");
+    return json ? json.timestamp : undefined;
+  }
+
+  _saveLastCleared() {
+    const now = Date.now();
+    this._lastCleared = now;
+    this._storage.setItem("lastCleared", { timestamp: now});
+  }
+
+  // Load from local storage
+  _load(key) {
+    const json = this._storage.getItem(key);
+    if (!json || !json.cachedAt || json.cachedAt <= this._lastCleared) {
+      this._storage.removeItem(key);
+      return;
+    }
+    return json;
+  }
+
+  // Save to local storage
+  _save(key, cached) {
+    this._storage.setItem(key, cached);
+  }
+
+  // Remove from local storage
+  _remove(key) {
+    this._storage.removeItem(key);
   }
 
   _getIfActive(key) {
-      const cached = this._cache[key];
-      if (!cached) return undefined;
-      if (cached.expiresAt <= Date.now()) {
-          delete this._cache[key];
-          return undefined;
-      }
-      return cached.value;
+    // In memory cache?
+    var cached = this._cache[key];
+    // Local storage ?
+    if (!cached) {
+      cached = this._load(key);
+      this._cache[key] = cached;
+    }
+    if (!cached) 
+      return undefined;
+    if (cached.expiresAt <= Date.now()) {
+      delete this._cache[key];
+      this._remove(key);
+      return undefined;
+    }
+    return cached.value;
   }
 
   get() {
@@ -151,14 +246,17 @@ class Cache {
       const expiresAt = now + this._ttl;
       const cached = new CachedObject(value, now, expiresAt);
       this._cache[key] = cached;
+      this._save(key, cached);
       return cached;
   }
   
   clear() {
       this._cache = {};
+      this._saveLastCleared();
   }
 }
 
 // Public expots
 exports.Util = Util;
+exports.SafeStorage = SafeStorage;
 exports.Cache = Cache;

@@ -22,8 +22,8 @@ const { Cache } = require('./util.js');
 
 class XtkEntityCache extends Cache {
     
-    constructor(ttl) {
-        super(ttl, (entityType, entityFullName) => entityType + "|" + entityFullName);
+    constructor(storage, rootKey, ttl) {
+        super(storage, rootKey, ttl, (entityType, entityFullName) => entityType + "|" + entityFullName);
     }
 
     /**

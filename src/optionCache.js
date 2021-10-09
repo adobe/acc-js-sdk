@@ -43,8 +43,8 @@ const { Cache } = require('./util.js');
  */
 class OptionCache extends Cache {
     
-    constructor(ttl) {
-        super(ttl);
+    constructor(storage, rootKey, ttl) {
+        super(storage, rootKey, ttl);
     }
 
     /**

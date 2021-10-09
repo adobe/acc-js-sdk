@@ -6,10 +6,11 @@ This is a node.js SDK for Campaign API. It exposes the Campaign API exactly like
 # Changelog 
 
 ## Version 1.0.5
-_2021/10/08_
+_2021/10/09_
 * Fix an issue in the logon() function which was not always returning a promise. Some authentication methods such as SessionToken we returning synchronously. Made it so that logon always returns a promise. This should not be a breaking change as logon does not actually return a value
 * Refactor caches (Options cache, Schemas cache, and Methods cache) to use a generic cache class
 * Make sure options parameter of ConnectionParameters constructor is not modified
+* Added a persistent cache for schemas, methods, and options using the browser localStorage by default
 
 ## Version 1.0.4
 _2021/10/07_

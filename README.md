@@ -120,6 +120,13 @@ Attribute|Default|Description
 ---|---|---
 representation|"SimpleJson"| See below. Will determine if the SDK works with xml of json object. Default is JSON
 rememberMe|false| The Campaign `rememberMe` attribute which can be used to extend the lifetime of session tokens
+entityCacheTTL|300000| The TTL (in milliseconds) for the xtk entity cache
+methodCacheTTL|300000| The TTL (in milliseconds) for the xtk method cache
+optionCacheTTL|300000| The TTL (in milliseconds) for the xtk option cache
+traceAPICalls|false| Activates tracing of API calls or not
+transport|axios|Overrides the transport layer
+noStorage|false|De-activate using of local storage
+storage|localStorage|Overrides the local storage for caches
 
 ```js
 const connectionParameters = sdk.ConnectionParameters.ofUserAndPassword(
@@ -565,7 +572,7 @@ It's also noteworthy that all the data returned in a CampaignException is trimme
 
 ## Caches
 
-The following caches are manage by the SDK
+The following caches are managed by the SDK and active by default. They are in-memory caches.
 
 * Options cache. Stores typed option values, by option name.
 * Entity cache. Caches schemas and other entities
@@ -582,6 +589,21 @@ or
 ```js
 client.clearAllCaches();
 ```
+
+Caches have a TTL of 5 minutes by default. The TTL can be changed at connection time using connection options `entityCacheTTL`, `methodCacheTTL`, and `optionCacheTTL`.
+
+Caches can be de-activated by setting a TTL of -1 which will have the effect of making all cached data always invalid.
+
+
+
+## Persistent caches
+In addition to memory caches, it is possible to use persistent caches as well. This was introduced in version 1.0.5 and is active by default as well when using the SDK in a browser. The browser local storage is used (if allowed).
+
+Cached data is stored in local storage with keys prefixed with  `acc.js.sdk.{{version}}.{{server}}.cache.` where `version` is the SDK version and `server` is the Campaign server name. This means that the cached data is lost when upgrading the SDK.
+
+It's possible to disable persistent caches using the `noStorage` connection option.
+
+It is also possible to setup one's own persistent cache, by passing a `storage` object as a connection option. This object should implement 3 methods: `getItem`, `setItem`, and `removeItem` (synchronous)
 
 
 ## Passwords
