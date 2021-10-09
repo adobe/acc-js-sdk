@@ -78,7 +78,24 @@ class Util {
         }
         if (typeof text == "object") {
           for (const p in text) {
-            text[p] = Util.trim(text[p]);
+            if (p.toLowerCase() === "x-security-token")
+              text[p] = "***";
+            else if (p === "Cookie") {
+              var index = text[p].toLowerCase().indexOf("__sessiontoken");
+              if (index !== -1) {
+                index = text[p].indexOf("=", index);
+                if (index !== -1) {
+                  index = index + 1;
+                  const endIndex = text[p].indexOf(";", index);
+                  if (endIndex == -1)
+                    text[p] = text[p].substring(0, index) + "***";
+                  else 
+                    text[p] = text[p].substring(0, index) + "***" + text[p].substring(endIndex);
+                }
+              }
+            }
+            else
+              text[p] = Util.trim(text[p]);
           }
         }
         if (typeof text == "string") {

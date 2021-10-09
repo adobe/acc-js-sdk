@@ -84,6 +84,21 @@ describe('Util', function() {
             expect(Util.trim({hello:`<sessiontoken xsi:type="xsd:string"/><login xsi:type="xsd:string">admin</login><password xsi:type="xsd:string">password</password><parameters xsi:type="ns:Element" SOAP-ENV:encodingStyle="http://xml.apache.org/xml-soap/literalxml"/>`})).toStrictEqual({hello:`<sessiontoken xsi:type="xsd:string"/><login xsi:type="xsd:string">admin</login><password xsi:type="xsd:string">***</password><parameters xsi:type="ns:Element" SOAP-ENV:encodingStyle="http://xml.apache.org/xml-soap/literalxml"/>`});
         })
 
+        it("Should hide X-Security-Token properties", () => {
+            expect(Util.trim({"x-security-token": "Hello"})).toMatchObject({"x-security-token": "***"});
+            expect(Util.trim({"X-Security-Token": "Hello"})).toMatchObject({"X-Security-Token": "***"});
+        })
+
+        it("Should remove session tokens from cookies", () => {
+            expect(Util.trim({"Cookie": "__sessiontoken=ABC"})).toMatchObject({"Cookie": "__sessiontoken=***"});
+            expect(Util.trim({"Cookie": "__sessionToken=ABC"})).toMatchObject({"Cookie": "__sessionToken=***"});
+            expect(Util.trim({"Cookie": "__sessiontoken=ABC;"})).toMatchObject({"Cookie": "__sessiontoken=***;"});
+            expect(Util.trim({"Cookie": "__sessiontoken =ABC"})).toMatchObject({"Cookie": "__sessiontoken =***"});
+            expect(Util.trim({"Cookie": "__sessiontoken ABC"})).toMatchObject({"Cookie": "__sessiontoken ABC"});  // no = sign => no token value
+            expect(Util.trim({"Cookie": "a=b; __sessiontoken =ABC"})).toMatchObject({"Cookie": "a=b; __sessiontoken =***"});  
+            expect(Util.trim({"Cookie": "a=b; __sessiontoken =ABC; c=d"})).toMatchObject({"Cookie": "a=b; __sessiontoken =***; c=d"});
+            expect(Util.trim({"Cookie": "a=b; __token =ABC; c=d"})).toMatchObject({"Cookie": "a=b; __token =ABC; c=d"});
+        })
     })
 
 

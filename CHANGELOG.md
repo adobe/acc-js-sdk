@@ -11,6 +11,7 @@ _2021/10/09_
 * Refactor caches (Options cache, Schemas cache, and Methods cache) to use a generic cache class
 * Make sure options parameter of ConnectionParameters constructor is not modified
 * Added a persistent cache for schemas, methods, and options using the browser localStorage by default
+* Make sure X-Security-Token header is hidden as well as session token cookies
 
 ## Version 1.0.4
 _2021/10/07_
