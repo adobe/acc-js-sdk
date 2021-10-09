@@ -1,8 +1,3 @@
-"use strict";
-
-const { Util } = require("./util.js");
-
-
 /*
 Copyright 2020 Adobe. All rights reserved.
 This file is licensed to you under the Apache License, Version 2.0 (the "License");
@@ -14,25 +9,18 @@ the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR REPRESENTA
 OF ANY KIND, either express or implied. See the License for the specific language
 governing permissions and limitations under the License.
 */
+(function() {
+"use strict";    
 
-
+const { Util } = require("./util.js");
+   
 /**
  * @namespace Campaign
  */
 
 /**
- * Represents a Campaign exception, i.e. any kind of error that can happen when calling Campaign APIs, 
- * ranging from HTTP errors, XML serialization errors, SOAP errors, authentication errors, etc.
- * 
- * @todo does not really belong to soap.js. Move it to a better place
  * @class
  * @constructor
- * @param {SoapMethodCall|request} call the call that triggered the error. It can be a SoapMethodCall object, a HTTP request object, or even be undefined if the exception is generated outside of the context of a call
- * @param {number} statusCode the HTTP status code (200, 500, etc.)
- * @param {string} faultCode the fault code, i.e. an error code
- * @param {string} faultString a short description of the error
- * @param {string} detail a more detailed description of the error
- * @param {*} cause an optional error object representing the cause of the exception
  * @memberof Campaign
  */
  class CampaignException {
@@ -50,18 +38,36 @@ governing permissions and limitations under the License.
   static NOT_LOGGED_IN(call, details)                     { return new CampaignException(     call, 400, 16384, `SDK-000010 Cannot call API because client is not logged in`, details); }
   static DECRYPT_ERROR(details)                           { return new CampaignException(undefined, 400, 16384, `SDK-000011 "Cannot decrypt password: password marker is missing`, details); }
   
+
+  /**
+   * Returns a short description of the exception
+   * @returns {string} a short description of the exception
+   */
   toString() {
       return this.message;
   }
 
+  /**
+   * Represents a Campaign exception, i.e. any kind of error that can happen when calling Campaign APIs, 
+   * ranging from HTTP errors, XML serialization errors, SOAP errors, authentication errors, etc.
+   * 
+   * Members of this object are trimmed, and all session tokens, security tokens, passwords, etc. are replaced by "***"
+   * 
+   * @param {SoapMethodCall|request} call the call that triggered the error. It can be a SoapMethodCall object, a HTTP request object, or even be undefined if the exception is generated outside of the context of a call
+   * @param {number} statusCode the HTTP status code (200, 500, etc.)
+   * @param {string} faultCode the fault code, i.e. an error code
+   * @param {string} faultString a short description of the error
+   * @param {string} detail a more detailed description of the error
+   * @param {Error|string} cause an optional error object representing the cause of the exception
+   */  
   constructor(call, statusCode, faultCode, faultString, detail, cause) {
 
       // Provides a shorter and more friendly description of the call and method name
       // depending on whether the exception is thrown by a SOAP or HTTP call
-      var methodCall = undefined;
-      var methodName = undefined;
+      var methodCall;
+      var methodName;
       if (call) {
-          const ctor = call.__proto__.constructor;
+          const ctor = Object.getPrototypeOf(call).constructor;
           if (ctor && ctor.name == "SoapMethodCall") {
               methodCall = {
                   type: "SOAP",
@@ -192,6 +198,7 @@ governing permissions and limitations under the License.
 
 /**
  * Creates a CampaignException for a SOAP call and from a root exception
+ * 
  * @private
  * @param {SoapMethodCall} call the SOAP call
  * @param {*} err the exception causing the SOAP call.
@@ -204,7 +211,7 @@ function makeCampaignException(call, err) {
       return err;
   
   // Wraps DOM exceptions which can occur when dealing with malformed XML
-  const ctor = err.__proto__.constructor;
+  const ctor = Object.getPrototypeOf(err).constructor;
   if (ctor && ctor.name == "DOMException") {
       return new CampaignException(call, 500, err.code, `DOMException (${err.name})`, err.message, err);
   }
@@ -516,7 +523,7 @@ exports.OPERATOR_TYPE_GROUP = 1;
 exports.OPERATOR_TYPE_RIGHT = 2;
 
 exports.WORKFLOWTASK_STATUS_PENDING = 0;
-exports.WORKFLOWTASK_STATUS_COMPLETED = 1
+exports.WORKFLOWTASK_STATUS_COMPLETED = 1;
 
 exports.MOBILE_MSGTYPE_SMS     = 0;
 exports.MOBILE_MSGTYPE_WAPPUSH = 1;
@@ -662,3 +669,5 @@ exports.ACTION_TYPE_EXPIRED = 11;
 exports.CONTENT_EDITING_MODE_DEFAULT = 0;
 exports.CONTENT_EDITING_MODE_DCE = 1;
 exports.CONTENT_EDITING_MODE_AEM = 2;
+
+})();

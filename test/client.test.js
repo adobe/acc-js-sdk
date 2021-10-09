@@ -1193,13 +1193,13 @@ describe('ACC Client', function () {
 
         it("from default representation", async () => {
             const client = await Mock.makeClient();
-            var xml = DomUtil.toXMLString(client.fromRepresentation("root", {}));
+            var xml = DomUtil.toXMLString(client._fromRepresentation("root", {}));
             expect(xml).toBe("<root/>");
         })
 
         it("from SimpleJson representation", async () => {
             const client = await Mock.makeClient();
-            var xml = DomUtil.toXMLString(client.fromRepresentation("root", {}, "SimpleJson"));
+            var xml = DomUtil.toXMLString(client._fromRepresentation("root", {}, "SimpleJson"));
             expect(xml).toBe("<root/>");
         })
 
@@ -1208,14 +1208,14 @@ describe('ACC Client', function () {
             it("Should convert from BadgerFish to BadgerFish", async () => {
                 const client = await Mock.makeClient();
                 var from = { "@id": "1", "child": {} };
-                var to = client.convertToRepresentation(from, "BadgerFish", "BadgerFish");
+                var to = client._convertToRepresentation(from, "BadgerFish", "BadgerFish");
                 expect(to).toStrictEqual(from);
             })
 
             it("Should convert from BadgerFish to SimpleJson", async () => {
                 const client = await Mock.makeClient();
                 var from = { "@id": "1", "child": {} };
-                var to = client.convertToRepresentation(from, "BadgerFish", "SimpleJson");
+                var to = client._convertToRepresentation(from, "BadgerFish", "SimpleJson");
                 expect(to).toStrictEqual({ id: "1", child: {} });
             })
 
@@ -1224,20 +1224,20 @@ describe('ACC Client', function () {
 
         it("Compare representations", async () => {
             const client = await Mock.makeClient();
-            expect(() => { client.isSameRepresentation("json", "json") }).toThrow("SDK-000004");
-            expect(() => { client.isSameRepresentation("json", "BadgerFish") }).toThrow("SDK-000004");
-            expect(() => { client.isSameRepresentation("BadgerFish", "json") }).toThrow("SDK-000004");
-            expect(client.isSameRepresentation("SimpleJson", "SimpleJson")).toBeTruthy();
-            expect(client.isSameRepresentation("BadgerFish", "SimpleJson")).toBeFalsy();
-            expect(client.isSameRepresentation("SimpleJson", "BadgerFish")).toBeFalsy();
-            expect(client.isSameRepresentation("xml", "BadgerFish")).toBeFalsy();
-            expect(client.isSameRepresentation("SimpleJson", "xml")).toBeFalsy();
-            expect(() => { client.isSameRepresentation("Xml", "Xml") }).toThrow("SDK-000004");
-            expect(() => { client.isSameRepresentation("xml", "Xml") }).toThrow("SDK-000004");
-            expect(() => { client.isSameRepresentation("Xml", "xml") }).toThrow("SDK-000004");
-            expect(() => { client.isSameRepresentation("", "xml") }).toThrow("SDK-000004");
-            expect(() => { client.isSameRepresentation("xml", "") }).toThrow("SDK-000004");
-            expect(() => { client.isSameRepresentation("xml", null) }).toThrow("SDK-000004");
+            expect(() => { client._isSameRepresentation("json", "json") }).toThrow("SDK-000004");
+            expect(() => { client._isSameRepresentation("json", "BadgerFish") }).toThrow("SDK-000004");
+            expect(() => { client._isSameRepresentation("BadgerFish", "json") }).toThrow("SDK-000004");
+            expect(client._isSameRepresentation("SimpleJson", "SimpleJson")).toBeTruthy();
+            expect(client._isSameRepresentation("BadgerFish", "SimpleJson")).toBeFalsy();
+            expect(client._isSameRepresentation("SimpleJson", "BadgerFish")).toBeFalsy();
+            expect(client._isSameRepresentation("xml", "BadgerFish")).toBeFalsy();
+            expect(client._isSameRepresentation("SimpleJson", "xml")).toBeFalsy();
+            expect(() => { client._isSameRepresentation("Xml", "Xml") }).toThrow("SDK-000004");
+            expect(() => { client._isSameRepresentation("xml", "Xml") }).toThrow("SDK-000004");
+            expect(() => { client._isSameRepresentation("Xml", "xml") }).toThrow("SDK-000004");
+            expect(() => { client._isSameRepresentation("", "xml") }).toThrow("SDK-000004");
+            expect(() => { client._isSameRepresentation("xml", "") }).toThrow("SDK-000004");
+            expect(() => { client._isSameRepresentation("xml", null) }).toThrow("SDK-000004");
         })
     });
 
@@ -1310,7 +1310,7 @@ describe('ACC Client', function () {
 
     it("User agent string", async () => {
         const client = await Mock.makeClient();
-        const ua = client.getUserAgentString();
+        const ua = client._getUserAgentString();
         expect(ua.startsWith("@adobe/acc-js-sdk/")).toBeTruthy();
         expect(ua.endsWith(" ACC Javascript SDK")).toBeTruthy();
     })
@@ -1896,4 +1896,203 @@ describe('ACC Client', function () {
             expect(logoff.mock.calls.length).toBe(1);
         })   
      })
+
+    describe("Logon should always return a promise", () => {
+
+        it("Should return a promise with UserPassword", async () => {
+            const connectionParameters = sdk.ConnectionParameters.ofUserAndPassword("http://acc-sdk:8080", "$user$", "$password$");
+            const client = await sdk.init(connectionParameters);
+            client._transport = jest.fn();
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            const result = client.logon();
+            expect(result instanceof Promise).toBe(true);
+            await result;
+        })
+
+        it("Should return a promise with UserAndServiceToken", async () => {
+            const connectionParameters = sdk.ConnectionParameters.ofUserAndServiceToken("http://acc-sdk:8080", "$user$", "$service_token$");
+            const client = await sdk.init(connectionParameters);
+            client._transport = jest.fn();
+            const result = client.logon();
+            expect(result instanceof Promise).toBe(true);
+            try {
+                await result;
+            } catch(ex) { /* result or exception is not handled */ }
+        })
+
+        it("Should return a promise with SessionToken", async () => {
+            const connectionParameters = sdk.ConnectionParameters.ofSessionToken("http://acc-sdk:8080", "$session_token$");
+            const client = await sdk.init(connectionParameters);
+            client._transport = jest.fn();
+            const result = client.logon();
+            expect(result instanceof Promise).toBe(true);
+            await result;
+        })
+
+        it("Should return a promise with SecurityToken", async () => {
+            const connectionParameters = sdk.ConnectionParameters.ofSecurityToken("http://acc-sdk:8080", "$security_token$");
+            const client = await sdk.init(connectionParameters);
+            client._transport = jest.fn();
+            const result = client.logon();
+            expect(result instanceof Promise).toBe(true);
+            await result;
+        })
+
+        it("Should return a promise with AnonymousUser", async () => {
+            const connectionParameters = sdk.ConnectionParameters.ofAnonymousUser("http://acc-sdk:8080");
+            const client = await sdk.init(connectionParameters);
+            client._transport = jest.fn();
+            const result = client.logon();
+            expect(result instanceof Promise).toBe(true);
+            await result;
+        })
+    })
+
+
+    describe("Should simulate server down", () => {
+        it("Should simulate server down and up again", async () => {
+            // Server is up and getOption
+            const client = await Mock.makeClient();
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+            client._transport.mockReturnValueOnce(Mock.GET_DATABASEID_RESPONSE);
+            var databaseId = await client.getOption("XtkDatabaseId", false);
+            expect(databaseId).toBe("uFE80000000000000F1FA913DD7CC7C480041161C");
+
+            // Now simulate a connection error (server is down)
+            const error = new Error("connect ECONNREFUSED 3.225.73.178:8080");
+            error.code="ECONNREFUSED";
+            error.errno="ECONNREFUSED";
+            client._transport.mockReturnValueOnce(Promise.reject(error));
+            await expect(client.getOption("XtkDatabaseId", false)).rejects.toMatchObject({
+                message: "500 - Error calling method 'xtk:session#GetOption': Error (connect ECONNREFUSED 3.225.73.178:8080)"
+            });
+
+            // Server is back up again
+            client._transport.mockReturnValueOnce(Mock.GET_DATABASEID_RESPONSE);
+            databaseId = await client.getOption("XtkDatabaseId", false);
+            expect(databaseId).toBe("uFE80000000000000F1FA913DD7CC7C480041161C")
+        });
+    })
+
+    describe("Connection options", () => {
+        it("Should set options cache TTL", async () => {
+           const client = await Mock.makeClient({ optionCacheTTL: -1 });
+           client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+           client._transport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
+           await client.NLWS.xtkSession.logon();
+           // Get Option and cache result. Check the value is in cache
+           client._transport.mockReturnValueOnce(Mock.GET_DATABASEID_RESPONSE);
+           await client.getOption("XtkDatabaseId", true);
+           expect(client._optionCache._cache["XtkDatabaseId"].value).toMatchObject({ type: 6, rawValue: "uFE80000000000000F1FA913DD7CC7C480041161C" });
+           // Get it again, it should not use the cache (=> it should make a SOAP call)
+           // To test if the SOAP call is made, we mock the SOAP call answer with a different result
+           client._transport.mockReturnValueOnce(Promise.resolve(`<?xml version='1.0'?>
+                    <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:xtk:session' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
+                    <SOAP-ENV:Body>
+                        <GetOptionResponse xmlns='urn:xtk:session' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
+                            <pstrValue xsi:type='xsd:string'>uFE80000000000000F1FA913DD7CC7C48004116FF</pstrValue>
+                            <pbtType xsi:type='xsd:byte'>6</pbtType>
+                        </GetOptionResponse>
+                    </SOAP-ENV:Body>
+                    </SOAP-ENV:Envelope>`));
+            await client.getOption("XtkDatabaseId", true);
+            expect(client._optionCache._cache["XtkDatabaseId"].value).toMatchObject({ type: 6, rawValue: "uFE80000000000000F1FA913DD7CC7C48004116FF" });
+        })
+
+        it("Should set default value for traceAPICalls", async () => {
+            var client = await Mock.makeClient({ traceAPICalls: undefined });
+            expect(client._traceAPICalls).toBeFalsy();
+            client = await Mock.makeClient({ traceAPICalls: null });
+            expect(client._traceAPICalls).toBeFalsy();
+            client = await Mock.makeClient({ traceAPICalls: false });
+            expect(client._traceAPICalls).toBeFalsy();
+            client = await Mock.makeClient({ traceAPICalls: true });
+            expect(client._traceAPICalls).toBeTruthy();
+        })
+
+        it("Should set default transport", async () => {
+            var client = await Mock.makeClient({ transport: async () => {
+                return "Hello";
+            }});
+            await expect(client._transport()).resolves.toBe("Hello");
+        });
+    })
+
+
+    describe("Local storage", () => {
+        it("Shoud read from local storage", async () => {
+            const storage = {
+                getItem: jest.fn(),
+                setItem: jest.fn(),
+            }
+            const client = await Mock.makeClient({ storage: storage });
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+            storage.getItem.mockReturnValueOnce(JSON.stringify({value: { value: "Hello", type: 6 }, cachedAt: 1633715996021 }));
+            const value = await client.getOption("XtkDatabaseId");
+            expect(value).toBe("Hello");
+        })
+
+        it("Should write to local storage", async () => {
+            const storage = {
+                getItem: jest.fn(),
+                setItem: jest.fn(),
+            }
+            const client = await Mock.makeClient({ storage: storage });
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+            storage.getItem.mockReturnValueOnce(JSON.stringify({value: { value: "Hello", type: 6 }, cachedAt: 1633715996021 }));
+            client._transport.mockReturnValueOnce(Promise.resolve(`<?xml version='1.0'?>
+                            <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:wpp:default' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
+                            <SOAP-ENV:Body>
+                            <WriteResponse xmlns='urn:wpp:default' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
+                            </WriteResponse>
+                            </SOAP-ENV:Body>
+                            </SOAP-ENV:Envelope>`));
+            await client.setOption("XtkDatabaseId", "World");
+            var call = undefined;
+            for (var i=0; i<storage.setItem.mock.calls.length; i++) {
+                if (storage.setItem.mock.calls[i][0].endsWith("OptionCache$XtkDatabaseId")) {
+                    call = storage.setItem.mock.calls[i];
+                    break;
+                }
+            }
+            expect(JSON.parse(call[1])).toMatchObject({
+                value: { value: "World", type: 6 }
+            })
+        });
+
+        it("Should ignore protocol for local storage root key", async () => {
+            var connectionParameters = sdk.ConnectionParameters.ofUserAndPassword("http://acc-sdk:8080", "admin", "admin", {});
+            var client = await sdk.init(connectionParameters);
+            expect(client._optionCache._storage._rootKey).toBe("acc.js.sdk.1.0.5.acc-sdk:8080.cache.OptionCache$");
+
+            connectionParameters = sdk.ConnectionParameters.ofUserAndPassword("https://acc-sdk:8080", "admin", "admin", {});
+            client = await sdk.init(connectionParameters);
+            expect(client._optionCache._storage._rootKey).toBe("acc.js.sdk.1.0.5.acc-sdk:8080.cache.OptionCache$");
+
+            connectionParameters = sdk.ConnectionParameters.ofUserAndPassword("acc-sdk:8080", "admin", "admin", {});
+            client = await sdk.init(connectionParameters);
+            expect(client._optionCache._storage._rootKey).toBe("acc.js.sdk.1.0.5.acc-sdk:8080.cache.OptionCache$");
+        })
+
+        it("Should support no storage", async () => {
+            const storage = {
+                getItem: jest.fn(),
+                setItem: jest.fn(),
+            }
+            const client = await Mock.makeClient({ storage: storage, noStorage: true });
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+            client._transport.mockReturnValueOnce(Mock.GET_DATABASEID_RESPONSE);
+            const value = await client.getOption("XtkDatabaseId");
+            expect(value).toBe('uFE80000000000000F1FA913DD7CC7C480041161C');
+            expect(storage.getItem.mock.calls.length).toBe(0); // storage is disabled and should not have been called
+        })
+    })
 });

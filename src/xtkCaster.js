@@ -1,4 +1,3 @@
-"use strict";
 /*
 Copyright 2020 Adobe. All rights reserved.
 This file is licensed to you under the Apache License, Version 2.0 (the "License");
@@ -10,7 +9,8 @@ the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR REPRESENTA
 OF ANY KIND, either express or implied. See the License for the specific language
 governing permissions and limitations under the License.
 */
-
+(function() {
+"use strict";    
 
 /**********************************************************************************
  * 
@@ -56,15 +56,16 @@ governing permissions and limitations under the License.
  * @memberof Campaign
  */
 
-/**
- * Helpers to convert between JavaScript data types and Campaign XTK data types
- * 
+/** 
  * @memberof Campaign
  * @class
  * @constructor
  */
 class XtkCaster {
     
+    /**
+     * Helpers to convert between JavaScript data types and Campaign XTK data types
+     */
     constructor() {
     }
 
@@ -111,7 +112,7 @@ class XtkCaster {
             case "datetimenotz": 
             case 10:            // FIELD_DATE
             case "date": 
-                return "timeStampValue"
+                return "timeStampValue";
             default: {
                 throw CampaignException.BAD_PARAMETER("type", type, `Cannot get variant storage attribute name for type '${type}'`);
             }
@@ -371,3 +372,5 @@ class XtkCaster {
 }
 
 exports.XtkCaster = XtkCaster;
+
+})();

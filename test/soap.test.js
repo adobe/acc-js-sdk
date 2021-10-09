@@ -792,5 +792,18 @@ describe("Campaign exception", () => {
         })
     })
 
+    it("CampaignException should hide sensitive information", () => {
+        const call = makeSoapMethodCall(undefined, "xtk:session", "Date", "$session$", "$security$", "My User Agent");
+        call.finalize("http://ffdamkt:8080/nl/jsp/soaprouter.jsp")
+        const ex = makeCampaignException(call, new Error("Failed"));
+        const req = ex.methodCall.request;
+        expect(req.data.indexOf("$session$")).toBe(-1);
+        expect(req.data.indexOf("$security$")).toBe(-1);
+        expect(req.headers.Cookie.indexOf("$session$")).toBe(-1);
+        expect(req.headers.Cookie.indexOf("$security$")).toBe(-1);
+        expect(req.headers["X-Security-Token"].indexOf("$session$")).toBe(-1);
+        expect(req.headers["X-Security-Token"].indexOf("$security$")).toBe(-1);
+    })
+
 });
 

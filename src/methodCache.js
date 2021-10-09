@@ -1,4 +1,3 @@
-"use strict";
 /*
 Copyright 2020 Adobe. All rights reserved.
 This file is licensed to you under the Apache License, Version 2.0 (the "License");
@@ -10,7 +9,9 @@ the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR REPRESENTA
 OF ANY KIND, either express or implied. See the License for the specific language
 governing permissions and limitations under the License.
 */
-
+(function() {
+"use strict";    
+    
 
 /**********************************************************************************
  * 
@@ -19,6 +20,7 @@ governing permissions and limitations under the License.
  *********************************************************************************/
 
 const DomUtil = require('./domUtil.js').DomUtil;
+const { Cache } = require('./util.js');
 
 /**
  * @namespace Campaign
@@ -28,39 +30,42 @@ const DomUtil = require('./domUtil.js').DomUtil;
  */
 
 /**
- * A in-memory cache for SOAP call method definitions. Not intended to be used directly,
- * but an internal cache for the Campaign.Client object
- * 
  * @private
  * @class
  * @constructor
  * @memberof Campaign
  */
-class MethodCache {
-    
-    constructor() {
-        /**
-         * Method definitions, keyed but schema id. Value is a map whose key is a method name. Value is the DOM element
-         * corresponding to a method
-         * @type {Object<string, Object<string, Campaign.SoapMethodDefinition>>}
-         */
-        this.methodsBySchema = {};
+class MethodCache extends Cache {
 
-        /** 
-         * Soap action headers for each method. Key is schema id, value is a map whose key is a method name. Value is the SOAP action
-         * for the method. For interface method (ex: xtk:session#Write, the SOAP action is actually
-         * xtk:persist#Write, using the interface id, not the session id)
-         * @type {Object<string, Object<string, string>>}
-         */
-        this.soapUrns = {};
+    /**
+     * A in-memory cache for SOAP call method definitions. Not intended to be used directly,
+     * but an internal cache for the Campaign.Client object
+     * 
+     * @param {Storage} storage is an optional Storage object, such as localStorage or sessionStorage
+     * @param {string} rootKey is an optional root key to use for the storage object
+     * @param {number} ttl is the TTL for objects in ms. Defaults to 5 mins
+     */
+    constructor(storage, rootKey, ttl) {
+        super(storage, rootKey, ttl, ((schemaId, methodName) => schemaId + "#" + methodName ));
     }
 
+    /**
+     * Caches all methods of a schema
+     * For backward compatibility purpose. Use "put" instead
+     * 
+     * @deprecated
+     * @param {Element} schema DOM document node represening the schema 
+     */
+    cache(schema) {
+        return this.put(schema);
+    }
+    
     /**
      * Caches all methods of a schema
      * 
      * @param {Element} schema DOM document node represening the schema 
      */
-    cache(schema) {
+    put(schema) {
         var namespace = DomUtil.getAttributeAsString(schema, "namespace");
         var name = DomUtil.getAttributeAsString(schema, "name");
         var impls = DomUtil.getAttributeAsString(schema, "implements");
@@ -82,17 +87,12 @@ class MethodCache {
             }
 
             if (schemaId) {
-                this.methodsBySchema[schemaId] = this.methodsBySchema[schemaId] || {};
-                this.methodsBySchema[soapUrn] = this.methodsBySchema[soapUrn] || {};
-                this.soapUrns[schemaId] = this.soapUrns[schemaId] || {};
-                this.soapUrns[soapUrn] = this.soapUrns[soapUrn] || {};
                 var child = DomUtil.getFirstChildElement(root, "method");
                 while (child) {
                     const methodName = DomUtil.getAttributeAsString(child, "name");
-                    this.methodsBySchema[schemaId][methodName] = child;
-                    this.methodsBySchema[soapUrn][methodName] = child; /// version 0.1.23: cache the method in both the schema id and interface id form compatibility reasons
-                    this.soapUrns[schemaId][methodName] = soapUrn;
-                    this.soapUrns[soapUrn][methodName] = soapUrn;
+                    const cached = { method: child, urn: soapUrn };
+                    super.put(schemaId, methodName, cached);
+                    super.put(soapUrn, methodName, cached); /// version 0.1.23: cache the method in both the schema id and interface id form compatibility reasons
                     child = DomUtil.getNextSiblingElement(child, "method");
                 }
             }
@@ -108,10 +108,8 @@ class MethodCache {
      * @returns {Campaign.SoapMethodDefinition} the method definition, or undefined if the schema or the method is not found
      */
     get(schemaId, methodName) {
-        var dict = this.methodsBySchema[schemaId];
-        if (dict) 
-            dict = dict[methodName];
-        return dict;
+        const cached = super.get(schemaId, methodName);
+        return cached ? cached.method : undefined;
     }
 
     /**
@@ -122,21 +120,13 @@ class MethodCache {
      * @returns {string} the URN (or Soap action header), or undefined if the schema or the method is not found
      */
     getSoapUrn(schemaId, methodName) {
-        var soapUrn = this.soapUrns[schemaId];
-        if (soapUrn) 
-            soapUrn = soapUrn[methodName];
-        return soapUrn;
+        const cached = super.get(schemaId, methodName);
+        return cached ? cached.urn : undefined;
     }
-
-    /**
-     * Clears the cache
-     */
-    clear() {
-        this.methodsBySchema = {};
-    }
-
 }
 
 
 // Public exports
 exports.MethodCache = MethodCache;
+
+})();

@@ -1,4 +1,3 @@
-"use strict";
 /*
 Copyright 2020 Adobe. All rights reserved.
 This file is licensed to you under the Apache License, Version 2.0 (the "License");
@@ -10,6 +9,8 @@ the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR REPRESENTA
 OF ANY KIND, either express or implied. See the License for the specific language
 governing permissions and limitations under the License.
 */
+(function() {
+"use strict";
 
 
 /**********************************************************************************
@@ -31,7 +32,7 @@ const EntityAccessor = require('./entityAccessor.js').EntityAccessor;
 // ========================================================================================
  
 // Determine if a name is an attribute name, i.e. if it starts with the "@" character
-const isAttributeName = function(name) { return name.length > 0 && name[0] == '@'; }
+const isAttributeName = function(name) { return name.length > 0 && name[0] == '@'; };
 
 
 /**
@@ -325,7 +326,7 @@ class XtkSchemaNode {
             else if (element.isParent())
                 childNode = node.parent;
             else
-                childNode = node._getChildDefAutoExpand(name, mustExist)
+                childNode = node._getChildDefAutoExpand(name, mustExist);
             node = childNode;
         }
         return node;
@@ -658,8 +659,6 @@ function newCurrentLogin(userInfo) {
 // ========================================================================================
 
 /**
- * The Application object provides access to certain properties of the Campaign server.
- * 
  * @class
  * @constructor
  * @param {Campaign.Client} client The Campaign Client from which this Application object is created
@@ -667,6 +666,12 @@ function newCurrentLogin(userInfo) {
  */
 class Application {
 
+    /**
+     * The Application object provides access to certain properties of the Campaign server.
+     * Do not create this object directly, it's automatically created by the Campaign.Client at Logon time
+     * @private
+     * @param {Campaign.Client} client the Campaign client representing the Campaign instance
+     */
     constructor(client) {
         this.client = client;
         const info = this.client.getSessionInfo();
@@ -737,3 +742,4 @@ exports.Application = Application;
 // For tests
 exports.newSchema = newSchema;
 exports.newCurrentLogin = newCurrentLogin;
+})();

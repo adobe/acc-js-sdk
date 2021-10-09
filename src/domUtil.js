@@ -1,4 +1,3 @@
-"use strict";
 /*
 Copyright 2020 Adobe. All rights reserved.
 This file is licensed to you under the Apache License, Version 2.0 (the "License");
@@ -10,11 +9,13 @@ the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR REPRESENTA
 OF ANY KIND, either express or implied. See the License for the specific language
 governing permissions and limitations under the License.
 */
-
+(function() {
+"use strict";    
+    
 const XtkCaster = require('./xtkCaster.js').XtkCaster;
 const { Util } = require("./util.js");
 
-var JSDOM = undefined;
+var JSDOM;
 
 /* istanbul ignore else */
 if (!Util.isBrowser()) {
@@ -34,11 +35,11 @@ else {
     var dom = parser.parseFromString(text, "application/xml");
     this.window = {
         document: dom
-    }
+    };
     this.serialize = function() {
         return new XMLSerializer().serializeToString(dom);
-    }
-  }
+    };
+  };
 
   JSDOM = jsdom;
 }
@@ -90,12 +91,17 @@ class DomException {
 
 
 /**
- * Helpers for common manipulation of DOM documents
  * @memberof XML
  * @class
  * @constructor
  */
 class DomUtil {
+
+    /**
+     * Helpers for common manipulation of DOM documents. Al functions are static, it is not necessary to create new instances of this object
+     */
+    constructor() {
+    }
     
     /**
      * Parse an XML string as a DOM Document
@@ -443,10 +449,10 @@ class DomUtil {
             else if (child.nodeType === 3 || child.nodeType === 4) { // text and CDATA
                 if (flavor == "BadgerFish") {
                     const text = child.nodeValue;
-                    if (json["$"] === undefined)
-                        json["$"] = text;
+                    if (json.$ === undefined)
+                        json.$ = text;
                     else 
-                        json["$"] = json["$"] + text;
+                        json.$ = json.$ + text;
                 }
             }
             child = child.nextSibling;
@@ -638,3 +644,5 @@ exports.DomException = DomException;
 exports.BadgerFishObject = BadgerFishObject;
 exports.XPath = XPath;
 exports.XPathElement = XPathElement;
+
+})();

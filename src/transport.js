@@ -9,6 +9,8 @@ the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR REPRESENTA
 OF ANY KIND, either express or implied. See the License for the specific language
 governing permissions and limitations under the License.
 */
+(function() {
+"use strict";    
 
 const { Util } = require('./util.js');
 
@@ -70,9 +72,8 @@ if (!Util.isBrowser()) {
         return Promise.reject(new HttpError(500, error ? error.toString() : undefined));
       // HTTP errors (400, 404, 500, etc.) are returned here
       return Promise.reject(new HttpError(response.status, response.statusText, response.data));
-    })
-  }
-
+    });
+  };
 
   exports.request = request;
   exports.HttpError = HttpError;
@@ -107,13 +108,16 @@ if (!Util.isBrowser()) {
             return blob.text();
         });
     }).catch((ex) => {
-      if (ex.__proto__.constructor.name == "HttpError")
+      const proto = Object.getPrototypeOf(ex);
+      if (proto.constructor.name == "HttpError")
         throw ex;
       throw new HttpError(ex.status, ex.statusText);
-    })
+    });
     return p;
-  }
+  };
 
   module.exports.request = request;
 
 }
+
+})();

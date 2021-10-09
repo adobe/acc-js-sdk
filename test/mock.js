@@ -21,14 +21,16 @@ governing permissions and limitations under the License.
  async function makeAnonymousClient(options) {
     const connectionParameters = sdk.ConnectionParameters.ofAnonymousUser("http://acc-sdk:8080", options);
     const client = await sdk.init(connectionParameters);
-    client._transport = jest.fn();
+    if (!options || !options.transport) // allow tests to explicitely set the transport
+        client._transport = jest.fn();
     return client;
 }
 
 async function makeClient(options) {
     const connectionParameters = sdk.ConnectionParameters.ofUserAndPassword("http://acc-sdk:8080", "admin", "admin", options);
     const client = await sdk.init(connectionParameters);
-    client._transport = jest.fn();
+    if (!options || !options.transport) // allow tests to explicitely set the transport
+        client._transport = jest.fn();
     return client;
 }
 

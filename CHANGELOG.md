@@ -5,6 +5,17 @@ This is a node.js SDK for Campaign API. It exposes the Campaign API exactly like
 
 # Changelog 
 
+## Version 1.0.5
+_2021/10/09_
+* Fix an issue in the logon() function which was not always returning a promise. Some authentication methods such as SessionToken we returning synchronously. Made it so that logon always returns a promise. This should not be a breaking change as logon does not actually return a value
+* Refactor caches (Options cache, Schemas cache, and Methods cache) to use a generic cache class
+* Make sure options parameter of ConnectionParameters constructor is not modified
+* Added a persistent cache for schemas, methods, and options using the browser localStorage by default
+* Make sure X-Security-Token header is hidden as well as session token cookies
+* Added jshint configuration and fixed warnings reported by jshint
+* Fixed vulnerability in ansi-regex; upgrade jest-junit to version 13 to fix
+* Small jsdoc improvements
+
 ## Version 1.0.4
 _2021/10/07_
 * Fix a bug which caused XML text and cdata elements to be skipped during SimpleJson transformation

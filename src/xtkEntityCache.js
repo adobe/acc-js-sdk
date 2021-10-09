@@ -1,4 +1,3 @@
-"use strict";
 /*
 Copyright 2020 Adobe. All rights reserved.
 This file is licensed to you under the Apache License, Version 2.0 (the "License");
@@ -10,7 +9,11 @@ the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR REPRESENTA
 OF ANY KIND, either express or implied. See the License for the specific language
 governing permissions and limitations under the License.
 */
+(function() {
+"use strict";
+
 const DomUtil = require('./domUtil.js').DomUtil;
+const { Cache } = require('./util.js');
 
 
 /**********************************************************************************
@@ -19,14 +22,24 @@ const DomUtil = require('./domUtil.js').DomUtil;
  * 
  *********************************************************************************/
 
-function entityKey(entityType, entityFullName) {
-    return entityType + "|" + entityFullName;
-}
- 
-class XtkEntityCache {
+/**
+ * @private
+ * @class
+ * @constructor
+ * @memberof Campaign
+ */
+class XtkEntityCache extends Cache {
     
-    constructor() {
-        this.cache = {}
+    /**
+     * A in-memory cache for xtk entities. Not intended to be used directly,
+     * but an internal cache for the Campaign.Client object
+     * 
+     * @param {Storage} storage is an optional Storage object, such as localStorage or sessionStorage
+     * @param {string} rootKey is an optional root key to use for the storage object
+     * @param {number} ttl is the TTL for objects in ms. Defaults to 5 mins
+     */
+     constructor(storage, rootKey, ttl) {
+        super(storage, rootKey, ttl, (entityType, entityFullName) => entityType + "|" + entityFullName);
     }
 
     /**
@@ -36,9 +49,7 @@ class XtkEntityCache {
      * @returns {*} the cached entity, or undefined if not found
      */
     get(entityType, entityFullName) {
-        const key = entityKey(entityType, entityFullName);
-        var entity = this.cache[key]
-        return entity;
+        return super.get(entityType, entityFullName);
     }
 
     /**
@@ -48,31 +59,22 @@ class XtkEntityCache {
      * @param {*} entity is the entity
      */
     put(entityType, entityFullName, entity) {
-        var key = entityKey(entityType, entityFullName);
-        this.cache[key] = entity;
-
+        super.put(entityType, entityFullName, entity);
         // For schemas, cache interfaces
         if (entityType == "xtk:schema") {
             const namespace = entity.getAttribute("namespace");
             var interfaceElement = DomUtil.getFirstChildElement(entity, "interface");
             while (interfaceElement) {
                 const name = `${namespace}:${interfaceElement.getAttribute("name")}`;
-                const key = entityKey(entityType, name);
-                this.cache[key] = interfaceElement;
+                super.put(entityType, name, interfaceElement);
                 interfaceElement = DomUtil.getNextSiblingElement(interfaceElement, "interface");
             }
         }
     }
-
-    /**
-     * Clears the cache
-     */
-    clear() {
-        this.cache = {};
-    }
-
 }
 
 
 // Public exports
 exports.XtkEntityCache = XtkEntityCache;
+
+})();

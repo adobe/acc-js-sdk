@@ -1,4 +1,3 @@
-"use strict";
 /*
 Copyright 2020 Adobe. All rights reserved.
 This file is licensed to you under the Apache License, Version 2.0 (the "License");
@@ -10,7 +9,8 @@ the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR REPRESENTA
 OF ANY KIND, either express or implied. See the License for the specific language
 governing permissions and limitations under the License.
 */
-
+(function() {
+"use strict";    
 
 /**********************************************************************************
  * 
@@ -18,6 +18,8 @@ governing permissions and limitations under the License.
  * 
  *********************************************************************************/
 const XtkCaster = require('./xtkCaster.js').XtkCaster;
+const { Cache } = require('./util.js');
+
 
 /**
  * @namespace Campaign
@@ -31,23 +33,36 @@ const XtkCaster = require('./xtkCaster.js').XtkCaster;
 
 
 /**
- * A in-memory cache for xtk option values. Not intended to be used directly,
- * but an internal cache for the Campaign.Client object
- * 
  * @private
  * @class
  * @constructor
  * @memberof Campaign
  */
-class OptionCache {
+class OptionCache extends Cache {
     
-    constructor() {
-        /**
-         * The option values, by option name
-         * @private
-         * @type {Object<string,Campaign.XtkOption>}
-         */
-        this._optionsByName = {};
+    /**
+     * A in-memory cache for xtk option values. Not intended to be used directly,
+     * but an internal cache for the Campaign.Client object
+     * 
+     * @param {Storage} storage is an optional Storage object, such as localStorage or sessionStorage
+     * @param {string} rootKey is an optional root key to use for the storage object
+     * @param {number} ttl is the TTL for objects in ms. Defaults to 5 mins
+     */
+     constructor(storage, rootKey, ttl) {
+        super(storage, rootKey, ttl);
+    }
+
+    /**
+     * Cache an option and its value
+     * For backward compatibility purpose. Use "put" instead
+     * 
+     * @deprecated
+     * @param {string} name is the option name
+     * @param {Array} rawValueAndtype a 2 elements array, whose first element is the raw option value (text serialized) and the second element 
+     * is the data type of the option. Such an array is returned by the xtk:session#GetOption method
+     */
+     cache(schemaId, methodName) {
+        return this.put(schemaId, methodName);
     }
 
     /**
@@ -57,16 +72,16 @@ class OptionCache {
      * @param {Array} rawValueAndtype a 2 elements array, whose first element is the raw option value (text serialized) and the second element 
      * is the data type of the option. Such an array is returned by the xtk:session#GetOption method
      */
-    cache(name, rawValueAndtype) {
+    put(name, rawValueAndtype) {
         var value = null;
         var type = 0;
-        var rawValue = undefined;
+        var rawValue;
         if (rawValueAndtype && rawValueAndtype[1] != 0) {
             rawValue = rawValueAndtype[0];
             type = rawValueAndtype[1];
             value = XtkCaster.as(rawValue, type);
         }
-        this._optionsByName[name] = { value:value, type:type, rawValue:rawValue };
+        super.put(name, { value:value, type:type, rawValue:rawValue });
         return value;
     }
 
@@ -77,7 +92,7 @@ class OptionCache {
      * @returns {*} the option value
      */
     get(name) {
-        const option = this._optionsByName[name];
+        const option = super.get(name);
         return option ? option.value : undefined;
     }
 
@@ -88,19 +103,12 @@ class OptionCache {
      * @returns {Campaign.XtkOption} the option
      */
     getOption(name) {
-        const option = this._optionsByName[name];
-        return option;
+        return super.get(name);
     }
-
-    /**
-     * Clears the cache
-     */
-    clear() {
-        this._optionsByName = {};
-    }
-
 }
 
 
 // Public exports
 exports.OptionCache = OptionCache;
+
+})();
