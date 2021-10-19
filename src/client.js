@@ -178,11 +178,15 @@ class Credentials {
      */
     constructor(type, sessionToken, securityToken) {
         if (type != "UserPassword" && type != "ImsServiceToken" && type != "SessionToken" && 
-            type != "AnonymousUser" && type != "SecurityToken")
+            type != "AnonymousUser" && type != "SecurityToken" && type != "BearerToken")
             throw CampaignException.INVALID_CREDENTIALS_TYPE(type);
         this._type = type;
         this._sessionToken = sessionToken || "";
         this._securityToken = securityToken || "";
+        if (type == "BearerToken") {
+            this._bearerToken = sessionToken || "";
+            this._sessionToken = "";
+        }
     }
 
     /**
@@ -308,6 +312,18 @@ class ConnectionParameters {
         return new ConnectionParameters(endpoint, credentials, options);
     }
 
+    /**
+     * Creates connection parameters for a Campaign instance from bearer token
+     * 
+     * @param {string} endpoint The campaign endpoint (URL)
+     * @param {string} bearerToken IMS bearer token
+     * @param {*} options connection options
+     * @returns {ConnectionParameters} a ConnectionParameters object which can be used to create a Client
+     */
+    static ofBearerToken(endpoint, bearerToken, options) {
+        const credentials = new Credentials("BearerToken", bearerToken);
+        return new ConnectionParameters(endpoint, credentials, options);
+    }
     /**
      * Creates connection parameters for a Campaign instance, using an IMS service token and a user name (the user to impersonate)
      * 
@@ -624,6 +640,17 @@ class Client {
         if (credentialsType == "AnonymousUser")
             return true;
 
+        // When using bearer token authentication we are considered logged only after
+        // the bearer token has been converted into session token and security token
+        // by method xtk:session#BearerTokenLogon
+        if( credentialsType == "BearerToken")
+            return this._sessionToken != undefined &&
+                   this._sessionToken != null &&
+                   this._sessionToken != "" &&
+                   this._securityToken != undefined &&
+                   this._securityToken != null &&
+                   this._securityToken != "";
+
         // with session token authentication, we do not expect a security token
         // with security token authentication, we do not expect a session token
         const needsSecurityToken = credentialsType != "SessionToken";
@@ -708,28 +735,32 @@ class Client {
             that.application = new Application(that);
             return Promise.resolve();
         }
-        else if (credentials._type == "SecurityToken") {
-            that._sessionInfo = undefined;
+        else if (credentials._type == "SecurityToken") { 
+           that._sessionInfo = undefined;
             that._installedPackages = {};
             that._sessionToken = "";
             that._securityToken = credentials._securityToken;
             that.application = new Application(that);
             return Promise.resolve();
         }
-        else if (credentials._type == "UserPassword") {
-            const user = credentials._getUser();
-            const password = credentials._getPassword();
-
-            const soapCall = this._prepareSoapCall("xtk:session", "Logon");
-            soapCall.writeString("login", user);
-            soapCall.writeString("password", password);
-            var parameters = null;
-            if (this._connectionParameters._options.rememberMe) {
-                parameters = soapCall.createElement("parameters");
-                parameters.setAttribute("rememberMe", "true");
+        else if (credentials._type == "UserPassword" || credentials._type == "BearerToken") {
+            const soapCall = that._prepareSoapCall("xtk:session", credentials._type === "UserPassword" ? "Logon" : "BearerTokenLogon");
+            if (credentials._type == "UserPassword") {
+                const user = credentials._getUser();
+                const password = credentials._getPassword();
+                soapCall.writeString("login", user);
+                soapCall.writeString("password", password);
+                var parameters = null;
+                if (this._connectionParameters._options.rememberMe) {
+                    parameters = soapCall.createElement("parameters");
+                    parameters.setAttribute("rememberMe", "true");
+                }
+                soapCall.writeElement("parameters", parameters);
             }
-            soapCall.writeElement("parameters", parameters);
-            
+            else {
+                const bearerToken = credentials._bearerToken;
+                soapCall.writeString("bearerToken", bearerToken);
+            } 
             return this._makeSoapCall(soapCall).then(function() {
                 const sessionToken = soapCall.getNextString();
                 

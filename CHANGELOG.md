@@ -5,6 +5,9 @@ This is a node.js SDK for Campaign API. It exposes the Campaign API exactly like
 
 # Changelog 
 
+## Version 1.0.6
+_2021/10/19
+* New ofBearerToken authentication for IMS access token
 
 ## Version 1.0.5
 _2021/10/09_
