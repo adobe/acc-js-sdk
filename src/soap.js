@@ -119,7 +119,8 @@ class SoapMethodCall {
      * @returns {boolean} indicates if the call requires a Logon first
      */
     requiresLogon() {
-        const requiresLogon = !(this.urn === "xtk:session" && this.methodName === "Logon");
+        const requiresLogon = !(this.urn === "xtk:session" && 
+                               (this.methodName === "Logon" || this.methodName === "BearerTokenLogon") ) ;
         return requiresLogon;
     }
 

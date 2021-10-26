@@ -145,6 +145,13 @@ const connectionParameters = sdk.ConnectionParameters.ofUserAndPassword(
                                     "https://myInstance.campaign.adobe.com", 
                                     "admin", "==ims_service_token_here");
 ```
+## Login with IMS access token
+The SDK supports IMS access token of an IMS user with the `ofBearerToken` function. Pass it a bearer token.
+```js
+const connectionParameters = sdk.ConnectionParameters.ofBearerToken(
+                                    "https://myInstance.campaign.adobe.com", 
+                                    "ims_bearer_token");
+````
 
 ## Login with Session token
 

@@ -27,7 +27,6 @@ const { HttpError } = require('../src/transport.js');
 describe('ACC Client', function () {
 
     describe('Init', function () {
-
         it('Should create client', async function () {
             const client = await Mock.makeClient();
             const NLWS = client.NLWS;
@@ -1897,6 +1896,58 @@ describe('ACC Client', function () {
         })   
      })
 
+    describe("Bearer token authentication", () => {
+        // Bearer token authentication is used when embedding IMS for authentication
+        it("Should create logged client", async() => {
+            const connectionParameters = sdk.ConnectionParameters.ofBearerToken("http://acc-sdk:8080", "$token$");
+            const client = await sdk.init(connectionParameters);
+            client._transport = jest.fn();
+            client._transport.mockReturnValueOnce(Mock.BEARER_LOGON_RESPONSE);
+            expect(client.isLogged()).toBeFalsy();
+            await client.logon();
+            expect(client.isLogged()).toBeTruthy();
+            const transport = client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
+            await client.logoff();
+            expect(client.isLogged()).toBeFalsy();
+            // Ensure logoff has been called
+            expect(transport.mock.calls.length).toBe(2);
+        })
+
+        it("Call SAOP method", async () => {
+            const connectionParameters = sdk.ConnectionParameters.ofBearerToken("http://acc-sdk:8080", "$token$");
+            const client = await sdk.init(connectionParameters);
+            client._transport = jest.fn();
+            client._transport.mockReturnValueOnce(Mock.BEARER_LOGON_RESPONSE);
+            await client.logon();
+            client._transport.mockReturnValueOnce(Mock.GET_XTK_QUERY_SCHEMA_RESPONSE);
+            var queryDef = {
+                "schema": "nms:extAccount",
+                "operation": "select",
+                "select": {
+                    "node": [
+                        { "expr": "@id" },
+                        { "expr": "@name" }
+                    ]
+                }
+            };
+
+            client._transport.mockReturnValueOnce(Promise.resolve(`<?xml version='1.0'?>
+            <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:xtk:queryDef' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
+            <SOAP-ENV:Body>
+            <ExecuteQueryResponse xmlns='urn:xtk:queryDef' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
+                <pdomOutput xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
+                <extAccount-collection/>
+                </pdomOutput></ExecuteQueryResponse>
+            </SOAP-ENV:Body>
+            </SOAP-ENV:Envelope>`));
+
+            // Select should return empty array
+            var query = client.NLWS.xtkQueryDef.create(queryDef);
+            var extAccount = await query.executeQuery();
+            expect(extAccount).toEqual({ extAccount: [] });
+        });
+     })
+
     describe("Logon should always return a promise", () => {
 
         it("Should return a promise with UserPassword", async () => {
@@ -1904,6 +1955,16 @@ describe('ACC Client', function () {
             const client = await sdk.init(connectionParameters);
             client._transport = jest.fn();
             client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            const result = client.logon();
+            expect(result instanceof Promise).toBe(true);
+            await result;
+        })
+
+        it("Should return a promise with bearer token", async () => {
+            const connectionParameters = sdk.ConnectionParameters.ofBearerToken("http://acc-sdk:8080", "$token$");
+            const client = await sdk.init(connectionParameters);
+            client._transport = jest.fn();
+            client._transport.mockReturnValueOnce(Mock.BEARER_LOGON_RESPONSE);
             const result = client.logon();
             expect(result instanceof Promise).toBe(true);
             await result;
@@ -2069,15 +2130,15 @@ describe('ACC Client', function () {
         it("Should ignore protocol for local storage root key", async () => {
             var connectionParameters = sdk.ConnectionParameters.ofUserAndPassword("http://acc-sdk:8080", "admin", "admin", {});
             var client = await sdk.init(connectionParameters);
-            expect(client._optionCache._storage._rootKey).toBe("acc.js.sdk.1.0.5.acc-sdk:8080.cache.OptionCache$");
+            expect(client._optionCache._storage._rootKey).toBe("acc.js.sdk.1.0.6.acc-sdk:8080.cache.OptionCache$");
 
             connectionParameters = sdk.ConnectionParameters.ofUserAndPassword("https://acc-sdk:8080", "admin", "admin", {});
             client = await sdk.init(connectionParameters);
-            expect(client._optionCache._storage._rootKey).toBe("acc.js.sdk.1.0.5.acc-sdk:8080.cache.OptionCache$");
+            expect(client._optionCache._storage._rootKey).toBe("acc.js.sdk.1.0.6.acc-sdk:8080.cache.OptionCache$");
 
             connectionParameters = sdk.ConnectionParameters.ofUserAndPassword("acc-sdk:8080", "admin", "admin", {});
             client = await sdk.init(connectionParameters);
-            expect(client._optionCache._storage._rootKey).toBe("acc.js.sdk.1.0.5.acc-sdk:8080.cache.OptionCache$");
+            expect(client._optionCache._storage._rootKey).toBe("acc.js.sdk.1.0.6.acc-sdk:8080.cache.OptionCache$");
         })
 
         it("Should support no storage", async () => {
