@@ -44,6 +44,7 @@ var resources = [
 
 
 const outFileName = "./dist/bundle.js";
+if (!fs.existsSync("./dist")) fs.mkdirSync("./dist"); 
 const rootPath = "./src";
 
 
