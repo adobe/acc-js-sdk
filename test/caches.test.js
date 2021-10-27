@@ -18,7 +18,7 @@ governing permissions and limitations under the License.
  *********************************************************************************/
 
 const assert = require('assert');
-const { Cache } = require('../src/util.js');
+const { Cache, SafeStorage } = require('../src/cache.js');
 const OptionCache = require('../src/optionCache.js').OptionCache;
 const MethodCache = require('../src/methodCache.js').MethodCache;
 const XtkEntityCache = require('../src/xtkEntityCache.js').XtkEntityCache;
@@ -280,4 +280,140 @@ describe('Caches', function() {
             assert.strictEqual(urn, "xtk:session");
         });
     });
+
+    describe("SafeStorage", () => {
+
+        describe("JSON safe storage", () => {
+
+            it("Should find mock json from the cache", () => {
+                const map = {};
+                const delegate = {
+                    getItem: jest.fn((key) => map[key]),
+                    setItem: jest.fn((key, value) => map[key] = value)
+                }
+                const storage = new SafeStorage(delegate, "");
+                expect(storage.getItem("not_found")).toBeUndefined();
+                map["k1"] = `{ "hello": "world" }`;
+                expect(storage.getItem("k1")).toMatchObject({ hello: "world" });
+                map["k2"] = `{ "value": { "hello": "world" } }`;
+                expect(storage.getItem("k2")).toMatchObject({ value: { hello: "world" } });
+            });
+        });
+
+        describe("XML safe storage", () => {
+
+            const xmlSerDeser = (item, serDeser) => {
+                if (serDeser) {
+                    const xml = DomUtil.toXMLString(item.value);
+                    const value = {...item, value: xml };
+                    return JSON.stringify(value);
+                }
+                else {
+                    const json = JSON.parse(item);
+                    const dom = DomUtil.parse(json.value);
+                    return {...json, value:dom.documentElement};
+                }
+            };
+
+            it("Should find mock xml from the cache", () => {
+                const map = {};
+                const delegate = {
+                    getItem: jest.fn((key) => map[key]),
+                    setItem: jest.fn((key, value) => map[key] = value)
+                }
+                const storage = new SafeStorage(delegate, "", xmlSerDeser);
+                expect(storage.getItem("not_found")).toBeUndefined();
+                map["k1"] = `{ "hello": "world" }`;
+                expect(storage.getItem("k1")).toBeUndefined();      // k1 cached object does not have "value" attribute containing serialized XML
+                map["k1"] = `{ "hello": "world", "value": "" }`;
+                expect(storage.getItem("k1")).toBeUndefined();      // k1 cached object does not have "value" attribute containing serialized XML
+                map["k1"] = `{ "value": { "hello": "world" } }`;
+                expect(storage.getItem("k2")).toBeUndefined();      // k1 cached object does not have "value" attribute but it's not valid XML
+                map["k1"] = `{ "value": "" } }`;
+                expect(storage.getItem("k1")).toBeUndefined();      // k1 cached object does not have "value" attribute but it's not valid XML
+                map["k1"] = `{ "value": "bad" } }`;
+                expect(storage.getItem("k1")).toBeUndefined();      // k1 cached object does not have "value" attribute but it's not valid XML
+                map["k2"] = `{ "value": "<hello/>" }`;
+                expect(storage.getItem("k2").value.tagName).toBe("hello");
+            });
+        });
+    });
+
+    describe("Cache seralizers", () => {
+        it("Should serialize json", () => {
+            const cache = new OptionCache();
+            const serDeser = cache._storage._serDeser;
+            expect(serDeser({ hello: "World" }, true)).toBe('{"hello":"World"}');
+            expect(serDeser({ }, true)).toBe('{}');
+            expect(() => {serDeser(null, true)}).toThrow("Cannot serialize");
+            expect(() => {serDeser(undefined, true)}).toThrow("Cannot serialize");
+            expect(() => {serDeser("", true)}).toThrow("Cannot serialize");
+            expect(() => {serDeser("Hello", true)}).toThrow("Cannot serialize");
+        })
+
+        it("Should deserialize json", () => {
+            const cache = new OptionCache();
+            const serDeser = cache._storage._serDeser;
+            expect(serDeser('{"hello":"World"}', false)).toMatchObject({ hello: "World" });
+            expect(serDeser('{}', false)).toMatchObject({ });
+            expect(() => {serDeser(null, false)}).toThrow("Cannot deserialize");
+            expect(() => {serDeser(undefined, false)}).toThrow("Cannot deserialize");
+            expect(() => {serDeser("", false)}).toThrow("Cannot deserialize");
+            expect(() => {serDeser("Hello", false)}).toThrow("Unexpected token");
+        })
+
+        it("Should serialize XML entity", () => {
+            const cache = new XtkEntityCache();
+            const serDeser = cache._storage._serDeser;
+            expect(serDeser({value: DomUtil.parse("<hello/>")}, true)).toBe('{"value":"<hello/>"}')
+            expect(() => { serDeser({}, true); }).toThrow();
+            expect(() => { serDeser(null, true); }).toThrow();
+            expect(() => { serDeser(undefined, true); }).toThrow();
+            expect(() => { serDeser("", true); }).toThrow();
+            expect(() => { serDeser("Hello", true); }).toThrow();
+        })
+
+        it("Should deserialize XML entity", () => {
+            const cache = new XtkEntityCache();
+            const serDeser = cache._storage._serDeser;
+            expect(DomUtil.toXMLString(serDeser(`{"value":"<hello/>"}`, false).value)).toBe("<hello/>");
+            expect(() => {serDeser(null, false)}).toThrow();
+            expect(() => {serDeser(undefined, false)}).toThrow();
+            expect(() => {serDeser("", false)}).toThrow();
+            expect(() => {serDeser("Hello", false)}).toThrow();
+        })
+
+        it("Should serialize methods", () => {
+            const cache = new MethodCache();
+            const serDeser = cache._storage._serDeser;
+            expect(serDeser({value: { x:3, method:DomUtil.parse("<hello/>")} }, true)).toBe('{"value":{"x":3,"method":"<hello/>"}}')
+            expect(() => { serDeser({value: { x:3 }}, true); }).toThrow();
+            expect(() => { serDeser({}, true); }).toThrow();
+            expect(() => { serDeser(null, true); }).toThrow();
+            expect(() => { serDeser(undefined, true); }).toThrow();
+            expect(() => { serDeser("", true); }).toThrow();
+            expect(() => { serDeser("Hello", true); }).toThrow();
+        })
+
+        it("Should deserialize methods", () => {
+            const cache = new MethodCache();
+            const serDeser = cache._storage._serDeser;
+            expect(DomUtil.toXMLString(serDeser('{"value":{"x":3,"method":"<hello/>"}}', false).value.method)).toBe("<hello/>");
+            expect(() => { serDeser('{"value":{"x":3}}', false); }).toThrow();
+            expect(() => { serDeser({}, false); }).toThrow();
+            expect(() => { serDeser(null, false); }).toThrow();
+            expect(() => { serDeser(undefined, false); }).toThrow();
+            expect(() => { serDeser("", false); }).toThrow();
+            expect(() => { serDeser("Hello", false); }).toThrow();
+        })
+
+        it("Method serialization should not change initial object", () => {
+            const cache = new MethodCache();
+            const serDeser = cache._storage._serDeser;
+            const cached = {value: { x:3, method:DomUtil.parse("<hello/>")} };
+            serDeser(cached, true); // make sure this call does not change the input parameter "cached"
+            expect(cached.value.x).toBe(3);
+            expect(cached.value.method.documentElement.tagName).toBe("hello");
+        })
+    })
 });

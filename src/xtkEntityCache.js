@@ -13,7 +13,7 @@ governing permissions and limitations under the License.
 "use strict";
 
 const DomUtil = require('./domUtil.js').DomUtil;
-const { Cache } = require('./util.js');
+const { Cache } = require('./cache.js');
 
 
 /**********************************************************************************
@@ -32,14 +32,30 @@ class XtkEntityCache extends Cache {
     
     /**
      * A in-memory cache for xtk entities. Not intended to be used directly,
-     * but an internal cache for the Campaign.Client object
+     * but an internal cache for the Campaign.Client object.
+     * 
+     * Cached object are made of
+     * - the key is a string in the form <entityType>|<entityName>, such as "xtk:schema|nms:recipient"
+     * - the value is a DOM element corresponding to the entity. It's always a DOM element, regardless of the client representation
      * 
      * @param {Storage} storage is an optional Storage object, such as localStorage or sessionStorage
      * @param {string} rootKey is an optional root key to use for the storage object
      * @param {number} ttl is the TTL for objects in ms. Defaults to 5 mins
      */
      constructor(storage, rootKey, ttl) {
-        super(storage, rootKey, ttl, (entityType, entityFullName) => entityType + "|" + entityFullName);
+        super(storage, rootKey, ttl, (entityType, entityFullName) => entityType + "|" + entityFullName, (item, serDeser) => {
+            if (serDeser) {
+                if (!item || !item.value) throw Error(`Cannot serialize falsy cached item`);
+                const value = Object.assign({}, item);
+                value.value = DomUtil.toXMLString(item.value);
+                return JSON.stringify(value);
+            }
+            else {
+                const json = JSON.parse(item);
+                json.value = DomUtil.parse(json.value).documentElement;
+                return json;
+            }
+        });
     }
 
     /**

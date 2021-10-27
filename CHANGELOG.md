@@ -8,6 +8,11 @@ This is a node.js SDK for Campaign API. It exposes the Campaign API exactly like
 ## Version 1.0.6
 _2021/10/19
 * New ofBearerToken authentication for IMS access token
+* Fix a small issue in the compile script which did not create the dist folder if it was missing
+* Fix an intermittent bug when running the SDK in the browser and when using local storage cache. The schema cache and method cache 
+  should contain XML representation of Campaign schemas and methods. Before it is put in local storage, data needs to be serialized
+  as text. This was only working of JavaScript objects, but DOM elements were not being serialied causing various errors when
+  using the cache later
 
 ## Version 1.0.5
 _2021/10/09_

@@ -17,7 +17,8 @@ governing permissions and limitations under the License.
  * 
  *********************************************************************************/
 
-const { Util, SafeStorage, Cache } = require('../src/util.js');
+ const { Util } = require('../src/util.js');
+ const { SafeStorage, Cache } = require('../src/cache.js');
 
 
 describe('Util', function() {

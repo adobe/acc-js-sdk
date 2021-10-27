@@ -2155,5 +2155,48 @@ describe('ACC Client', function () {
             expect(value).toBe('uFE80000000000000F1FA913DD7CC7C480041161C');
             expect(storage.getItem.mock.calls.length).toBe(0); // storage is disabled and should not have been called
         })
+
+        it("Should cache XML in storage", async () => {
+            const map = {};
+            const storage = {
+                getItem: jest.fn((key) => map[key]),
+                setItem: jest.fn((key, value) => map[key] = value)
+            }
+            let client = await Mock.makeClient({ storage: storage });
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+            client._transport.mockReturnValueOnce(Mock.GET_NMS_EXTACCOUNT_SCHEMA_RESPONSE);
+             await client.getSchema("nms:extAccount");
+            // Schema should have been cached to local storage
+            expect(storage.setItem.mock.calls.length).toBe(1);
+            expect(storage.setItem.mock.calls[0][0]).toMatch("cache.XtkEntityCache$xtk:schema|nms:extAccount");
+            // Value is the cached object, it should not be an empty object
+            const cached = JSON.parse(storage.setItem.mock.calls[0][1]);
+            expect(Object.keys(cached.value).length).toBeGreaterThan(0);
+            expect(cached.value).toMatch("<schema");
+
+            // Now simulate reusing the local storage. We need a new client to make sure we do not reuse
+            // the in-memory cache of the client. 
+            client = await Mock.makeClient({ storage: storage });
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+            client._transport.mockReturnValueOnce(Mock.GET_NMS_EXTACCOUNT_SCHEMA_RESPONSE);
+            await client.getSchema("nms:extAccount");
+        })
     })
+
+    describe("Get Schema, cache and representations", () => {
+        it("Should get schema with no cache", async () => {
+            const client = await Mock.makeClient();
+            client.clearAllCaches();
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+
+            client._transport.mockReturnValueOnce(Mock.GET_NMS_EXTACCOUNT_SCHEMA_RESPONSE);
+            var schema = await client.getSchema("nms:extAccount");
+            expect(schema["namespace"]).toBe("nms");
+            expect(schema["name"]).toBe("extAccount");
+        });
+
+    });
 });

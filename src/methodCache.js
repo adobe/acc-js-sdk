@@ -20,7 +20,7 @@ governing permissions and limitations under the License.
  *********************************************************************************/
 
 const DomUtil = require('./domUtil.js').DomUtil;
-const { Cache } = require('./util.js');
+const { Cache } = require('./cache.js');
 
 /**
  * @namespace Campaign
@@ -41,12 +41,31 @@ class MethodCache extends Cache {
      * A in-memory cache for SOAP call method definitions. Not intended to be used directly,
      * but an internal cache for the Campaign.Client object
      * 
+     * Cached object are made of
+     * - the key is a string in the form <schemaId>#<methodName>, such as "xtk:session#GetServerTime"
+     * - the value is a JSON object made of two attributes:
+     *          - the "urn" attribute, such as "xtk:persist", which is the URN to use to make the SOAP call
+     *          - the "method" attribute, a DOM element corresponding to the method XML element
+     * 
      * @param {Storage} storage is an optional Storage object, such as localStorage or sessionStorage
      * @param {string} rootKey is an optional root key to use for the storage object
      * @param {number} ttl is the TTL for objects in ms. Defaults to 5 mins
      */
     constructor(storage, rootKey, ttl) {
-        super(storage, rootKey, ttl, ((schemaId, methodName) => schemaId + "#" + methodName ));
+        super(storage, rootKey, ttl, ((schemaId, methodName) => schemaId + "#" + methodName ), (item, serDeser) => {
+            if (serDeser) {
+                if (!item || !item.value || !item.value.method) throw Error(`Cannot serialize falsy cached item`);
+                const value = Object.assign({}, item);          // shallow copy
+                value.value = Object.assign({}, value.value);   // dummy deep copy
+                value.value.method = DomUtil.toXMLString(item.value.method);
+                return JSON.stringify(value);
+            }
+            else {
+                const json = JSON.parse(item);
+                json.value.method = DomUtil.parse(json.value.method);
+                return json;
+            }
+        });
     }
 
     /**

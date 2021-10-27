@@ -18,7 +18,7 @@ governing permissions and limitations under the License.
  * 
  *********************************************************************************/
 const XtkCaster = require('./xtkCaster.js').XtkCaster;
-const { Cache } = require('./util.js');
+const { Cache } = require('./cache.js');
 
 
 /**
@@ -43,6 +43,10 @@ class OptionCache extends Cache {
     /**
      * A in-memory cache for xtk option values. Not intended to be used directly,
      * but an internal cache for the Campaign.Client object
+     * 
+     * Cached object are made of
+     * - the key is the option name
+     * - the value is the option, a JSON object made of value, type, and rawValue properties
      * 
      * @param {Storage} storage is an optional Storage object, such as localStorage or sessionStorage
      * @param {string} rootKey is an optional root key to use for the storage object
