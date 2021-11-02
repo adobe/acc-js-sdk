@@ -62,7 +62,7 @@ class MethodCache extends Cache {
             }
             else {
                 const json = JSON.parse(item);
-                json.value.method = DomUtil.parse(json.value.method);
+                json.value.method = DomUtil.parse(json.value.method).documentElement;
                 return json;
             }
         });

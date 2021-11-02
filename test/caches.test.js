@@ -205,7 +205,17 @@ describe('Caches', function() {
             assert.equal(found.nodeName, "method");
             assert.equal(found.getAttribute("name"), "Create");
         })
-    
+   
+        it("Deserialized method should be a DOM element", () => {
+            const cache = new MethodCache();
+            const serDeser = cache._storage._serDeser;
+            const cached = {value: { x:3, method:DomUtil.parse("<hello/>")} };
+            const serialized = serDeser(cached, true); 
+            const deserialized = serDeser(serialized, false);
+            const method = deserialized.value.method;
+            // should be a DOM element, not a DOM document
+            expect(method.nodeType).toBe(1);
+        })
     });
 
     describe("Method cache for interfaces", function() {
