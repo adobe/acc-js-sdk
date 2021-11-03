@@ -6,7 +6,7 @@ This is a node.js SDK for Campaign API. It exposes the Campaign API exactly like
 # Changelog 
 
 ## Version 1.0.6
-_2021/10/19
+_2021/11/03_
 * New ofBearerToken authentication for IMS access token
 * Fix a small issue in the compile script which did not create the dist folder if it was missing
 * Fix an intermittent bug when running the SDK in the browser and when using local storage cache. The schema cache and method cache 
