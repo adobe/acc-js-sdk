@@ -296,6 +296,8 @@ class ConnectionParameters {
             }    
         }
         this._options._storage = storage;
+        // Refresh client Callback
+        this._options.refreshClient = options.refreshClient;
     }
 
     /**
@@ -478,6 +480,8 @@ class Client {
         this._transport = connectionParameters._options.transport;
         this._traceAPICalls = connectionParameters._options.traceAPICalls;
         this._observers = [];
+        // Callback function for session expiration
+        this._refreshClient = connectionParameters._options.refreshClient;
 
         // expose utilities
 
@@ -676,6 +680,23 @@ class Client {
         return soapCall;
     }
 
+    async _retrySoapCall(soapCall) {
+        soapCall.retry = false;
+        var newClient = await this._refreshClient(this); 
+        soapCall.reFinalize(newClient);
+        if (this._traceAPICalls) {
+            const safeCallData = Util.trim(soapCall.request.data);
+            console.log(`RETRY 
+SOAP//request ${safeCallData}`);
+        }
+        await soapCall.execute();
+        if (this._traceAPICalls) {
+            const safeCallResponse = Util.trim(soapCall.response);
+            console.log(`SOAP//response ${safeCallResponse}`);
+        }
+        return;
+    }
+
     /**
      * After a SOAP method call has been prepared with '_prepareSoapCall', and parameters have been added,
      * this function actually executes the SOAP call
@@ -707,7 +728,12 @@ class Client {
                 if (that._traceAPICalls)
                     console.log(`SOAP//failure ${ex.toString()}`);
                 that._notifyObservers((observer) => observer.onSOAPCallFailure && observer.onSOAPCallFailure(soapCall, ex) );
-                return Promise.reject(ex);
+                // Call session expiration callback in case of 401
+                if (ex.statusCode == 401 && that._refreshClient && soapCall.retry) {
+                    return this._retrySoapCall(soapCall);
+                }
+                else
+                    return Promise.reject(ex);
             });
     }
 
@@ -745,6 +771,8 @@ class Client {
         }
         else if (credentials._type == "UserPassword" || credentials._type == "BearerToken") {
             const soapCall = that._prepareSoapCall("xtk:session", credentials._type === "UserPassword" ? "Logon" : "BearerTokenLogon");
+            // No retry for logon SOAP methods
+            soapCall.retry = false;
             if (credentials._type == "UserPassword") {
                 const user = credentials._getUser();
                 const password = credentials._getPassword();
@@ -813,8 +841,7 @@ class Client {
     logoff() {
         var that = this;
         if (!that.isLogged()) return;
-        
-        const credentials = this._connectionParameters._credentials;
+            const credentials = this._connectionParameters._credentials;
         if (credentials._type != "SessionToken" && credentials._type != "AnonymousUser") {
             var soapCall = that._prepareSoapCall("xtk:session", "Logoff");
                 return this._makeSoapCall(soapCall).then(function() {

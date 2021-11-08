@@ -1899,7 +1899,7 @@ describe('ACC Client', function () {
     describe("Bearer token authentication", () => {
         // Bearer token authentication is used when embedding IMS for authentication
         it("Should create logged client", async() => {
-            const connectionParameters = sdk.ConnectionParameters.ofBearerToken("http://acc-sdk:8080", "$token$");
+            const connectionParameters = sdk.ConnectionParameters.ofBearerToken("http://acc-sdk:8080");
             const client = await sdk.init(connectionParameters);
             client._transport = jest.fn();
             client._transport.mockReturnValueOnce(Mock.BEARER_LOGON_RESPONSE);
@@ -1946,7 +1946,99 @@ describe('ACC Client', function () {
             var extAccount = await query.executeQuery();
             expect(extAccount).toEqual({ extAccount: [] });
         });
-     })
+
+        it("Expired session refresh client callBack", async () => {
+            let refreshClient = async (client)=> {  
+                await client.logon();
+                return client;
+            }
+            const connectionParameters = sdk.ConnectionParameters.ofBearerToken("http://acc-sdk:8080", 
+                                                    "$token$", {refreshClient: refreshClient});
+            const client = await sdk.init(connectionParameters);
+            client.traceAPICalls(true);
+            client._transport = jest.fn();
+            client._transport.mockReturnValueOnce(Mock.BEARER_LOGON_RESPONSE);
+            client._transport.mockReturnValueOnce(Promise.resolve(`XSV-350008 Session has expired or is invalid. Please reconnect.`));
+            client._transport.mockReturnValueOnce(Mock.BEARER_LOGON_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_XTK_QUERY_SCHEMA_RESPONSE);
+            client._transport.mockReturnValueOnce(Promise.resolve(`<?xml version='1.0'?>
+                <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:xtk:queryDef' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
+                <SOAP-ENV:Body>
+                <ExecuteQueryResponse xmlns='urn:xtk:queryDef' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
+                    <pdomOutput xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
+                    <extAccount-collection/>
+                    </pdomOutput></ExecuteQueryResponse>
+                </SOAP-ENV:Body>
+                </SOAP-ENV:Envelope>`));
+            await client.logon();
+            var queryDef = {
+                "schema": "nms:extAccount",
+                "operation": "select",
+                "select": {
+                    "node": [
+                        { "expr": "@id" },
+                        { "expr": "@name" }
+                    ]
+                }
+            };
+            var query = client.NLWS.xtkQueryDef.create(queryDef);
+            var extAccount = await query.executeQuery();
+            expect(extAccount).toEqual({ extAccount: [] });
+            // Same test as before traceAPICalls = false for code coverage
+            client._transport.mockReturnValueOnce(Promise.resolve(`XSV-350008 Session has expired or is invalid. Please reconnect.`));
+            client._transport.mockReturnValueOnce(Mock.BEARER_LOGON_RESPONSE);
+            client._transport.mockReturnValueOnce(Promise.resolve(`<?xml version='1.0'?>
+                <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:xtk:queryDef' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
+                <SOAP-ENV:Body>
+                <ExecuteQueryResponse xmlns='urn:xtk:queryDef' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
+                    <pdomOutput xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
+                    <extAccount-collection/>
+                    </pdomOutput></ExecuteQueryResponse>
+                </SOAP-ENV:Body>
+                </SOAP-ENV:Envelope>`));
+            client.traceAPICalls(false);
+            var query1  = client.NLWS.xtkQueryDef.create(queryDef);
+            extAccount1 = await query1.executeQuery();
+            expect(extAccount1).toEqual({ extAccount: [] });
+        });
+
+     it("Expired session refresh client callBack retry failure", async () => {
+        let refreshClient = async (client)=> {  
+            await client.logon();
+            return client;
+        }
+        const connectionParameters = sdk.ConnectionParameters.ofSecurityToken("http://acc-sdk:8080",
+                                                "$security_token$", {refreshClient: refreshClient});
+        const client = await sdk.init(connectionParameters);
+        client._transport = jest.fn();
+        client._transport.mockReturnValueOnce(Promise.resolve(`XSV-350008 Session has expired or is invalid. Please reconnect.`));
+        client._transport.mockReturnValueOnce(Promise.resolve(`XSV-350008 Session has expired or is invalid. Please reconnect.`));
+        client._transport.mockReturnValueOnce(Mock.GET_XTK_QUERY_SCHEMA_RESPONSE);
+        client._transport.mockReturnValueOnce(Promise.resolve(`<?xml version='1.0'?>
+            <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:xtk:queryDef' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
+            <SOAP-ENV:Body>
+            <ExecuteQueryResponse xmlns='urn:xtk:queryDef' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
+                <pdomOutput xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
+                <extAccount-collection/>
+                </pdomOutput></ExecuteQueryResponse>
+            </SOAP-ENV:Body>
+            </SOAP-ENV:Envelope>`));
+        await client.logon();
+        var queryDef = {
+            "schema": "nms:extAccount",
+            "operation": "select",
+            "select": {
+                "node": [
+                    { "expr": "@id" },
+                    { "expr": "@name" }
+                ]
+            }
+        };
+        var query = client.NLWS.xtkQueryDef.create(queryDef);
+        await expect(query.executeQuery()).rejects.toMatchObject({ errorCode: "SDK-000012" });
+        expect(client._transport.mock.calls.length).toBe(2);
+    });
+ })
 
     describe("Logon should always return a promise", () => {
 

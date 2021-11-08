@@ -127,6 +127,7 @@ traceAPICalls|false| Activates tracing of API calls or not
 transport|axios|Overrides the transport layer
 noStorage|false|De-activate using of local storage
 storage|localStorage|Overrides the local storage for caches
+refreshClient|undefined|Async callback to run when the session token is expired
 
 ```js
 const connectionParameters = sdk.ConnectionParameters.ofUserAndPassword(
@@ -217,6 +218,20 @@ await client.logon();
 
 ```js
 await client.logoff();
+```
+
+## refreshClient callback
+The refreshClient is an async callback function with the sdk client as parameter, it is called when the ACC session is expired.
+The callback must refresh te client session and return it. if a SOAP query fails with session expiration error then it will be retried when the callback is defined. 
+
+```js
+const connectionParameters = sdk.ConnectionParameters.ofUserAndPassword(
+                                url, "admin", "admin",
+                                {refreshClient: async (client)=>{
+                                        await client.logon();
+                                        return client;
+                                    }
+                                });
 ```
 
 ## IP Whitelisting

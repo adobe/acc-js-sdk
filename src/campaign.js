@@ -37,6 +37,7 @@ const { Util } = require("./util.js");
   static SOAP_UNKNOWN_METHOD(schema, method, details)     { return new CampaignException(undefined, 400, 16384, `SDK-000009 Unknown method '${method}' of schema '${schema}'`, details); }
   static NOT_LOGGED_IN(call, details)                     { return new CampaignException(     call, 400, 16384, `SDK-000010 Cannot call API because client is not logged in`, details); }
   static DECRYPT_ERROR(details)                           { return new CampaignException(undefined, 400, 16384, `SDK-000011 "Cannot decrypt password: password marker is missing`, details); }
+  static SESSION_EXPIRED()                                { return new CampaignException(undefined, 401, 16384, `SDK-000012 "Session has expired or is invalid. Please reconnect.`); }
   
 
   /**
@@ -223,6 +224,9 @@ function makeCampaignException(call, err) {
       faultString = err.data;
       details = undefined;
     }
+    // Session expiration case must return a 401
+    if (err.data && err.data.indexOf(`XSV-350008`) != -1)
+        return CampaignException.SESSION_EXPIRED();
     return new CampaignException(call, err.statusCode, "", faultString, details, err);
   }
 

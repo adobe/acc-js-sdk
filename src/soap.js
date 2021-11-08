@@ -93,6 +93,8 @@ class SoapMethodCall {
         // Soap calls marked as internal are calls performed by the framework internally
         // (such as GetEntityIfMoreRecent calls needed to lookup schemas)
         this.internal = false;
+        // Enable soap retry
+        this.retry = true;
 
         this._sessionToken = sessionToken || "";
         this._securityToken = securityToken || "";
@@ -544,6 +546,29 @@ class SoapMethodCall {
     }
 
     /**
+     * Re-Finalize a SOAP call just before sending
+     * @param {object} client the ACC js sdk client
+     */
+    reFinalize(client) {
+        const sessionToken  = client._sessionToken;
+        const securityToken = client._securityToken;
+        this._sessionToken = sessionToken;
+        var cookie = DomUtil.findElement(this._header, "Cookie");
+        if (!cookie) {
+            cookie = this._doc.createElement("Cookie");
+            this._header.appendChild(cookie);
+        }
+        cookie.textContent = `__sessiontoken=${this._sessionToken}`;
+        // MethodSession element exit always
+        var methodSession = DomUtil.findElement(this._method, "sessiontoken");
+        methodSession.textContent = this._sessionToken;
+        this._securityToken = securityToken
+        var security = DomUtil.findElement(this._header, "X-Security-Token");
+        security.textContent = securityToken;
+        this.finalize(this.request.url);
+    }
+    
+    /**
      * Finalize a SOAP call just before sending
      * @param {string} url the endpoint (/nl/jsp/soaprouter.jsp)
      */
@@ -565,6 +590,8 @@ class SoapMethodCall {
         const that = this;
         const promise = this._transport(this.request);
         return promise.then(function(body) {
+            if (body.indexOf(`XSV-350008`) != -1)
+                throw CampaignException.SESSION_EXPIRED();
             that.response = body;
             // Response is a serialized XML document with the following structure
             //
