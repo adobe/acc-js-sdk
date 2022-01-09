@@ -153,22 +153,6 @@ class SoapMethodCall {
         this._method.setAttribute(`xmlns:m`, urnPath);
         this._method.setAttribute(`SOAP-ENV:encodingStyle`, encoding);
         this._data.appendChild(this._method);
-
-        if (this._sessionToken) {
-            const cookieHeader = this._doc.createElement("Cookie");
-            cookieHeader.textContent = `__sessiontoken=${this._sessionToken}`;
-            this._header.appendChild(cookieHeader);
-        }
-
-        const securityTokenHeader = this._doc.createElement("X-Security-Token");
-        securityTokenHeader.textContent = this._securityToken;
-        this._header.appendChild(securityTokenHeader);
-
-        // Always write a sessiontoken element as the first parameter. Even when using SecurityToken authentication
-        // and when the session token is actually passed implicitely as a cookie, one must write a sessiontoken
-        // element. If not, authentication will fail because the first parameter is interpreted as the "authentication mode"
-        // and eventually passed as the first parameter of CXtkLocalSessionPart::GetXtkSecurity
-        this.writeString("sessiontoken", this._sessionToken);
     }
 
     /**
@@ -544,35 +528,50 @@ class SoapMethodCall {
             options.headers['User-Agent'] = this._userAgentString;
         return options;
     }
-
-    /**
-     * Re-Finalize a SOAP call just before sending
-     * @param {object} client the ACC js sdk client
-     */
-    reFinalize(client) {
-        const sessionToken  = client._sessionToken;
-        const securityToken = client._securityToken;
-        this._sessionToken = sessionToken;
-        var cookie = DomUtil.findElement(this._header, "Cookie");
-        if (!cookie) {
-            cookie = this._doc.createElement("Cookie");
-            this._header.appendChild(cookie);
-        }
-        cookie.textContent = `__sessiontoken=${this._sessionToken}`;
-        // MethodSession element exit always
-        var methodSession = DomUtil.findElement(this._method, "sessiontoken");
-        methodSession.textContent = this._sessionToken;
-        this._securityToken = securityToken
-        var security = DomUtil.findElement(this._header, "X-Security-Token");
-        security.textContent = securityToken;
-        this.finalize(this.request.url);
-    }
     
     /**
      * Finalize a SOAP call just before sending
      * @param {string} url the endpoint (/nl/jsp/soaprouter.jsp)
+     * @param {client.Client} sdk client (optional)
      */
-    finalize(url) {
+    finalize(url, client) {
+        if (client) {
+            this._sessionToken = client._sessionToken;
+            this._securityToken = client._securityToken;
+        }
+
+        var cookieHeader = DomUtil.findElement(this._header, "Cookie");
+        if (this._sessionToken) {
+            if (!cookieHeader) {
+                cookieHeader = this._doc.createElement("Cookie");
+                this._header.appendChild(cookieHeader);
+            }
+            cookieHeader.textContent = `__sessiontoken=${this._sessionToken}`;
+        } else if (cookieHeader) {
+            cookieHeader.remove();
+        }
+
+        var securityTokenHeader = DomUtil.findElement(this._header, "X-Security-Token");
+        if (!securityTokenHeader) {
+            securityTokenHeader = this._doc.createElement("X-Security-Token");
+            this._header.appendChild(securityTokenHeader);
+        }
+        securityTokenHeader.textContent = this._securityToken;
+
+        // Always write a sessiontoken element as the first parameter. Even when using SecurityToken authentication
+        // and when the session token is actually passed implicitely as a cookie, one must write a sessiontoken
+        // element. If not, authentication will fail because the first parameter is interpreted as the "authentication mode"
+        // and eventually passed as the first parameter of CXtkLocalSessionPart::GetXtkSecurity
+        var sessionTokenElem = DomUtil.findElement(this._method, "sessiontoken");
+        if (sessionTokenElem) {
+            sessionTokenElem.textContent = this._sessionToken;
+        } else {
+            sessionTokenElem = this._doc.createElement("sessiontoken");
+            sessionTokenElem.setAttribute("xsi:type", "xsd:string");
+            // sessionTokenElem.setAttribute("SOAP-ENV:encodingStyle", SOAP_ENCODING_NATIVE);
+            sessionTokenElem.textContent = this._sessionToken;
+            this._method.prepend(sessionTokenElem);
+        }
         const options = this._createHTTPRequest(url);
         // Prepare request and empty response objects
         this.request = options;

@@ -221,17 +221,16 @@ await client.logoff();
 ```
 
 ## refreshClient callback
-The refreshClient is an async callback function with the sdk client as parameter, it is called when the ACC session is expired.
-The callback must refresh te client session and return it. if a SOAP query fails with session expiration error then it will be retried when the callback is defined. 
+The refreshClient is an async callback function with the SDK client as parameter, it is called when the ACC session is expired.
+The callback must refresh the client session and return it. if a SOAP query fails with session expiration error then it will be retried when the callback is defined.
 
 ```js
 const connectionParameters = sdk.ConnectionParameters.ofUserAndPassword(
-                                url, "admin", "admin",
-                                {refreshClient: async (client)=>{
+                                    url, "admin", "admin",
+                                    { refreshClient: async (client) => {
                                         await client.logon();
                                         return client;
-                                    }
-                                });
+                                    }});
 ```
 
 ## IP Whitelisting
