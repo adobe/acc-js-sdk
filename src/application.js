@@ -88,6 +88,22 @@ class XtkSchemaKey {
 
 }
 
+/**
+ * A join in a XtkSchemaNode link type
+ *
+ * @private
+ * @class
+ * @constructor
+ * @param {} xml
+ * @memberof Campaign
+ */
+ class XtkJoin {
+
+    constructor(xml) {
+        this.src = EntityAccessor.getAttributeAsString(xml, "xpath-src");
+        this.dst = EntityAccessor.getAttributeAsString(xml, "xpath-dst");
+    }
+}
 // ========================================================================================
 // Schema nodes
 // ========================================================================================
@@ -158,6 +174,16 @@ class XtkSchemaNode {
          */
         this.type = EntityAccessor.getAttributeAsString(xml, "type");
         /**
+         * The node target
+         * @type {string}
+         */
+         this.target = EntityAccessor.getAttributeAsString(xml, "target");
+        /**
+         * The node integrity
+         * @type {string}
+         */
+         this.integrity = EntityAccessor.getAttributeAsString(xml, "integrity");
+        /**
          * The node data length (applicable for string-types only)
          * @type {number}
          */
@@ -173,6 +199,11 @@ class XtkSchemaNode {
          */
         this.ref = EntityAccessor.getAttributeAsString(xml, "ref");
 
+        /**
+         * Has an unlimited number of children of the same type
+         * @type {boolean}
+         */
+        this.unbound = EntityAccessor.getAttributeAsBoolean(xml, "unbound");
         /**
          * Children of the node. This is a object whose key are the names of the children nodes (without the "@"
          * character for attributes) 
@@ -204,6 +235,15 @@ class XtkSchemaNode {
          * @type {string}
          */
         this.nodePath = this._getNodePath(true)._path;
+        /**
+         * Element of type "link" has an array of XtkJoin
+         * @type {@type {XtkJoin[]}}
+         */
+        this.joins = [];
+
+        for (var child of EntityAccessor.getChildElements(xml, "join")) {
+            this.joins.push(new XtkJoin(child));
+        }
 
         // Children (elements and attributes)
         const childNodes = [];
@@ -246,6 +286,15 @@ class XtkSchemaNode {
     //    if (this.hasRefTarget())
     //        return this.refTarget().hasChild(name);
         return false;
+    }
+
+    /**
+     * Indicates whether the current node has an unlimited number of children of the same type.
+     *
+     * @returns {boolean} a boolean indicating whether the node contains a child with the given name
+     */
+    isUnbound() {
+        return this.unbound;
     }
 
     /**
