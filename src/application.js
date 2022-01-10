@@ -163,10 +163,16 @@ class XtkSchemaNode {
          */
         this.length = EntityAccessor.getAttributeAsLong(xml, "length");
         /**
+         * The enum of the node
+         * @type {string}
+         */
+        this.enum = EntityAccessor.getAttributeAsString(xml, "enum");
+        /**
          * "ref" attribute of the node, which references another node
          * @type {string}
          */
         this.ref = EntityAccessor.getAttributeAsString(xml, "ref");
+
         /**
          * Children of the node. This is a object whose key are the names of the children nodes (without the "@"
          * character for attributes) 
