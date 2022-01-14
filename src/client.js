@@ -296,6 +296,7 @@ class ConnectionParameters {
             }    
         }
         this._options._storage = storage;
+        this._options.refreshClient = options.refreshClient;
     }
 
     /**
@@ -478,6 +479,7 @@ class Client {
         this._transport = connectionParameters._options.transport;
         this._traceAPICalls = connectionParameters._options.traceAPICalls;
         this._observers = [];
+        this._refreshClient = connectionParameters._options.refreshClient;
 
         // expose utilities
 
@@ -677,6 +679,38 @@ class Client {
     }
 
     /**
+     * Retry a a SOAP call
+     *
+     * @private
+     * @return {SOAP.SoapMethodCall} a SoapMethodCall to retry
+     * parameters should be set
+     */
+    async _retrySoapCall(soapCall) {
+        soapCall.retry = false;
+        var newClient = await this._refreshClient(this); 
+        soapCall.finalize(newClient._soapEndPoint(), newClient);
+        if (this._traceAPICalls) {
+            const safeCallData = Util.trim(soapCall.request.data);
+            console.log(`RETRY SOAP//request ${safeCallData}`);
+        }
+        await soapCall.execute();
+        if (this._traceAPICalls) {
+            const safeCallResponse = Util.trim(soapCall.response);
+            console.log(`SOAP//response ${safeCallResponse}`);
+        }
+        return;
+    }
+
+    /**
+     *  SOAP Endpoint
+     *
+     * @private
+     * @return {string} soap call End point
+     */
+    _soapEndPoint() {
+        return this._connectionParameters._endpoint + "/nl/jsp/soaprouter.jsp";
+    }
+    /**
      * After a SOAP method call has been prepared with '_prepareSoapCall', and parameters have been added,
      * this function actually executes the SOAP call
      * 
@@ -687,8 +721,7 @@ class Client {
         const that = this;
         if (soapCall.requiresLogon() && !that.isLogged())
             throw CampaignException.NOT_LOGGED_IN(soapCall, `Cannot execute SOAP call ${soapCall.urn}#${soapCall.methodName}: you are not logged in. Use the Logon function first`);
-        var soapEndpoint = that._connectionParameters._endpoint + "/nl/jsp/soaprouter.jsp";
-        soapCall.finalize(soapEndpoint);
+        soapCall.finalize(this._soapEndPoint());
         
         const safeCallData = Util.trim(soapCall.request.data);
         if (that._traceAPICalls)
@@ -707,7 +740,12 @@ class Client {
                 if (that._traceAPICalls)
                     console.log(`SOAP//failure ${ex.toString()}`);
                 that._notifyObservers((observer) => observer.onSOAPCallFailure && observer.onSOAPCallFailure(soapCall, ex) );
-                return Promise.reject(ex);
+                // Call session expiration callback in case of 401
+                if (ex.statusCode == 401 && that._refreshClient && soapCall.retry) {
+                    return this._retrySoapCall(soapCall);
+                }
+                else
+                    return Promise.reject(ex);
             });
     }
 
@@ -745,6 +783,8 @@ class Client {
         }
         else if (credentials._type == "UserPassword" || credentials._type == "BearerToken") {
             const soapCall = that._prepareSoapCall("xtk:session", credentials._type === "UserPassword" ? "Logon" : "BearerTokenLogon");
+            // No retry for logon SOAP methods
+            soapCall.retry = false;
             if (credentials._type == "UserPassword") {
                 const user = credentials._getUser();
                 const password = credentials._getPassword();
@@ -813,7 +853,6 @@ class Client {
     logoff() {
         var that = this;
         if (!that.isLogged()) return;
-        
         const credentials = this._connectionParameters._credentials;
         if (credentials._type != "SessionToken" && credentials._type != "AnonymousUser") {
             var soapCall = that._prepareSoapCall("xtk:session", "Logoff");
