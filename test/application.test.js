@@ -290,7 +290,10 @@ describe('Schemas', function() {
                                             <value name="prospect" label="Prospect" value="0" img=""/>
                                             <value name="customer" label="Client"   value="1" img=""/>
                                         </enumeration>
-                                        <element name='recipient' label='Recipients'></element>
+                                        <element name='recipient' label='Recipients'>
+                                        <attribute advanced="true" desc="Recipient sex" enum="nms:recipient:gender"
+                                            label="Gender" name="gender" sqlname="iGender" type="byte"/>
+                                        </element>
                                     </schema>`);
             var schema = newSchema(xml);
             var enumerations = schema.enumerations;
@@ -303,6 +306,7 @@ describe('Schemas', function() {
             // at least one img attribute
             expect(enumerations.status2.name).toBe("status2");
             expect(enumerations.status2.hasImage).toBe(false);
+            expect(schema.root.children["@gender"].enum).toBe("nms:recipient:gender");
         })
 
         it("Should list enumeration values", () => {
