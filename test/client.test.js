@@ -22,6 +22,7 @@ const { Client, ConnectionParameters } = require('../src/client.js');
 const DomUtil = require('../src/domUtil.js').DomUtil;
 const Mock = require('./mock.js').Mock;
 const { HttpError } = require('../src/transport.js');
+const { Cipher } = require('../src/crypto.js');
 
 
 describe('ACC Client', function () {
@@ -604,11 +605,13 @@ describe('ACC Client', function () {
             const client = await Mock.makeClient();
             client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
+            const key = Mock.makeKey();
+            const encrypted = new Cipher(key).encryptPassword("mid");
 
             client._transport.mockReturnValueOnce(Mock.GET_XTK_QUERY_SCHEMA_RESPONSE);
-            client._transport.mockReturnValueOnce(Mock.GET_MID_EXT_ACCOUNT_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_MID_EXT_ACCOUNT_RESPONSE(encrypted));
             client._transport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
-            client._transport.mockReturnValueOnce(Mock.GET_SECRET_KEY_OPTION_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_SECRET_KEY_OPTION_RESPONSE(key));
             var connectionParameters = await sdk.ConnectionParameters.ofExternalAccount(client, "defaultEmailMid");
             var midClient = await sdk.init(connectionParameters);
             midClient._transport = jest.fn();
@@ -630,11 +633,13 @@ describe('ACC Client', function () {
             const client = await Mock.makeClient();
             client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
+            const key = Mock.makeKey();
+            const encrypted = new Cipher(key).encryptPassword("mid");
 
             client._transport.mockReturnValueOnce(Mock.GET_XTK_QUERY_SCHEMA_RESPONSE);
-            client._transport.mockReturnValueOnce(Mock.GET_BAD_EXT_ACCOUNT_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_BAD_EXT_ACCOUNT_RESPONSE(encrypted));
             client._transport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
-            client._transport.mockReturnValueOnce(Mock.GET_SECRET_KEY_OPTION_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_SECRET_KEY_OPTION_RESPONSE(key));
             await expect(async () => {
                 return sdk.ConnectionParameters.ofExternalAccount(client, "bad");
             }).rejects.toMatchObject({ errorCode: "SDK-000005" });
@@ -642,14 +647,16 @@ describe('ACC Client', function () {
 
         it("Should fail if invalid representation", async () => {
             const client = await Mock.makeClient();
+            const key = Mock.makeKey();
+            const encrypted = new Cipher(key).encryptPassword("mid");
 
             client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
 
             client._transport.mockReturnValueOnce(Mock.GET_XTK_QUERY_SCHEMA_RESPONSE);
-            client._transport.mockReturnValueOnce(Mock.GET_MID_EXT_ACCOUNT_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_MID_EXT_ACCOUNT_RESPONSE(encrypted));
             client._transport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
-            client._transport.mockReturnValueOnce(Mock.GET_SECRET_KEY_OPTION_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_SECRET_KEY_OPTION_RESPONSE(key));
 
             await expect(async () => {
                 client._representation = "Dummy";
@@ -663,14 +670,16 @@ describe('ACC Client', function () {
         it("Should fail not fail with SimpleJson representation", async () => {
             const client = await Mock.makeClient();
             client._representation = "SimpleJson";
+            const key = Mock.makeKey();
+            const encrypted = new Cipher(key).encryptPassword("mid");
 
             client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
 
             client._transport.mockReturnValueOnce(Mock.GET_XTK_QUERY_SCHEMA_RESPONSE);
-            client._transport.mockReturnValueOnce(Mock.GET_MID_EXT_ACCOUNT_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_MID_EXT_ACCOUNT_RESPONSE(encrypted));
             client._transport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
-            client._transport.mockReturnValueOnce(Mock.GET_SECRET_KEY_OPTION_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_SECRET_KEY_OPTION_RESPONSE(key));
 
             var connectionParameters = await sdk.ConnectionParameters.ofExternalAccount(client, "defaultEmailMid");
             await sdk.init(connectionParameters);
@@ -680,9 +689,10 @@ describe('ACC Client', function () {
             const client = await Mock.makeClient();
             client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
-
+            const key = Mock.makeKey();
+            
             client._transport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
-            client._transport.mockReturnValueOnce(Mock.GET_SECRET_KEY_OPTION_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_SECRET_KEY_OPTION_RESPONSE(key));
             var cipher = await client._getSecretKeyCipher();
             expect(cipher).not.toBeNull();
             expect(cipher.key).not.toBeNull();
