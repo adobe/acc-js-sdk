@@ -17,10 +17,13 @@ governing permissions and limitations under the License.
  * 
  *********************************************************************************/
  const sdk = require('../src/index.js');
+ const crypto = require("crypto");
 
  const makeKey = () => {
     const a = [];
-    for (let i=0; i<32; i++) { a.push(Math.floor(256*Math.random())); }
+    for (let i=0; i<32; i++) {
+        a.push(Math.floor(crypto.randomInt(0, 256))); 
+    }
     const buffer = Buffer.from(a);
     const s = buffer.toString('base64');
     return s;
