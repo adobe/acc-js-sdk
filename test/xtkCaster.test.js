@@ -696,14 +696,22 @@ describe('XtkCaster', function() {
         expect(XtkCaster._variantStorageAttribute(6)).toBe("stringValue");
         expect(XtkCaster._variantStorageAttribute("string")).toBe("stringValue");
         expect(XtkCaster._variantStorageAttribute("int64")).toBe("stringValue");
+        expect(XtkCaster._variantStorageAttribute("uuid")).toBe("stringValue");
         expect(XtkCaster._variantStorageAttribute(12)).toBe("memoValue");
         expect(XtkCaster._variantStorageAttribute(13)).toBe("memoValue");
         expect(XtkCaster._variantStorageAttribute("memo")).toBe("memoValue");
         expect(XtkCaster._variantStorageAttribute("CDATA")).toBe("memoValue");
+        expect(XtkCaster._variantStorageAttribute("blob")).toBe("memoValue");
+        expect(XtkCaster._variantStorageAttribute("html")).toBe("memoValue");
         expect(XtkCaster._variantStorageAttribute(1)).toBe("longValue");
         expect(XtkCaster._variantStorageAttribute(2)).toBe("longValue");
         expect(XtkCaster._variantStorageAttribute(3)).toBe("longValue");
         expect(XtkCaster._variantStorageAttribute(15)).toBe("longValue");
+        expect(XtkCaster._variantStorageAttribute("byte")).toBe("longValue");
+        expect(XtkCaster._variantStorageAttribute("short")).toBe("longValue");
+        expect(XtkCaster._variantStorageAttribute("long")).toBe("longValue");
+        expect(XtkCaster._variantStorageAttribute("int")).toBe("longValue");
+        expect(XtkCaster._variantStorageAttribute("boolean")).toBe("longValue");
         expect(XtkCaster._variantStorageAttribute(4)).toBe("doubleValue");
         expect(XtkCaster._variantStorageAttribute(5)).toBe("doubleValue");
         expect(XtkCaster._variantStorageAttribute("float")).toBe("doubleValue");
@@ -716,4 +724,93 @@ describe('XtkCaster', function() {
         expect(XtkCaster._variantStorageAttribute("date")).toBe("timeStampValue");
         expect(() => { XtkCaster._variantStorageAttribute(777); }).toThrow("Cannot get variant storage");
     });
+
+    describe("Array tests", () => {
+            it("Should return array", () => {
+            expect(XtkCaster.asArray(null)).toStrictEqual([]);
+            expect(XtkCaster.asArray(undefined)).toStrictEqual([]);
+            expect(XtkCaster.asArray(false)).toStrictEqual([false]);
+            expect(XtkCaster.asArray("Hello")).toStrictEqual(["Hello"]);
+            expect(XtkCaster.asArray([])).toStrictEqual([]);
+            expect(XtkCaster.asArray([null])).toStrictEqual([null]);
+        })
+    
+        it("Should support arrays", () => {
+            expect(XtkCaster.as(null, "array")).toStrictEqual([]);
+            expect(XtkCaster.as(undefined, "array")).toStrictEqual([]);
+            expect(XtkCaster.as(false, "array")).toStrictEqual([false]);
+            expect(XtkCaster.as("Hello", "array")).toStrictEqual(["Hello"]);
+            expect(XtkCaster.as([], "array")).toStrictEqual([]);
+            expect(XtkCaster.as([null], "array")).toStrictEqual([null]);
+        });
+    });
+
+    describe("Timespan test", () => {
+        it("Should return timespan", () => {
+            expect(XtkCaster.asTimespan(null)).toStrictEqual(0);
+            expect(XtkCaster.asTimespan(undefined)).toStrictEqual(0);
+            expect(XtkCaster.asTimespan(false)).toStrictEqual(0);
+            expect(XtkCaster.asTimespan("Hello")).toStrictEqual(0);
+            expect(XtkCaster.asTimespan([])).toStrictEqual(0);
+            expect(XtkCaster.asTimespan([null])).toStrictEqual(0);
+            expect(XtkCaster.asTimespan(NaN)).toStrictEqual(0);
+            expect(XtkCaster.asTimespan(Number.POSITIVE_INFINITY)).toStrictEqual(0);
+            expect(XtkCaster.asTimespan(Number.NEGATIVE_INFINITY)).toStrictEqual(0);
+            expect(XtkCaster.asTimespan("86400")).toStrictEqual(86400);
+            expect(XtkCaster.asTimespan(86400)).toStrictEqual(86400);
+        })
+
+        it("As should support 'timspan'", () => {
+            expect(XtkCaster.as(null, "timespan")).toStrictEqual(0);
+            expect(XtkCaster.as(undefined, "timespan")).toStrictEqual(0);
+            expect(XtkCaster.as(false, "timespan")).toStrictEqual(0);
+            expect(XtkCaster.as("Hello", "timespan")).toStrictEqual(0);
+            expect(XtkCaster.as([], "timespan")).toStrictEqual(0);
+            expect(XtkCaster.as([null], "timespan")).toStrictEqual(0);
+            expect(XtkCaster.as("86400", "timespan")).toStrictEqual(86400);
+            expect(XtkCaster.as(86400, "timespan")).toStrictEqual(86400);
+        });
+
+        it("As should support type 14", () => {
+            expect(XtkCaster.as(null, 14)).toStrictEqual(0);
+            expect(XtkCaster.as(undefined, 14)).toStrictEqual(0);
+            expect(XtkCaster.as(false, 14)).toStrictEqual(0);
+            expect(XtkCaster.as("Hello", 14)).toStrictEqual(0);
+            expect(XtkCaster.as([], 14)).toStrictEqual(0);
+            expect(XtkCaster.as([null], 14)).toStrictEqual(0);
+            expect(XtkCaster.as("86400", 14)).toStrictEqual(86400);
+            expect(XtkCaster.as(86400, 14)).toStrictEqual(86400);
+        });
+    })
+
+    describe("Other string types", () => {
+        it("Type 'html'", () => {
+            expect(XtkCaster.as(null, "html")).toStrictEqual("");
+            expect(XtkCaster.as(undefined, "html")).toStrictEqual("");
+            expect(XtkCaster.as("Hello", "html")).toStrictEqual("Hello");
+            expect(XtkCaster.as("0", "html")).toStrictEqual("0");
+        });
+
+        it("Type 'uuid'", () => {
+            expect(XtkCaster.as(null, "uuid")).toStrictEqual("");
+            expect(XtkCaster.as(undefined, "uuid")).toStrictEqual("");
+            expect(XtkCaster.as("Hello", "uuid")).toStrictEqual("Hello");
+            expect(XtkCaster.as("0", "uuid")).toStrictEqual("0");
+        });
+
+        it("Type 'blob'", () => {
+            expect(XtkCaster.as(null, "blob")).toStrictEqual("");
+            expect(XtkCaster.as(undefined, "blob")).toStrictEqual("");
+            expect(XtkCaster.as("Hello", "blob")).toStrictEqual("Hello");
+            expect(XtkCaster.as("0", "blob")).toStrictEqual("0");
+        });
+
+        it("Type 'int'", () => {
+            expect(XtkCaster.as(null, "int")).toStrictEqual(0);
+            expect(XtkCaster.as(undefined, "int")).toStrictEqual(0);
+            expect(XtkCaster.as("42", "int")).toStrictEqual(42);
+            expect(XtkCaster.as("0", "int")).toStrictEqual(0);
+        });
+    })
+
 });
