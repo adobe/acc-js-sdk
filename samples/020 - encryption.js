@@ -31,11 +31,11 @@ const utils = require("./utils.js");
     code: async() => {
       return await utils.logon(async (client, NLWS) => {
         const password = "Hello, World";
-        console.log(`xtk:session#Encrypt => ${await NLWS.xtkSession.encrypt(password)}`);
-        console.log(`xtk:session#EncryptPassword => ${await NLWS.xtkSession.encryptPassword(password)}`);
-        console.log(`xtk:session#EncryptServerPassword => ${await NLWS.xtkSession.encryptServerPassword(password)}`);
-        console.log(`xtk:session#HashPassword => ${await NLWS.xtkSession.hashPassword(password)}`);
-        console.log(`xtk:session#ReEncryptPassword => ${await NLWS.xtkSession.reEncryptPassword(await NLWS.xtkSession.encryptPassword(password))}`);
+        console.log(`xtk:session#Encrypt : ${await NLWS.xtkSession.encrypt(password)}`);
+        console.log(`xtk:session#EncryptPassword : ${await NLWS.xtkSession.encryptPassword(password)}`);
+        console.log(`xtk:session#EncryptServerPassword : ${await NLWS.xtkSession.encryptServerPassword(password)}`);
+        console.log(`xtk:session#HashPassword : ${await NLWS.xtkSession.hashPassword(password)}`);
+        console.log(`xtk:session#ReEncryptPassword : ${await NLWS.xtkSession.reEncryptPassword(await NLWS.xtkSession.encryptPassword(password))}`);
       });
     }
   });

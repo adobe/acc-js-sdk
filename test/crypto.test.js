@@ -19,61 +19,65 @@ governing permissions and limitations under the License.
 
 const assert = require('assert');
 const crypto = require('../src/crypto.js');
+const { Mock } = require('./mock.js');
 const Cipher = crypto.Cipher;
 
 describe('crypto', function() {
     
     it("Should decrypt password", function() {
-        const cipher = new Cipher("HMLmn6uvWr8wu1Akt8UORr07YbC64u1FVW7ENAxNjpo=");
-        var decrypted = cipher.decryptPassword("@57QS5VHMb9BCsojLVrKI/Q==");
+        const cipher = new Cipher(Mock.makeKey());
+        const encrypted = cipher.encryptPassword("mid");
+        var decrypted = cipher.decryptPassword(encrypted);
         assert.equal(decrypted, "mid");
     });
 
     it("Should fail on invalid encrypted string", function() {
-        const cipher = new Cipher("HMLmn6uvWr8wu1Akt8UORr07YbC64u1FVW7ENAxNjpo=");
+        const cipher = new Cipher(Mock.makeKey());
         assert.throws(function() {
             cipher.decryptPassword("Hello");
         });
     });
 
     it("Should decrypt password twice", function() {
-        const cipher = new Cipher("HMLmn6uvWr8wu1Akt8UORr07YbC64u1FVW7ENAxNjpo=");
-        var decrypted = cipher.decryptPassword("@57QS5VHMb9BCsojLVrKI/Q==");
+        const cipher = new Cipher(Mock.makeKey());
+        const encrypted = cipher.encryptPassword("mid");
+        var decrypted = cipher.decryptPassword(encrypted);
         assert.equal(decrypted, "mid");
-         decrypted = cipher.decryptPassword("@57QS5VHMb9BCsojLVrKI/Q==");
+         decrypted = cipher.decryptPassword(encrypted);
         assert.equal(decrypted, "mid");
     });
 
     it("Should decrypt password after failure", function() {
-        const cipher = new Cipher("HMLmn6uvWr8wu1Akt8UORr07YbC64u1FVW7ENAxNjpo=");
+        const cipher = new Cipher(Mock.makeKey());
         assert.throws(function() {
             cipher.decryptPassword("@Hello");
         });
         // make sure state is valid after failure
-        var decrypted = cipher.decryptPassword("@57QS5VHMb9BCsojLVrKI/Q==");
+        const encrypted = cipher.encryptPassword("mid");
+        var decrypted = cipher.decryptPassword(encrypted);
         assert.equal(decrypted, "mid");
     });
 
     it("Should handle plain text passwords", function() {
-        const cipher = new Cipher("llL97E5mAvLTxgT1fsAH2kjLqZXKCGHfDyR9q0C6Ivs=");
+        const cipher = new Cipher(Mock.makeKey());
         var decrypted = cipher.decryptPassword("__PLAINTEXT__pass");
         assert.equal(decrypted, "pass");
     });
 
     it("Should fail if no marker", function() {
-        const cipher = new Cipher("HMLmn6uvWr8wu1Akt8UORr07YbC64u1FVW7ENAxNjpo=");
+        const cipher = new Cipher(Mock.makeKey());
         expect(() => { cipher.decryptPassword("57QS5VHMb9BCsojLVrKI/Q=="); }).toThrow("SDK-000011");
     });
 
     it("Should support empty passwords", function() {
-        const cipher = new Cipher("HMLmn6uvWr8wu1Akt8UORr07YbC64u1FVW7ENAxNjpo=");
+        const cipher = new Cipher(Mock.makeKey());
         assert.equal(cipher.decryptPassword(""), "");
         assert.equal(cipher.decryptPassword(null), "");
         assert.equal(cipher.decryptPassword(undefined), "");
     });
 
     it("Encrypt - decrypt", function() {
-        const cipher = new Cipher("HMLmn6uvWr8wu1Akt8UORr07YbC64u1FVW7ENAxNjpo=");
+        const cipher = new Cipher(Mock.makeKey());
         expect(cipher.decryptPassword(cipher.encryptPassword(""))).toBe("");
         expect(cipher.decryptPassword(cipher.encryptPassword("1"))).toBe("1");
         expect(cipher.decryptPassword(cipher.encryptPassword("Hello"))).toBe("Hello");

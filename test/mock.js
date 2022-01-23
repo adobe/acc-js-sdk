@@ -17,6 +17,17 @@ governing permissions and limitations under the License.
  * 
  *********************************************************************************/
  const sdk = require('../src/index.js');
+ const crypto = require("crypto");
+
+ const makeKey = () => {
+    const a = [];
+    for (let i=0; i<32; i++) {
+        a.push(Math.floor(crypto.randomInt(0, 256))); 
+    }
+    const buffer = Buffer.from(a);
+    const s = buffer.toString('base64');
+    return s;
+ }
 
  async function makeAnonymousClient(options) {
     const connectionParameters = sdk.ConnectionParameters.ofAnonymousUser("http://acc-sdk:8080", options);
@@ -280,37 +291,43 @@ const GET_XTK_QUERY_SCHEMA_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
     </SOAP-ENV:Body>
     </SOAP-ENV:Envelope>`);
 
-const GET_MID_EXT_ACCOUNT_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
+const GET_MID_EXT_ACCOUNT_RESPONSE = (encryptedPassword) => {
+    return  Promise.resolve(`<?xml version='1.0'?>
     <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:xtk:queryDef' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
     <SOAP-ENV:Body>
         <ExecuteQueryResponse xmlns='urn:xtk:queryDef' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
             <pdomOutput xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
-                <extAccount account="mid" id="2088" name="defaultEmailMid" password="@57QS5VHMb9BCsojLVrKI/Q==" server="http://ffdamid:8080" type="3"/>
+                <extAccount account="mid" id="2088" name="defaultEmailMid" password="${encryptedPassword}" server="http://ffdamid:8080" type="3"/>
             </pdomOutput>
         </ExecuteQueryResponse>
     </SOAP-ENV:Body>
     </SOAP-ENV:Envelope>`);
+}
 
-const GET_BAD_EXT_ACCOUNT_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
+const GET_BAD_EXT_ACCOUNT_RESPONSE = (encryptedPassword) => {
+    return Promise.resolve(`<?xml version='1.0'?>
     <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:xtk:queryDef' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
     <SOAP-ENV:Body>
         <ExecuteQueryResponse xmlns='urn:xtk:queryDef' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
             <pdomOutput xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
-                <extAccount account="bad" id="2088" name="bad" password="@57QS5VHMb9BCsojLVrKI/Q==" server="http://zz:8080" type="999"/>
+                <extAccount account="bad" id="2088" name="bad" password="${encryptedPassword}" server="http://zz:8080" type="999"/>
             </pdomOutput>
         </ExecuteQueryResponse>
     </SOAP-ENV:Body>
     </SOAP-ENV:Envelope>`);
+}
 
-const GET_SECRET_KEY_OPTION_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
+const GET_SECRET_KEY_OPTION_RESPONSE = (key) => {
+    return Promise.resolve(`<?xml version='1.0'?>
     <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:xtk:session' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
     <SOAP-ENV:Body>
         <GetOptionResponse xmlns='urn:xtk:session' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
-            <pstrValue xsi:type='xsd:string'>HMLmn6uvWr8wu1Akt8UORr07YbC64u1FVW7ENAxNjpo=</pstrValue>
+            <pstrValue xsi:type='xsd:string'>${key}</pstrValue>
             <pbtType xsi:type='xsd:byte'>6</pbtType>
         </GetOptionResponse>
     </SOAP-ENV:Body>
     </SOAP-ENV:Envelope>`);
+}
 
 const GET_LOGON_MID_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
     <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:xtk:session' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
@@ -594,6 +611,7 @@ exports.Mock = {
   makeClient: makeClient,
   makeAnonymousClient: makeAnonymousClient,
   withMockConsole: withMockConsole,
+  makeKey: makeKey,
   R_TEST: R_TEST,
   PING: PING,
   MC_PING: MC_PING,

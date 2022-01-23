@@ -25,7 +25,7 @@ const utils = require("./utils.js");
     code: async() => {
       return await utils.logon(async (client, NLWS) => {
         const schema = await client.getSchema("xtk:option");
-        console.log(`>> client.getSchema (current representation) => ${JSON.stringify(schema)}`);        
+        console.log(`>> client.getSchema (current representation) : ${JSON.stringify(schema)}`);
       });
     }
   });
@@ -38,7 +38,7 @@ const utils = require("./utils.js");
     code: async() => {
       return await utils.logon(async (client, NLWS) => {
         const schema = await client.getSchema("xtk:option", "xml");
-        console.log(`>> client.getSchema (xml) => ${client.DomUtil.toXMLString(schema)}`);
+        console.log(`>> client.getSchema (xml) : ${client.DomUtil.toXMLString(schema)}`);
       });
     }
   });
@@ -52,7 +52,7 @@ const utils = require("./utils.js");
     code: async() => {
       return await utils.logon(async (client, NLWS) => {
         const schema = await client.getEntityIfMoreRecent("xtk:srcSchema", "nms:rtEvent");
-        console.log(`>> client.getEntityIfMoreRecent => ${JSON.stringify(schema)}`);        
+        console.log(`>> client.getEntityIfMoreRecent : ${JSON.stringify(schema)}`);
       });
     }
   });
