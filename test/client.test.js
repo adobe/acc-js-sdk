@@ -2282,15 +2282,15 @@ describe('ACC Client', function () {
         it("Should ignore protocol for local storage root key", async () => {
             var connectionParameters = sdk.ConnectionParameters.ofUserAndPassword("http://acc-sdk:8080", "admin", "admin", {});
             var client = await sdk.init(connectionParameters);
-            expect(client._optionCache._storage._rootKey).toBe("acc.js.sdk.1.0.6.acc-sdk:8080.cache.OptionCache$");
+            expect(client._optionCache._storage._rootKey).toBe("acc.js.sdk.1.0.7.acc-sdk:8080.cache.OptionCache$");
 
             connectionParameters = sdk.ConnectionParameters.ofUserAndPassword("https://acc-sdk:8080", "admin", "admin", {});
             client = await sdk.init(connectionParameters);
-            expect(client._optionCache._storage._rootKey).toBe("acc.js.sdk.1.0.6.acc-sdk:8080.cache.OptionCache$");
+            expect(client._optionCache._storage._rootKey).toBe("acc.js.sdk.1.0.7.acc-sdk:8080.cache.OptionCache$");
 
             connectionParameters = sdk.ConnectionParameters.ofUserAndPassword("acc-sdk:8080", "admin", "admin", {});
             client = await sdk.init(connectionParameters);
-            expect(client._optionCache._storage._rootKey).toBe("acc.js.sdk.1.0.6.acc-sdk:8080.cache.OptionCache$");
+            expect(client._optionCache._storage._rootKey).toBe("acc.js.sdk.1.0.7.acc-sdk:8080.cache.OptionCache$");
         })
 
         it("Should support no storage", async () => {

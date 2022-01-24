@@ -5,6 +5,17 @@ This is a node.js SDK for Campaign API. It exposes the Campaign API exactly like
 
 # Changelog 
 
+## Version 1.0.7
+_2022_01_24_
+* Added a hook `refreshClient` on connection parameters. This is a callback called when an authentication token expires. It can be used to implement reconnection logic
+* New attributes on the schema API (application.getSchema)
+  * The `enum` attribute of a schema node returns the corresponding enum attribute, i.e. the enumeration name
+  * The `target` attribute of a schema node (of type link) returns the target (schema id) of the link
+  * The `integrity` attribute of a schema node (of type link) returns the link integrity ("define", "own", etc.)
+* Added a github workflow for code analysis (CodeQL) to detect more potential issues before release
+* Upgrade dependencies to fix some vulnerabilities
+* Add new conversion functions in XtkCaster to support for int, timespan, uuid, html and blob
+
 ## Version 1.0.6
 _2021/11/03_
 * New ofBearerToken authentication for IMS access token
