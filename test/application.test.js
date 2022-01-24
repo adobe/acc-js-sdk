@@ -387,6 +387,41 @@ describe('Schemas', function() {
         })
     });
 
+    describe("Link", () => {
+        it("Should have a link element", () => {
+            var xml = DomUtil.parse(`<schema namespace='nms' name='recipient'>
+                                        <element name='recipient' label='Recipients'>
+                                            <element integrity="neutral" label="Info on the email" name="emailInfo"
+                                                target="nms:address" type="link" unbound="true">
+                                                <join xpath-dst="@address" xpath-src="@email"/>
+                                                <join xpath-dst="@dst" xpath-src="@source"/>
+                                            </element>
+                                        </element>
+                                    </schema>`);
+            var schema = newSchema(xml);
+            var link = schema.root.children["emailInfo"];
+            expect(link.target).toBe("nms:address");
+            expect(link.integrity).toBe("neutral");
+            expect(link.isUnbound()).toBe(true);
+            expect(link.joins.length).toBe(2);
+            expect(link.joins[0].dst).toBe("@address");
+            expect(link.joins[0].src).toBe("@email");
+
+            xml = DomUtil.parse(`<schema namespace='nms' name='recipient'>
+                                    <element name='recipient' label='Recipients'>
+                                        <element integrity="neutral" label="Info on the email" name="emailInfo"
+                                            target="nms:address" type="link">
+                                            <join xpath-dst="@address" xpath-src="@email"/>
+                                            <join xpath-dst="@dst" xpath-src="@source"/>
+                                        </element>
+                                    </element>
+                                </schema>`);
+            schema = newSchema(xml);
+            link = schema.root.children["emailInfo"];
+            expect(link.isUnbound()).toBe(false);
+        })
+    })
+
     describe("getnodepath", () => {
         var xml = DomUtil.parse(`<schema namespace='nms' name='recipient'>
                 <element name='recipient' label='Recipients'>
