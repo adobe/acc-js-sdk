@@ -1958,7 +1958,7 @@ describe('ACC Client', function () {
         });
 
         it("Expired session refresh client callback", async () => {
-            let refreshClient = async (client) => {
+            let refreshClient = async () => {
                 const connectionParameters = sdk.ConnectionParameters.ofSecurityToken("http://acc-sdk:8080",
                                                         "$security_token$", {refreshClient: refreshClient});
                 const newClient = await sdk.init(connectionParameters);
@@ -2011,12 +2011,12 @@ describe('ACC Client', function () {
                 </SOAP-ENV:Envelope>`));
             client.traceAPICalls(false);
             var query1  = client.NLWS.xtkQueryDef.create(queryDef);
-            extAccount1 = await query1.executeQuery();
+            const extAccount1 = await query1.executeQuery();
             expect(extAccount1).toEqual({ extAccount: [] });
         });
 
         it("Expired session refresh client callback for code coverage", async () => {
-            let refreshClient = async (client) => {
+            let refreshClient = async () => {
                 const connectionParameters = sdk.ConnectionParameters.ofSessionToken("http://acc-sdk:8080", "$session_token$");
                 const newClient = await sdk.init(connectionParameters);
                 newClient._transport = jest.fn();
@@ -2058,7 +2058,7 @@ describe('ACC Client', function () {
         });
 
         it("Expired session refresh client callback retry failure", async () => {
-            let refreshClient = async (client) => {
+            let refreshClient = async () => {
                 const connectionParameters = sdk.ConnectionParameters.ofBearerToken("http://acc-sdk:8080",
                 "$token$", {refreshClient: refreshClient});
                 const newClient = await sdk.init(connectionParameters);
