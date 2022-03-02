@@ -23,6 +23,7 @@ const DomUtil = require('./domUtil.js').DomUtil;
 const XtkCaster = require('./xtkCaster.js').XtkCaster;
 const { Client, Credentials, ConnectionParameters } = require('./client.js');
 const request = require('./transport.js').request;
+const { TestUtil } = require('./testUtil');
 
 /**
  * Get/Set the transport function (defaults to Axios). This function is used for testing / mocking the transport layer.
@@ -127,8 +128,7 @@ class SDK {
      * @example
      * expect(sdk.escapeXtk`@name=${"Rock 'n' Roll"}`).toBe("@name='Rock \\'n\\' Roll'");
      */
-    escapeXtk(p1, ...p2)
-    {
+    escapeXtk(p1, ...p2) {
         // first syntax: only one parameter which is a string => returns the escaped string.
         // that's how the Campaign function in common.js behaves
         if (p1 === undefined || p1 === null)
@@ -147,9 +147,65 @@ class SDK {
         }
         return str;
     }
+
+    /**
+     * Escapes a string of characters so that in can be used in a SQL like statement.
+     * @param {string | any} text the text to escape. If not a string, it will be casted to a xtk string first
+     * @param {boolean?} escapeXtkParams indicates that the escape text contains Xtk parameters (using $ character)
+     * @returns the escaped string
+     */
+    escapeForLike(text, escapeXtkParams) {
+        text = XtkCaster.asString(text);
+        if (!text) return "";    
+        text = text.replace(/\\/g, "\\\\")
+                    .replace(/'/g,  "\\'")
+                    .replace(/%/g,  "\\%")
+                    .replace(/_/g,  "\\_");
+        if (escapeXtkParams)
+            text = text.replace(/\$/g, "' + Char('36') + '");
+      return text;
+    }
+
+    /**
+     * Expands an xpath, i.e. enclose it with [..] brackets if necessary
+     * @param {string} xpath the xpath
+     * @returns {string} the expanded xpath
+     */
+    expandXPath(xpath) {
+        if (!xpath) return xpath;
+        if (xpath.startsWith("[") && xpath.endsWith("]"))
+            return xpath;
+        if (xpath.indexOf('/') === -1 && xpath.indexOf('-') === -1 && xpath.indexOf(':') === -1)
+            return xpath;
+        return `[${xpath}]`;
+    }
+
+    unexpandXPath(xpath) {
+        if (!xpath) return xpath;
+        if (xpath.startsWith("[") && xpath.endsWith("]"))
+            return xpath.substring(1, xpath.length - 1);
+        return xpath;
+    }
+
+    /**
+     * Convert a javascript value into an xtk constant with proper quoting
+     * @param {any} value the value to convert
+     * @param {string} type the xtk type
+     * @returns 
+     */
+    xtkConstText(value, type) {
+        if (!type || type === 'string' || type === 'memo') {
+            return sdk.escapeXtk(XtkCaster.asString(value));
+        }
+        const constText = XtkCaster.asString(XtkCaster.as(value, type));
+        if (XtkCaster.isTimeType(type))
+            return `#${constText}#`;
+        return constText;
+    }
 }
 
 const sdk = new SDK();
+sdk.TestUtil = TestUtil;
 sdk.XtkCaster = XtkCaster;
 sdk.Credentials = Credentials;
 sdk.DomUtil = DomUtil;

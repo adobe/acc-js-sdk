@@ -5,8 +5,28 @@ This is a node.js SDK for Campaign API. It exposes the Campaign API exactly like
 
 # Changelog 
 
+## Version 1.0.8
+_2022/03/02_
+
+* Ability to invoke SOAP calls dynamically with parameters computed at invocation time by a delegate function
+* Fixed bug in XPath constructor which now supports expanded paths, i.e. xpaths such as `[@recipient-id]`.
+* EntityAccessor: change the heuristic to detect XML types: use "nodeType" and "tagName" functions instead of "insertAdjacentElement" (which was not always working in the context of a React application)
+* Add new escaping functions: `escapeForLike`, `expandXPath`, `unexpandXPath`, `xtkConstText`
+* New XtkCaster methods: `asDatetime` (alias to `asTimestamp`), `isStringType`, and `isNumericType`
+* Metadata API (application.getSchema)
+  * keys have a `isInternal` internal attribute which was mistakenly using the "string" type. It's now correctly using the boolean type.
+  * Added missing attributes on the XtkSchema: md5
+  * Added missing attributes on the XtkSchemaNode objects: dataPolicy, editType folderModel, enumerationImage, size, userEnumeration, hasUserEnumeration, isCollection, 
+    isAdvanced, isAnyType, isLink, hasEnumeration, hasSQLTable, SQLName, SQLTable, isMappedAsXML, isTemporaryTable, isElementOnly, isDefaultOnDuplicate, isExternalJoin, 
+    isMemo, isMemoData, isBlob, isCDATA, isNotNull, isRequired, isSQL, PKSequence, revLink, isCalculated, expr, isAutoIncrement, isAutoPK,  isAutoUUID, isAutoStg, packageStatusString, and packageStatus
+  * Attribute type defaults to string if not set
+  * Removed userDescription attribut from schema nodes (only available at the schema level)
+  * Changed the toString function to use 4 spaces instead of 3 for indentation and display node label and internal name
+  * When label or description is missing from schema nodes or from enumerations, they default to the name value
+  * application.getSchema now uses a in-memory cache
+
 ## Version 1.0.7
-_2022_01_24_
+_2022/01/24_
 * Added a hook `refreshClient` on connection parameters. This is a callback called when an authentication token expires. It can be used to implement reconnection logic
 * New attributes on the schema API (application.getSchema)
   * The `enum` attribute of a schema node returns the corresponding enum attribute, i.e. the enumeration name

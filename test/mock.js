@@ -230,7 +230,17 @@ const GET_XTK_SESSION_SCHEMA_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
                     </method>
                     <method name="NonStatic"></method>
                     <method name="TestCnx" static="true"></method>
-                    </methods>
+                    <method name="NonStaticP1">
+                        <parameters>
+                            <param name="name" type="string"/>
+                        </parameters>
+                    </method>
+                    <method name="StaticP1" static="true">
+                        <parameters>
+                            <param name="name" type="string"/>
+                        </parameters>
+                    </method>
+                </methods>
             </schema>
             </pdomDoc>
         </GetEntityIfMoreRecentResponse>

@@ -23,6 +23,7 @@ const DomUtil = require('../src/domUtil.js').DomUtil;
 const Mock = require('./mock.js').Mock;
 const { HttpError } = require('../src/transport.js');
 const { Cipher } = require('../src/crypto.js');
+const { EntityAccessor } = require('../src/entityAccessor.js');
 
 
 describe('ACC Client', function () {
@@ -1958,7 +1959,7 @@ describe('ACC Client', function () {
         });
 
         it("Expired session refresh client callback", async () => {
-            let refreshClient = async (client) => {
+            let refreshClient = async () => {
                 const connectionParameters = sdk.ConnectionParameters.ofSecurityToken("http://acc-sdk:8080",
                                                         "$security_token$", {refreshClient: refreshClient});
                 const newClient = await sdk.init(connectionParameters);
@@ -2011,12 +2012,12 @@ describe('ACC Client', function () {
                 </SOAP-ENV:Envelope>`));
             client.traceAPICalls(false);
             var query1  = client.NLWS.xtkQueryDef.create(queryDef);
-            extAccount1 = await query1.executeQuery();
+            const extAccount1 = await query1.executeQuery();
             expect(extAccount1).toEqual({ extAccount: [] });
         });
 
         it("Expired session refresh client callback for code coverage", async () => {
-            let refreshClient = async (client) => {
+            let refreshClient = async () => {
                 const connectionParameters = sdk.ConnectionParameters.ofSessionToken("http://acc-sdk:8080", "$session_token$");
                 const newClient = await sdk.init(connectionParameters);
                 newClient._transport = jest.fn();
@@ -2058,7 +2059,7 @@ describe('ACC Client', function () {
         });
 
         it("Expired session refresh client callback retry failure", async () => {
-            let refreshClient = async (client) => {
+            let refreshClient = async () => {
                 const connectionParameters = sdk.ConnectionParameters.ofBearerToken("http://acc-sdk:8080",
                 "$token$", {refreshClient: refreshClient});
                 const newClient = await sdk.init(connectionParameters);
@@ -2349,6 +2350,76 @@ describe('ACC Client', function () {
             expect(schema["namespace"]).toBe("nms");
             expect(schema["name"]).toBe("extAccount");
         });
+    });
 
+    describe("Calling SOAP method with parameters as a function", () => {
+        it("Should make SOAP call", async () => {
+            const client = await Mock.makeClient();
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+            client._transport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_DATABASEID_RESPONSE);
+            const scope = client.NLWS["xtkSession"];
+            const fn = scope["getOption"];
+            const result = await fn.call(scope, "XtkDatabaseId");
+            expect(result).toMatchObject([ "uFE80000000000000F1FA913DD7CC7C480041161C", 6 ]);
+        });
+
+        it("Should make static SOAP call with functional parameters", async () => {
+            const client = await Mock.makeClient();
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+            client._transport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
+            const scope = client.NLWS["xtkSession"];
+            const method = scope["staticP1"]; // SOAP method to call
+            const paramsFn = jest.fn(); // function returning SOAP call parameters
+            paramsFn.mockReturnValueOnce(["XtkDatabaseId"]);
+            
+            client._transport.mockReturnValueOnce(Promise.resolve(`<?xml version='1.0'?>
+                <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:xtk:session' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
+                <SOAP-ENV:Body>
+                    <StaticP1Response xmlns='urn:xtk:session' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
+                    </StaticP1Response>
+                </SOAP-ENV:Body>
+                </SOAP-ENV:Envelope>`));
+
+            const result = await method.call(scope, paramsFn);
+            expect(result).toBeNull();
+            expect(paramsFn.mock.calls.length).toBe(1);
+            // first parameter is the XML method
+            const xmlMethod = paramsFn.mock.calls[0][0];
+            expect(EntityAccessor.getAttributeAsString(xmlMethod, "name")).toBe("StaticP1");
+            // second parameter is the call context
+            expect(paramsFn.mock.calls[0][1]).toMatchObject({ schemaId: "xtk:session", namespace: "xtkSession" });
+        });
+
+        it("Should make non static SOAP call with functional parameters", async () => {
+            const client = await Mock.makeClient();
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+            client._transport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
+            const scope = client.NLWS["xtkSession"];
+            const method = scope["nonStaticP1"]; // SOAP method to call
+            const paramsFn = jest.fn(); // function returning SOAP call parameters
+            paramsFn.mockReturnValueOnce(["XtkDatabaseId"]);
+            
+            client._transport.mockReturnValueOnce(Promise.resolve(`<?xml version='1.0'?>
+                <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:xtk:session' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
+                <SOAP-ENV:Body>
+                    <StaticP1Response xmlns='urn:xtk:session' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
+                    </StaticP1Response>
+                </SOAP-ENV:Body>
+                </SOAP-ENV:Envelope>`));
+
+            const object = scope.create({ dummy: true }); // "this" object for the non-static SOAP call
+            const result = await method.call(object, paramsFn);
+            expect(result).toBeNull();
+            expect(paramsFn.mock.calls.length).toBe(1);
+            // first parameter is the XML method
+            const xmlMethod = paramsFn.mock.calls[0][0];
+            expect(EntityAccessor.getAttributeAsString(xmlMethod, "name")).toBe("NonStaticP1");
+            // second parameter is the call context
+            expect(paramsFn.mock.calls[0][1]).toMatchObject({ schemaId: "xtk:session", namespace: "xtkSession" });
+        });
     });
 });

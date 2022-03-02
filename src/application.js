@@ -23,6 +23,8 @@ const { DomException, XPath } = require('./domUtil.js');
 const XtkCaster = require('./xtkCaster.js').XtkCaster;
 const EntityAccessor = require('./entityAccessor.js').EntityAccessor;
 
+const PACKAGE_STATUS = { "never": 0, "always": 1, "default": 2, "preCreate": 3 };
+
 /**
  * @namespace Campaign
  */
@@ -30,7 +32,7 @@ const EntityAccessor = require('./entityAccessor.js').EntityAccessor;
 // ========================================================================================
 // Helper functions
 // ========================================================================================
- 
+
 // Determine if a name is an attribute name, i.e. if it starts with the "@" character
 const isAttributeName = function(name) { return name.length > 0 && name[0] == '@'; };
 
@@ -45,12 +47,42 @@ const isAttributeName = function(name) { return name.length > 0 && name[0] == '@
   * @see {@link XtkSchema}
   * @memberof Campaign
   */
-function newSchema(xml) {
+ function newSchema(xml, application) {
     if (xml.nodeType == 9) xml = xml.documentElement;       // Document -> element
-    var schema = new XtkSchema(xml);
+    var schema = new XtkSchema(application, xml);
     return schema;
 }
 
+// Propagate implicit values
+// Name -> Label -> Desc -> HelpText
+function propagateImplicitValues(xtkDesc, labelOnly) {
+    if (!xtkDesc.label) {
+        if (xtkDesc.isAttribute) xtkDesc.label = xtkDesc.name.substring(1); // without @
+        else xtkDesc.label = xtkDesc.name;
+        // Force first letter as uppercase
+        xtkDesc.label = xtkDesc.label.substring(0, 1).toUpperCase() + xtkDesc.label.substring(1);
+    }
+    if (!labelOnly && !xtkDesc.description) xtkDesc.description = xtkDesc.label;
+}
+
+// ========================================================================================
+// Schema Cache
+// ========================================================================================
+class SchemaCache {
+    constructor(client) {
+        this._client = client;
+        this._schemas = {};
+    }
+    async getSchema(schemaId) {
+        let schema = this._schemas[schemaId];
+        if (schema === undefined) {
+            schema = await this._client.application._getSchema(schemaId);
+            if (!schema) schema = null; // null = not found
+        this._schemas[schemaId] = schema;
+        }
+        return schema;
+    }
+}
 
 // ========================================================================================
 // Keys
@@ -74,7 +106,7 @@ class XtkSchemaKey {
         this.name = EntityAccessor.getAttributeAsString(xml, "name");
         this.label = EntityAccessor.getAttributeAsString(xml, "label");
         this.description = EntityAccessor.getAttributeAsString(xml, "desc");
-        this.isInternal = EntityAccessor.getAttributeAsString(xml, "internal");
+        this.isInternal = EntityAccessor.getAttributeAsBoolean(xml, "internal");
         this.allowEmptyPart = EntityAccessor.getAttributeAsString(xml, "allowEmptyPart");
         this.fields = {};
 
@@ -137,62 +169,113 @@ class XtkSchemaNode {
          * @type {XtkSchema}
          */
         this.schema = schema;
+
+        /**
+         * Returns a string of characters which provides the data policy of the current node.
+         * @type {string}
+         */
+         this.dataPolicy = EntityAccessor.getAttributeAsString(xml, "dataPolicy");
+
+        /**
+         * Returns a string of characters which specifies the editing type of the current node.
+         * @type {string}
+         */
+         this.editType = EntityAccessor.getAttributeAsString(xml, "editType");
+
+        /**
+         * Only on the root node, returns a string which contains the folder template(s). On the other nodes, it returns undefined.
+         * @type {string}
+         */
+        this.folderModel = EntityAccessor.getAttributeAsString(xml, "folderModel");
+
         /**
          * The parent node
          * @type {XtkSchemaNode}
          */
         this.parent = parentNode;
+
         /**
          * Indicates if the node is an attribute or not (element or schema itself)
          * @type {boolean}
          */
         this.isAttribute = isAttribute;
+
         /**
-         * The attribute or the node name (without the "@" sign for attributes)
+         * The attribute or the node name (with the "@" sign for attributes)
          * @type {string}
          */
         this.name = (this.isAttribute ? "@" : "") + EntityAccessor.getAttributeAsString(xml, "name");
+
         /**
          * A human friendly name for the node. If the node is the schema node, the label will be in the plural form and "labelSingular"
          * should be used for the singular form
          * @type {string}
          */
         this.label = EntityAccessor.getAttributeAsString(xml, "label");
+
         /**
          * A long description of the node
          * @type {string}
          */
         this.description = EntityAccessor.getAttributeAsString(xml, "desc");
+
         /**
          * An optional image for the node
          * @type {string}
          */
         this.img = EntityAccessor.getAttributeAsString(xml, "img");
+        this.image = this.img;
+
+        /**
+         * Returns the name of the image of the current node in the form of a string of characters.
+         * @type {string}
+         */
+         this.enumerationImage = EntityAccessor.getAttributeAsString(xml, "enumImage");
+
         /**
          * The node type
          * @type {string}
          */
         this.type = EntityAccessor.getAttributeAsString(xml, "type");
+        if (!this.type && isAttribute) this.type = "string";
+
         /**
          * The node target
          * @type {string}
          */
-         this.target = EntityAccessor.getAttributeAsString(xml, "target");
-        /**
+        this.target = EntityAccessor.getAttributeAsString(xml, "target");
+
+         /**
          * The node integrity
          * @type {string}
          */
-         this.integrity = EntityAccessor.getAttributeAsString(xml, "integrity");
-        /**
+        this.integrity = EntityAccessor.getAttributeAsString(xml, "integrity");
+
+         /**
          * The node data length (applicable for string-types only)
          * @type {number}
          */
         this.length = EntityAccessor.getAttributeAsLong(xml, "length");
+        this.size = this.length;
+
         /**
          * The enum of the node
          * @type {string}
          */
-        this.enum = EntityAccessor.getAttributeAsString(xml, "enum");
+         this.enum = EntityAccessor.getAttributeAsString(xml, "enum");
+
+        /**
+         * Returns a string of characters which is the name of the user enumeration used by the current node.
+         * @type {string}
+         */
+         this.userEnumeration = EntityAccessor.getAttributeAsString(xml, "userEnum");
+
+        /**
+         * Returns a boolean which indicates whether the value of the current node is linked to a user enumeration.
+         * @type {boolean}
+         */
+        this.hasUserEnumeration = !!this.userEnumeration;
+
         /**
          * "ref" attribute of the node, which references another node
          * @type {string}
@@ -203,6 +286,8 @@ class XtkSchemaNode {
          * @type {boolean}
          */
         this.unbound = EntityAccessor.getAttributeAsBoolean(xml, "unbound");
+        this.isCollection = this.unbound;
+
         /**
          * is mapped as a xml
          * @type {boolean}
@@ -218,43 +303,211 @@ class XtkSchemaNode {
          * character for attributes) 
          * @type {Object.<string, Campaign.XtkSchemaNode>}
          */
-        this.children = {};
+         this.children = {};
+
         /**
          * Count the children of a node
          * @type {number}
          */
         this.childrenCount = 0;
+
         /**
          * Indicates if the node is the root node, i.e. the first child node of the schema, whose name is the same as the schema name
          * @type {boolean}
          */
         this.isRoot = this.parent && !this.parent.parent && this.parent.name == this.name;
-        /**
-         * A user desciption of the node, in the form "label (name)"
-         * @type {string}
-         */
-        this.userDescription = (this.label == "" || this.label == this.name) ? this.name : `${this.label} (${this.name})`;
+
         /**
          * Schema root elements may have a list of keys. This is a dictionary whose names are the key names and values the keys
          * @type {Object<string, XtkSchemaKey>}
          */
-        this.keys = {};
+         this.keys = {};
+
         /**
          * The full path of the node
          * @type {string}
          */
         this.nodePath = this._getNodePath(true)._path;
+
         /**
          * Element of type "link" has an array of XtkJoin
          * @type {XtkJoin[]}
          */
         this.joins = [];
-
         for (var child of EntityAccessor.getChildElements(xml, "join")) {
             this.joins.push(new XtkJoin(child));
         }
 
-        // Children (elements and attributes)
+        /**
+         * Returns a boolean which indicates whether the current node is ordinary.
+         * @type {boolean}
+         */
+         this.isAnyType = this.type === "ANY";
+
+        /**
+         * Returns a boolean which indicates whether the node is a link.
+         * @type {boolean}
+         */
+         this.isLink = this.type === "link";
+
+        /**
+         * Returns a boolean which indicates whether the value of the current node is linked to an enumeration.
+         * @type {boolean}
+         */
+         this.hasEnumeration = this.enum !== "";
+
+        /**
+         * Returns a boolean which indicates whether the current node is linked to an SQL table.
+         * @type {boolean}
+         */
+         this.hasSQLTable = this.sqlTable !== '';
+
+         /**
+          * The SQL name of the field. The property is an empty string if the object isn't an SQL type field.
+          * @type {string}
+          */
+        this.SQLName = EntityAccessor.getAttributeAsString(xml, "sqlname");
+
+         /**
+          * The SQL name of the table. The property is an empty string if the object isn't the main element or if schema mapping isn't of SQL type.
+          * @type {string}
+          */
+        this.SQLTable = EntityAccessor.getAttributeAsString(xml, "sqltable");
+
+        /**
+         * Returns a boolean indicating whether the table is a temporary table. The table will not be created during database creation.
+         * @type {boolean}
+         */
+         this.isTemporaryTable = EntityAccessor.getAttributeAsBoolean(xml, "temporaryTable");
+
+        /**
+         * Returns a boolean which indicates whether the current node is a logical sub-division of the schema.
+         * @type {boolean}
+         */
+        // An element has no real value if its type is empty
+        this.isElementOnly = this.type === "";
+
+        /**
+         * Returns a boolean. If the value added is vrai, during record deduplication, the default value (defined in defaultValue) is automatically reapplied during recording.
+         * @type {boolean}
+         */
+        this.isDefaultOnDuplicate = EntityAccessor.getAttributeAsBoolean(xml, "defOnDuplicate");
+
+        /**
+         * True if the node is a link and if the join is external.
+         * @type {boolean}
+         */
+         this.isExternalJoin = EntityAccessor.getAttributeAsBoolean(xml, "externalJoin");
+
+        /**
+         * Returns a boolean which indicates whether the current node is mapped by a Memo.
+         * @type {boolean}
+         */
+         this.isMemo = this.type === "memo" || this.type === "CDATA";
+
+        /**
+         * Returns a boolean which indicates whether the current node is mapped by a MemoData.
+         * @type {boolean}
+         */
+         this.isMemoData = this.isMemo && this.name === 'data';
+
+        /**
+         * Returns a boolean which indicates whether the current node is a BLOB.
+         * @type {boolean}
+         */
+         this.isBlob = this.type === "blob";
+
+        /**
+         * Returns a boolean which indicates whether the current node is mapped from CDATA type XML.
+         * @type {boolean}
+         */
+         this.isCDATA = this.type === "CDATA";
+
+        /**
+         * Returns a boolean which indicates whether or not the current node can take the null value into account.
+         * @type {boolean}
+         */
+        const notNull = EntityAccessor.getAttributeAsString(xml, "notNull");
+        const sqlDefault = EntityAccessor.getAttributeAsString(xml, "sqlDefault");
+        const notNullOverriden = notNull || sqlDefault === "NULL"
+        this.isNotNull = notNullOverriden ? XtkCaster.asBoolean(notNull) : this.type === "int64" || this.type === "short" ||
+            this.type === "long" || this.type === "byte" || this.type === "float" || this.type === "double" ||
+            this.type === "money" || this.type === "percent" || this.type === "time" || this.type === "boolean";
+
+        /**
+         * Returns a boolean which indicates whether or not the value of the current node is mandatory.
+         * @type {boolean}
+         */
+        this.isRequired = EntityAccessor.getAttributeAsBoolean(xml, "required");
+
+        /**
+         * Returns a boolean which indicates whether the current node is mapped in SQL.
+         * @type {boolean}
+         */
+         this.isSQL = !!this.SQLName || !!this.SQLTable || (this.isLink && this.schema.mappingType === 'sql' && !this.isMappedAsXML);
+
+         /**
+          * The SQL name of the field. The property is an empty string if the object isn't an SQL type field.
+          * @type {string}
+          */
+        this.PKSequence = EntityAccessor.getAttributeAsString(xml, "pkSequence");
+
+         /**
+          * Name of the reverse link in the target schema
+          * @type {string}
+          */
+        this.revLink = EntityAccessor.getAttributeAsString(xml, "revLink");
+
+        /**
+         * Returns a boolean which indicates whether the value of the current node is the result of a calculation.
+         * @type {boolean}
+         */
+         this.isCalculated = false;
+
+        /**
+          * Expression associated with the node
+          * @type {string}
+          */
+         this.expr = EntityAccessor.getAttributeAsString(xml, "expr");
+        if (this.expr) this.isCalculated = true;
+
+        /**
+         * Returns a boolean which indicates whether the value of the current node is incremented automatically.
+         * @type {boolean}
+         */
+         this.isAutoIncrement = EntityAccessor.getAttributeAsBoolean(xml, "autoIncrement");
+
+        /**
+         * Returns a boolean which indicates whether the current node is a primary key.
+         * @type {boolean}
+         */
+        this.isAutoPK = EntityAccessor.getAttributeAsBoolean(xml, "autopk");
+
+        /**
+         * Returns a boolean which indicates whether the current node is an automatic UUID
+         * @type {boolean}
+         */
+        this.isAutoUUID = EntityAccessor.getAttributeAsBoolean(xml, "autouuid");
+
+        /**
+         * Returns a boolean which indicates whether the schema is a staging schema
+         * @type {boolean}
+         */
+        this.isAutoStg = EntityAccessor.getAttributeAsBoolean(xml, "autoStg");
+
+        /**
+         * Returns a string that gives the package status.
+         * @type {"never" | "always" | "default" | "preCreate"}
+         */
+        this.packageStatusString = EntityAccessor.getAttributeAsString(xml, "pkgStatus");
+        
+        /**
+         * Returns a number that gives the package status.
+         * @type {0 | 1 | 2 | 3}
+         */
+        this.packageStatus = PACKAGE_STATUS[this.packageStatusString];
+
+         // Children (elements and attributes)
         const childNodes = [];
         for (const child of EntityAccessor.getChildElements(xml, "attribute")) {
             const node = new XtkSchemaNode();
@@ -280,6 +533,10 @@ class XtkSchemaNode {
             const key = new XtkSchemaKey(schema, child, this);
             this.keys[key.name] = key;
         }
+
+        // Propagate implicit values
+        // Name -> Label -> Desc -> HelpText
+        propagateImplicitValues(this);
     }
 
     /**
@@ -288,7 +545,7 @@ class XtkSchemaNode {
      * @param {string} name the child name, without the "@" character for attributes
      * @returns {boolean} a boolean indicating whether the node contains a child with the given name
      */
-    hasChild(name) {
+     hasChild(name) {
         var child = this.children[name];
         if (child) return true;
         // TODO: handle ref target
@@ -429,9 +686,9 @@ class XtkSchemaNode {
      */
     toString(indent) {
         indent = indent || "";
-        var s = `${indent}${this.userDescription}\n`;
+        var s = `${indent}${this.label} (${this.name})\n`;
         for (var name in this.children) {
-            s = s + this.children[name].toString(`   ${indent}`);
+            s = s + this.children[name].toString(`    ${indent}`);
         }
         return s;
     }
@@ -498,6 +755,8 @@ function XtkEnumerationValue(xml, baseType) {
      * @type {*}
      */
     this.value = XtkCaster.as(stringValue, baseType);
+
+    propagateImplicitValues(this, true);
 }
 
 /**
@@ -509,52 +768,57 @@ function XtkEnumerationValue(xml, baseType) {
  * @param {XML.XtkObject} xml the enumeration definition
  * @memberof Campaign
  */
-function XtkEnumeration(xml) {
-    /**
-     * The system enumeration name
-     * @type {string}
-     */
-    this.name = EntityAccessor.getAttributeAsString(xml, "name");
-    /**
-     * A human friendly name for the system enumeration
-     * @type {string}
-     */
-    this.label = EntityAccessor.getAttributeAsString(xml, "label");
-    /**
-     * A human friendly long description of the enumeration
-     * @type {string}
-     */
-    this.description = EntityAccessor.getAttributeAsString(xml, "desc");
-    /**
-     * The type of the enumeration
-     * @type {Campaign.XtkEnumerationType}
-     */
-    this.baseType = EntityAccessor.getAttributeAsString(xml, "basetype");
-    /**
-     * The default value of the enumeration
-     * @type {Campaign.XtkEnumerationValue}
-     */
-    this.default = null;
-    /**
-     * Indicates if the enumeration has an image, i.e. if any of its values has an image
-     * @type {boolean}
-     */
-    this.hasImage = false;
-    /**
-     * The enumerations values 
-     * @type {Object<string, Campaign.XtkEnumerationValue>}
-     */
-    this.values = {};
+class XtkEnumeration {
+    constructor(schemaId, xml) {
+        /**
+         * The system enumeration name
+         * @type {string}
+         */
+        this.name = EntityAccessor.getAttributeAsString(xml, "name");
 
-    var defaultValue = EntityAccessor.getAttributeAsString(xml, "default");
+        /**
+         * A human friendly name for the system enumeration
+         * @type {string}
+         */
+        this.label = EntityAccessor.getAttributeAsString(xml, "label");
+        /**
+         * A human friendly long description of the enumeration
+         * @type {string}
+         */
+        this.description = EntityAccessor.getAttributeAsString(xml, "desc");
+        /**
+         * The type of the enumeration
+         * @type {Campaign.XtkEnumerationType}
+         */
+        this.baseType = EntityAccessor.getAttributeAsString(xml, "basetype");
+        /**
+         * The default value of the enumeration
+         * @type {Campaign.XtkEnumerationValue}
+         */
+        this.default = null;
+        /**
+         * Indicates if the enumeration has an image, i.e. if any of its values has an image
+         * @type {boolean}
+         */
+        this.hasImage = false;
+        /**
+         * The enumerations values 
+         * @type {Object<string, Campaign.XtkEnumerationValue>}
+         */
+         this.values = {};
 
-    for (var child of EntityAccessor.getChildElements(xml, "value")) {
-        const e = new XtkEnumerationValue(child, this.baseType);
-        this.values[e.name] = e;
-        if (e.image != "") this.hasImage = true;
-        const stringValue = EntityAccessor.getAttributeAsString(child, "value");
-        if (defaultValue == stringValue)
-            this.default = e;
+        var defaultValue = EntityAccessor.getAttributeAsString(xml, "default");
+
+        for (var child of EntityAccessor.getChildElements(xml, "value")) {
+            const e = new XtkEnumerationValue(child, this.baseType);
+            this.values[e.name] = e;
+            if (e.image != "") this.hasImage = true;
+            const stringValue = EntityAccessor.getAttributeAsString(child, "value");
+            if (defaultValue == stringValue)
+                this.default = e;
+        }
+
+        propagateImplicitValues(this, true);
     }
 }
 
@@ -574,9 +838,9 @@ function XtkEnumeration(xml) {
  */
 class XtkSchema extends XtkSchemaNode {
 
-    constructor(xml) {
+    constructor(application, xml) {
         super();
-        this.init(this, xml);
+        this._application = application;
 
         /**
          * The namespace of the schema
@@ -587,6 +851,7 @@ class XtkSchema extends XtkSchemaNode {
          * The schema id, in the form "namespace:name"
          * @type {string}
          */
+        this.name = EntityAccessor.getAttributeAsString(xml, "name");
         this.id = `${this.namespace}:${this.name}`;
         /**
          * Indicates whether the schema is a library schema or not
@@ -604,28 +869,43 @@ class XtkSchema extends XtkSchemaNode {
          */
         this.mappingType = EntityAccessor.getAttributeAsString(xml, "mappingType");
         /**
+         * The MD5 code of the schema in the form of a hexadecimal string
+         * @type {string}
+         */
+        this.md5 = EntityAccessor.getAttributeAsString(xml, "md5");
+        /**
          * The schema definition
          * @private
          * @type {XML.XtkObject}
          */
         this.xml = xml;
+
+        this.init(this, xml);
+
         /**
          * The schema root node, if it has one, i.e. the first child whose name matches the schema name
          * @type {Campaign.XtkSchemaNode}
          */
         this.root = this.children[this.name];
+        
+        /**
+         * A user desciption of the node, in the form "label (name)"
+         * @type {string}
+         */
+         this.userDescription = (this.label == this.name) ? this.name : `${this.label} (${this.name})`;
+
         /**
          * Enumerations in this schema, as a dictionary whose keys are enumeration names and values are the
          * corresponding enumeration definitions
          * @type {Object<string, XtkEnumeration>}
          */
-        this.enumerations = {};
+         this.enumerations = {};
 
-        for (var child of EntityAccessor.getChildElements(xml, "enumeration")) {
-            const e = new XtkEnumeration(child);
-            this.enumerations[e.name] = e;
-        }
-    }
+         for (var child of EntityAccessor.getChildElements(xml, "enumeration")) {
+             const e = new XtkEnumeration(this.id, child);
+             this.enumerations[e.name] = e;
+         }
+     }
 
     /**
      * Creates a multi-line debug string representing the schema
@@ -634,7 +914,6 @@ class XtkSchema extends XtkSchemaNode {
      */
     toString() {
         var s =  `${this.userDescription}\n`;
-        //s = s + `   enumerations: [${enumerations}]`
         for (var name in this.children) {
             s = s + this.children[name].toString("    - ");
         }
@@ -689,8 +968,8 @@ class CurrentLogin {
         this._rightsSet = {};
         for (var child of EntityAccessor.getChildElements(userInfo, "login-right")) {
             const right = EntityAccessor.getAttributeAsString(child, "right");
-            this.rights.push(right);
-            this._rightsSet[right] = true;
+        this.rights.push(right);
+        this._rightsSet[right] = true;
         }
     }
 
@@ -738,6 +1017,7 @@ class Application {
      */
     constructor(client) {
         this.client = client;
+        this._schemaCache = new SchemaCache(client);
         const info = this.client.getSessionInfo();
         // When using "SessionToken" authentication, there is no actual logon, and therefore
         // no "sessionInfo" object
@@ -747,25 +1027,25 @@ class Application {
              * The server build number
              * @type {string}
              */
-            this.buildNumber = EntityAccessor.getAttributeAsString(serverInfo, "buildNumber");
+        this.buildNumber = EntityAccessor.getAttributeAsString(serverInfo, "buildNumber");
             /**
              * The Campaign instance name
              * @type {string}
              */
-            this.instanceName = EntityAccessor.getAttributeAsString(serverInfo, "instanceName");
+        this.instanceName = EntityAccessor.getAttributeAsString(serverInfo, "instanceName");
             const userInfo = EntityAccessor.getElement(info, "userInfo");
             /**
              * The logged operator
              * @type {Campaign.CurrentLogin}
              */
-            this.operator = new CurrentLogin(userInfo);
+        this.operator = new CurrentLogin(userInfo);
             /**
              * The list of installed packages
              * @type {string[]}
              */
-            this.packages = [];
+        this.packages = [];
             for (var p of EntityAccessor.getChildElements(userInfo, "installed-package")) {
-                this.packages.push(`${EntityAccessor.getAttributeAsString(p, "namespace")}:${EntityAccessor.getAttributeAsString(p, "name")}`);
+            this.packages.push(`${EntityAccessor.getAttributeAsString(p, "namespace")}:${EntityAccessor.getAttributeAsString(p, "name")}`);
             }
         }
     }
@@ -778,10 +1058,15 @@ class Application {
      * @returns {Campaign.XtkSchema} the schema, or null if the schema was not found
      */
      async getSchema(schemaId) {
+        return this._schemaCache.getSchema(schemaId);
+    }
+
+    // Private function: get a schema without using the cache
+    async _getSchema(schemaId) {
         const xml = await this.client.getSchema(schemaId, "xml");
         if (!xml)
             return null;
-        return newSchema(xml);
+        return newSchema(xml, this);
     }
 
     /**
@@ -806,4 +1091,5 @@ exports.Application = Application;
 // For tests
 exports.newSchema = newSchema;
 exports.newCurrentLogin = newCurrentLogin;
+exports.SchemaCache = SchemaCache;
 })();

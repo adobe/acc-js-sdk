@@ -19,7 +19,7 @@ var JSDOM;
 
 /* istanbul ignore else */
 if (!Util.isBrowser()) {
-  JSDOM = require("jsdom").JSDOM;
+    JSDOM = require("jsdom").JSDOM;
 }
 
 /**********************************************************************************
@@ -40,7 +40,7 @@ else {
         return new XMLSerializer().serializeToString(dom);
     };
   };
-
+  
   JSDOM = jsdom;
 }
 
@@ -562,7 +562,10 @@ class XPathElement {
 class XPath {
 
     constructor(path) {
-        this._path = (path || "").trim();
+        path = (path || "").trim();
+        if (path && path.startsWith("[") && path.endsWith("]"))
+            path = path.substring(1, path.length - 1).trim();
+        this._path = path;
     }
 
     /**

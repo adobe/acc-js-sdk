@@ -342,6 +342,16 @@ class XtkCaster {
     }
 
     /**
+     * Convert a raw value into a timestamp (alias to the "asTimestamp" function)
+     * 
+     * @param {*} value is the raw value to convert
+     * @return {Date} the timestamp, possibly null
+     */
+     static asDatetime(value) {
+        return this.asTimestamp(value);
+    }
+
+    /**
      * Convert a raw value into a timestamp
      * 
      * @param {*} value is the raw value to convert
@@ -421,7 +431,19 @@ class XtkCaster {
         return timespan;
     }
 
+    static isTimeType(type) {
+        return type === "datetime" || type === "datetimetz" || type === "datetimenotz" || type === "timestamp" || type === "date" || type === "time" || type === "timespan" || type === 7 || type === 10 || type === 14;
+    }
+
+    static isStringType(type) {
+        return type === "string" || type === "memo" || type === 6 || type === 12 || type === 13 || type === "blob" || type === "html" || type === "CDATA";
+    }
+
+    static isNumericType(type) {
+        return type === "byte" || type === 1 || type === "short" || type === 2 || type === "int" || type === "long" || type === 3 || type === "float" || type === 4 || type === "double" || type === 5 || type === "timespan" || type === 14;
+    }
 }
+
 
 exports.XtkCaster = XtkCaster;
 

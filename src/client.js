@@ -225,16 +225,16 @@ class Credentials {
 
 /**
  * @typedef {Object} ConnectionOptions
- * @property {string} representation - the representation to use, i.e. "SimpleJson" (the default), "BadgerFish", or "xml"
- * @property {boolean} rememberMe - The Campaign `rememberMe` attribute which can be used to extend the lifetime of session tokens
- * @property {number} entityCacheTTL - The TTL (in milliseconds) after which cached XTK entities expire. Defaults to 5 minutes
- * @property {number} methodCacheTTL - The TTL (in milliseconds) after which cached XTK methods expire. Defaults to 5 minutes
- * @property {number} optionCacheTTL - The TTL (in milliseconds) after which cached XTK options expire. Defaults to 5 minutes
- * @property {boolean} traceAPICalls - Activates the tracing of all API calls
- * @property {Utils.Transport} transport - Overrides the transport (i.e. HTTP layer)
- * @property {boolean} noStorage - De-activate using of local storage. By default, and in addition to in-memory cache, entities, methods, and options are also persisted in local storage if there is one.
- * @property {Storage} storage - Overrides the storage interface (i.e. LocalStorage)
- * @memberOf Campaign
+    * @property {string} representation - the representation to use, i.e. "SimpleJson" (the default), "BadgerFish", or "xml"
+    * @property {boolean} rememberMe - The Campaign `rememberMe` attribute which can be used to extend the lifetime of session tokens
+    * @property {number} entityCacheTTL - The TTL (in milliseconds) after which cached XTK entities expire. Defaults to 5 minutes
+    * @property {number} methodCacheTTL - The TTL (in milliseconds) after which cached XTK methods expire. Defaults to 5 minutes
+    * @property {number} optionCacheTTL - The TTL (in milliseconds) after which cached XTK options expire. Defaults to 5 minutes
+    * @property {boolean} traceAPICalls - Activates the tracing of all API calls
+    * @property {Utils.Transport} transport - Overrides the transport (i.e. HTTP layer)
+    * @property {boolean} noStorage - De-activate using of local storage. By default, and in addition to in-memory cache, entities, methods, and options are also persisted in local storage if there is one.
+    * @property {Storage} storage - Overrides the storage interface (i.e. LocalStorage)
+    * @memberOf Campaign
  */
  
 
@@ -1101,6 +1101,14 @@ class Client {
 
         var urn = that._methodCache.getSoapUrn(schemaId, methodName);
         var soapCall = that._prepareSoapCall(urn, methodName);
+
+        // If method is called with one parameter which is a function, then we assume it's a hook: the function will return
+        // the actual list of parameters
+        let isfunc = parameters && typeof parameters === "function";
+        if (!isfunc && parameters && parameters.length >= 1 && typeof parameters[0] === "function")
+            isfunc = true;
+        if (isfunc)
+            parameters = parameters[0](method, callContext);
 
         const isStatic = DomUtil.getAttributeAsBoolean(method, "static");
         var object = callContext.object;
