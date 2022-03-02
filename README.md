@@ -470,7 +470,12 @@ More dynamic conversions can be achieved using the `as` function. See the types 
 
 ```js
 stringValue = XtkCaster.as(anyValue, 6);
-````
+```
+
+In addition, the following helpers are available
+* `XtkCaster.isTimeType` to test if a data type is a date, time or timestamp
+* `XtkCaster.isStringType` to test if a data type is a string type (string, memo, etc.)
+* `XtkCaster.isNumericType` to test if a data type is a numeric type
 
 
 ## DOM helpers

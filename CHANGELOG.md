@@ -11,6 +11,10 @@ _2022/03/02_
 * Ability to invoke SOAP calls dynamically with parameters computed at invocation time by a delegate function
 * Fixed bug in XPath constructor which now supports expanded paths, i.e. xpaths such as `[@recipient-id]`.
 * EntityAccessor: change the heuristic to detect XML types: use "nodeType" and "tagName" functions instead of "insertAdjacentElement" (which was not always working in the context of a React application)
+* Add new escaping functions: `escapeForLike`, `expandXPath`, `unexpandXPath`, `xtkConstText`
+* New XtkCaster methods: `asDatetime` (alias to `asTimestamp`), `isStringType`, and `isNumericType`
+
+
 
 ## Version 1.0.7
 _2022/01/24_
