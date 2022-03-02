@@ -5,8 +5,14 @@ This is a node.js SDK for Campaign API. It exposes the Campaign API exactly like
 
 # Changelog 
 
+## Version 1.0.8
+_2022/03/02_
+
+* Ability to invoke SOAP calls dynamically with parameters computed at invocation time by a delegate function
+
+
 ## Version 1.0.7
-_2022_01_24_
+_2022/01/24_
 * Added a hook `refreshClient` on connection parameters. This is a callback called when an authentication token expires. It can be used to implement reconnection logic
 * New attributes on the schema API (application.getSchema)
   * The `enum` attribute of a schema node returns the corresponding enum attribute, i.e. the enumeration name

@@ -1454,6 +1454,28 @@ If you need to access entity attributes (or child elements) in a generic way, yo
 * `getChildElements` to get the child elements. The result can be iterated on with a `for...of...` loop
 * `getElement` to get a child element whose attributes and child elements can also be accessed by the EntityAccessor API
 
+## Invoking SOAP calls dynamically
+Soap calls can be invoked dynamically as follows
+
+```js
+  const namespace = client.NLWS["xtkSession"];
+  const method = namespace["getOption"];
+  const result = await method.call(namespace, parameters);
+```
+
+where parameters is the list of parameters to the SOAP call.
+Parameters can be a function which can compute and return the list of parameters as the function is being called:
+
+```js
+  const result = await method.call(namespace, (method, callContext) => {
+    return parameters;
+  });
+```
+The `method` parameter is the XML definition of the SOAP method call. The `callContext` is an object which contains the following attributes:
+* `schemaId` is the id of the schema containing the SOAP method
+* `namespace` is the call namespace
+* `object` is only used for non-static call and contains the "this" of the call.
+
 
 
 # Build & Run
