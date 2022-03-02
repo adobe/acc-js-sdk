@@ -281,7 +281,6 @@ class XtkSchemaNode {
          * @type {string}
          */
         this.ref = EntityAccessor.getAttributeAsString(xml, "ref");
-
         /**
          * Has an unlimited number of children of the same type
          * @type {boolean}
@@ -289,6 +288,16 @@ class XtkSchemaNode {
         this.unbound = EntityAccessor.getAttributeAsBoolean(xml, "unbound");
         this.isCollection = this.unbound;
 
+        /**
+         * is mapped as a xml
+         * @type {boolean}
+         */
+        this.isMappedAsXML = EntityAccessor.getAttributeAsBoolean(xml, "xml");
+        /**
+         * is an advanced node
+         * @type {boolean}
+         */
+        this.isAdvanced = EntityAccessor.getAttributeAsBoolean(xml, "advanced");
         /**
          * Children of the node. This is a object whose key are the names of the children nodes (without the "@"
          * character for attributes) 
@@ -322,7 +331,7 @@ class XtkSchemaNode {
 
         /**
          * Element of type "link" has an array of XtkJoin
-         * @type {@type {XtkJoin[]}}
+         * @type {XtkJoin[]}
          */
         this.joins = [];
         for (var child of EntityAccessor.getChildElements(xml, "join")) {
