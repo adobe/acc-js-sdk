@@ -339,12 +339,6 @@ class XtkSchemaNode {
         }
 
         /**
-         * Returns a boolean which indicates whether the current node is advanced or not.
-         * @type {boolean}
-         */
-         this.isAdvanced = EntityAccessor.getAttributeAsBoolean(xml, "advanced");
-
-        /**
          * Returns a boolean which indicates whether the current node is ordinary.
          * @type {boolean}
          */
@@ -379,12 +373,6 @@ class XtkSchemaNode {
           * @type {string}
           */
         this.SQLTable = EntityAccessor.getAttributeAsString(xml, "sqltable");
-
-        /**
-         * Is the field mapped as XML?
-         * @type {boolean}
-         */
-        this.isMappedAsXML = EntityAccessor.getAttributeAsBoolean(xml, "xml");
 
         /**
          * Returns a boolean indicating whether the table is a temporary table. The table will not be created during database creation.
