@@ -69,7 +69,7 @@ class EntityAccessor {
      */
     static getAttributeAsString(entity, name) {
         if (entity.documentElement) entity = entity.documentElement;
-        if (entity.insertAdjacentElement)
+        if (entity.nodeType && entity.tagName)
             return DomUtil.getAttributeAsString(entity, name);
         else if (entity instanceof BadgerFishObject)
             return XtkCaster.asString(entity[`@${name}`]);
@@ -95,7 +95,7 @@ class EntityAccessor {
      */
     static getAttributeAsLong(entity, name) {
         if (entity.documentElement) entity = entity.documentElement;
-        if (entity.insertAdjacentElement)
+        if (entity.nodeType && entity.tagName)
             return DomUtil.getAttributeAsLong(entity, name);
         else if (entity instanceof BadgerFishObject)
             return XtkCaster.asLong(entity[`@${name}`]);
@@ -121,7 +121,7 @@ class EntityAccessor {
      */
     static getAttributeAsBoolean(entity, name) {
         if (entity.documentElement) entity = entity.documentElement;
-        if (entity.insertAdjacentElement)
+        if (entity.nodeType && entity.tagName)
             return DomUtil.getAttributeAsBoolean(entity, name);
         else if (entity instanceof BadgerFishObject)
             return XtkCaster.asBoolean(entity[`@${name}`]);
@@ -148,7 +148,7 @@ class EntityAccessor {
      */
     static getChildElements(entity, tagName) {
         if (entity.documentElement) entity = entity.documentElement;
-        if (entity.insertAdjacentElement) {
+        if (entity.nodeType && entity.tagName) {
             const elements = [];
             var child = DomUtil.getFirstChildElement(entity);
             while (child) {
@@ -184,7 +184,7 @@ class EntityAccessor {
      */
     static getElement(entity, tagName) {
         if (entity.documentElement) entity = entity.documentElement;
-        if (entity.insertAdjacentElement) {
+        if (entity.nodeType && entity.tagName) {
             var child = DomUtil.getFirstChildElement(entity);
             while (child) {
                 if (tagName == child.tagName)
