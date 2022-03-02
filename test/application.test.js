@@ -16,7 +16,8 @@ governing permissions and limitations under the License.
  * Unit tests for the schema data objects
  * 
  *********************************************************************************/
-const { DomUtil, XPath, XPathElement } = require('../src/domUtil.js');
+const { SchemaCache } = require('../src/application.js');
+const { DomUtil, XPath } = require('../src/domUtil.js');
 const sdk = require('../src/index.js');
 const newSchema = require('../src/application.js').newSchema;
 const newCurrentLogin = require('../src/application.js').newCurrentLogin;
@@ -272,7 +273,6 @@ describe('Application', () => {
     
                 expect(root.findNode(new XPath("@email")).label).toBe("Email");
             });
-    
         });
 
         describe("Enumerations", () => {
@@ -463,6 +463,7 @@ describe('Application', () => {
         });
 
         describe("getnodepath", () => {
+
             var xml = DomUtil.parse(`<schema namespace='nms' name='recipient'>
                     <element name='recipient' label='Recipients'>
                         <attribute name='email' type='string' length='3'/>
@@ -736,5 +737,37 @@ describe('Application', () => {
             expect(application.operator).toBeUndefined();
             expect(application.package).toBeUndefined();
         })
+    });
+
+    describe("Schema Cache", () => {
+        it("Should search in empty cache", async () => {
+            const client = await Mock.makeClient();
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+            const cache = new SchemaCache(client);
+
+            client._transport.mockReturnValueOnce(Mock.GET_XTK_QUERY_SCHEMA_RESPONSE);
+            const schema = await cache.getSchema("xtk:queryDef");
+            expect(schema.id).toBe("xtk:queryDef");
+
+            // Second call should not perform any API call
+            const schema2 = await cache.getSchema("xtk:queryDef");
+            expect(schema2.id).toBe("xtk:queryDef");
+        });
+
+        it("Should support not found schemas", async () => {
+            const client = await Mock.makeClient();
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+            const cache = new SchemaCache(client);
+
+            client._transport.mockReturnValueOnce(Mock.GET_MISSING_SCHEMA_RESPONSE);
+            const schema = await cache.getSchema("xtk:queryDef");
+            expect(schema).toBeFalsy();
+
+            // Second call should not perform any API call
+            const schema2 = await cache.getSchema("xtk:queryDef");
+            expect(schema2).toBeNull();
+        });
     });
 });

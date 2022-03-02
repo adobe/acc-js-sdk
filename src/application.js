@@ -47,9 +47,9 @@ const isAttributeName = function(name) { return name.length > 0 && name[0] == '@
   * @see {@link XtkSchema}
   * @memberof Campaign
   */
-function newSchema(xml) {
+ function newSchema(xml, application) {
     if (xml.nodeType == 9) xml = xml.documentElement;       // Document -> element
-    var schema = new XtkSchema(xml);
+    var schema = new XtkSchema(application, xml);
     return schema;
 }
 
@@ -63,6 +63,25 @@ function propagateImplicitValues(xtkDesc, labelOnly) {
         xtkDesc.label = xtkDesc.label.substring(0, 1).toUpperCase() + xtkDesc.label.substring(1);
     }
     if (!labelOnly && !xtkDesc.description) xtkDesc.description = xtkDesc.label;
+}
+
+// ========================================================================================
+// Schema Cache
+// ========================================================================================
+class SchemaCache {
+    constructor(client) {
+        this._client = client;
+        this._schemas = {};
+    }
+    async getSchema(schemaId) {
+        let schema = this._schemas[schemaId];
+        if (schema === undefined) {
+            schema = await this._client.application._getSchema(schemaId);
+            if (!schema) schema = null; // null = not found
+        this._schemas[schemaId] = schema;
+        }
+        return schema;
+    }
 }
 
 // ========================================================================================
@@ -306,7 +325,6 @@ class XtkSchemaNode {
          * @type {@type {XtkJoin[]}}
          */
         this.joins = [];
-
         for (var child of EntityAccessor.getChildElements(xml, "join")) {
             this.joins.push(new XtkJoin(child));
         }
@@ -754,12 +772,13 @@ function XtkEnumerationValue(xml, baseType) {
  * @memberof Campaign
  */
 class XtkEnumeration {
-    constructor(xml) {
+    constructor(schemaId, xml) {
         /**
          * The system enumeration name
          * @type {string}
          */
         this.name = EntityAccessor.getAttributeAsString(xml, "name");
+
         /**
          * A human friendly name for the system enumeration
          * @type {string}
@@ -822,8 +841,9 @@ class XtkEnumeration {
  */
 class XtkSchema extends XtkSchemaNode {
 
-    constructor(xml) {
+    constructor(application, xml) {
         super();
+        this._application = application;
 
         /**
          * The namespace of the schema
@@ -885,7 +905,7 @@ class XtkSchema extends XtkSchemaNode {
          this.enumerations = {};
 
          for (var child of EntityAccessor.getChildElements(xml, "enumeration")) {
-             const e = new XtkEnumeration(child);
+             const e = new XtkEnumeration(this.id, child);
              this.enumerations[e.name] = e;
          }
      }
@@ -1000,6 +1020,7 @@ class Application {
      */
     constructor(client) {
         this.client = client;
+        this._schemaCache = new SchemaCache(client);
         const info = this.client.getSessionInfo();
         // When using "SessionToken" authentication, there is no actual logon, and therefore
         // no "sessionInfo" object
@@ -1039,11 +1060,16 @@ class Application {
      * @param {string} schemaId 
      * @returns {Campaign.XtkSchema} the schema, or null if the schema was not found
      */
-    async getSchema(schemaId) {
+     async getSchema(schemaId) {
+        return this._schemaCache.getSchema(schemaId);
+    }
+
+    // Private function: get a schema without using the cache
+    async _getSchema(schemaId) {
         const xml = await this.client.getSchema(schemaId, "xml");
         if (!xml)
             return null;
-        return newSchema(xml);
+        return newSchema(xml, this);
     }
 
     /**
@@ -1068,4 +1094,5 @@ exports.Application = Application;
 // For tests
 exports.newSchema = newSchema;
 exports.newCurrentLogin = newCurrentLogin;
+exports.SchemaCache = SchemaCache;
 })();

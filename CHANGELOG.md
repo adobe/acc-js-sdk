@@ -23,6 +23,7 @@ _2022/03/02_
   * Removed userDescription attribut from schema nodes (only available at the schema level)
   * Changed the toString function to use 4 spaces instead of 3 for indentation and display node label and internal name
   * When label or description is missing from schema nodes or from enumerations, they default to the name value
+  * application.getSchema now uses a in-memory cache
 
 ## Version 1.0.7
 _2022/01/24_

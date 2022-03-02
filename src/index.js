@@ -23,6 +23,7 @@ const DomUtil = require('./domUtil.js').DomUtil;
 const XtkCaster = require('./xtkCaster.js').XtkCaster;
 const { Client, Credentials, ConnectionParameters } = require('./client.js');
 const request = require('./transport.js').request;
+const { TestUtil } = require('./testUtil');
 
 /**
  * Get/Set the transport function (defaults to Axios). This function is used for testing / mocking the transport layer.
@@ -204,6 +205,7 @@ class SDK {
 }
 
 const sdk = new SDK();
+sdk.TestUtil = TestUtil;
 sdk.XtkCaster = XtkCaster;
 sdk.Credentials = Credentials;
 sdk.DomUtil = DomUtil;
