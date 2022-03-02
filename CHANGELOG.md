@@ -9,7 +9,7 @@ This is a node.js SDK for Campaign API. It exposes the Campaign API exactly like
 _2022/03/02_
 
 * Ability to invoke SOAP calls dynamically with parameters computed at invocation time by a delegate function
-
+* Fixed bug in XPath constructor which now supports expanded paths, i.e. xpaths such as `[@recipient-id]`.
 
 ## Version 1.0.7
 _2022/01/24_
