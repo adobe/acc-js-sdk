@@ -73,6 +73,74 @@ describe('ACC SDK', function() {
                 sdk._transport(old);
             }
         });
-    })
+    });
+
+    describe("expandXPath", () => {
+        it("Should support empty paths", () => {
+            expect(sdk.expandXPath(null)).toBe(null);
+            expect(sdk.expandXPath(undefined)).toBe(undefined);
+            expect(sdk.expandXPath("")).toBe("");
+        });
+
+        it("Should preserve already expanded xpath", () => {
+            expect(sdk.expandXPath("[@email]")).toBe("[@email]");
+            expect(sdk.expandXPath("[@recipient-id]")).toBe("[@recipient-id]");
+            expect(sdk.expandXPath("[recipient/@id]")).toBe("[recipient/@id]");
+        });
+
+        it("Should not add brackets if not necessary", () => {
+            expect(sdk.expandXPath("@email")).toBe("@email");
+            expect(sdk.expandXPath("@email_address")).toBe("@email_address");
+        });
+
+        it("Should add brackets if necessary", () => {
+            expect(sdk.expandXPath("@recipient-id")).toBe("[@recipient-id]");
+            expect(sdk.expandXPath("email/@address")).toBe("[email/@address]");
+            expect(sdk.expandXPath("nms:recipient")).toBe("[nms:recipient]");
+        });
+    });
+
+    describe("unexpandXPath", () => {
+        it("Should support empty paths", () => {
+            expect(sdk.unexpandXPath(null)).toBe(null);
+            expect(sdk.unexpandXPath(undefined)).toBe(undefined);
+            expect(sdk.unexpandXPath("")).toBe("");
+        });
+
+        it("Should remove brackets", () => {
+            expect(sdk.unexpandXPath("[@email]")).toBe("@email");
+            expect(sdk.unexpandXPath("[@recipient-id]")).toBe("@recipient-id");
+            expect(sdk.unexpandXPath("[recipient/@id]")).toBe("recipient/@id");
+        });
+
+        it("Should preseve already unexpanded pathx", () => {
+            expect(sdk.unexpandXPath("@email")).toBe("@email");
+            expect(sdk.unexpandXPath("@email_address")).toBe("@email_address");
+        });
+
+        it("Should support array-paths", () => {
+            expect(sdk.unexpandXPath("coll[0]")).toBe("coll[0]");
+            expect(sdk.unexpandXPath("[coll[0]]")).toBe("coll[0]");
+        });
+    });
+    
+    describe("xtkConstText", () => {
+        it("Should handle various types", () => {
+            // Strings are quoted and escaped
+            expect(sdk.xtkConstText("Hello", "string")).toBe("'Hello'");
+            expect(sdk.xtkConstText("", "string")).toBe("''");
+            expect(sdk.xtkConstText(123, "string")).toBe("'123'");
+            expect(sdk.xtkConstText("Hello'World", "memo")).toBe("'Hello\\'World'");
+            // Numbers are unchanged
+            expect(sdk.xtkConstText(123, "long")).toBe("123");
+            expect(sdk.xtkConstText(-42.3, "double")).toBe("-42.3");
+            expect(sdk.xtkConstText("", "long")).toBe("0");
+            expect(sdk.xtkConstText(undefined, "short")).toBe("0");
+            // Timestamps are surrounded by ##
+            expect(sdk.xtkConstText("2022-02-15T09:49:04.000Z", "datetime")).toBe("#2022-02-15T09:49:04.000Z#");
+            expect(sdk.xtkConstText("", "datetime")).toBe("##");
+            expect(sdk.xtkConstText(undefined, "date")).toBe("##");
+        });
+    });
 
 });

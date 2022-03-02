@@ -18,8 +18,7 @@ governing permissions and limitations under the License.
  *********************************************************************************/
 
 const assert = require('assert');
-const { DomUtil } = require('../src/domUtil.js');
-const { Util } = require('../src/util.js');
+const { DomUtil, XPath, XPathElement } = require('../src/domUtil.js');
 
 
 describe('DomUtil', function() {
@@ -546,4 +545,153 @@ describe('DomUtil', function() {
         });
     });
 
+    describe("XPath", () => {
+
+        it("Should create XPath", () => {
+            expect(new XPath("").asString()).toBe("");
+            expect(new XPath(" ").asString()).toBe("");
+            expect(new XPath(null).asString()).toBe("");
+            expect(new XPath(undefined).asString()).toBe("");
+            expect(new XPath("@name").asString()).toBe("@name");
+            expect(new XPath("country/@name").asString()).toBe("country/@name");
+            expect(new XPath("..").asString()).toBe("..");
+            expect(new XPath(".").asString()).toBe(".");
+        })
+
+        it("Should create expanded XPath", () => {
+            expect(new XPath("[@name]").asString()).toBe("@name");
+            expect(new XPath("[country/@name]").asString()).toBe("country/@name");
+        })
+
+        it("toString", () => {
+            expect(new XPath("").toString()).toBe("");
+            expect(new XPath(" ").toString()).toBe("");
+            expect(new XPath(null).toString()).toBe("");
+            expect(new XPath(undefined).toString()).toBe("");
+            expect(new XPath("@name").toString()).toBe("@name");
+            expect(new XPath("country/@name").toString()).toBe("country/@name");
+            expect(new XPath("..").toString()).toBe("..");
+            expect(new XPath(".").toString()).toBe(".");
+        })
+
+        it("Should test empty XPath", () => {
+            expect(new XPath("").isEmpty()).toBe(true);
+            expect(new XPath(" ").isEmpty()).toBe(true);
+            expect(new XPath(null).isEmpty()).toBe(true);
+            expect(new XPath(undefined).isEmpty()).toBe(true);
+            expect(new XPath("@name").isEmpty()).toBe(false);
+            expect(new XPath("country/@name").isEmpty()).toBe(false);
+            expect(new XPath("..").isEmpty()).toBe(false);
+            expect(new XPath(".").isEmpty()).toBe(false);
+        })
+
+        it("Should test absolute XPath", () => {
+            expect(new XPath("").isAbsolute()).toBe(false);
+            expect(new XPath(" ").isAbsolute()).toBe(false);
+            expect(new XPath(null).isAbsolute()).toBe(false);
+            expect(new XPath(undefined).isAbsolute()).toBe(false);
+            expect(new XPath("@name").isAbsolute()).toBe(false);
+            expect(new XPath("country/@name").isAbsolute()).toBe(false);
+            expect(new XPath("..").isAbsolute()).toBe(false);
+            expect(new XPath(".").isAbsolute()).toBe(false);
+            expect(new XPath("/").isAbsolute()).toBe(true);
+            expect(new XPath("/country/@name").isAbsolute()).toBe(true);
+        })
+
+        it("Should test self XPath", () => {
+            expect(new XPath("").isSelf()).toBe(false);
+            expect(new XPath(" ").isSelf()).toBe(false);
+            expect(new XPath(null).isSelf()).toBe(false);
+            expect(new XPath(undefined).isSelf()).toBe(false);
+            expect(new XPath("@name").isSelf()).toBe(false);
+            expect(new XPath("country/@name").isSelf()).toBe(false);
+            expect(new XPath("..").isSelf()).toBe(false);
+            expect(new XPath(".").isSelf()).toBe(true);
+            expect(new XPath("/").isSelf()).toBe(false);
+            expect(new XPath("/country/@name").isSelf()).toBe(false);
+        })
+
+        it("Should test root XPath", () => {
+            expect(new XPath("").isRootPath()).toBe(false);
+            expect(new XPath(" ").isRootPath()).toBe(false);
+            expect(new XPath(null).isRootPath()).toBe(false);
+            expect(new XPath(undefined).isRootPath()).toBe(false);
+            expect(new XPath("@name").isRootPath()).toBe(false);
+            expect(new XPath("country/@name").isRootPath()).toBe(false);
+            expect(new XPath("..").isRootPath()).toBe(false);
+            expect(new XPath(".").isRootPath()).toBe(false);
+            expect(new XPath("/").isRootPath()).toBe(true);
+            expect(new XPath("/country/@name").isRootPath()).toBe(false);
+        })
+
+        it("Should return XPath elements", () => {
+
+            function elements(xpath) {
+                const result = [];
+                const list = xpath.getElements();
+                for (const e of list) {
+                    result.push(e._pathElement);
+                }
+                return result;
+            }
+
+            expect(elements(new XPath(""))).toEqual([  ]);
+            expect(elements(new XPath(" "))).toEqual([  ]);
+            expect(elements(new XPath(null))).toEqual([  ]);
+            expect(elements(new XPath(undefined))).toEqual([  ]);
+            expect(elements(new XPath("@name"))).toEqual([ "@name" ]);
+            expect(elements(new XPath("country/@name"))).toEqual([ "country", "@name" ]);
+            expect(elements(new XPath(".."))).toEqual([ ".." ]);
+            expect(elements(new XPath("."))).toEqual([ "." ]);
+            expect(elements(new XPath("/"))).toEqual([  ]);
+            expect(elements(new XPath("/country/@name"))).toEqual([ "country", "@name" ]);
+        })
+
+        it("Should get relative path", () => {
+            expect(new XPath("").getRelativePath().asString()).toBe("");
+            expect(new XPath(" ").getRelativePath().asString()).toBe("");
+            expect(new XPath(null).getRelativePath().asString()).toBe("");
+            expect(new XPath(undefined).getRelativePath().asString()).toBe("");
+            expect(new XPath("@name").getRelativePath().asString()).toBe("@name");
+            expect(new XPath("country/@name").getRelativePath().asString()).toBe("country/@name");
+            expect(new XPath("..").getRelativePath().asString()).toBe("..");
+            expect(new XPath(".").getRelativePath().asString()).toBe(".");
+            expect(new XPath("/").getRelativePath().asString()).toBe("");
+            expect(new XPath("/country/@name").getRelativePath().asString()).toBe("country/@name");
+        })
+    });
+
+    describe("XPathElement", () => {
+        it("Should create XPathElement", () => {
+            expect(() => { new XPathElement(""); }).toThrow("Invalid empty xpath element");
+            expect(() => { new XPathElement(" "); }).toThrow("Invalid empty xpath element");
+            expect(() => { new XPathElement(null); }).toThrow("Invalid empty xpath element");
+            expect(() => { new XPathElement(undefined); }).toThrow("Invalid empty xpath element");
+            expect(new XPathElement("@name").asString()).toBe("@name");
+            expect(new XPathElement("country").asString()).toBe("country");
+            expect(new XPathElement("..").asString()).toBe("..");
+            expect(new XPathElement(".").asString()).toBe(".");
+        })
+
+        it("toString", () => {
+            expect(new XPathElement("@name").toString()).toBe("@name");
+            expect(new XPathElement("country").toString()).toBe("country");
+            expect(new XPathElement("..").toString()).toBe("..");
+            expect(new XPathElement(".").toString()).toBe(".");
+        })
+
+        it("Should test if path element is self", () => {
+            expect(new XPathElement("@name").isSelf()).toBe(false);
+            expect(new XPathElement("country").isSelf()).toBe(false);
+            expect(new XPathElement("..").isSelf()).toBe(false);
+            expect(new XPathElement(".").isSelf()).toBe(true);
+        })
+
+        it("Should test if path element is the parent path (..)", () => {
+            expect(new XPathElement("@name").isParent()).toBe(false);
+            expect(new XPathElement("country").isParent()).toBe(false);
+            expect(new XPathElement("..").isParent()).toBe(true);
+            expect(new XPathElement(".").isParent()).toBe(false);
+        })
+    })
 });
