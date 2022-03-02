@@ -25,6 +25,7 @@ _2022/03/02_
   * When label or description is missing from schema nodes or from enumerations, they default to the name value
   * application.getSchema now uses a in-memory cache
 
+
 ## Version 1.0.7
 _2022/01/24_
 * Added a hook `refreshClient` on connection parameters. This is a callback called when an authentication token expires. It can be used to implement reconnection logic
