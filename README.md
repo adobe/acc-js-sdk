@@ -1013,6 +1013,8 @@ It's common to use variables in query conditions. For instance, in the above exa
 To prevent xtk ingestions vulnerabilities, you should not concatenate strings and write code such as expr: "@name = '" + name + "'": if the value of the name 
 parameter contains single quotes, your code will not work, but could also cause vulnerabilities.
 
+### sdk.escapeXtk
+
 The `sdk.escapeXtk` can be used to properly escape string litterals in xtk expressions. The function will also surround the escaped value with single quotes.
 
 You can use string concatenation like this. Note the lack of single quotes around the value.
@@ -1038,6 +1040,35 @@ This can also be used to escape other data types such as timestamps
 
 will return `{ expr: "@lastModified > = #2021-07-07T10:03:33.332Z# }`
 
+
+### sdk.escapeForLike
+
+This function escapes values so that they can be used in SQL or XTK like conditions. For example a search term "term" can be escaped as follows to implement a search conditions
+
+```
+    expr: `Lower([${xpath}]) LIKE '%${sdk.escapeForLike(term)}%'`,
+```
+
+### sdk.expandXPath & sdk.unexpandXPath
+
+In Campaign, xpaths are used to access attributes of entities. When XPaths are used in XTK expressions, there can be ambiguities, for instance, in the expression "country/@name", is "country/@name" a xpath or are we dividing the variable country by the value of the attribute @name?
+
+Amibiguity can be resolved by "expanding" the xpath from "country/@name" to "[country/@name]". The square brackets indicate an xpath.
+
+```
+    const expandedXPath = sdk.expandXPath(xpath);
+    const unexpandedXPath = sdk.unexpandXPath(expandedXPath);
+```
+
+### xtkConstText
+
+This function allows to convert literal values to xtk text constants, providing correct serialization. For instance, text constants will be quoted with single quotes, timestamps with the "#" character, etc.
+
+```
+    expect(sdk.xtkConstText("Hello", "string")).toBe("'Hello'");
+    expect(sdk.xtkConstText(-42.3, "double")).toBe("-42.3");
+    expect(sdk.xtkConstText("2022-02-15T09:49:04.000Z", "datetime")).toBe("#2022-02-15T09:49:04.000Z#");
+```
 
 
 ## Pagination
