@@ -1335,23 +1335,23 @@ The `application` object can be obtained from a client, and will mimmic the Camp
 
 | Attribute/Method | Description |
 |---|---|
-| buildNumber | The server build number
-| instanceName | The name of the Campaign instance
-| operator | Information about the current operator (i.e. logged user), of class `CurrentLogin`
-| packages | List of installed packages, as an array of strings
-| getSchema(schemaId) | Get a schema by id (see the Schemas section below)
-| hasPackage(name) | Tests if a package is installed or not
+| **buildNumber** | The server build number
+| **instanceName** | The name of the Campaign instance
+| **operator** | Information about the current operator (i.e. logged user), of class `CurrentLogin`
+| **packages** | List of installed packages, as an array of strings
+| **getSchema**(schemaId) | Get a schema by id (see the Schemas section below)
+| **hasPackage**(name) | Tests if a package is installed or not
 
 
 The `CurrentLogin` object has the following attributes / functions
 
 | Attribute/Method | Description |
 |---|---|
-| id | the internal id (int32) of the operator
-| login | the login name of the operator
-| computeString | A human readable name for the operator
-| timezone | The timezone of the operator
-| rights | An array of strings describing the rights of the operators
+| **id** | the internal id (int32) of the operator
+| **login** | the login name of the operator
+| **computeString** | A human readable name for the operator
+| **timezone** | The timezone of the operator
+| **rights** | An array of strings describing the rights of the operators
 
 # Schemas
 
@@ -1404,73 +1404,129 @@ const schema = application.getSchema("nms:recipient");
 This return a schema object of class `XtkSchema`
 
 
-### XtkSchema / XtkSchemaNode
+### XtkSchema 
 
-| Attribute/Method | | Description |
-|---|---|---|
-| schema | | The schema to which this node belongs
-| id | schema | For schemas, the id of the schema. For instance "nms:recipient"
-| namespace | schema | For schemas, the namespace of the schema. For instance "nms"
-| name |  | The name of the node (internal name)
-| label | | The label (i.e. human readable, localised) name of the node.
-| labelSingular | schema | The singular label (i.e. human readable, localised) name of the schema. The label of a schema is typically a plural.
-| description | | A long, human readable, description of the node
-| img | | The name of the image (if any) corresponding to the node
-| type | | The data type of the node, for instance "string", "long", etc.
-| length | | For string nodes, the maximum length of the node value
-| ref | |
-| isAttribute | | Indicates if the node is an attribute (true) or an element (false)
-| children | | A map of children of the node, indexed by name. Names never contain the "@" sign, even attribute names
-| childrenCount | | Number of children nodes
-| parent | | The parent node. Will be null for schema nodes
-| isRoot | | Indicates if the node is the root node of a schema, i.e. the first child of the schema node, whose name matches the schema name
-| userDescription | |
-| keys | | A map of keys in this node, indexed by key name. Map values are of type `XtkSchemaKey`
-| nodePath  | | The absolute full path of the node
-| hasChild(name) | | Tests if the node has a child wih the given name
-| findNode(path) | Find a child node using a xpath
-| isLibrary | schema | For schemas, indicates if the schema is a library
-| mappingType | schema | Schema mapping type. Usually "sql"
-| xml | schema | The XML (DOM) corresponding to this schema
-| root | schema | The schema root node, if there is one. A reference to a `XtkSchemaNode`
-| enumerations | schema | Map of enumerations in this schema, indexed by enumeration name. Values are of type `XtkEnumeration`
+| Attribute | Description |
+|---|---|
+| **id** | The id of the schema. For instance "nms:recipient"
+| **namespace** | The namespace of the schema. For instance "nms"
+| **name** | The name of the schema (internal name)
+| **label** | The label (i.e. human readable, localised) name of the node.
+| **labelSingular** | The singular label (i.e. human readable, localised) name of the schema. The label of a schema is typically a plural.
+| **isLibrary** | For schemas, indicates if the schema is a library
+| **mappingType** |Schema mapping type. Usually "sql"
+| **md5** | The MD5 code of the schema in the form of a hexadecimal string
+| **xml** | The XML (DOM) corresponding to this schema.<br>Note: this attribute is not available in the JS SDK.
+| **root** | The schema root node, if there is one. A reference to a `XtkSchemaNode`
+| **enumerations** | Map of enumerations in this schema, indexed by enumeration name. Values are of type `XtkEnumeration`
+| **userDescription** | The description of the schema in the form of a string.
+
+A schema is also a `XtkSchemaNode` and the corresponding properties/methods are also availale.
+
+### XtkSchemaNode
+
+| Attribute | | Description |
+|---|---|
+| **children** | A map of children of the node, indexed by name. Names never contain the "@" sign, even attribute names
+| **dataPolicy** | Returns a string of characters which provides the data policy of the current node.
+| **description** | A long, human readable, description of the node
+| **editType** |Returns a string of characters which specifies the editing type of the current node.
+| **enum** | The name of the enumeration for the node, or an empty string if the node does node have an enumeration. See `enumeration()` method to get the corresponding `XtkSchemaNode`
+| **enumerationImage** | Returns the name of the image of the current node in the form of a string of characters.
+| **folderModel** |Only on the root node, returns a string which contains the folder template(s). On the other nodes, it returns undefined.
+| **image**  | Returns the name of the image in the form of a string of characters.
+| **img** | Returns the name of the image in the form of a string of characters. (alias to `image` property)
+| **integrity** | Returns the link integrity type.
+| **keys** | A map of keys in this node, indexed by key name. Map values are of type `XtkSchemaKey`
+| **hasEnumeration** | Returns a boolean which indicates whether the value of the current node is linked to an enumeration.
+| **childrenCount** | Number of children nodes
+| **hasSQLTable** | Returns a boolean which indicates whether the current node is linked to an SQL table.
+| **hasUserEnumeration** | Returns a boolean which indicates whether the value of the current node is linked to a user enumeration.
+| **schema** | The schema to which this node belongs
+| **isAdvanced** | Returns a boolean which indicates whether the current node is advanced or not.
+| **isAnyType** | Returns a boolean which indicates whether the current node is ordinary.
+| **isAttribute** | Indicates if the node is an attribute (true) or an element (false)
+| **isAutoIncrement** | Returns a boolean which indicates whether the value of the current node is incremented automatically.
+| **isAutoPK** | Returns a boolean which indicates whether the current node is a primary key.
+| **isAutoUUID** | Yes | No | Returns a boolean which indicates whether the current node is an automatic UUID
+| **isAutoStg** | Yes | No | Returns a boolean which indicates whether the schema is a staging schema
+| **isBlob** | Returns a boolean which indicates whether the current node is a BLOB.
+| **isCalculated** | Returns a boolean which indicates whether the value of the current node is the result of a calculation. Note that compute strings are not considered as calculated attributes.
+| **isCDATA** | Returns a boolean which indicates whether the current node is mapped from CDATA type XML.
+| **isCollection** | Returns a boolean which indicates whether the current node is a collection of sub-elements and/or attributes. This is an alias to `unbound` and `isUnbound` properties.
+| **isDefaultOnDuplicate** | Returns a boolean. If the value added is vrai, during record deduplication, the default value (defined in defaultValue) is automatically reapplied during recording.
+| **isElementOnly** | Returns a boolean which indicates whether the current node is a logical sub-division of the schema.
+| **isExternalJoin** | True if the node is a link and if the join is external.
+| **isLink** | Returns a boolean which indicates whether the node is a link.
+| **isMappedAsXML** | Returns a boolean which indicates whether the node is an XML mapping.
+| **isMemo** | Returns a boolean which indicates whether the current node is mapped by a Memo.
+| **isMemoData** | Returns a boolean which indicates whether the current node is mapped by a MemoData.
+| **isNotNull** | Returns a boolean which indicates whether or not the current node can take the null value into account.
+| **isRequired** | Returns a boolean which indicates whether or not the value of the current node is mandatory.
+| **isRoot** | Indicates if the node is the root node of a schema, i.e. the first child of the schema node, whose name matches the schema name
+| **isSQL** | Returns a boolean which indicates whether the current node is mapped in SQL.
+| **isTemporaryTable** | Returns a boolean indicating whether the table is a temporary table. The table will not be created during database creation.| id | schema | For schemas, the id of the schema. For instance "nms:recipient"
+| **unbound** | Returns a boolean which indicates whether the current node has an unlimited number of children of the same type.
+| **joins** | Element of type "link" has an array of XtkJoin. See `joinNodes` method.
+| **label** | The label (i.e. human readable, localised) name of the node.
+| **name** | The name of the node (internal name)
+| **nodePath** | The absolute full path of the node
+| **parent** | The parent node. Will be null for schema nodes
+| **PKSequence** | Returns a character string that provides the name of the sequence to use for the primary key.
+| **packageStatus** | Returns a number that gives the package status.
+| **packageStatusString** |  Returns a string that gives the package status ("never", "always", "default", or "preCreate").
+| **revLink** | Returns the name of the reverse link in the link target schema. See `reverseLink` method to get the actual reverse link object
+| **SQLName** | The SQL name of the field. The property is an empty string if the object isn't an SQL type field.
+| **SQLTable** | The SQL name of the table. The property is an empty string if the object isn't the main element or if schema mapping isn't of SQL type.
+| **size** | For string nodes, the maximum length of the node value. Alias to `length`.
+| **length** | For string nodes, the maximum length of the node value
+| **target** | A string corresponding to the target of a link. Note that in the SDK, this is a string, whereas in the JS API, this is the actual target node. Because the SDK is async. Use `linkTarget` to get the target node of a link.
+| **type** | The data type of the node, for instance "string", "long", etc.
+| **userEnumeration** | Returns a string of characters which is the name of the user enumeration used by the current node.
+| **ref** | Some nodes are only references to other nodes. There are 2 kind of references. Local references are simply a xpath in the current schema (starting from the schema itself, and not the schema root). Fully qualified references are prefixed with a schema id. The target node can be accessed with the `refTarget` funtion.
+| **isMappedAsXml** | Is the field mapped as XML?
+
+| Method | Description |
+|---|---|
+| **hasChild**(name) | | Tests if the node has a child wih the given name
+| **findNode**(path) | Find a child node using a xpath
 
 
 ### XtkSchemaKey
 
 | Attribute/Method | Description |
 |---|---|
-| schema | The schema to which this key belongs
-| name |  The name of the key (internal name)
-| label | The label (i.e. human readable, localised) name of the key
-| description | A long, human readable, description of the key
-| isInternal |
-| allowEmptyPart |
-| fields | A map of key fields making up the key. Each value is a reference to a `XtkSchemaNode` 
+| **schema** | The schema to which this key belongs
+| **name** |  The name of the key (internal name)
+| **label** | The label (i.e. human readable, localised) name of the key
+| **description** | A long, human readable, description of the key
+| **isInternal** | Indicates if the key is an internal key (as opposed to an external key)
+| **allowEmptyPart** |
+| **fields** | A map of key fields making up the key. Each value is a reference to a `XtkSchemaNode` 
 
 ### XtkEnumeration
 
 | Attribute/Method | Description |
 |---|---|
-| name |  The name of the key (internal name)
-| label | The label (i.e. human readable, localised) name of the key
-| description | A long, human readable, description of the key
-| baseType | 
-| default |
-| hasImage |
-| values | A map of enumeration values, by name of value. Value is of type `XtkEnumerationValue`
+| **name** |  The name of the enumeration, fully qualified, i.e. prefixed with the schema id
+| **label** | The label (i.e. human readable, localised) name of the key
+| **description** | A long, human readable, description of the key
+| **baseType** | The base type of the enumeration, usually "string" or "byte"
+| **default** | The default value of the enumeration, casted to the enumeration type
+| **hasImage** | If the enumeration has an image
+| **values** | A map of enumeration values, by name of value. Value is of type `XtkEnumerationValue`
 
 ### XtkEnumerationValue
 
 | Attribute/Method | Description |
 |---|---|
-| name |  The name of the key (internal name)
-| label | The label (i.e. human readable, localised) name of the key
-| description | A long, human readable, description of the key
-| image |
-| enabledIf |
-| applicableIf |
-| value | The value of the enumeration (casted to the proper Javascript type)
+| **name** |  The name of the key (internal name)
+| **label** | The label (i.e. human readable, localised) name of the key
+| **description** | A long, human readable, description of the key
+| **image** |
+| **enabledIf** |
+| **applicableIf** |
+| **value** | The value of the enumeration (casted to the proper Javascript type)
 
 # Advanced Topics
 
