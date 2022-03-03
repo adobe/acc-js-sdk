@@ -5,7 +5,7 @@ This is a node.js SDK for Campaign API. It exposes the Campaign API exactly like
 
 # Changelog 
 
-## Version 1.0.8
+## Version 1.0.9
 _2022/03/02_
 
 * Ability to invoke SOAP calls dynamically with parameters computed at invocation time by a delegate function
