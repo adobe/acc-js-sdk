@@ -431,15 +431,30 @@ class XtkCaster {
         return timespan;
     }
 
+    /**
+     * Tests if a given type is a date or time type
+     * @param {string|number} type the type name
+     * @returns {boolean} true if the type is a date and/or time type
+     */
     static isTimeType(type) {
         return type === "datetime" || type === "datetimetz" || type === "datetimenotz" || type === "timestamp" || type === "date" || type === "time" || type === "timespan" || type === 7 || type === 10 || type === 14;
     }
 
-    static isStringType(type) {
+    /**
+     * Tests if a given type is a string type
+     * @param {string|number} type the type name
+     * @returns {boolean} true if the type is a string type
+     */
+     static isStringType(type) {
         return type === "string" || type === "memo" || type === 6 || type === 12 || type === 13 || type === "blob" || type === "html" || type === "CDATA";
     }
 
-    static isNumericType(type) {
+    /**
+     * Tests if a given type is a numeric type
+     * @param {string|number} type the type name
+     * @returns {boolean} true if the type is a numeric type
+     */
+     static isNumericType(type) {
         return type === "byte" || type === 1 || type === "short" || type === 2 || type === "int" || type === "long" || type === 3 || type === "float" || type === 4 || type === "double" || type === 5 || type === "timespan" || type === 14;
     }
 }

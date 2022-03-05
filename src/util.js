@@ -137,7 +137,12 @@ class Util {
 
 /**
  * The ArrayMap object is used to access elements as either an array or a map
+ * 
+ * @class
+ * @constructor
+ * @memberof Utils
  */
+
 class ArrayMap {
   constructor() {
       // List of items, as an ordered array. Use defineProperty to make it non-enumerable
@@ -200,33 +205,78 @@ class ArrayMap {
       this._items.push(value);
       this.length = this._items.length;
   }
+
+  /**
+   * Executes a provided function once for each array element.
+   * @param {*} callback Function that is called for every element of the array
+   * @param {*} thisArg Optional value to use as this when executing the callback function.
+   * @returns a new array
+   */
   forEach(callback, thisArg) {
       return this._items.forEach(callback, thisArg);
   }
+
+  /**
+   * Returns the first element that satisfies the provided testing function. If no values satisfy the testing function, undefined is returned.
+   * @param {*} callback Function that is called for every element of the array
+   * @param {*} thisArg Optional value to use as this when executing the callback function.
+   * @returns the first element matching the testing function
+   */
   find(callback, thisArg) {
     return this._items.find(callback, thisArg);
   }
-  filter(callback, thisArg) {
+
+  /**
+   * creates a new array with all elements that pass the test implemented by the provided function.
+   * @param {*} callback Function that is called for every element of the array
+   * @param {*} thisArg Optional value to use as this when executing the callback function.
+   * @returns an array containing elements passing the test function
+   */
+   filter(callback, thisArg) {
     return this._items.filter(callback, thisArg);
   }
+
+  /**
+   * Get a element by either name (access as a map) or index (access as an array). Returns undefined if the element does not exist or
+   * if the array index is out of range.
+   * @param {string|number} indexOrKey the name or index of the element
+   * @returns the element matching the name or index
+   */
   get(indexOrKey) {
     if (typeof indexOrKey === 'number') return this._items[indexOrKey];
     return this._map[indexOrKey];
   }
+
+  /**
+   * Creates a new array populated with the results of calling a provided function on every element in the calling array.
+   * @param {*} callback Function that is called for every element of the array
+   * @param {*} thisArg Optional value to use as this when executing the callback function.
+   * @returns a new array
+   */
   map(callback, thisArg) {
     return this._items.map(callback, thisArg);
   }
+
+  /**
+   * Returns a new array formed by applying a given callback function to each element of the array, and then flattening the result by one level. 
+   * @param {*} callback Function that is called for every element of the array
+   * @param {*} thisArg Optional value to use as this when executing the callback function.
+   * @returns a new array
+   */
   flatMap(callback, thisArg) {
     return this._items.flatMap(callback, thisArg);
   }
-  // Support for ... of
+
+  /**
+   * Iterates over all the elements using the for ... of syntax.
+   * @returns returns each element one after the other
+   */
   *[Symbol.iterator] () {
       for (const item of this._items) {
           yield item;
       }
   }
 }
-
 
 // Public expots
 exports.Util = Util;
