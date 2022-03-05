@@ -6,9 +6,9 @@ This is a node.js SDK for Campaign API. It exposes the Campaign API exactly like
 # Changelog 
 
 ## Version 1.1.0
-_2022/03/02_
+_2022/03/05_
 
-Chnages in the metadata api (`application.getSchema`) which was not completely implemented. While this API is meant to be largely compatible with the [ACC JS API](https://docs.adobe.com/content/help/en/campaign-classic/technicalresources/api/c-Application.html), it's not always possible to do so because of the asynchronous nature of the SDK. The JS API is executed inside the Campaign application server can will synchronously and transparently fetch schemas as needed. Howerer the SDK runs outside of the Campaign server. It will synchronously and transparently fetch schemas as needed, but this will be done adynchronously. 
+Changes in the metadata api (`application.getSchema`) which was not completely implemented. While this API is meant to be largely compatible with the [ACC JS API](https://docs.adobe.com/content/help/en/campaign-classic/technicalresources/api/c-Application.html), it's not always possible to do so because of the asynchronous nature of the SDK. The JS API is executed inside the Campaign application server can will synchronously and transparently fetch schemas as needed. Howerer the SDK runs outside of the Campaign server. It will synchronously and transparently fetch schemas as needed, but this will be done adynchronously. 
 
 Differences are document in the `Application` section of the README.
 
