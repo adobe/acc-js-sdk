@@ -5,6 +5,21 @@ This is a node.js SDK for Campaign API. It exposes the Campaign API exactly like
 
 # Changelog 
 
+## Version 1.1.0
+_2022/03/05_
+
+Changes in the metadata api (`application.getSchema`) which was not completely implemented. While this API is meant to be largely compatible with the [ACC JS API](https://docs.adobe.com/content/help/en/campaign-classic/technicalresources/api/c-Application.html), it's not always possible to do so because of the asynchronous nature of the SDK. The JS API is executed inside the Campaign application server can will synchronously and transparently fetch schemas as needed. Howerer the SDK runs outside of the Campaign server. It will synchronously and transparently fetch schemas as needed, but this will be done adynchronously. 
+
+Differences are document in the `Application` section of the README.
+
+* Provide array and map access to XtkSchemaKey.fields, 
+* The order of children of a node has been changed. Beore 1.1.0, it was attributes, then elements. After 1.1.0, it's the order defined in the schema XML
+* New application.getEnumeration function to retreive an enumeration
+* Removed the XtkSchemaNode.hasChild function
+* Support for ref nodes and links: XtkSchemaNode.refTarget(), XtkSchemaNode.linkTarget() functions
+* Reviews XtkSchemaNode.findNode() function to support links, refs, ANY type, etc. and is now asynchronous
+* The name attribute of enumerations (`XtkEnumeration.name`) is now the fully qualified name of the enumeration, i.e. is prefixed by the schema id
+
 ## Version 1.0.9
 _2022/03/02_
 
@@ -24,6 +39,8 @@ _2022/03/02_
   * Changed the toString function to use 4 spaces instead of 3 for indentation and display node label and internal name
   * When label or description is missing from schema nodes or from enumerations, they default to the name value
   * application.getSchema now uses a in-memory cache
+
+For breaking changes see the [migration guide](MIGRATION.md)
 
 
 ## Version 1.0.7

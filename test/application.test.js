@@ -51,7 +51,7 @@ describe('Application', () => {
                                                 <element name='recipient' label='Recipients2'/>
                                             </schema>`);
                     newSchema(xml);    
-                }).toThrow("there's a already a node");
+                }).toThrow("Failed to add element 'recipient' to ArrayMap. There's already an item with the same name");
             });
 
             it("Should find root node", () => {
@@ -108,7 +108,7 @@ describe('Application', () => {
                                         </schema>`);
                 var schema = newSchema(xml);
                 var root = schema.root;
-                expect(root.hasChild("@email")).toBe(true);
+                expect(!!root.children.get("@email")).toBe(true);
                 var email = root.children["@email"];
                 expect(email).not.toBeNull();
                 expect(email.name).toBe("@email");
@@ -124,8 +124,8 @@ describe('Application', () => {
                                         </schema>`);
                 var schema = newSchema(xml);
                 var root = schema.root;
-                expect(root.hasChild("email")).toBe(false);
-                expect(root.hasChild("@dummy")).toBe(false);
+                expect(!!root.children.get("email")).toBe(false);
+                expect(!!root.children.get("@dummy")).toBe(false);
             });
 
             it("Should not find inexistant attribute (@-syntax)", () => {
@@ -136,8 +136,8 @@ describe('Application', () => {
                                         </schema>`);
                 var schema = newSchema(xml);
                 var root = schema.root;
-                expect(root.hasChild("@email")).toBe(true);
-                expect(root.hasChild("email")).toBe(false);
+                expect(!!root.children.get("@email")).toBe(true);
+                expect(!!root.children.get("email")).toBe(false);
             });
         });
 
@@ -159,7 +159,7 @@ describe('Application', () => {
 
         describe("Find node", () =>  {
 
-            it("Should find nodes", () => {
+            it("Should find nodes", async () => {
                 var xml = DomUtil.parse(`<schema namespace='nms' name='recipient'>
                                             <element name='recipient' label='Recipients'>
                                                 <attribute name='email' label="Email" type='string' length='3'/>
@@ -174,68 +174,50 @@ describe('Application', () => {
                 var root = schema.root;
     
                 // Relative path
-                expect(root.findNode("@email").label).toBe("Email");
-                expect(root.findNode("country").label).toBe("Country");
-                expect(root.findNode("country/@isoA3").label).toBe("Country name");
-                expect(root.findNode("country/@country-id").label).toBe("Country id");
-    
-                // Not found (defaut behavior throws)
-                expect(() => { root.findNode("@dummy"); }).toThrow("Unknown attribute 'dummy'");
-                expect(() => { root.findNode("dummy"); }).toThrow("Unknown element 'dummy'");
-                expect(() => { root.findNode("dummy/@dummy"); }).toThrow("Unknown element 'dummy'");
-                expect(() => { root.findNode("country/@dummy"); }).toThrow("Unknown attribute 'dummy'");
-                expect(() => { root.findNode("country/dummy/@dummy"); }).toThrow("Unknown element 'dummy'");
-    
-                // Not found (mustExists=false) 
-                expect(root.findNode("@dummy", true, false)).toBeNull();
-                expect(root.findNode("dummy", true, false)).toBeNull();
-                expect(root.findNode("dummy/@dummy", true, false)).toBeNull();
-                expect(root.findNode("country/@dummy", true, false)).toBeNull();
-    
+                await expect(root.findNode("@email")).resolves.toMatchObject({ label: "Email" });
+                await expect(root.findNode("country")).resolves.toMatchObject({ label: "Country" });
+                await expect(root.findNode("country/@isoA3")).resolves.toMatchObject({ label: "Country name" });
+                await expect(root.findNode("country/@country-id")).resolves.toMatchObject({ label: "Country id" });
+
+                await expect(root.findNode("@dummy")).resolves.toBeFalsy();
+                await expect(root.findNode("dummy")).resolves.toBeFalsy();
+                await expect(root.findNode("dummy/@dummy")).resolves.toBeFalsy();
+                await expect(root.findNode("country/@dummy")).resolves.toBeFalsy();
+                await expect(root.findNode("country/dummy/@dummy")).resolves.toBeFalsy();
+
                 // Starting from schema
-                expect(schema.findNode("recipient").label).toBe('Recipients');
-    
-                // Absolute path
-                expect(root.findNode("/@email").label).toBe("Email");
-                const country = root.findNode("country");
-                expect(country.findNode("/@email").label).toBe("Email");
-                expect(country.findNode("/country").label).toBe("Country");
-    
+                await expect(schema.findNode("recipient")).resolves.toMatchObject({ label: 'Recipients' });
+
+                // Absolute path (/ means schema root node, not schema node)
+                await expect(root.findNode("/@email")).resolves.toMatchObject({ label: "Email" });
+                const country = await root.findNode("country");
+                await expect(country.findNode("/@email")).resolves.toMatchObject({ label: "Email" });
+                await expect(country.findNode("/country")).resolves.toMatchObject({ label: "Country" });
+
                 // Self and parent
-                expect(country.findNode("./@isoA3").label).toBe("Country name");
-                expect(country.findNode("../@email").label).toBe("Email");
-                expect(country.findNode(".././@email").label).toBe("Email");
-                expect(country.findNode("./../@email").label).toBe("Email");
-                expect(root.findNode("./country/..").label).toBe("Recipients");
-    
+                await expect(country.findNode("./@isoA3")).resolves.toMatchObject({ label: "Country name" });
+                await expect(country.findNode("../@email")).resolves.toMatchObject({ label: "Email" });
+                await expect(country.findNode(".././@email")).resolves.toMatchObject({ label: "Email" });
+                await expect(country.findNode("./../@email")).resolves.toMatchObject({ label: "Email" });
+                await expect(root.findNode("./country/..")).resolves.toMatchObject({ label: "Recipients" });
+
                 // Special cases
-                expect(root.findNode("").label).toBe("Recipients");
-                expect(root.findNode(".").label).toBe("Recipients");
-    
+                await expect(root.findNode("")).resolves.toMatchObject({ label: "Recipients" });
+                await expect(root.findNode(".")).resolves.toMatchObject({ label: "Recipients" });
+
                 // Non strict
-                expect(root.findNode("country/@isoA3", false, false).label).toBe("Country name");
-                expect(root.findNode("country/isoA3", false, false).label).toBe("Country name");
-                expect(country.findNode("@isoA3", false, false).label).toBe("Country name");
-                expect(country.findNode("isoA3", false, false).label).toBe("Country name");
-                expect(country.findNode("@terminal", false, false).label).toBe("Terminal");
-                expect(country.findNode("terminal", false, false).label).toBe("Terminal");
-                expect(country.findNode("@notFound", false, false)).toBeNull();
-                expect(country.findNode("notFound", false, false)).toBeNull();
-                
-                // strict
-                expect(root.findNode("country/@isoA3", true, false).label).toBe("Country name");
-                expect(root.findNode("country/isoA3", true, false)).toBeNull();
-                expect(country.findNode("@isoA3", true, false).label).toBe("Country name");
-                expect(country.findNode("isoA3", true, false)).toBeNull();
-                expect(country.findNode("@terminal", true, false)).toBeNull();
-                expect(country.findNode("terminal", true, false).label).toBe("Terminal");
-                expect(country.findNode("@notFound", true, false)).toBeNull();
-                expect(country.findNode("notFound", true, false)).toBeNull();
+                await expect(root.findNode("country/@isoA3", false, false)).resolves.toMatchObject({ label: "Country name" });
+                await expect(root.findNode("country/isoA3", false, false)).resolves.toBeFalsy();
+                await expect(country.findNode("@isoA3", false, false)).resolves.toMatchObject({ label: "Country name" });
+                await expect(country.findNode("isoA3", false, false)).resolves.toBeFalsy();
+                await expect(country.findNode("@terminal", false, false)).resolves.toBeFalsy();
+                await expect(country.findNode("terminal", false, false)).resolves.toMatchObject({ label: "Terminal" });
+                await expect(country.findNode("@notFound", false, false)).resolves.toBeFalsy();
+                await expect(country.findNode("notFound", false, false)).resolves.toBeFalsy();
             });
     
-    
-            it("Empty or absolute path requires a schema and root node", () => {
-                
+            it("Empty or absolute path requires a schema and root node", async () => {
+
                 var xml = DomUtil.parse(`<schema namespace='nms' name='recipient'>
                             <element name='profile' label='Recipients'>
                                 <attribute name='email' label="Email" type='string' length='3'/>
@@ -248,17 +230,17 @@ describe('Application', () => {
                 var schemaNoRoot = newSchema(xml);
                 var root = schemaNoRoot.root;
                 expect(root).toBeUndefined();
-                expect(() => { schemaNoRoot.findNode("") }).toThrow("does not have a root node");
-                expect(() => { schemaNoRoot.findNode("/") }).toThrow("does not have a root node");
-    
-                var profile = schemaNoRoot.findNode("profile");
+                await expect(schemaNoRoot.findNode("")).resolves.toBeFalsy();
+                await expect(schemaNoRoot.findNode("/")).resolves.toBeFalsy();
+
+                var profile = await schemaNoRoot.findNode("profile");
                 expect(profile).toBeTruthy();
-                expect(profile.findNode("country/@isoA3").label).toBe("Country name");
-                expect(() => { profile.findNode("/country/@isoA3") }).toThrow("does not have a root node");
-                expect(() => { profile.findNode("") }).toThrow("does not have a root node");
+                await expect(profile.findNode("country/@isoA3")).resolves.toMatchObject({ label: "Country name" });
+                await expect(profile.findNode("/country/@isoA3")).resolves.toBeFalsy();
+                await expect(profile.findNode("")).resolves.toBeFalsy();
             });
     
-            it("Should find node by xpath", () => {
+            it("Should find node by xpath", async () => {
                 var xml = DomUtil.parse(`<schema namespace='nms' name='recipient'>
                                             <element name='recipient' label='Recipients'>
                                                 <attribute name='email' label="Email" type='string' length='3'/>
@@ -271,7 +253,7 @@ describe('Application', () => {
                 var schema = newSchema(xml);
                 var root = schema.root;
     
-                expect(root.findNode(new XPath("@email")).label).toBe("Email");
+                await expect(root.findNode(new XPath("@email"))).resolves.toMatchObject({ label: "Email" });
             });
         });
 
@@ -285,10 +267,53 @@ describe('Application', () => {
                 var schema = newSchema(xml);
                 var enumerations = schema.enumerations;
                 expect(enumerations.gender.dummy).toBeFalsy();
-                expect(enumerations.gender.name).toBe("gender");
-                expect(enumerations.status.name).toBe("status");
+                expect(enumerations.gender.shortName).toBe("gender");
+                expect(enumerations.status.shortName).toBe("status");
+                expect(enumerations.gender.name).toBe("nms:recipient:gender");
+                expect(enumerations.status.name).toBe("nms:recipient:status");
             });
 
+            it("Should support forEach and map", () => {
+                const xml = DomUtil.parse(`<schema namespace='nms' name='recipient'>
+                                            <enumeration name="gender" basetype="byte"/>
+                                            <enumeration name="status" basetype="byte"/>
+                                            <element name='recipient' label='Recipients'></element>
+                                        </schema>`);
+                const schema = newSchema(xml);
+                const enumerations = schema.enumerations;
+
+                // Use forEach to concatenate enumeration names
+                let cat = "";
+                enumerations.forEach(e => cat = cat + e.name);
+                expect(cat).toBe("nms:recipient:gendernms:recipient:status");
+
+                // Use map to get get an array of enumeration names
+                expect(enumerations.map(e => e.name).join(',')).toBe("nms:recipient:gender,nms:recipient:status");
+            });
+
+            it("Should support index based access", () => {
+                const xml = DomUtil.parse(`<schema namespace='nms' name='recipient'>
+                                            <enumeration name="gender" basetype="byte"/>
+                                            <enumeration name="status" basetype="byte"/>
+                                            <element name='recipient' label='Recipients'></element>
+                                        </schema>`);
+                const schema = newSchema(xml);
+                const enumerations = schema.enumerations;
+                expect(enumerations[0].name).toBe("nms:recipient:gender");
+                expect(enumerations[1].name).toBe("nms:recipient:status");
+
+                // Use a for-loop
+                let cat = "";
+                for (let i=0; i<enumerations.length; i++)
+                    cat = cat + enumerations[i].name;
+                expect(cat).toBe("nms:recipient:gendernms:recipient:status");
+
+                // Use the for ... of iterator
+                cat = "";
+                for (const enumeration of enumerations)
+                    cat = cat + enumeration.name;
+            });
+            
             it("Should set default label", () => {
                 const xml = DomUtil.parse(`<schema namespace='nms' name='recipient'>
                                                 <enumeration name="gender" basetype="byte"/>
@@ -297,8 +322,8 @@ describe('Application', () => {
                                            </schema>`);
                 const schema = newSchema(xml);
                 const enumerations = schema.enumerations;
-                expect(enumerations.gender.label).toBe("Gender");
-                expect(enumerations.status.label).toBe("Status code");
+                expect(enumerations[0].label).toBe("Gender");
+                expect(enumerations[1].label).toBe("Status code");
             });
 
             it("Should test images", () => {
@@ -323,13 +348,13 @@ describe('Application', () => {
                 var schema = newSchema(xml);
                 var enumerations = schema.enumerations;
                 // no img attribute
-                expect(enumerations.gender.name).toBe("gender");
+                expect(enumerations.gender.name).toBe("nms:recipient:gender");
                 expect(enumerations.gender.hasImage).toBe(false);
                 // at least one img attribute
-                expect(enumerations.status.name).toBe("status");
+                expect(enumerations.status.name).toBe("nms:recipient:status");
                 expect(enumerations.status.hasImage).toBe(true);
                 // at least one img attribute
-                expect(enumerations.status2.name).toBe("status2");
+                expect(enumerations.status2.name).toBe("nms:recipient:status2");
                 expect(enumerations.status2.hasImage).toBe(false);
                 expect(schema.root.children["@gender"].enum).toBe("nms:recipient:gender");
             })
@@ -349,6 +374,46 @@ describe('Application', () => {
                 expect(enumerations.status.values.customer.label).toBe("Client");
             })
 
+            it("Should support forEach and map on enumeration values", () => {
+                const xml = DomUtil.parse(`<schema namespace='nms' name='recipient'>
+                                            <enumeration name="gender" basetype="byte"/>
+                                            <enumeration name="status" basetype="byte">
+                                                <value name="prospect" label="Prospect" value="0"/>
+                                                <value name="customer" label="Client"   value="1"/>                                    
+                                            </enumeration>
+                                            <element name='recipient' label='Recipients'></element>
+                                        </schema>`);
+                const schema = newSchema(xml);
+                const enumerations = schema.enumerations;
+                const status = enumerations.status.values;
+
+                
+                // Use forEach to concatenate enumeration names
+                let cat = "";
+                status.forEach(e => cat = cat + e.name);
+                expect(cat).toBe("prospectcustomer");
+
+                // Use map to get get an array of enumeration names
+                expect(status.map(e => e.name).join(',')).toBe("prospect,customer");
+            });
+
+
+            it("Should support index based access", () => {
+                const xml = DomUtil.parse(`<schema namespace='nms' name='recipient'>
+                                            <enumeration name="gender" basetype="byte"/>
+                                            <enumeration name="status" basetype="byte">
+                                                <value name="prospect" label="Prospect" value="0"/>
+                                                <value name="customer" label="Client"   value="1"/>                                    
+                                            </enumeration>
+                                            <element name='recipient' label='Recipients'></element>
+                                        </schema>`);
+                const schema = newSchema(xml);
+                const enumerations = schema.enumerations;
+                const status = enumerations.status.values;
+                expect(status[0].name).toBe("prospect");
+                expect(status[1].name).toBe("customer");
+            });
+
             it("Should set default label", () => {
                 const xml = DomUtil.parse(`<schema namespace='nms' name='recipient'>
                                             <enumeration name="gender" basetype="byte"/>
@@ -361,8 +426,8 @@ describe('Application', () => {
                 const schema = newSchema(xml);
                 const enumerations = schema.enumerations;
                 const status = enumerations.status.values;
-                expect(status.prospect.label).toBe("Prospect");
-                expect(status.customer.label).toBe("Client");
+                expect(status[0].label).toBe("Prospect");
+                expect(status[1].label).toBe("Client");
             });
 
             it("Byte enumerations", () => {
@@ -395,6 +460,227 @@ describe('Application', () => {
                 var enumerations = schema.enumerations;
                 expect(enumerations.instanceType.default.value).toBe(1);
             });
+
+            describe("Using application.getSysEnum", () => {
+                
+                it("Should find simple enumeration (from schema id)", async () => {
+                    const client = await Mock.makeClient();
+                    client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+                    await client.NLWS.xtkSession.logon();
+                    client._transport.mockReturnValueOnce(Promise.resolve(`<?xml version='1.0'?>
+                    <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:wpp:default' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
+                    <SOAP-ENV:Body>
+                        <GetEntityIfMoreRecentResponse xmlns='urn:wpp:default' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
+                            <pdomDoc xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
+                                <schema name="profile" namespace="nms" xtkschema="xtk:schema">
+                                    <enumeration basetype="byte" name="instanceType" default="1" label="Instance type">
+                                        <value label="One-off event" name="single" value="0"/>
+                                        <value label="Reference recurrence" name="master" value="1"/>
+                                        <value label="Instance of a recurrence" name="instance" value="2"/>
+                                        <value label="Exception to a recurrence" name="exception" value="3"/>
+                                        </enumeration>        
+                                </schema>
+                            </pdomDoc>
+                        </GetEntityIfMoreRecentResponse>
+                    </SOAP-ENV:Body>
+                    </SOAP-ENV:Envelope>`));
+                    const enumeration = await client.application.getSysEnum("instanceType", "nms:profile");
+                    expect(enumeration.label).toBe("Instance type");
+                });
+
+                it("Should find node enumeration", async () => {
+                    const client = await Mock.makeClient();
+                    client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+                    await client.NLWS.xtkSession.logon();
+                    client._transport.mockReturnValueOnce(Promise.resolve(`<?xml version='1.0'?>
+                    <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:wpp:default' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
+                    <SOAP-ENV:Body>
+                        <GetEntityIfMoreRecentResponse xmlns='urn:wpp:default' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
+                            <pdomDoc xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
+                                <schema name="profile" namespace="nms" xtkschema="xtk:schema">
+                                    <enumeration basetype="byte" name="instanceType" default="1" label="Instance type">
+                                        <value label="One-off event" name="single" value="0"/>
+                                        <value label="Reference recurrence" name="master" value="1"/>
+                                        <value label="Instance of a recurrence" name="instance" value="2"/>
+                                        <value label="Exception to a recurrence" name="exception" value="3"/>
+                                    </enumeration>        
+                                    <element name="profile">
+                                        <attribute name="e" enum="instanceType"/>
+                                        <attribute name="a"/>
+                                    </element>
+                                </schema>
+                            </pdomDoc>
+                        </GetEntityIfMoreRecentResponse>
+                    </SOAP-ENV:Body>
+                    </SOAP-ENV:Envelope>`));
+                    const schema = await client.application.getSchema("nms:profile");
+                    const e = await schema.findNode('/@e');
+                    expect(e.enum).toBe("instanceType");
+                    let enumeration = await e.enumeration();
+                    expect(enumeration.name).toBe("nms:profile:instanceType");
+                    // It's possible to pass the name
+                    enumeration = await e.enumeration("instanceType");
+                    expect(enumeration.name).toBe("nms:profile:instanceType");
+                    // Should support the case when attirbute is not an enumeration
+                    const a = await schema.findNode('/@a');
+                    enumeration = await a.enumeration("instanceType");
+                    expect(enumeration.name).toBe("nms:profile:instanceType");
+                    enumeration = await a.enumeration();
+                    expect(enumeration).toBeUndefined();
+                });
+
+                it("Should find simple enumeration (from schema)", async () => {
+                    const client = await Mock.makeClient();
+                    client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+                    await client.NLWS.xtkSession.logon();
+                    client._transport.mockReturnValueOnce(Promise.resolve(`<?xml version='1.0'?>
+                    <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:wpp:default' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
+                    <SOAP-ENV:Body>
+                        <GetEntityIfMoreRecentResponse xmlns='urn:wpp:default' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
+                            <pdomDoc xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
+                                <schema name="profile" namespace="nms" xtkschema="xtk:schema">
+                                    <enumeration basetype="byte" name="instanceType" default="1" label="Instance type">
+                                        <value label="One-off event" name="single" value="0"/>
+                                        <value label="Reference recurrence" name="master" value="1"/>
+                                        <value label="Instance of a recurrence" name="instance" value="2"/>
+                                        <value label="Exception to a recurrence" name="exception" value="3"/>
+                                        </enumeration>        
+                                </schema>
+                            </pdomDoc>
+                        </GetEntityIfMoreRecentResponse>
+                    </SOAP-ENV:Body>
+                    </SOAP-ENV:Envelope>`));
+                    const schema = await client.application.getSchema("nms:profile");
+                    const enumeration = await client.application.getSysEnum("instanceType", schema);
+                    expect(enumeration.label).toBe("Instance type");
+                });
+
+                it("Should find fully qualified enumeration (in the same schema)", async () => {
+                    const client = await Mock.makeClient();
+                    client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+                    await client.NLWS.xtkSession.logon();
+                    client._transport.mockReturnValueOnce(Promise.resolve(`<?xml version='1.0'?>
+                    <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:wpp:default' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
+                    <SOAP-ENV:Body>
+                        <GetEntityIfMoreRecentResponse xmlns='urn:wpp:default' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
+                            <pdomDoc xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
+                                <schema name="profile" namespace="nms" xtkschema="xtk:schema">
+                                    <enumeration basetype="byte" name="instanceType" default="1" label="Instance type">
+                                        <value label="One-off event" name="single" value="0"/>
+                                        <value label="Reference recurrence" name="master" value="1"/>
+                                        <value label="Instance of a recurrence" name="instance" value="2"/>
+                                        <value label="Exception to a recurrence" name="exception" value="3"/>
+                                        </enumeration>        
+                                </schema>
+                            </pdomDoc>
+                        </GetEntityIfMoreRecentResponse>
+                    </SOAP-ENV:Body>
+                    </SOAP-ENV:Envelope>`));
+                    const schema = await client.application.getSchema("nms:profile");
+                    const enumeration = await client.application.getSysEnum("nms:profile:instanceType", schema);
+                    expect(enumeration.label).toBe("Instance type");
+                });
+
+                it("Should find fully qualified enumeration (in a different  schema)", async () => {
+                    const client = await Mock.makeClient();
+                    client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+                    await client.NLWS.xtkSession.logon();
+                    client._transport.mockReturnValueOnce(Promise.resolve(`<?xml version='1.0'?>
+                    <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:wpp:default' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
+                    <SOAP-ENV:Body>
+                        <GetEntityIfMoreRecentResponse xmlns='urn:wpp:default' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
+                            <pdomDoc xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
+                                <schema name="recipient" namespace="nms" xtkschema="xtk:schema">
+                                    <element name="recipient">
+                                        <attribute name="status" enum="nms:profile:instanceType"/>
+                                    </element>
+                                </schema>
+                            </pdomDoc>
+                        </GetEntityIfMoreRecentResponse>
+                    </SOAP-ENV:Body>
+                    </SOAP-ENV:Envelope>`));
+                    const schema = await client.application.getSchema("nms:recipient");
+                    client._transport.mockReturnValueOnce(Promise.resolve(`<?xml version='1.0'?>
+                    <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:wpp:default' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
+                    <SOAP-ENV:Body>
+                        <GetEntityIfMoreRecentResponse xmlns='urn:wpp:default' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
+                            <pdomDoc xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
+                                <schema name="profile" namespace="nms" xtkschema="xtk:schema">
+                                    <enumeration basetype="byte" name="instanceType" default="1" label="Instance type">
+                                        <value label="One-off event" name="single" value="0"/>
+                                        <value label="Reference recurrence" name="master" value="1"/>
+                                        <value label="Instance of a recurrence" name="instance" value="2"/>
+                                        <value label="Exception to a recurrence" name="exception" value="3"/>
+                                        </enumeration>        
+                                </schema>
+                            </pdomDoc>
+                        </GetEntityIfMoreRecentResponse>
+                    </SOAP-ENV:Body>
+                    </SOAP-ENV:Envelope>`));
+                    const node = await schema.root.findNode("@status");
+                    const enumeration = await client.application.getSysEnum(node.enum, schema);
+                    expect(enumeration.label).toBe("Instance type");
+                });
+
+                it("Should fail if malformed enumeration name", async () => {
+                    const client = await Mock.makeClient();
+                    client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+                    await client.NLWS.xtkSession.logon();
+                    client._transport.mockReturnValueOnce(Promise.resolve(`<?xml version='1.0'?>
+                    <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:wpp:default' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
+                    <SOAP-ENV:Body>
+                        <GetEntityIfMoreRecentResponse xmlns='urn:wpp:default' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
+                            <pdomDoc xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
+                                <schema name="recipient" namespace="nms" xtkschema="xtk:schema">
+                                    <element name="recipient">
+                                        <attribute name="status" enum="nms:profile:instanceType"/>
+                                    </element>
+                                </schema>
+                            </pdomDoc>
+                        </GetEntityIfMoreRecentResponse>
+                    </SOAP-ENV:Body>
+                    </SOAP-ENV:Envelope>`));
+                    const schema = await client.application.getSchema("nms:recipient");
+                    await expect(client.application.getSysEnum("nms:profile", schema)).rejects.toMatchObject({ message: "Invalid enumeration name 'nms:profile': expecting {name} or {schemaId}:{name}" });
+                });
+
+                it("Should not find enumeration if schema is missing", async () => {
+                    const client = await Mock.makeClient();
+                    client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+                    await client.NLWS.xtkSession.logon();
+                    client._transport.mockReturnValueOnce(Mock.GET_MISSING_SCHEMA_RESPONSE);
+                    const enumeration = await client.application.getSysEnum("instanceType", "nms:profile");
+                    expect(enumeration).toBeFalsy();
+                });
+
+                it("Should not find enumeration if no schema", async () => {
+                    const client = await Mock.makeClient();
+                    client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+                    await client.NLWS.xtkSession.logon();
+                    let enumeration = await client.application.getSysEnum("instanceType", undefined);
+                    expect(enumeration).toBeFalsy();
+                    enumeration = await client.application.getSysEnum("instanceType", null);
+                    expect(enumeration).toBeFalsy();
+                });
+
+                it("Should not find enumeration if schema is missing (local enum)", async () => {
+                    const client = await Mock.makeClient();
+                    client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+                    await client.NLWS.xtkSession.logon();
+                    client._transport.mockReturnValueOnce(Mock.GET_MISSING_SCHEMA_RESPONSE);
+                    const enumeration = await client.application.getSysEnum("instanceType", "nms:profile");
+                    expect(enumeration).toBeFalsy();
+                });
+
+                it("Should not find enumeration if schema is missing (fully qualified enum)", async () => {
+                    const client = await Mock.makeClient();
+                    client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+                    await client.NLWS.xtkSession.logon();
+                    client._transport.mockReturnValueOnce(Mock.GET_MISSING_SCHEMA_RESPONSE);
+                    const enumeration = await client.application.getSysEnum("nms:recipient:instanceType", "nms:profile");
+                    expect(enumeration).toBeFalsy();
+                });
+            });
         });
 
         describe("Keys", () => {
@@ -424,6 +710,60 @@ describe('Application', () => {
                                             </element>
                                         </schema>`);
                 expect(() => { newSchema(xml) }).toThrow("keyfield does not have an xpath attribute");
+            });
+
+            it("Should ignore missing xpaths", () => {
+                var xml = DomUtil.parse(`<schema namespace='nms' name='recipient'>
+                                            <element name='recipient' label='Recipients'>
+                                                <key name="test">
+                                                    <keyfield xpath="@nontFound"/>
+                                                </key>
+                                            </element>
+                                        </schema>`);
+                var schema = newSchema(xml);
+                var root = schema.root;
+                expect(root.keys.test).toBeTruthy();
+                expect(root.keys.test.fields["nontFound"]).toBeFalsy();
+            });
+
+            it("Should get first key (internal & external)", () => {
+                var xml = DomUtil.parse(`<schema namespace='nms' name='recipient'>
+                                            <element name='recipient' label='Recipients'>
+                                                <key name="key1">
+                                                    <keyfield xpath="@email"/>
+                                                </key>
+                                                <key name="key2" internal="true">
+                                                    <keyfield xpath="@id"/>
+                                                </key>
+                                                <attribute name='id' type='string'/>
+                                                <attribute name='email' type='string'/>
+                                            </element>
+                                        </schema>`);
+                var schema = newSchema(xml);
+                var root = schema.root;
+                expect(root.firstInternalKeyDef()).toMatchObject({ name: 'key2', isInternal: true });
+                expect(root.firstExternalKeyDef()).toMatchObject({ name: 'key1', isInternal: false });
+                expect(root.firstKeyDef()).toMatchObject({ name: 'key2', isInternal: true });
+            });
+
+            it("Should get first key (external only)", () => {
+                var xml = DomUtil.parse(`<schema namespace='nms' name='recipient'>
+                                            <element name='recipient' label='Recipients'>
+                                                <key name="key1">
+                                                    <keyfield xpath="@email"/>
+                                                </key>
+                                                <key name="key2">
+                                                    <keyfield xpath="@id"/>
+                                                </key>
+                                                <attribute name='id' type='string'/>
+                                                <attribute name='email' type='string'/>
+                                            </element>
+                                        </schema>`);
+                var schema = newSchema(xml);
+                var root = schema.root;
+                expect(root.firstInternalKeyDef()).toBeUndefined();
+                expect(root.firstExternalKeyDef()).toMatchObject({ name: 'key1', isInternal: false });
+                expect(root.firstKeyDef()).toMatchObject({ name: 'key1', isInternal: false });
             });
         });
 
@@ -460,6 +800,369 @@ describe('Application', () => {
                 link = schema.root.children["emailInfo"];
                 expect(link.isUnbound()).toBe(false);
             });
+
+            it("Should get target", async() => {
+                const client = await Mock.makeClient();
+                client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+                await client.NLWS.xtkSession.logon();
+
+                client._transport.mockReturnValueOnce(Promise.resolve(`<?xml version='1.0'?>
+                <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:wpp:default' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
+                <SOAP-ENV:Body>
+                    <GetEntityIfMoreRecentResponse xmlns='urn:wpp:default' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
+                        <pdomDoc xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
+                            <schema namespace='nms' name='recipient'>
+                                <element name='recipient' label='Recipients'>
+                                    <element name="country" type="link" target="nms:country"/>
+                                </element>
+                            </schema>
+                        </pdomDoc>
+                    </GetEntityIfMoreRecentResponse>
+                </SOAP-ENV:Body>
+                </SOAP-ENV:Envelope>`));
+                const recipient = await client.application.getSchema('nms:recipient');
+                client._transport.mockReturnValueOnce(Promise.resolve(`<?xml version='1.0'?>
+                <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:wpp:default' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
+                <SOAP-ENV:Body>
+                    <GetEntityIfMoreRecentResponse xmlns='urn:wpp:default' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
+                        <pdomDoc xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
+                            <schema namespace='nms' name='country'>
+                                <element name='country' label="The Country">
+                                    <attribute name="isoA3" label="Country code"/>
+                                </element>
+                            </schema>
+                        </pdomDoc>
+                    </GetEntityIfMoreRecentResponse>
+                </SOAP-ENV:Body>
+                </SOAP-ENV:Envelope>`));
+                const country = await recipient.root.findNode("country");
+                expect(country.target).toBe("nms:country");
+                const target = await country.linkTarget();
+                expect(target.label).toBe("The Country");
+            })
+        });
+
+        describe("Joins", () => {
+
+            it("Should find join nodes", async () => {
+                // The schema in the ref does not exist
+                const client = await Mock.makeClient();
+                client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+                await client.NLWS.xtkSession.logon();
+
+                client._transport.mockReturnValueOnce(Promise.resolve(`<?xml version='1.0'?>
+                <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:wpp:default' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
+                <SOAP-ENV:Body>
+                    <GetEntityIfMoreRecentResponse xmlns='urn:wpp:default' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
+                        <pdomDoc xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
+                            <schema namespace='nms' name='recipient'>
+                                <element name='recipient'>
+                                    <element integrity="neutral" label="Info on the email" name="emailInfo" target="nms:address" type="link" unbound="true">
+                                        <join xpath-dst="@address" xpath-src="@email"/>
+                                        <join xpath-dst="@dst" xpath-src="@source"/>
+                                    </element>
+                                    <attribute name="email"/>
+                                    <attribute name="source"/>
+                                </element>
+                            </schema>
+                        </pdomDoc>
+                    </GetEntityIfMoreRecentResponse>
+                </SOAP-ENV:Body>
+                </SOAP-ENV:Envelope>`));
+                const recipient = await client.application.getSchema('nms:recipient');
+                expect(recipient).toBeTruthy();
+
+                client._transport.mockReturnValueOnce(Promise.resolve(`<?xml version='1.0'?>
+                <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:wpp:default' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
+                <SOAP-ENV:Body>
+                    <GetEntityIfMoreRecentResponse xmlns='urn:wpp:default' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
+                        <pdomDoc xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
+                            <schema namespace='nms' name='address'>
+                                <element name='address'>
+                                <attribute name="dst"/>
+                                <attribute name="address"/>
+                            </element>
+                            </schema>
+                        </pdomDoc>
+                    </GetEntityIfMoreRecentResponse>
+                </SOAP-ENV:Body>
+                </SOAP-ENV:Envelope>`));
+                const address = await client.application.getSchema('nms:address');
+                expect(address).toBeTruthy();
+
+                // Check link attributes
+                const link = await recipient.root.findNode("emailInfo");
+                expect(link.isExternalJoin).toBe(false);
+
+                // "joins" gives a description of the link source and destination xpaths
+                expect(link.joins.length).toBe(2);
+                expect(link.joins).toMatchObject([ { src: "@email", dst: "@address" }, { src: "@source", dst: "@dst" } ]);
+
+                // "joinNodes" will lookup the corresponding nodes in the source and target schemas
+                const nodes = await link.joinNodes();
+                expect(nodes.length).toBe(2);
+                expect(nodes[0].source).toMatchObject({ name:"@email", label: "Email" });
+                expect(nodes[0].destination).toMatchObject({ name:"@address", label: "Address" });
+                expect(nodes[1].source).toMatchObject({ name:"@source", label: "Source" });
+                expect(nodes[1].destination).toMatchObject({ name:"@dst", label: "Dst" });
+            });
+
+            it("Should find join nodes with paths", async () => {
+                // The schema in the ref does not exist
+                const client = await Mock.makeClient();
+                client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+                await client.NLWS.xtkSession.logon();
+
+                client._transport.mockReturnValueOnce(Promise.resolve(`<?xml version='1.0'?>
+                <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:wpp:default' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
+                <SOAP-ENV:Body>
+                    <GetEntityIfMoreRecentResponse xmlns='urn:wpp:default' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
+                        <pdomDoc xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
+                            <schema namespace='nms' name='recipient'>
+                                <element name='recipient'>
+                                    <element name="countryLink" type="link" externalJoin="true" target="nms:country" revLink="operator" revIntegrity="normal">
+                                        <join xpath-dst="@isoA2" xpath-src="location/@countryCode"/>
+                                    </element>
+                                    <element name="location">
+                                        <attribute name="countryCode" label="Country Code"/>
+                                    </element>
+                                </element>
+                            </schema>
+                        </pdomDoc>
+                    </GetEntityIfMoreRecentResponse>
+                </SOAP-ENV:Body>
+                </SOAP-ENV:Envelope>`));
+                const recipient = await client.application.getSchema('nms:recipient');
+                expect(recipient).toBeTruthy();
+
+                client._transport.mockReturnValueOnce(Promise.resolve(`<?xml version='1.0'?>
+                <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:wpp:default' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
+                <SOAP-ENV:Body>
+                    <GetEntityIfMoreRecentResponse xmlns='urn:wpp:default' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
+                        <pdomDoc xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
+                            <schema namespace='nms' name='country'>
+                                <element name='country'>
+                                    <attribute name="isoA2"/>
+                                </element>
+                            </schema>
+                        </pdomDoc>
+                    </GetEntityIfMoreRecentResponse>
+                </SOAP-ENV:Body>
+                </SOAP-ENV:Envelope>`));
+                const country = await client.application.getSchema('nms:country');
+                expect(country).toBeTruthy();
+
+                // Check link attributes
+                const link = await recipient.root.findNode("countryLink");
+                expect(link.isExternalJoin).toBe(true);
+
+                // "joins" gives a description of the link source and destination xpaths
+                expect(link.joins.length).toBe(1);
+                expect(link.joins).toMatchObject([ { src: "location/@countryCode", dst: "@isoA2" } ]);
+
+                // "joinNodes" will lookup the corresponding nodes in the source and target schemas
+                const nodes = await link.joinNodes();
+                expect(nodes.length).toBe(1);
+                expect(nodes[0].source).toMatchObject({ name:"@countryCode", label: "Country Code" });
+                expect(nodes[0].destination).toMatchObject({ name:"@isoA2", label: "IsoA2" });
+            });
+
+            it("Should support empty joins", async () => {
+                const client = await Mock.makeClient();
+                client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+                await client.NLWS.xtkSession.logon();
+                client._transport.mockReturnValueOnce(Promise.resolve(`<?xml version='1.0'?>
+                <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:wpp:default' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
+                <SOAP-ENV:Body>
+                    <GetEntityIfMoreRecentResponse xmlns='urn:wpp:default' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
+                        <pdomDoc xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
+                            <schema namespace='nms' name='recipient'>
+                                <element name='recipient'>
+                                    <element name="countryLink" type="link" target="nms:country">
+                                    </element>
+                                </element>
+                            </schema>
+                        </pdomDoc>
+                    </GetEntityIfMoreRecentResponse>
+                </SOAP-ENV:Body>
+                </SOAP-ENV:Envelope>`));
+                const recipient = await client.application.getSchema('nms:recipient');
+                expect(recipient).toBeTruthy();
+                const link = await recipient.root.findNode("countryLink");
+                expect(link.joins).toMatchObject([]);
+                const nodes = await link.joinNodes();
+                expect(nodes).toMatchObject([]);
+                client._transport.mockReturnValueOnce(Mock.GET_MISSING_SCHEMA_RESPONSE);
+                const reverseLink = await link.reverseLink();
+                expect(reverseLink).toBeFalsy();
+            });
+
+            it("Should support non-links", async () => {
+                const client = await Mock.makeClient();
+                client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+                await client.NLWS.xtkSession.logon();
+                client._transport.mockReturnValueOnce(Promise.resolve(`<?xml version='1.0'?>
+                <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:wpp:default' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
+                <SOAP-ENV:Body>
+                    <GetEntityIfMoreRecentResponse xmlns='urn:wpp:default' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
+                        <pdomDoc xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
+                            <schema namespace='nms' name='recipient'>
+                                <element name='recipient'>
+                                    <element name="countryName" type="string">
+                                    </element>
+                                </element>
+                            </schema>
+                        </pdomDoc>
+                    </GetEntityIfMoreRecentResponse>
+                </SOAP-ENV:Body>
+                </SOAP-ENV:Envelope>`));
+                const recipient = await client.application.getSchema('nms:recipient');
+                expect(recipient).toBeTruthy();
+                const link = await recipient.root.findNode("countryName");
+                expect(link.joins).toMatchObject([]);
+                const nodes = await link.joinNodes();
+                expect(nodes).toBeFalsy();
+                const reverseLink = await link.reverseLink();
+                expect(reverseLink).toBeFalsy();
+            });
+
+            it("Should support missing target schema", async () => {
+                const client = await Mock.makeClient();
+                client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+                await client.NLWS.xtkSession.logon();
+                client._transport.mockReturnValueOnce(Promise.resolve(`<?xml version='1.0'?>
+                <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:wpp:default' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
+                <SOAP-ENV:Body>
+                    <GetEntityIfMoreRecentResponse xmlns='urn:wpp:default' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
+                        <pdomDoc xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
+                            <schema namespace='nms' name='recipient'>
+                                <element name='recipient'>
+                                    <element name="countryLink" type="link" target="cus:missing">
+                                    </element>
+                                </element>
+                            </schema>
+                        </pdomDoc>
+                    </GetEntityIfMoreRecentResponse>
+                </SOAP-ENV:Body>
+                </SOAP-ENV:Envelope>`));
+                const recipient = await client.application.getSchema('nms:recipient');
+                expect(recipient).toBeTruthy();
+                client._transport.mockReturnValueOnce(Mock.GET_MISSING_SCHEMA_RESPONSE);
+                const link = await recipient.root.findNode("countryLink");
+                expect(link.joins).toMatchObject([]);
+                const nodes = await link.joinNodes();
+                expect(nodes).toMatchObject([]);
+                const reverseLink = await link.reverseLink();
+                expect(reverseLink).toBeFalsy();
+            });
+
+            it("Should support missing destination", async () => {
+                const client = await Mock.makeClient();
+                client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+                await client.NLWS.xtkSession.logon();
+                client._transport.mockReturnValueOnce(Promise.resolve(`<?xml version='1.0'?>
+                <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:wpp:default' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
+                <SOAP-ENV:Body>
+                    <GetEntityIfMoreRecentResponse xmlns='urn:wpp:default' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
+                        <pdomDoc xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
+                            <schema namespace='nms' name='recipient'>
+                                <element name='recipient'>
+                                    <element name="countryLink" type="link" target="nms:country">
+                                        <join xpath-dst="@notFound" xpath-src="@countryCode"/>
+                                    </element>
+                                    <attribute name="countryCode"/>
+                                </element>
+                            </schema>
+                        </pdomDoc>
+                    </GetEntityIfMoreRecentResponse>
+                </SOAP-ENV:Body>
+                </SOAP-ENV:Envelope>`));
+                const recipient = await client.application.getSchema('nms:recipient');
+                expect(recipient).toBeTruthy();
+                client._transport.mockReturnValueOnce(Mock.GET_MISSING_SCHEMA_RESPONSE);
+                const link = await recipient.root.findNode("countryLink");
+                expect(link.joins).toMatchObject([ { src:"@countryCode", dst:"@notFound" }]);
+
+                client._transport.mockReturnValueOnce(Promise.resolve(`<?xml version='1.0'?>
+                <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:wpp:default' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
+                <SOAP-ENV:Body>
+                    <GetEntityIfMoreRecentResponse xmlns='urn:wpp:default' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
+                        <pdomDoc xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
+                            <schema namespace='nms' name='country'>
+                                <element name='country'>
+                                    <attribute name="isoA2"/>
+                                </element>
+                            </schema>
+                        </pdomDoc>
+                    </GetEntityIfMoreRecentResponse>
+                </SOAP-ENV:Body>
+                </SOAP-ENV:Envelope>`));
+
+                const nodes = await link.joinNodes();
+                expect(nodes).toMatchObject([]);
+                const reverseLink = await link.reverseLink();
+                expect(reverseLink).toBeFalsy();
+            });
+
+            it("Should find the reverse link", async () => {
+                // The schema in the ref does not exist
+                const client = await Mock.makeClient();
+                client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+                await client.NLWS.xtkSession.logon();
+
+                client._transport.mockReturnValueOnce(Promise.resolve(`<?xml version='1.0'?>
+                <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:wpp:default' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
+                <SOAP-ENV:Body>
+                    <GetEntityIfMoreRecentResponse xmlns='urn:wpp:default' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
+                        <pdomDoc xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
+                            <schema namespace='nms' name='recipient'>
+                                <element name='recipient'>
+                                    <element advanced="true" externalJoin="true" label="Info on the email" name="emailInfo" revLink="recipient" target="nms:address" type="link" unbound="false">
+                                        <join xpath-dst="@address" xpath-src="@email"/>
+                                    </element>
+                                    <attribute name="email"/>
+                                </element>
+                            </schema>
+                        </pdomDoc>
+                    </GetEntityIfMoreRecentResponse>
+                </SOAP-ENV:Body>
+                </SOAP-ENV:Envelope>`));
+                const recipient = await client.application.getSchema('nms:recipient');
+                expect(recipient).toBeTruthy();
+
+                client._transport.mockReturnValueOnce(Promise.resolve(`<?xml version='1.0'?>
+                <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:wpp:default' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
+                <SOAP-ENV:Body>
+                    <GetEntityIfMoreRecentResponse xmlns='urn:wpp:default' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
+                        <pdomDoc xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
+                            <schema namespace='nms' name='address'>
+                                <element name='address'>
+                                    <element advanced="false" externalJoin="false" label="Recipients" name="recipient" revLink="emailInfo" target="nms:recipient" type="link" unbound="true">
+                                        <join xpath-dst="@email" xpath-src="@address"/>
+                                    </element>                                
+                                </element>
+                            </schema>
+                        </pdomDoc>
+                    </GetEntityIfMoreRecentResponse>
+                </SOAP-ENV:Body>
+                </SOAP-ENV:Envelope>`));
+                const address = await client.application.getSchema('nms:address');
+                expect(address).toBeTruthy();
+
+                // Check link attributes
+                const link = await recipient.root.findNode("emailInfo");
+                expect(link.isExternalJoin).toBe(true);
+                expect(link.revLink).toBe("recipient");
+
+                // Check revlink
+                const revLink = await link.reverseLink();
+                expect(revLink).toMatchObject({
+                    isExternalJoin: false,
+                    revLink: "emailInfo",
+                    name: "recipient",
+                    joins: [ { src:"@address", dst:"@email" }]
+                });
+            });
         });
 
         describe("getnodepath", () => {
@@ -472,13 +1175,13 @@ describe('Application', () => {
                         </element>
                     </element>
                 </schema>`);
-            var schema = newSchema(xml);
-            var root = schema.root;
-            var email = root.findNode("@email");            
-            var country = root.findNode("country");
-            var name = country.findNode("@name");
-    
-            it("Should support nodePath property", () => {
+
+            it("Should support nodePath property", async () => {
+                var schema = newSchema(xml);
+                var root = schema.root;
+                var email = await root.findNode("@email");
+                var country = await root.findNode("country");
+                var name = await country.findNode("@name");
                 expect(schema.nodePath).toBe("/recipient");
                 expect(root.nodePath).toBe("/");
                 expect(email.nodePath).toBe("/@email");
@@ -486,7 +1189,13 @@ describe('Application', () => {
                 expect(name.nodePath).toBe("/country/@name");
             });
     
-            it("_getNodePath", () => {
+            it("_getNodePath", async () => {
+                var schema = newSchema(xml);
+                var root = schema.root;
+                var email = await root.findNode("@email");            
+                var country = await root.findNode("country");
+                var name = await country.findNode("@name");
+
                 // No parameters => absolute
                 expect(schema._getNodePath()._path).toBe("/recipient");
                 expect(root._getNodePath()._path).toBe("/");
@@ -510,6 +1219,641 @@ describe('Application', () => {
             });
         });
 
+        describe("Ref target", () => {
+            
+            it("Should follow ref", async () => {
+                var xml = DomUtil.parse(`<schema namespace='nms' name='recipient'>
+                    <element name='recipient' label='Recipients'>
+                        <element name="myAddress" ref="address"/>
+                    </element>
+                    <element name='address'>
+                        <element name="country">
+                            <attribute name='name' label="Country Name"/>
+                        </element>
+                    </element>
+                </schema>`);
+                var schema = newSchema(xml);
+                // Pointing to the node with ref itself => return it
+                var node = await schema.root.findNode("myAddress");
+                expect(node).toMatchObject({ name:"myAddress", ref:"address", childrenCount:0 });
+                // Follow ref
+                let target = await node.refTarget();
+                expect(target).toMatchObject({ name:"address", ref:"", childrenCount:1 });
+            });
+
+            it("Should support nodes with no ref", async () => {
+                var xml = DomUtil.parse(`<schema namespace='nms' name='recipient'>
+                    <element name='address'>
+                        <element name="country">
+                            <attribute name='name' label="Country Name"/>
+                        </element>
+                    </element>
+                </schema>`);
+                var schema = newSchema(xml);
+                var node = await schema.findNode("address");
+                var target = await node.refTarget();
+                expect(target).toBeFalsy();
+            });
+        });
+
+        describe("Links", () => {
+            it("Should find link node", async () => {
+                var xml = DomUtil.parse(`<schema namespace='nms' name='recipient'>
+                    <element name='recipient' label='Recipients'>
+                        <element name="country" type="link" target="nms:country"/>
+                    </element>
+                </schema>`);
+                var schema = newSchema(xml);
+                var node = await schema.root.findNode("country");
+                expect(node).toMatchObject({ name:"country", type:"link", childrenCount:0, target:"nms:country" });
+            });
+
+            it("Should fail on invalid link target", async () => {
+                var xml = DomUtil.parse(`<schema namespace='nms' name='recipient'>
+                    <element name='recipient' label='Recipients'>
+                        <element name="country" type="link" target="country"/>
+                    </element>
+                </schema>`);
+                var schema = newSchema(xml);
+                await expect(schema.root.findNode("country/@name")).rejects.toMatchObject({ message: "Cannot find target of link 'country': target is not a valid link target (missing schema id)" });
+            });
+
+            it("Should fail if link target has multiple schemas (like the owner link in nms:operation)", async () => {
+                var xml = DomUtil.parse(`<schema namespace='nms' name='recipient'>
+                    <element name='recipient' label='Recipients'>
+                        <element name="owner" type="link" target="xtk:opsecurity, xtk:operator"/>
+                    </element>
+                </schema>`);
+                var schema = newSchema(xml);
+                await expect(schema.root.findNode("owner/@name")).rejects.toMatchObject({ message: "Cannot find target of link 'xtk:opsecurity, xtk:operator': target has multiple schemas" });
+            });
+
+            it("Should follow link", async () => {
+                // The schema in the ref does not exist
+                const client = await Mock.makeClient();
+                client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+                await client.NLWS.xtkSession.logon();
+
+                client._transport.mockReturnValueOnce(Promise.resolve(`<?xml version='1.0'?>
+                <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:wpp:default' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
+                <SOAP-ENV:Body>
+                    <GetEntityIfMoreRecentResponse xmlns='urn:wpp:default' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
+                        <pdomDoc xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
+                            <schema namespace='nms' name='recipient'>
+                                <element name='recipient' label='Recipients'>
+                                    <element name="country" type="link" target="nms:country"/>
+                                </element>
+                            </schema>
+                        </pdomDoc>
+                    </GetEntityIfMoreRecentResponse>
+                </SOAP-ENV:Body>
+                </SOAP-ENV:Envelope>`));
+                const recipient = await client.application.getSchema('nms:recipient');
+                client._transport.mockReturnValueOnce(Promise.resolve(`<?xml version='1.0'?>
+                <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:wpp:default' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
+                <SOAP-ENV:Body>
+                    <GetEntityIfMoreRecentResponse xmlns='urn:wpp:default' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
+                        <pdomDoc xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
+                            <schema namespace='nms' name='country'>
+                                <element name='country'>
+                                    <attribute name="isoA3" label="Country code"/>
+                                </element>
+                            </schema>
+                        </pdomDoc>
+                    </GetEntityIfMoreRecentResponse>
+                </SOAP-ENV:Body>
+                </SOAP-ENV:Envelope>`));
+                const isoA3 = await recipient.root.findNode("country/@isoA3");
+                expect(isoA3).toMatchObject({ name:"@isoA3", type:"string", label:"Country code", isAttribute:true, childrenCount:0, target:"" });
+            });
+
+            it("Should follow link pointing to a sub-element", async () => {
+                // The schema in the ref does not exist
+                const client = await Mock.makeClient();
+                client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+                await client.NLWS.xtkSession.logon();
+
+                client._transport.mockReturnValueOnce(Promise.resolve(`<?xml version='1.0'?>
+                <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:wpp:default' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
+                <SOAP-ENV:Body>
+                    <GetEntityIfMoreRecentResponse xmlns='urn:wpp:default' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
+                        <pdomDoc xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
+                            <schema namespace='nms' name='recipient'>
+                                <element name='recipient' label='Recipients'>
+                                    <element name="country" type="link" target="nms:country/test"/>
+                                </element>
+                            </schema>
+                        </pdomDoc>
+                    </GetEntityIfMoreRecentResponse>
+                </SOAP-ENV:Body>
+                </SOAP-ENV:Envelope>`));
+                const recipient = await client.application.getSchema('nms:recipient');
+                client._transport.mockReturnValueOnce(Promise.resolve(`<?xml version='1.0'?>
+                <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:wpp:default' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
+                <SOAP-ENV:Body>
+                    <GetEntityIfMoreRecentResponse xmlns='urn:wpp:default' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
+                        <pdomDoc xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
+                            <schema namespace='nms' name='country'>
+                                <element name='country'>
+                                    <attribute name="isoA3" label="Country code"/>
+                                    <element name="test">
+                                        <attribute name="isoA3" label="Country code 2"/>
+                                    </element>
+                                </element>
+                            </schema>
+                        </pdomDoc>
+                    </GetEntityIfMoreRecentResponse>
+                </SOAP-ENV:Body>
+                </SOAP-ENV:Envelope>`));
+                const isoA3 = await recipient.root.findNode("country/@isoA3");
+                expect(isoA3).toMatchObject({ name:"@isoA3", type:"string", label:"Country code 2", isAttribute:true, childrenCount:0, target:"" });
+            });
+
+            it("Should find target of non-links", async () => {
+                var xml = DomUtil.parse(`<schema namespace='nms' name='recipient'>
+                    <element name='recipient' label='Recipients'>
+                        <element name="country"/>
+                    </element>
+                </schema>`);
+                var schema = newSchema(xml);
+                var node = await schema.root.findNode("country");
+                node = await node.linkTarget();
+                expect(node).toMatchObject({ name:"recipient" });
+            });
+
+            it("Should support link target schema not found", async () => {
+                // The schema in the ref does not exist
+                const client = await Mock.makeClient();
+                client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+                await client.NLWS.xtkSession.logon();
+
+                client._transport.mockReturnValueOnce(Promise.resolve(`<?xml version='1.0'?>
+                <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:wpp:default' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
+                <SOAP-ENV:Body>
+                    <GetEntityIfMoreRecentResponse xmlns='urn:wpp:default' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
+                        <pdomDoc xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
+                            <schema namespace='nms' name='recipient'>
+                                <element name='recipient' label='Recipients'>
+                                    <element name="country" type="link" target="nms:country"/>
+                                </element>
+                            </schema>
+                        </pdomDoc>
+                    </GetEntityIfMoreRecentResponse>
+                </SOAP-ENV:Body>
+                </SOAP-ENV:Envelope>`));
+                const recipient = await client.application.getSchema('nms:recipient');
+                client._transport.mockReturnValueOnce(Mock.GET_MISSING_SCHEMA_RESPONSE);
+                const isoA3 = await recipient.root.findNode("country/@isoA3");
+                expect(isoA3).toBeFalsy();
+            });
+
+
+            it("Should support target schema with no root", async () => {
+                // The schema in the ref does not exist
+                const client = await Mock.makeClient();
+                client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+                await client.NLWS.xtkSession.logon();
+
+                client._transport.mockReturnValueOnce(Promise.resolve(`<?xml version='1.0'?>
+                <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:wpp:default' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
+                <SOAP-ENV:Body>
+                    <GetEntityIfMoreRecentResponse xmlns='urn:wpp:default' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
+                        <pdomDoc xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
+                            <schema namespace='nms' name='recipient'>
+                                <element name='recipient' label='Recipients'>
+                                    <element name="country" type="link" target="nms:country/test"/>
+                                </element>
+                            </schema>
+                        </pdomDoc>
+                    </GetEntityIfMoreRecentResponse>
+                </SOAP-ENV:Body>
+                </SOAP-ENV:Envelope>`));
+                const recipient = await client.application.getSchema('nms:recipient');
+                client._transport.mockReturnValueOnce(Promise.resolve(`<?xml version='1.0'?>
+                <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:wpp:default' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
+                <SOAP-ENV:Body>
+                    <GetEntityIfMoreRecentResponse xmlns='urn:wpp:default' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
+                        <pdomDoc xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
+                            <schema namespace='nms' name='country'>
+                            </schema>
+                        </pdomDoc>
+                    </GetEntityIfMoreRecentResponse>
+                </SOAP-ENV:Body>
+                </SOAP-ENV:Envelope>`));
+                const isoA3 = await recipient.root.findNode("country/@isoA3");
+                expect(isoA3).toBeFalsy();
+            });
+        });
+
+        describe("Ref nodes", () => {
+            it("Should follow ref elements in same schema (not qualified)", async () => {
+                var xml = DomUtil.parse(`<schema namespace='nms' name='recipient'>
+                    <element name='recipient' label='Recipients'>
+                        <element name="myAddress" ref="address"/>
+                    </element>
+                    <element name='address'>
+                        <element name="country">
+                            <attribute name='name' label="Country Name"/>
+                        </element>
+                    </element>
+                </schema>`);
+                var schema = newSchema(xml);
+                // Pointing to the node with ref itself => return it
+                var node = await schema.root.findNode("myAddress");
+                expect(node).toMatchObject({ name:"myAddress", ref:"address", childrenCount:0 });
+                // Accessing nodes following the ref
+                node = await schema.root.findNode("myAddress/country");
+                expect(node).toMatchObject({ name:"country", label:"Country", ref:"", childrenCount:1 });
+                node = await schema.root.findNode("myAddress/country/@name");
+                expect(node).toMatchObject({ name:"@name", label:"Country Name", ref:"", childrenCount:0 });
+            });
+            it("Should follow ref elements in same schema (fully qualified)", async () => {
+                var xml = DomUtil.parse(`<schema namespace='nms' name='recipient'>
+                    <element name='recipient' label='Recipients'>
+                        <element name="myAddress" ref="nms:recipient:address"/>
+                    </element>
+                    <element name='address'>
+                        <element name="country">
+                            <attribute name='name' label="Country Name"/>
+                        </element>
+                    </element>
+                </schema>`);
+                var schema = newSchema(xml);
+                // Pointing to the node with ref itself => return it
+                var node = await schema.root.findNode("myAddress");
+                expect(node).toMatchObject({ name:"myAddress", ref:"nms:recipient:address", childrenCount:0 });
+                // Accessing nodes following the ref
+                node = await schema.root.findNode("myAddress/country");
+                expect(node).toMatchObject({ name:"country", label:"Country", ref:"", childrenCount:1 });
+                node = await schema.root.findNode("myAddress/country/@name");
+                expect(node).toMatchObject({ name:"@name", label:"Country Name", ref:"", childrenCount:0 });
+            });
+
+            it("Should fail on malformed refs", async () => {
+                // Refs should be {schemaId}:{xpath}, meaning at least two ":"
+                var xml = DomUtil.parse(`<schema namespace='nms' name='recipient'>
+                    <element name='recipient' label='Recipients'>
+                        <element name="myAddress" ref="nms:recipient"/>
+                        <attribute name="firstName"/>
+                    </element>
+                </schema>`);
+                var schema = newSchema(xml);
+                await expect(schema.root.findNode("myAddress/@firstName")).rejects.toMatchObject({ message: "Cannot find ref target 'nms:recipient' from node '/myAddress' of schema 'nms:recipient': ref value is not correct (expeted <schemaId>:<path>)" });
+            });
+
+            it("Should support inexisting schemas", async () => {
+                // The schema in the ref does not exist
+                const client = await Mock.makeClient();
+                client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+                await client.NLWS.xtkSession.logon();
+
+                client._transport.mockReturnValueOnce(Promise.resolve(`<?xml version='1.0'?>
+                <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:wpp:default' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
+                <SOAP-ENV:Body>
+                    <GetEntityIfMoreRecentResponse xmlns='urn:wpp:default' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
+                        <pdomDoc xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
+                            <schema name="profile" namespace="nms" xtkschema="xtk:schema">
+                                <element name="profile">
+                                    <element name="address" ref="nms:recipient:address"/>
+                                </element>
+                            </schema>
+                        </pdomDoc>
+                    </GetEntityIfMoreRecentResponse>
+                </SOAP-ENV:Body>
+                </SOAP-ENV:Envelope>`));
+                const schema = await client.application.getSchema("nms:profile");
+                const address = await schema.root.findNode("address");
+                expect(address.ref).toBe("nms:recipient:address");
+
+                client._transport.mockReturnValueOnce(Mock.GET_MISSING_SCHEMA_RESPONSE);
+                const city = await schema.root.findNode("address/@city");
+                expect(city).toBeFalsy();
+            });
+
+            it("Should follow ref elements in a different scheam", async () => {
+                const client = await Mock.makeClient();
+                client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+                await client.NLWS.xtkSession.logon();
+
+                client._transport.mockReturnValueOnce(Promise.resolve(`<?xml version='1.0'?>
+                <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:wpp:default' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
+                <SOAP-ENV:Body>
+                    <GetEntityIfMoreRecentResponse xmlns='urn:wpp:default' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
+                        <pdomDoc xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
+                            <schema name="profile" namespace="nms" xtkschema="xtk:schema">
+                                <element name="profile">
+                                    <element name="address" ref="nms:recipient:address"/>
+                                </element>
+                            </schema>
+                        </pdomDoc>
+                    </GetEntityIfMoreRecentResponse>
+                </SOAP-ENV:Body>
+                </SOAP-ENV:Envelope>`));
+                const schema = await client.application.getSchema("nms:profile");
+                const address = await schema.root.findNode("address");
+                expect(address.ref).toBe("nms:recipient:address");
+
+                client._transport.mockReturnValueOnce(Promise.resolve(`<?xml version='1.0'?>
+                <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:wpp:default' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
+                <SOAP-ENV:Body>
+                    <GetEntityIfMoreRecentResponse xmlns='urn:wpp:default' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
+                        <pdomDoc xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
+                            <schema name="recipient" namespace="nms" xtkschema="xtk:schema">
+                                <element name="recipient">
+                                </element>
+                                <element name="address" ref="nms:recipient:address">
+                                    <attribute name="city"/>
+                                </element>
+                            </schema>
+                        </pdomDoc>
+                    </GetEntityIfMoreRecentResponse>
+                </SOAP-ENV:Body>
+                </SOAP-ENV:Envelope>`));
+                const city = await schema.root.findNode("address/@city");
+                expect(city).toMatchObject({ name: "@city" });
+            });
+
+            it("Should find path from ref node", async () => {
+                var xml = DomUtil.parse(`<schema namespace='nms' name='recipient'>
+                    <element name='recipient' label='Recipients'>
+                        <element name="myAddress" ref="address"/>
+                    </element>
+                    <element name='address'>
+                        <element name="country">
+                            <attribute name='name' label="Country Name"/>
+                        </element>
+                    </element>
+                </schema>`);
+                var schema = newSchema(xml);
+                // Pointing to the node with ref itself => return it
+                var node = await schema.root.findNode("myAddress");
+                expect(node).toMatchObject({ name:"myAddress", ref:"address", childrenCount:0 });
+                // Follow path
+                let target = await node.findNode("country/@name");
+                expect(target).toMatchObject({ name:"@name", ref:"" });
+            });
+        });
+
+        describe("More tests", () => {
+            
+            it("Should set label to name with upper case if no label", async () => {
+                var xml = DomUtil.parse(`<schema namespace='nms' name='recipient'>
+                    <element name='recipient' label='Recipients'>
+                        <attribute name='email' type='string' length='3'/>
+                        <element name="country">
+                            <attribute name='name'/>
+                        </element>
+                    </element>
+                </schema>`);
+                var schema = newSchema(xml);
+                var root = schema.root;
+                var node = await root.findNode("@email");
+                expect(node).toMatchObject({ name: "@email", label: "Email", description: "Email", type:"string", nodePath: "/@email" });
+            });
+
+            it("Should have the right children names", async () => {
+                var xml = DomUtil.parse(`<schema namespace='nms' name='recipient'>
+                    <element name='recipient' label='Recipients'>
+                        <attribute name='email' type='string' length='3'/>
+                        <element name="email"></element>
+                        <element name="country">
+                            <attribute name='name'/>
+                        </element>
+                        <attribute name='firstName'/>
+                    </element>
+                </schema>`);
+                var schema = newSchema(xml);
+                const names = schema.root.children.map(e => e.name).join(',');
+                expect(names).toBe("@email,email,country,@firstName");
+            });
+
+            it("Should get compute string", async () => {
+                const client = await Mock.makeClient();
+                client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+                await client.NLWS.xtkSession.logon();
+                client._transport.mockReturnValueOnce(Promise.resolve(`<?xml version='1.0'?>
+                <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:wpp:default' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
+                <SOAP-ENV:Body>
+                    <GetEntityIfMoreRecentResponse xmlns='urn:wpp:default' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
+                        <pdomDoc xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
+                            <schema name="profile" namespace="nms" xtkschema="xtk:schema">
+                                <element name="profile">
+                                    <compute-string expr="@lastName + ' ' + @firstName +' (' + @email + ')'"/>
+                                    <attribute name="firstName"/>
+                                    <attribute name="lastName"/>
+                                    <attribute name="email"/>
+                                    <attribute name="fullName" expr="@lastName + ' ' + @firstName"/>"
+                                </element>
+                            </schema>
+                        </pdomDoc>
+                    </GetEntityIfMoreRecentResponse>
+                </SOAP-ENV:Body>
+                </SOAP-ENV:Envelope>`));
+                const schema = await client.application.getSchema("nms:profile");
+                
+                let node = schema;
+                let cs = await node.computeString();
+                expect(cs).toBe("");
+                expect(node.isCalculated).toBe(false);
+                
+                node = schema.root;
+                cs = await node.computeString();
+                expect(cs).toBe("@lastName + ' ' + @firstName +' (' + @email + ')'");
+                expect(node.isCalculated).toBe(false);
+
+                node = schema.root.children.get("@fullName");
+                cs = await node.computeString();
+                expect(cs).toBe("@lastName + ' ' + @firstName");
+                expect(node.isCalculated).toBe(true);
+            });
+
+            it("Should get compute string for ref nodes", async () => {
+                const client = await Mock.makeClient();
+                client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+                await client.NLWS.xtkSession.logon();
+                client._transport.mockReturnValueOnce(Promise.resolve(`<?xml version='1.0'?>
+                <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:wpp:default' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
+                <SOAP-ENV:Body>
+                    <GetEntityIfMoreRecentResponse xmlns='urn:wpp:default' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
+                        <pdomDoc xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
+                            <schema name="profile" namespace="nms" xtkschema="xtk:schema">
+                                <element name="profile" ref="alternate">
+                                </element>
+                                <element name="alternate" expr="@lastName + ' ' + @firstName +' (' + @email + ')'">
+                                    <attribute name="firstName"/>
+                                    <attribute name="lastName"/>
+                                    <attribute name="email"/>
+                                </element>
+                            </schema>
+                        </pdomDoc>
+                    </GetEntityIfMoreRecentResponse>
+                </SOAP-ENV:Body>
+                </SOAP-ENV:Envelope>`));
+                const schema = await client.application.getSchema("nms:profile");                
+                const node = schema.root;
+                const cs = await node.computeString();
+                expect(cs).toBe("@lastName + ' ' + @firstName +' (' + @email + ')'");
+                expect(node.isCalculated).toBe(false);
+            });
+
+            it("Should get compute string for ref nodes (missing target)", async () => {
+                const client = await Mock.makeClient();
+                client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+                await client.NLWS.xtkSession.logon();
+                client._transport.mockReturnValueOnce(Promise.resolve(`<?xml version='1.0'?>
+                <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:wpp:default' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
+                <SOAP-ENV:Body>
+                    <GetEntityIfMoreRecentResponse xmlns='urn:wpp:default' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
+                        <pdomDoc xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
+                            <schema name="profile" namespace="nms" xtkschema="xtk:schema">
+                                <element name="profile" ref="missing">
+                                </element>
+                            </schema>
+                        </pdomDoc>
+                    </GetEntityIfMoreRecentResponse>
+                </SOAP-ENV:Body>
+                </SOAP-ENV:Envelope>`));
+                const schema = await client.application.getSchema("nms:profile");                
+                const node = schema.root;
+                const cs = await node.computeString();
+                expect(cs).toBe("");
+                expect(node.isCalculated).toBe(false);
+            });
+
+            it("Should get compute string (automatically computed))", async () => {
+                const client = await Mock.makeClient();
+                client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+                await client.NLWS.xtkSession.logon();
+                client._transport.mockReturnValueOnce(Promise.resolve(`<?xml version='1.0'?>
+                <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:wpp:default' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
+                <SOAP-ENV:Body>
+                    <GetEntityIfMoreRecentResponse xmlns='urn:wpp:default' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
+                        <pdomDoc xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
+                            <schema name="profile" namespace="nms" xtkschema="xtk:schema">
+                                <element name="profile">
+                                    <key>
+                                        <keyfield xpath="@email"/>
+                                        <keyfield xpath="@lastName"/>
+                                    </key>
+                                    <attribute name="firstName"/>
+                                    <attribute name="lastName"/>
+                                    <attribute name="email"/>
+                                </element>
+                            </schema>
+                        </pdomDoc>
+                    </GetEntityIfMoreRecentResponse>
+                </SOAP-ENV:Body>
+                </SOAP-ENV:Envelope>`));
+                const schema = await client.application.getSchema("nms:profile");                
+                const node = schema.root;
+                const cs = await node.computeString();
+                expect(cs).toBe("[/@email]");
+                expect(node.isCalculated).toBe(false);
+            });
+
+            it("Should get compute string (empty)", async () => {
+                const client = await Mock.makeClient();
+                client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+                await client.NLWS.xtkSession.logon();
+                client._transport.mockReturnValueOnce(Promise.resolve(`<?xml version='1.0'?>
+                <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:wpp:default' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
+                <SOAP-ENV:Body>
+                    <GetEntityIfMoreRecentResponse xmlns='urn:wpp:default' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
+                        <pdomDoc xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
+                            <schema name="profile" namespace="nms" xtkschema="xtk:schema">
+                                <element name="profile">
+                                    <attribute name="firstName"/>
+                                    <attribute name="lastName"/>
+                                    <attribute name="email"/>
+                                </element>
+                            </schema>
+                        </pdomDoc>
+                    </GetEntityIfMoreRecentResponse>
+                </SOAP-ENV:Body>
+                </SOAP-ENV:Envelope>`));
+                const schema = await client.application.getSchema("nms:profile");                
+                const node = schema.root;
+                const cs = await node.computeString();
+                expect(cs).toBe("");
+                expect(node.isCalculated).toBe(false);
+            });
+
+            it("Should get compute string (empty key)", async () => {
+                const client = await Mock.makeClient();
+                client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+                await client.NLWS.xtkSession.logon();
+                client._transport.mockReturnValueOnce(Promise.resolve(`<?xml version='1.0'?>
+                <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:wpp:default' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
+                <SOAP-ENV:Body>
+                    <GetEntityIfMoreRecentResponse xmlns='urn:wpp:default' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
+                        <pdomDoc xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
+                            <schema name="profile" namespace="nms" xtkschema="xtk:schema">
+                                <element name="profile">
+                                    <key></key>
+                                    <attribute name="firstName"/>
+                                    <attribute name="lastName"/>
+                                    <attribute name="email"/>
+                                </element>
+                            </schema>
+                        </pdomDoc>
+                    </GetEntityIfMoreRecentResponse>
+                </SOAP-ENV:Body>
+                </SOAP-ENV:Envelope>`));
+                const schema = await client.application.getSchema("nms:profile");                
+                const node = schema.root;
+                const cs = await node.computeString();
+                expect(cs).toBe("");
+                expect(node.isCalculated).toBe(false);
+            });
+
+            it("Should get compute string (invalid key)", async () => {
+                const client = await Mock.makeClient();
+                client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+                await client.NLWS.xtkSession.logon();
+                client._transport.mockReturnValueOnce(Promise.resolve(`<?xml version='1.0'?>
+                <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:wpp:default' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
+                <SOAP-ENV:Body>
+                    <GetEntityIfMoreRecentResponse xmlns='urn:wpp:default' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
+                        <pdomDoc xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
+                            <schema name="profile" namespace="nms" xtkschema="xtk:schema">
+                                <element name="profile">
+                                    <key>
+                                        <keyfield xpath="@notFound"/>
+                                    </key>
+                                    <attribute name="firstName"/>
+                                    <attribute name="lastName"/>
+                                    <attribute name="email"/>
+                                </element>
+                            </schema>
+                        </pdomDoc>
+                    </GetEntityIfMoreRecentResponse>
+                </SOAP-ENV:Body>
+                </SOAP-ENV:Envelope>`));
+                const schema = await client.application.getSchema("nms:profile");                
+                const node = schema.root;
+                const cs = await node.computeString();
+                expect(cs).toBe("");
+                expect(node.isCalculated).toBe(false);
+            });
+        });
+
+        describe("Type ANY", () => {
+            it("Should find ANY node", async () => {
+                var xml = DomUtil.parse(`<schema namespace='nms' name='group'>
+                    <element name='group'>
+                        <element name="extension" type="ANY" label="Extension data" xml="true" doesNotSupportDiff="true"/>
+                    </element>
+                </schema>`);
+                var schema = newSchema(xml);
+                var root = schema.root;
+                var node = await root.findNode("extension");
+                expect(node).toMatchObject({ name: "extension", label: "Extension data", nodePath: "/extension", type: "ANY" });
+
+                // xpath inside ANY node are not supported
+                node = await root.findNode("extension/group");
+                expect(node).toBeFalsy();
+            });
+        });
 
         describe("toString", () => {
             var xml = DomUtil.parse(`<schema namespace='nms' name='recipient' label="Recipients" labelSingular="Recipient">
@@ -524,9 +1868,9 @@ describe('Application', () => {
             it("Should stringify schema or schema node", async () => {
                 var schema = newSchema(xml);
                 var root = schema.root;
-                var email = root.findNode("@email");            
-                var country = root.findNode("country");
-                var name = country.findNode("@name");
+                var email = await root.findNode("@email");
+                var country = await root.findNode("country");
+                var name = await country.findNode("@name");
 
                 expect(schema.toString()).toBe(`Recipients (recipient)
     - Recipient (recipient)
@@ -555,9 +1899,40 @@ describe('Application', () => {
                 </schema>`);
                 const schema = newSchema(xml);
                 expect(schema.root.isSQL).toBe(true);
-                let node = schema.root.findNode("@email");
+                let node = await schema.root.findNode("@email");
                 expect(node.isSQL).toBe(true);
-                node = schema.root.findNode("@test");
+                node = await schema.root.findNode("@test");
+                expect(node.isSQL).toBe(false);
+            });
+
+            it("Should have isSQL for link" , async () => {
+                let xml = DomUtil.parse(`<schema namespace='nms' name='recipient' mappingType="sql">
+                    <element name='recipient' sqltable="NmsRecipient">
+                        <element name='country' type='link'/>
+                    </element>
+                </schema>`);
+                let schema = newSchema(xml);
+                let node = await schema.root.findNode("country");
+                expect(node.isSQL).toBe(true);
+
+                // not a sql mapping type
+                xml = DomUtil.parse(`<schema namespace='nms' name='recipient' mappingType="file">
+                    <element name='recipient' sqltable="NmsRecipient">
+                        <element name='country' type='link'/>
+                    </element>
+                </schema>`);
+                schema = newSchema(xml);
+                node = await schema.root.findNode("country");
+                expect(node.isSQL).toBe(false);
+
+                // xml link
+                xml = DomUtil.parse(`<schema namespace='nms' name='recipient' mappingType="sql">
+                    <element name='recipient' sqltable="NmsRecipient">
+                        <element name='country' type='link' xml="true"/>
+                    </element>
+                </schema>`);
+                schema = newSchema(xml);
+                node = await schema.root.findNode("country");
                 expect(node.isSQL).toBe(false);
             });
 
@@ -571,16 +1946,16 @@ describe('Application', () => {
                     </element>
                 </schema>`);
                 const schema = newSchema(xml);
-                let node = schema.root.findNode("@email");
+                let node = await schema.root.findNode("@email");
                 expect(node.isMemo).toBe(false);
                 expect(node.isMemoData).toBe(false);
-                node = schema.root.findNode("@test");
+                node = await schema.root.findNode("@test");
                 expect(node.isMemo).toBe(false);
                 expect(node.isMemoData).toBe(false);
-                node = schema.root.findNode("@memo");
+                node = await schema.root.findNode("@memo");
                 expect(node.isMemo).toBe(true);
                 expect(node.isMemoData).toBe(false);
-                node = schema.root.findNode("data");
+                node = await schema.root.findNode("data");
                 expect(node.isMemo).toBe(true);
                 expect(node.isMemoData).toBe(true);
             });
@@ -610,25 +1985,25 @@ describe('Application', () => {
                     </element>
                 </schema>`);
                 const schema = newSchema(xml);
-                let node = schema.root.findNode("@email"); expect(node.isNotNull).toBe(false);
-                node = schema.root.findNode("@id"); expect(node.isNotNull).toBe(true);
-                node = schema.root.findNode("@b"); expect(node.isNotNull).toBe(true);
-                node = schema.root.findNode("@s"); expect(node.isNotNull).toBe(true);
-                node = schema.root.findNode("@f"); expect(node.isNotNull).toBe(true);
-                node = schema.root.findNode("@d"); expect(node.isNotNull).toBe(true);
-                node = schema.root.findNode("@i"); expect(node.isNotNull).toBe(true);
-                node = schema.root.findNode("@m"); expect(node.isNotNull).toBe(true);
-                node = schema.root.findNode("@p"); expect(node.isNotNull).toBe(true);
-                node = schema.root.findNode("@t"); expect(node.isNotNull).toBe(true);
-                node = schema.root.findNode("@b0"); expect(node.isNotNull).toBe(true);
+                let node = await schema.root.findNode("@email"); expect(node.isNotNull).toBe(false);
+                node = await schema.root.findNode("@id"); expect(node.isNotNull).toBe(true);
+                node = await schema.root.findNode("@b"); expect(node.isNotNull).toBe(true);
+                node = await schema.root.findNode("@s"); expect(node.isNotNull).toBe(true);
+                node = await schema.root.findNode("@f"); expect(node.isNotNull).toBe(true);
+                node = await schema.root.findNode("@d"); expect(node.isNotNull).toBe(true);
+                node = await schema.root.findNode("@i"); expect(node.isNotNull).toBe(true);
+                node = await schema.root.findNode("@m"); expect(node.isNotNull).toBe(true);
+                node = await schema.root.findNode("@p"); expect(node.isNotNull).toBe(true);
+                node = await schema.root.findNode("@t"); expect(node.isNotNull).toBe(true);
+                node = await schema.root.findNode("@b0"); expect(node.isNotNull).toBe(true);
 
-                node = schema.root.findNode("@snn"); expect(node.isNotNull).toBe(false);
-                node = schema.root.findNode("@snnt"); expect(node.isNotNull).toBe(true);
-                node = schema.root.findNode("@snnf"); expect(node.isNotNull).toBe(false);
+                node = await schema.root.findNode("@snn"); expect(node.isNotNull).toBe(false);
+                node = await schema.root.findNode("@snnt"); expect(node.isNotNull).toBe(true);
+                node = await schema.root.findNode("@snnf"); expect(node.isNotNull).toBe(false);
 
-                node = schema.root.findNode("@lnn"); expect(node.isNotNull).toBe(true);
-                node = schema.root.findNode("@lnnt"); expect(node.isNotNull).toBe(true);
-                node = schema.root.findNode("@lnnf"); expect(node.isNotNull).toBe(false);
+                node = await schema.root.findNode("@lnn"); expect(node.isNotNull).toBe(true);
+                node = await schema.root.findNode("@lnnt"); expect(node.isNotNull).toBe(true);
+                node = await schema.root.findNode("@lnnf"); expect(node.isNotNull).toBe(false);
             });
 
             it("Should test user description" , async () => {

@@ -191,7 +191,7 @@ class SDK {
      * Convert a javascript value into an xtk constant with proper quoting
      * @param {any} value the value to convert
      * @param {string} type the xtk type
-     * @returns 
+     * @returns {string} the text literal which can be used in a Xtk expression or condition
      */
     xtkConstText(value, type) {
         if (!type || type === 'string' || type === 'memo') {

@@ -135,7 +135,151 @@ class Util {
   }
 }
 
+/**
+ * The ArrayMap object is used to access elements as either an array or a map
+ * 
+ * @class
+ * @constructor
+ * @memberof Utils
+ */
+
+class ArrayMap {
+  constructor() {
+      // List of items, as an ordered array. Use defineProperty to make it non-enumerable
+      // and support for for ... in loop to iterate by item key
+      Object.defineProperty(this, "_items", {
+        value: [],
+        writable: false,
+        enumerable: false,
+      });
+
+      Object.defineProperty(this, "_map", {
+        value: [],
+        writable: false,
+        enumerable: false,
+      });
+      
+      // Number of items. Use defineProperty to make it non-enumerable
+      // and support for for ... in loop to iterate by item key
+      Object.defineProperty(this, "length", {
+        value: 0,
+        writable: true,
+        enumerable: false,
+      });
+  }
+
+  _push(key, value) {
+      let isNumKey = false;
+      if (key) {
+        // reserved keyworkds
+        const isReserved = key === "_items" || key === "length" || key === "_push" || key === "forEach" || key === "map" || key === "_map" || key === "get" || key === "find" || key === "flatMap" || key === "filter";
+
+        // already a child with the name => there's a problem with the schema
+        if (!isReserved && this[key]) throw new Error(`Failed to add element '${key}' to ArrayMap. There's already an item with the same name`);
+
+        // Set key as a enumerable property, so that elements can be accessed by key, 
+        // but also iterated on with a for ... in loop
+        // For compatibility 
+        if (!isReserved) this[key] = value;
+        this._map[key] = value;
+
+        // Special case where keys are numbers or strings convertible with numbers
+        const numKey = +key;
+        if (numKey === numKey) {
+          // keys is a number. If it matches the current index, then we are good,
+          // and we can add the property as an enumerable property
+          isNumKey = true;
+        }
+      }
+
+      if (!isNumKey) {
+        // Set the index property so that items can be accessed by array index.
+        // However, make it non-enumerable to make sure indexes do not show up in a for .. in loop
+        Object.defineProperty(this, this._items.length, {
+          value: value,
+          writable: false,
+          enumerable: false,
+        });
+      }
+      // Add to array and set length
+      this._items.push(value);
+      this.length = this._items.length;
+  }
+
+  /**
+   * Executes a provided function once for each array element.
+   * @param {*} callback Function that is called for every element of the array
+   * @param {*} thisArg Optional value to use as this when executing the callback function.
+   * @returns a new array
+   */
+  forEach(callback, thisArg) {
+      return this._items.forEach(callback, thisArg);
+  }
+
+  /**
+   * Returns the first element that satisfies the provided testing function. If no values satisfy the testing function, undefined is returned.
+   * @param {*} callback Function that is called for every element of the array
+   * @param {*} thisArg Optional value to use as this when executing the callback function.
+   * @returns the first element matching the testing function
+   */
+  find(callback, thisArg) {
+    return this._items.find(callback, thisArg);
+  }
+
+  /**
+   * creates a new array with all elements that pass the test implemented by the provided function.
+   * @param {*} callback Function that is called for every element of the array
+   * @param {*} thisArg Optional value to use as this when executing the callback function.
+   * @returns an array containing elements passing the test function
+   */
+   filter(callback, thisArg) {
+    return this._items.filter(callback, thisArg);
+  }
+
+  /**
+   * Get a element by either name (access as a map) or index (access as an array). Returns undefined if the element does not exist or
+   * if the array index is out of range.
+   * @param {string|number} indexOrKey the name or index of the element
+   * @returns the element matching the name or index
+   */
+  get(indexOrKey) {
+    if (typeof indexOrKey === 'number') return this._items[indexOrKey];
+    return this._map[indexOrKey];
+  }
+
+  /**
+   * Creates a new array populated with the results of calling a provided function on every element in the calling array.
+   * @param {*} callback Function that is called for every element of the array
+   * @param {*} thisArg Optional value to use as this when executing the callback function.
+   * @returns a new array
+   */
+  map(callback, thisArg) {
+    return this._items.map(callback, thisArg);
+  }
+
+  /**
+   * Returns a new array formed by applying a given callback function to each element of the array, and then flattening the result by one level. 
+   * @param {*} callback Function that is called for every element of the array
+   * @param {*} thisArg Optional value to use as this when executing the callback function.
+   * @returns a new array
+   */
+  flatMap(callback, thisArg) {
+    return this._items.flatMap(callback, thisArg);
+  }
+
+  /**
+   * Iterates over all the elements using the for ... of syntax.
+   * @returns returns each element one after the other
+   */
+  *[Symbol.iterator] () {
+      for (const item of this._items) {
+          yield item;
+      }
+  }
+}
+
 // Public expots
 exports.Util = Util;
+exports.ArrayMap = ArrayMap;
 
 })();
