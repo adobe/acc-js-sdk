@@ -17,7 +17,7 @@ governing permissions and limitations under the License.
  * 
  *********************************************************************************/
 
- const { Util } = require('../src/util.js');
+ const { Util, ArrayMap } = require('../src/util.js');
  const { SafeStorage, Cache } = require('../src/cache.js');
 
 
@@ -232,4 +232,170 @@ describe('Util', function() {
         expect(cache._cache["Hello"].value).toBe("World");
     })
 
+    describe("ArrayMap", () => {
+
+        it("Should support access by keys", () => {
+            const am = new ArrayMap();
+            am._push("hello", "Hello");
+            am._push("world", "World");
+            expect(am["hello"]).toBe("Hello");
+            expect(am["world"]).toBe("World");
+            expect(am.get("hello")).toBe("Hello");
+            expect(am.get("world")).toBe("World");
+        });
+
+        it("Should support access by index", () => {
+            const am = new ArrayMap();
+            am._push("hello", "Hello");
+            am._push("world", "World");
+            expect(am[0]).toBe("Hello");
+            expect(am[1]).toBe("World");
+            expect(am.get(0)).toBe("Hello");
+            expect(am.get(1)).toBe("World");
+        });
+
+        it("Should support length attribute", () => {
+            const am = new ArrayMap();
+            am._push("hello", "Hello");
+            am._push("world", "World");
+            expect(am.length).toBe(2);
+        });
+
+        it("Should support iterators (for...of)", () => {
+            const am = new ArrayMap();
+            am._push("hello", "Hello");
+            am._push("world", "World");
+            let cat = "";
+            for (const s of am) cat = cat + s;
+            expect(cat).toBe("HelloWorld");
+        });
+
+        it("Should support map()", () => {
+            const am = new ArrayMap();
+            am._push("hello", "Hello");
+            am._push("world", "World");
+            const cat = am.map(s => s).join(',');
+            expect(cat).toBe("Hello,World");
+        });
+
+        it("Should support flatMap()", () => {
+            const am = new ArrayMap();
+            am._push("hello", "Hello");
+            am._push("world", ["Adobe", "World"]);
+            const cat = am.flatMap(s => s).join(',');
+            expect(cat).toBe("Hello,Adobe,World");
+        });
+
+        it("Should support find()", () => {
+            const am = new ArrayMap();
+            am._push("hello", "Hello");
+            am._push("world", "World");
+            const world = am.find(s => s === 'World');
+            expect(world).toBe("World");
+            const notFound = am.find(s => s === 'NotFound');
+            expect(notFound).toBe(undefined);
+        });
+
+        it("Should support filter()", () => {
+            const am = new ArrayMap();
+            am._push("hello", "Hello");
+            am._push("world", "World");
+            const all = am.filter(s => true);
+            expect(all).toMatchObject([ "Hello", "World" ]);
+            const none = am.filter(s => false);
+            expect(none).toMatchObject([ ]);
+            const world = am.filter(s => s === 'World');
+            expect(world).toMatchObject([ "World" ]);
+        });
+
+        it("Should support forEach", () => {
+            const am = new ArrayMap();
+            am._push("hello", "Hello");
+            am._push("world", "World");
+            let cat = "";
+            am.forEach(s => cat = cat + s);
+            expect(cat).toBe("HelloWorld");
+        });
+
+        it("Should support forEach as a key", () => {
+            const am = new ArrayMap();
+            am._push("forEach", "Hello");
+            const cat = am.map(s => s).join(',');
+            expect(cat).toBe("Hello");
+            expect(typeof am.forEach).toBe('function');
+            expect(am["forEach"]).not.toBe("Hello"); // forEach is a function
+            expect(am.get("forEach")).toBe("Hello");
+        });
+
+        it("Should support for...in", () => {
+            const am = new ArrayMap();
+            am._push("hello", "Hello");
+            am._push("world", "World");
+            let cat = "";
+            for (const s in am) cat = cat + s;
+            expect(cat).toBe("helloworld");
+        });
+
+        it("Should not support for...in when there's a property named 'forEach'", () => {
+            const am = new ArrayMap();
+            am._push("hello", "Hello");
+            am._push("forEach", "World");
+            let cat = "";
+            for (const s in am) cat = cat + s;
+            expect(cat).toBe("hello");
+        });
+
+        it("Should support enumerations whose key is a number", () => {
+            // For instance the "addressQuality" enumeration
+            const am = new ArrayMap();
+            am._push("0", { name:"0", value:0 });
+            am._push("1", { name:"1", value:1 });
+            am._push("2", { name:"2", value:2 });
+            let cat = "";
+            for (const k in am) cat = cat + am.get(k).name;
+            expect(cat).toBe("012");
+        });
+
+        it("Should not support adding the same key twice", () => {
+            const am = new ArrayMap();
+            am._push("hello", "Hello");
+            expect(() => { am._push("hello", "World"); }).toThrow("Failed to add element 'hello' to ArrayMap. There's already an item with the same name");
+        });
+
+        it("Should support missing names", () => {
+            const am = new ArrayMap();
+            am._push("", { name:"0", value:0 });
+            am._push(undefined, { name:"1", value:1 });
+            am._push(null, { name:"2", value:2 });
+            expect(am.length).toBe(3);
+            expect(am[0].name).toBe("0");
+            expect(am[1].name).toBe("1");
+            expect(am[2].name).toBe("2");
+        });
+
+        it("Should handle compatibility", () => {
+            const am = new ArrayMap();
+            am._push("perfect", { name:"perfect", value:0 });
+            am._push("notPerfect", { name:"notPerfect", value:1 });
+            am._push("error", { name:"error", value:2 });
+            // length
+            expect(am.length).toBe(3);
+            // Access by name
+            expect(am.perfect).toMatchObject({ name:"perfect", value:0 });
+            expect(am.notPerfect).toMatchObject({ name:"notPerfect", value:1 });
+            expect(am.error).toMatchObject({ name:"error", value:2 });
+            expect(am.notFound).toBeUndefined();
+            // for .. in loop
+            const list = [];
+            for (const p in am) list.push(p);
+            expect(list).toMatchObject([ "perfect", "notPerfect", "error" ]);
+        });
+    });
+
+    describe("Is Browser", () => {
+        it("Should not be a browser", () => {
+            expect(Util.isBrowser()).toBe(false);
+        });
+    });
 });
+

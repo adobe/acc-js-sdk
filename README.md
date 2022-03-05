@@ -1340,7 +1340,8 @@ The `application` object can be obtained from a client, and will mimmic the Camp
 | **instanceName** | The name of the Campaign instance
 | **operator** | Information about the current operator (i.e. logged user), of class `CurrentLogin`
 | **packages** | List of installed packages, as an array of strings
-| **getSchema**(schemaId) | Get a schema by id (see the Schemas section below)
+| async **getSchema**(schemaId) | Get a schema by id (see the Schemas section below)
+| async **getEnumeration**(enumerationName, schemaOrSchemaId) | Get an enumeration
 | **hasPackage**(name) | Tests if a package is installed or not
 
 
@@ -1393,16 +1394,128 @@ The Schema API closely mimmics the Campaign server side API : https://docs.adobe
 
 * The `XtkSchema` and associated classes (`XtkSchemaNode`, `XtkSchemaKey`, `XtkEnumeration` and `XtkEnumerationValue`) are all immutable. There are currently no API to create schemas dynamically
 * Not all methods and functions are implemented
+* Several methods are asynchronous because they may require a server round trip to fetch schemas, etc.
 * There could be slight differences in usage due to Campaign server side JavaScript using some E4X specific constructs to iterate over collections (ex: for each(...)) which are not available in standard JavaScript environments
 
 The entry point is the application object. Obtain a schema from its id:
 
 ```js
 const application = client.application;
-const schema = application.getSchema("nms:recipient");
+const schema = await application.getSchema("nms:recipient");
 ```
 
 This return a schema object of class `XtkSchema`
+
+
+### Iterating over collections
+The metadata SDK closely mimmics the Campaign API, but provides convenience functions to access collections of objects, such as the children of a node, the values of an enumeration, etc. using an `ArrayMap` structure which allows access as both an array and a map.
+
+Access as a map. Child elements can be accessed with their names, as if it was a JavaScript map. For instance, accessing the gender of a recipient. This method is kept as a compatibility layer with the legacy API and older versions of the SDK but is deprecated / discouraged. The reason is that there are schemas which have attribut names such as "length", or element names such as "forEach" which collide with JavaScript objects.
+```js
+const schema = await client.application.getSchema("nms:recipient");
+const enumerations = schema.enumerations;
+// deprecated, discouraged
+expect(enumerations.gender.label).toBe("Gender");
+```
+
+Instead, prefer the `get` function which can retreive any enumeration value
+```js
+const schema = await client.application.getSchema("nms:recipient");
+const enumerations = schema.enumerations;
+expect(enumerations.get("gender").label).toBe("Gender");
+```
+
+Elements can also be accessed as an array. In this example, we are iterating over the enumerations of a schema
+```js
+const schema = await client.application.getSchema("nms:recipient");
+const enumerations = schema.enumerations;
+for (let i=0; i<enumerations.length; i++) { 
+    const enumeration = enumerations[i];
+}
+```
+
+Note that this assumes that there is no enumeration called "length" which will override the "length" attribute. Schemas, schema elements, and sql schemas have attributes named "length", but they are attributes, and will therefore be named "@length" in the metadata API. There is no  element named "length" in out-of-the-box schemas.
+
+The ArrayMap also behaves like an iterator and works fine with the `for...of` syntax
+```js
+const schema = await client.application.getSchema("nms:recipient");
+const enumerations = schema.enumerations;
+for (const enumeration of enumerations) { 
+    ...
+}
+```
+
+For convenience, the `map` and `forEach`, `find`, `filter`, `get`, and `flatMap` methods are also available and behave as expected:
+
+```js
+const schema = await client.application.getSchema("nms:recipient");
+// comma separated list of enumerations
+const enumerations = schema.enumerations.map(e => e.name).join(',');
+```
+
+```js
+const schema = await client.application.getSchema("nms:recipient");
+schema.enumerations.forEach(e => { ... });
+```
+
+The `for...in` loop is also supported but deprecated/discouraged as it may return incorrect results for collections having items whose key collide with javaScript properties (such as length, map, forEach, etc.). Use a `for...of` construcr instead, or the `map` or `forEach` functions.
+```js
+const schema = await client.application.getSchema("nms:recipient");
+// deprecated, discouraged
+for (const key in schema.enumerations) {
+    ...
+}
+```
+
+## Navigating schemas
+The schema API is useful to quickly navigate in the schema hierarchy. Here are a few examples
+
+Get the label of the email attribute of the nms:recipient schema
+```js
+const schema = await application.getSchema("nms:recipient");
+const email = await schema.root.findNode("@email");
+console.log(email.label);
+```
+
+The `findNode` function follows links and references
+* The function now supports `ref` nodes. Ref nodes are schema nodes having a `ref` property which is a reference to another node, possibly in a different schema. 
+    * If the xpath passed to the function ends with a ref node, the ref node itself will be returned. We're not following the reference. You can use the `refTarget` method to explicitely follow the reference
+    * If the xpath traverse intermediate nodes which are ref nodes, the `findNode` method will follow the reference. For instance, the start activity in a workflow is a reference. Finding the xpath "start/@img" will follow the start reference and find the @img attribute from there
+
+* Support for links. If the xpath parameter contains links, `findNode` will follow the link 
+target with the same rules as for reference nodes. To get the target of a link, use the `linkTarget` method instead of `refTarget`.
+
+
+For insance, you can get the country of a recipient who clicked in an email. This call follows the link from nms:broadLogRcp to nms:recipient and then from nms:recipient to nms:country, returning the country isoA3 attribute.
+```js
+const schema = await application.getSchema("nms:broadLogRcp");
+const node = await schema.root.findNode("recipient/country/@isoA3");
+```
+
+The same syntax can be used for reference nodes. For instance, getting the attributes of the start activity of a workflow:
+```js
+const schema = await application.getSchema("xtk:workflow");
+const node = await schema.root.findNode("start/@name");
+```
+
+In order to actually iterate over the children, things are a little bit more complicated
+```js
+const schema = await application.getSchema("xtk:workflow");
+const start = await schema.root.findNode("start");
+// start is the ref node, not the target of the ref. One need to explicitely
+// follow the ref in order to get the list of children
+const target = await start.refTarget();
+target.children.forEach(child => ... );
+```
+
+To get the root node of the target of a link, use the `linkTarget` function
+```js
+const schema = await application.getSchema("nms:broadLogRcp");
+const node = await schema.root.findNode("recipient/country");
+// node is the country link, not the root node of the nms:country schema
+const root = await node.linkTarget();
+// root is the root node of the nms:country schema
+```
 
 
 ### XtkSchema 
@@ -1426,9 +1539,9 @@ A schema is also a `XtkSchemaNode` and the corresponding properties/methods are 
 
 ### XtkSchemaNode
 
-| Attribute | | Description |
+| Attribute | Description |
 |---|---|
-| **children** | A map of children of the node, indexed by name. Names never contain the "@" sign, even attribute names
+| **children** | A array/map of children of the node. See note on the ArrayMap structure below
 | **dataPolicy** | Returns a string of characters which provides the data policy of the current node.
 | **description** | A long, human readable, description of the node
 | **editType** |Returns a string of characters which specifies the editing type of the current node.
@@ -1438,12 +1551,12 @@ A schema is also a `XtkSchemaNode` and the corresponding properties/methods are 
 | **image**  | Returns the name of the image in the form of a string of characters.
 | **img** | Returns the name of the image in the form of a string of characters. (alias to `image` property)
 | **integrity** | Returns the link integrity type.
-| **keys** | A map of keys in this node, indexed by key name. Map values are of type `XtkSchemaKey`
+| **keys** | A array/map of keys in this node, indexed by key name. Map values are of type `XtkSchemaKey`
 | **hasEnumeration** | Returns a boolean which indicates whether the value of the current node is linked to an enumeration.
 | **childrenCount** | Number of children nodes
 | **hasSQLTable** | Returns a boolean which indicates whether the current node is linked to an SQL table.
 | **hasUserEnumeration** | Returns a boolean which indicates whether the value of the current node is linked to a user enumeration.
-| **schema** | The schema to which this node belongs
+| **schema** | The schema (`XtkSchema`) to which this node belongs
 | **isAdvanced** | Returns a boolean which indicates whether the current node is advanced or not.
 | **isAnyType** | Returns a boolean which indicates whether the current node is ordinary.
 | **isAttribute** | Indicates if the node is an attribute (true) or an element (false)
@@ -1466,13 +1579,13 @@ A schema is also a `XtkSchemaNode` and the corresponding properties/methods are 
 | **isRequired** | Returns a boolean which indicates whether or not the value of the current node is mandatory.
 | **isRoot** | Indicates if the node is the root node of a schema, i.e. the first child of the schema node, whose name matches the schema name
 | **isSQL** | Returns a boolean which indicates whether the current node is mapped in SQL.
-| **isTemporaryTable** | Returns a boolean indicating whether the table is a temporary table. The table will not be created during database creation.| id | schema | For schemas, the id of the schema. For instance "nms:recipient"
+| **isTemporaryTable** | Returns a boolean indicating whether the table is a temporary table. The table will not be created during database creation.
 | **unbound** | Returns a boolean which indicates whether the current node has an unlimited number of children of the same type.
 | **joins** | Element of type "link" has an array of XtkJoin. See `joinNodes` method.
 | **label** | The label (i.e. human readable, localised) name of the node.
 | **name** | The name of the node (internal name)
-| **nodePath** | The absolute full path of the node
-| **parent** | The parent node. Will be null for schema nodes
+| **nodePath**  | The xpath of the node
+| **parent** | The parent node (a `XtkSchemaNode` object). Will be null for schema nodes
 | **PKSequence** | Returns a character string that provides the name of the sequence to use for the primary key.
 | **packageStatus** | Returns a number that gives the package status.
 | **packageStatusString** |  Returns a string that gives the package status ("never", "always", "default", or "preCreate").
@@ -1480,17 +1593,28 @@ A schema is also a `XtkSchemaNode` and the corresponding properties/methods are 
 | **SQLName** | The SQL name of the field. The property is an empty string if the object isn't an SQL type field.
 | **SQLTable** | The SQL name of the table. The property is an empty string if the object isn't the main element or if schema mapping isn't of SQL type.
 | **size** | For string nodes, the maximum length of the node value. Alias to `length`.
-| **length** | For string nodes, the maximum length of the node value
+| **length** | For string nodes, the maximum length of the node value. Alias to `size`.
 | **target** | A string corresponding to the target of a link. Note that in the SDK, this is a string, whereas in the JS API, this is the actual target node. Because the SDK is async. Use `linkTarget` to get the target node of a link.
 | **type** | The data type of the node, for instance "string", "long", etc.
 | **userEnumeration** | Returns a string of characters which is the name of the user enumeration used by the current node.
 | **ref** | Some nodes are only references to other nodes. There are 2 kind of references. Local references are simply a xpath in the current schema (starting from the schema itself, and not the schema root). Fully qualified references are prefixed with a schema id. The target node can be accessed with the `refTarget` funtion.
 | **isMappedAsXml** | Is the field mapped as XML?
 
+
+
 | Method | Description |
 |---|---|
-| **hasChild**(name) | | Tests if the node has a child wih the given name
-| **findNode**(path) | Find a child node using a xpath
+| async **findNode** | Find a child node using a xpath. This function follows links and references if necessary and will dynamically fetch/cache necessary schemas. 
+| async **refTarget** | Get the target node of a reference
+| async **linkTarget** | Get the target node of a link. See `target`
+| async **joinNodes** | Get the schema nodes corresponding to link. The function returns nodes for both the source and the destination of the link. See `joins`.
+| async **reverseLink** | Returns the node corresponding to the reverse link of a link. See `revLink` to get the reverse link name rather than the actual node
+| async **computeString** | Returns the compute string of a node, following references if necessary
+| async **enumeration** | For nodes whose value is an enumeration, return the `XtkEnumeration` object corresponding to the enumeration definition. See `enum` property to get the enumeration name instead of the object
+| **firstInternalKeyDef** | 
+| **firstExternalKeyDef** |
+| **firstKeyDef** |
+
 
 
 ### XtkSchemaKey
@@ -1503,7 +1627,7 @@ A schema is also a `XtkSchemaNode` and the corresponding properties/methods are 
 | **description** | A long, human readable, description of the key
 | **isInternal** | Indicates if the key is an internal key (as opposed to an external key)
 | **allowEmptyPart** |
-| **fields** | A map of key fields making up the key. Each value is a reference to a `XtkSchemaNode` 
+| **fields** | A ArrayMap of key fields making up the key. Each value is a reference to a `XtkSchemaNode` 
 
 ### XtkEnumeration
 
@@ -1515,7 +1639,7 @@ A schema is also a `XtkSchemaNode` and the corresponding properties/methods are 
 | **baseType** | The base type of the enumeration, usually "string" or "byte"
 | **default** | The default value of the enumeration, casted to the enumeration type
 | **hasImage** | If the enumeration has an image
-| **values** | A map of enumeration values, by name of value. Value is of type `XtkEnumerationValue`
+| **values** | A ArrayMap of enumeration values, of type `XtkEnumerationValue`
 
 ### XtkEnumerationValue
 

@@ -135,7 +135,101 @@ class Util {
   }
 }
 
+/**
+ * The ArrayMap object is used to access elements as either an array or a map
+ */
+class ArrayMap {
+  constructor() {
+      // List of items, as an ordered array. Use defineProperty to make it non-enumerable
+      // and support for for ... in loop to iterate by item key
+      Object.defineProperty(this, "_items", {
+        value: [],
+        writable: false,
+        enumerable: false,
+      });
+
+      Object.defineProperty(this, "_map", {
+        value: [],
+        writable: false,
+        enumerable: false,
+      });
+      
+      // Number of items. Use defineProperty to make it non-enumerable
+      // and support for for ... in loop to iterate by item key
+      Object.defineProperty(this, "length", {
+        value: 0,
+        writable: true,
+        enumerable: false,
+      });
+  }
+
+  _push(key, value) {
+      let isNumKey = false;
+      if (key) {
+        // reserved keyworkds
+        const isReserved = key === "_items" || key === "length" || key === "_push" || key === "forEach" || key === "map" || key === "_map" || key === "get" || key === "find" || key === "flatMap" || key === "filter";
+
+        // already a child with the name => there's a problem with the schema
+        if (!isReserved && this[key]) throw new Error(`Failed to add element '${key}' to ArrayMap. There's already an item with the same name`);
+
+        // Set key as a enumerable property, so that elements can be accessed by key, 
+        // but also iterated on with a for ... in loop
+        // For compatibility 
+        if (!isReserved) this[key] = value;
+        this._map[key] = value;
+
+        // Special case where keys are numbers or strings convertible with numbers
+        const numKey = +key;
+        if (numKey === numKey) {
+          // keys is a number. If it matches the current index, then we are good,
+          // and we can add the property as an enumerable property
+          isNumKey = true;
+        }
+      }
+
+      if (!isNumKey) {
+        // Set the index property so that items can be accessed by array index.
+        // However, make it non-enumerable to make sure indexes do not show up in a for .. in loop
+        Object.defineProperty(this, this._items.length, {
+          value: value,
+          writable: false,
+          enumerable: false,
+        });
+      }
+      // Add to array and set length
+      this._items.push(value);
+      this.length = this._items.length;
+  }
+  forEach(callback, thisArg) {
+      return this._items.forEach(callback, thisArg);
+  }
+  find(callback, thisArg) {
+    return this._items.find(callback, thisArg);
+  }
+  filter(callback, thisArg) {
+    return this._items.filter(callback, thisArg);
+  }
+  get(indexOrKey) {
+    if (typeof indexOrKey === 'number') return this._items[indexOrKey];
+    return this._map[indexOrKey];
+  }
+  map(callback, thisArg) {
+    return this._items.map(callback, thisArg);
+  }
+  flatMap(callback, thisArg) {
+    return this._items.flatMap(callback, thisArg);
+  }
+  // Support for ... of
+  *[Symbol.iterator] () {
+      for (const item of this._items) {
+          yield item;
+      }
+  }
+}
+
+
 // Public expots
 exports.Util = Util;
+exports.ArrayMap = ArrayMap;
 
 })();
