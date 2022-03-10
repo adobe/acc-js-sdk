@@ -78,11 +78,12 @@ const NS_XSD = "http://www.w3.org/2001/XMLSchema";
  * @param {string} sessionToken Campaign session token
  * @param {string} securityToken  Campaign security token
  * @param {string} userAgentString The user agent string to use for HTTP requests
+ * @param {string} charset The charset encoding used for http requests, usually UTF-8
  * @memberof SOAP
  */
 class SoapMethodCall {
     
-    constructor(transport, urn, methodName, sessionToken, securityToken, userAgentString) {
+    constructor(transport, urn, methodName, sessionToken, securityToken, userAgentString, charset) {
         this.request = undefined;       // The HTTP request (object litteral passed to the transport layer)
         this.response = undefined;      // The HTTP response object (in case of success)
 
@@ -99,6 +100,7 @@ class SoapMethodCall {
         this._sessionToken = sessionToken || "";
         this._securityToken = securityToken || "";
         this._userAgentString = userAgentString;
+        this._charset = charset || "";
 
         // THe SOAP call being built
         this._doc = undefined;           // XML document for SOAP call
@@ -512,11 +514,12 @@ class SoapMethodCall {
      * @returns {Object} an options object describing the HTTP request, with cookies, headers and body
      */
     _createHTTPRequest(url) {
+
         const options = {
             url: url,
             method: 'POST',
             headers: {
-                'Content-type': 'application/soap+xml',
+                'Content-type': `application/soap+xml${this._charset ? ";charset=" + this._charset : ""}`,
                 'SoapAction': `${this.urn}#${this.methodName}`,
                 'X-Security-Token': this._securityToken
             },

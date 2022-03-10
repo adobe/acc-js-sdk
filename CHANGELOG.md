@@ -5,6 +5,11 @@ This is a node.js SDK for Campaign API. It exposes the Campaign API exactly like
 
 # Changelog 
 
+## Version 1.1.1
+_2022/03/10_
+
+* Fixed an issue with encoding: make the default charset encoding to be UTF-8 (https://github.com/adobe/acc-js-sdk/issues/26)
+
 ## Version 1.1.0
 _2022/03/05_
 

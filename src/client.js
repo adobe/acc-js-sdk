@@ -234,6 +234,8 @@ class Credentials {
     * @property {Utils.Transport} transport - Overrides the transport (i.e. HTTP layer)
     * @property {boolean} noStorage - De-activate using of local storage. By default, and in addition to in-memory cache, entities, methods, and options are also persisted in local storage if there is one.
     * @property {Storage} storage - Overrides the storage interface (i.e. LocalStorage)
+    * @property {function} refreshClient - An async callback function with the SDK client as parameter, which will be called when the ACC session is expired
+    * @property {string} charset - The charset encoding used for http requests. Defaults to UTF-8 since SDK version 1.1.1
     * @memberOf Campaign
  */
  
@@ -297,6 +299,7 @@ class ConnectionParameters {
         }
         this._options._storage = storage;
         this._options.refreshClient = options.refreshClient;
+        this._options.charset = options.charset === undefined ? "UTF-8": options.charset;
     }
 
     /**
@@ -673,7 +676,9 @@ class Client {
      * parameters should be set
      */
     _prepareSoapCall(urn, method, internal) {
-        const soapCall = new SoapMethodCall(this._transport, urn, method, this._sessionToken, this._securityToken, this._getUserAgentString());
+        const soapCall = new SoapMethodCall(this._transport, urn, method, 
+                                            this._sessionToken, this._securityToken, 
+                                            this._getUserAgentString(), this._connectionParameters._options.charset);
         soapCall.internal = !!internal;
         return soapCall;
     }
