@@ -129,6 +129,7 @@ transport|axios|Overrides the transport layer
 noStorage|false|De-activate using of local storage
 storage|localStorage|Overrides the local storage for caches
 refreshClient|undefined|Async callback to run when the session token is expired
+charset|UTF-8|The charset encoding used for http requests. In version 1.1.1 and above, the default will be UTF-8. It's possible to override (including setting an empty character set) with this option.
 
 ```js
 const connectionParameters = sdk.ConnectionParameters.ofUserAndPassword(

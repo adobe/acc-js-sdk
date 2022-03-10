@@ -21,11 +21,12 @@ const { SoapMethodCall } = require('../src/soap.js');
 const { CampaignException, makeCampaignException } = require('../src/campaign.js');
 const { DomUtil } = require('../src/domUtil.js');
 const assert = require('assert');
+const sdk = require('../src/index.js');
 
 const URL = "https://soap-test/nl/jsp/soaprouter.jsp";
 
-function makeSoapMethodCall(transport, urn, methodName, sessionToken, securityToken, userAgentString) {
-    const call = new SoapMethodCall(transport, urn, methodName, sessionToken, securityToken, userAgentString);
+function makeSoapMethodCall(transport, urn, methodName, sessionToken, securityToken, userAgentString, optionalCharset) {
+    const call = new SoapMethodCall(transport, urn, methodName, sessionToken, securityToken, userAgentString, optionalCharset);
     return call;
 }
 
@@ -680,6 +681,56 @@ describe('SOAP', function() {
                 expect(e.faultCode).toBe("-53");
                 expect(e.faultString).toBe("failed");
             });
+        })
+    });
+
+    describe("Charset encoding", function() {
+
+        it("Should support no encoding", function() {
+            const call = makeSoapMethodCall(undefined, "xtk:session", "Empty");
+            const request = call._createHTTPRequest(URL);
+            assert.equal(request.url, URL);
+            assert.equal(request.headers["Content-type"], "application/soap+xml");
+        });
+
+        it("Should support UTF-8 encoding", function() {
+            const call = makeSoapMethodCall(undefined, "xtk:session", "Empty", undefined, undefined, undefined, "UTF-8");
+            const request = call._createHTTPRequest(URL);
+            assert.equal(request.url, URL);
+            assert.equal(request.headers["Content-type"], "application/soap+xml;charset=UTF-8");
+        });
+
+        it("Default encoding should be UTF-8", async () => {
+            const connectionParameters = sdk.ConnectionParameters.ofSessionToken("http://acc-sdk:8080", "mc/");
+            const client = await sdk.init(connectionParameters);
+            client._transport = jest.fn();
+            expect(client._connectionParameters._options.charset).toBe('UTF-8');
+            const soapCall = client._prepareSoapCall("xtk:persist", "GetEntityIfMoreRecent", true);
+            expect (soapCall._charset).toBe('UTF-8');
+            const request = soapCall._createHTTPRequest(URL);
+            assert.equal(request.headers["Content-type"], "application/soap+xml;charset=UTF-8");
+        })
+
+        it("Default support forcing an empty encoding", async () => {
+            const connectionParameters = sdk.ConnectionParameters.ofSessionToken("http://acc-sdk:8080", "mc/", { charset: "" });
+            const client = await sdk.init(connectionParameters);
+            client._transport = jest.fn();
+            expect(client._connectionParameters._options.charset).toBe('');
+            const soapCall = client._prepareSoapCall("xtk:persist", "GetEntityIfMoreRecent", true);
+            expect (soapCall._charset).toBe('');
+            const request = soapCall._createHTTPRequest(URL);
+            assert.equal(request.headers["Content-type"], "application/soap+xml");
+        })
+
+        it("Default support forcing an ISO charset", async () => {
+            const connectionParameters = sdk.ConnectionParameters.ofSessionToken("http://acc-sdk:8080", "mc/", { charset: "ISO-8859-1" });
+            const client = await sdk.init(connectionParameters);
+            client._transport = jest.fn();
+            expect(client._connectionParameters._options.charset).toBe('ISO-8859-1');
+            const soapCall = client._prepareSoapCall("xtk:persist", "GetEntityIfMoreRecent", true);
+            expect (soapCall._charset).toBe('ISO-8859-1');
+            const request = soapCall._createHTTPRequest(URL);
+            assert.equal(request.headers["Content-type"], "application/soap+xml;charset=ISO-8859-1");
         })
     });
     
