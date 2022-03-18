@@ -2422,4 +2422,56 @@ describe('ACC Client', function () {
             expect(paramsFn.mock.calls[0][1]).toMatchObject({ schemaId: "xtk:session", namespace: "xtkSession" });
         });
     });
+
+    describe("Method-level representation", () => {
+        it("Should force an xml representation", async () => {
+            const client = await Mock.makeClient();
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+            client._transport.mockReturnValueOnce(Mock.GET_XTK_QUERY_SCHEMA_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_QUERY_EXECUTE_RESPONSE);
+            const queryDef = DomUtil.parse(`
+                <queryDef schema="nms:extAccount" operation="select">
+                    <select>
+                        <node expr="@id"/>
+                        <node expr="@name"/>
+                    </select>
+                </queryDef>
+            `);
+            const query = client.NLWS.xml.xtkQueryDef.create(queryDef);
+            const result = await query.executeQuery();
+            const xml = DomUtil.toXMLString(result);
+            expect(xml).toBe(`<extAccount-collection xmlns="urn:xtk:queryDef">
+            <extAccount id="1816" name="defaultPopAccount"/>
+            <extAccount id="1818" name="defaultOther"/>
+            <extAccount id="1849" name="billingReport"/>
+            <extAccount id="12070" name="TST_EXT_ACCOUNT_POSTGRESQL"/>
+            <extAccount id="1817" name="defaultEmailBulk"/>
+            <extAccount id="2087" name="ffda"/>
+            <extAccount id="2088" name="defaultEmailMid"/>
+        </extAccount-collection>`);
+        });
+
+        it("Should force an json representation", async () => {
+            const client = await Mock.makeClient();
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+            client._transport.mockReturnValueOnce(Mock.GET_XTK_QUERY_SCHEMA_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_QUERY_EXECUTE_RESPONSE);
+            const queryDef = {
+                "schema": "nms:extAccount",
+                "operation": "select",
+                "select": {
+                    "node": [
+                        { "expr": "@id" },
+                        { "expr": "@name" }
+                    ]
+                }
+            };
+            const query = client.NLWS.json.xtkQueryDef.create(queryDef);
+            const result = await query.executeQuery();
+            const json = JSON.stringify(result);
+            expect(json).toBe('{"#text":[],"extAccount":[{"id":"1816","name":"defaultPopAccount"},{"id":"1818","name":"defaultOther"},{"id":"1849","name":"billingReport"},{"id":"12070","name":"TST_EXT_ACCOUNT_POSTGRESQL"},{"id":"1817","name":"defaultEmailBulk"},{"id":"2087","name":"ffda"},{"id":"2088","name":"defaultEmailMid"}]}');
+        });
+    });
 });
