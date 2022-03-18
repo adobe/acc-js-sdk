@@ -304,6 +304,15 @@ const queryDef = {
 };
 ```
 
+## Method-level representation
+
+The client object is created with a default representation which is used for all API calls in the context of this client. Since version 1.1.2, it is also possible to set the representation at the method level, i.e. use a particular representation for a particular API call.
+
+* `client.NLWS`: use the default representation set at the client level
+* `client.NLWS.xml`: use the XML reresentation
+* `client.NLWS.json`: use the SimpleJson representation
+
+
 ## SimpleJson format
 The Simple JSON format works like this:
 
@@ -324,7 +333,7 @@ XML elements are mapped to JSON objects
 * XML: `<root><item id=1/></root>`
 * JSON: `{ item: { id:1 } }`
 
-If the parent element tag ends with `-collecion` children are always an array, even if there are no children, or if there is just one child. The rationale is that XML/JSON conversion is ambigous : XML can have multiple elements with the same tag and when there's only one such element, it's not possible to determine if it should be represented as a JSON object or JSON array unless we have additional metadata. 
+If the parent element tag ends with `-collection` children are always an array, even if there are no children, or if there is just one child. The rationale is that XML/JSON conversion is ambigous : XML can have multiple elements with the same tag and when there's only one such element, it's not possible to determine if it should be represented as a JSON object or JSON array unless we have additional metadata. 
 
 * XML: `<root-collection><item id=1/></root>`
 * JSON: `{ item: [ { id:1 } ] }`

@@ -96,65 +96,77 @@ const xtkObjectHandler = {
  * <code>
  * result = await client.NLWS.xtkSession.getServerTime();
  * </code>
+ * 
+ * To get a handler, call the `clientHandler` function and optionally pass a representation.
+ * If no representation is passed (undefined), the representation set at the client level
+ * will be used, which is the default behavior.
+ * To get a proxy with a specific representation, use NLWS.xml or NMWS.json
  *
  * @private
  * @memberof Campaign
  */
-const clientHandler = {
-    get: function(client, namespace) {
-        return new Proxy({ client:client, namespace:namespace}, {
-            get: function(callContext, methodName) {
-                if (methodName == ".") return callContext;
+const clientHandler = (representation) => {
+    return {
+        get: function(client, namespace) {
+            // Force XML or JSON representation (NLWS.xml or NLWS.json)
+            if (namespace == "xml") return new Proxy(client, clientHandler("xml"));
+            if (namespace == "json") return new Proxy(client, clientHandler("SimpleJson"));
 
-                // get Schema id from namespace (find first upper case letter)
-                var schemaId = "";
-                for (var i=0; i<namespace.length; i++) {
-                    const c = namespace[i];
-                    if (c >='A' && c<='Z') {
-                        schemaId = schemaId + ":" + c.toLowerCase() + namespace.substr(i+1);
-                        break;
+            return new Proxy({ client:client, namespace:namespace}, {
+                get: function(callContext, methodName) {
+                    callContext.representation = representation;
+                    if (methodName == ".") return callContext;
+
+                    // get Schema id from namespace (find first upper case letter)
+                    var schemaId = "";
+                    for (var i=0; i<namespace.length; i++) {
+                        const c = namespace[i];
+                        if (c >='A' && c<='Z') {
+                            schemaId = schemaId + ":" + c.toLowerCase() + namespace.substr(i+1);
+                            break;
+                        }
+                        schemaId = schemaId + c;
                     }
-                    schemaId = schemaId + c;
-                }
-                callContext.schemaId = schemaId;
+                    callContext.schemaId = schemaId;
 
-                const caller = function(thisArg, argumentsList) {
-                    const callContext = thisArg["."];
-                    const namespace = callContext.namespace;
-                    const methodNameLC = methodName.toLowerCase();
-                    methodName = methodName.substr(0, 1).toUpperCase() + methodName.substr(1);
-                    if (namespace == "xtkSession" && methodNameLC == "logon")
-                        return callContext.client.logon(argumentsList[0]);
-                    else if (namespace == "xtkSession" && methodNameLC == "logoff")
-                        return callContext.client.logoff();
-                    else if (namespace == "xtkSession" && methodNameLC == "getoption") {
-                        var promise = callContext.client._callMethod(methodName, callContext, argumentsList);
-                        return promise.then(function(optionAndValue) {
-                            const optionName = argumentsList[0];
-                            client._optionCache.put(optionName, optionAndValue);
-                            return optionAndValue;
-                        });
-                    }
-                    // static method
-                    var result = callContext.client._callMethod(methodName, callContext, argumentsList);
-                    return result;
-                };
-
-                if (methodName == "create") {
-                    return function(body) {
-                        callContext.object = body;
-                        return new Proxy(callContext, xtkObjectHandler);
+                    const caller = function(thisArg, argumentsList) {
+                        const callContext = thisArg["."];
+                        const namespace = callContext.namespace;
+                        const methodNameLC = methodName.toLowerCase();
+                        methodName = methodName.substr(0, 1).toUpperCase() + methodName.substr(1);
+                        if (namespace == "xtkSession" && methodNameLC == "logon")
+                            return callContext.client.logon(argumentsList[0]);
+                        else if (namespace == "xtkSession" && methodNameLC == "logoff")
+                            return callContext.client.logoff();
+                        else if (namespace == "xtkSession" && methodNameLC == "getoption") {
+                            var promise = callContext.client._callMethod(methodName, callContext, argumentsList);
+                            return promise.then(function(optionAndValue) {
+                                const optionName = argumentsList[0];
+                                client._optionCache.put(optionName, optionAndValue);
+                                return optionAndValue;
+                            });
+                        }
+                        // static method
+                        var result = callContext.client._callMethod(methodName, callContext, argumentsList);
+                        return result;
                     };
-                }
 
-                return new Proxy(caller, {
-                    apply: function(target, thisArg, argumentsList) {
-                        return target(thisArg, argumentsList);
-                    }                
-                });
-            }
-        });
-    }
+                    if (methodName == "create") {
+                        return function(body) {
+                            callContext.object = body;
+                            return new Proxy(callContext, xtkObjectHandler);
+                        };
+                    }
+
+                    return new Proxy(caller, {
+                        apply: function(target, thisArg, argumentsList) {
+                            return target(thisArg, argumentsList);
+                        }                
+                    });
+                }
+            });
+        }
+    };
 };
 
 // ========================================================================================
@@ -477,7 +489,7 @@ class Client {
         this._entityCache = new XtkEntityCache(this._storage, `${rootKey}.XtkEntityCache`, connectionParameters._options.entityCacheTTL);
         this._methodCache = new MethodCache(this._storage, `${rootKey}.MethodCache`, connectionParameters._options.methodCacheTTL);
         this._optionCache = new OptionCache(this._storage, `${rootKey}.OptionCache`, connectionParameters._options.optionCacheTTL);
-        this.NLWS = new Proxy(this, clientHandler);
+        this.NLWS = new Proxy(this, clientHandler());
 
         this._transport = connectionParameters._options.transport;
         this._traceAPICalls = connectionParameters._options.traceAPICalls;
@@ -1122,7 +1134,7 @@ class Client {
                 throw CampaignException.SOAP_UNKNOWN_METHOD(schemaId, methodName, `Cannot call non-static method '${methodName}' of schema '${schemaId}' : no object was specified`);
 
             const rootName = schemaId.substr(schemaId.indexOf(':') + 1);
-            object = that._fromRepresentation(rootName, object);
+            object = that._fromRepresentation(rootName, object, callContext.representation);
             soapCall.writeDocument("document", object);
         }
 
@@ -1170,7 +1182,7 @@ class Client {
                             const index = xtkschema.indexOf(":");
                             docName = xtkschema.substr(index+1);
                         }
-                        var xmlValue = that._fromRepresentation(docName, paramValue);
+                        var xmlValue = that._fromRepresentation(docName, paramValue, callContext.representation);
                         if (type == "DOMDocument")
                             soapCall.writeDocument(paramName, xmlValue);
                         else
@@ -1189,7 +1201,7 @@ class Client {
                 // the method is called. This is the new version of the object (in XML form)
                 const entity = soapCall.getEntity();
                 if (entity) {
-                    callContext.object = that._toRepresentation(entity);
+                    callContext.object = that._toRepresentation(entity, callContext.representation);
                 }
             }
 
@@ -1220,7 +1232,7 @@ class Client {
                             returnValue = soapCall.getNextDate();
                         else if (type == "DOMDocument") {
                             returnValue = soapCall.getNextDocument();
-                            returnValue = that._toRepresentation(returnValue);
+                            returnValue = that._toRepresentation(returnValue, callContext.representation);
                             if (schemaId === "xtk:queryDef" && methodName === "ExecuteQuery" && paramName === "output") {
                                 // https://github.com/adobe/acc-js-sdk/issues/3
                                 // Check if query operation is "getIfExists". The "object" variable at this point
@@ -1240,7 +1252,7 @@ class Client {
                         }
                         else if (type == "DOMElement") {
                             returnValue = soapCall.getNextElement();
-                            returnValue = that._toRepresentation(returnValue);
+                            returnValue = that._toRepresentation(returnValue, callContext.representation);
                         }
                         else {
                             // type can reference a schema element. The naming convension is that the type name
@@ -1254,7 +1266,7 @@ class Client {
                                     if (element.getAttribute("name") == shortTypeName) {
                                         // Type found in schema: Process as a DOM element
                                         returnValue = soapCall.getNextElement();
-                                        returnValue = that._toRepresentation(returnValue);
+                                        returnValue = that._toRepresentation(returnValue, callContext.representation);
                                         break;
                                     }
                                     element = DomUtil.getNextSiblingElement(element, "element");

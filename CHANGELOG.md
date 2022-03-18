@@ -5,6 +5,11 @@ This is a node.js SDK for Campaign API. It exposes the Campaign API exactly like
 
 # Changelog 
 
+## Version 1.1.2
+_2022/03/18_
+
+* Add support for choosing the representation (XML or JSON) at the method level using NLWS.xml or NLWS.json.
+
 ## Version 1.1.1
 _2022/03/10_
 
