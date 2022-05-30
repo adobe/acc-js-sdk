@@ -124,7 +124,7 @@ const clientHandler = (representation, headers) => {
                 if (headers) for (let h in headers) newHeaders[h] = headers[h];
                 if (methodHeaders) for (let h in methodHeaders) newHeaders[h] = methodHeaders[h];
                 return new Proxy(client, clientHandler(representation, newHeaders));
-            }
+            };
 
             return new Proxy({ client:client, namespace:namespace}, {
                 get: function(callContext, methodName) {
