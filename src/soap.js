@@ -79,7 +79,7 @@ const NS_XSD = "http://www.w3.org/2001/XMLSchema";
  * @param {string} securityToken  Campaign security token
  * @param {string} userAgentString The user agent string to use for HTTP requests
  * @param {string} charset The charset encoding used for http requests, usually UTF-8
- * @param {[string]: string} extraHttpHeaders key/value pair of HTTP header (will override any other headers)
+ * @param {{ name:string, value:string}} extraHttpHeaders key/value pair of HTTP header (will override any other headers)
  * @memberof SOAP
  */
 class SoapMethodCall {

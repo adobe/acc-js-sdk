@@ -267,7 +267,7 @@ class Credentials {
     * @property {Storage} storage - Overrides the storage interface (i.e. LocalStorage)
     * @property {function} refreshClient - An async callback function with the SDK client as parameter, which will be called when the ACC session is expired
     * @property {string} charset - The charset encoding used for http requests. Defaults to UTF-8 since SDK version 1.1.1
-    * @property {[string]: string} extraHttpHeaders - optional key/value pair of HTTP header (will override any other headers)
+    * @property {{ name:string, value:string}} extraHttpHeaders - optional key/value pair of HTTP header (will override any other headers)
     * @property {string} clientApp - optional name/version of the application client of the SDK. This will be passed in HTTP headers for troubleshooting
     * @property {boolean} noSDKHeaders - set to disable "ACC-SDK" HTTP headers
     * @memberOf Campaign
