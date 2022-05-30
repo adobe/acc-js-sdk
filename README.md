@@ -696,8 +696,19 @@ const password = cipher.decryptPassword(encryptedPassword);
 ````
 
 > **warning** This function is deprecated in version 1.0.0 of the SDK because it may break as we deploy Vault.
+In order to set the password of an external account, you can use the `encryptPassword` API as follow
 
-
+```js
+const password = await this._client.NLWS.xtkSession.encryptPassword('password');
+const account = {
+    xtkschema: "nms:extAccount",
+    name: name,
+    account: 'admin',
+    server: server,
+    password: password,
+};
+await this._client.NLWS.xtkSession.Write(account);
+```
 
 # Samples
 
