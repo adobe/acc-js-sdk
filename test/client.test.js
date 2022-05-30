@@ -2474,4 +2474,43 @@ describe('ACC Client', function () {
             expect(json).toBe('{"#text":[],"extAccount":[{"id":"1816","name":"defaultPopAccount"},{"id":"1818","name":"defaultOther"},{"id":"1849","name":"billingReport"},{"id":"12070","name":"TST_EXT_ACCOUNT_POSTGRESQL"},{"id":"1817","name":"defaultEmailBulk"},{"id":"2087","name":"ffda"},{"id":"2088","name":"defaultEmailMid"}]}');
         });
     });
+
+    describe('Support for int type parameters such as nms:extAccount#UpdateMCSynchWkf', () => {
+        it("Should call nms:extAccount#UpdateMCSynchWkf", async () => {
+            const client = await Mock.makeClient();
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+
+            client._transport.mockReturnValueOnce(Promise.resolve(`<?xml version='1.0'?>
+            <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:wpp:default' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
+            <SOAP-ENV:Body>
+                <GetEntityIfMoreRecentResponse xmlns='urn:wpp:default' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
+                    <pdomDoc xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
+                        <schema name="extAccount" namespace="nms" xtkschema="xtk:schema">
+                            <element name="extAccount"></element>
+                            <methods>
+                                <method library="nms:messageCenter.js" name="UpdateMCSynchWkf" static="true" hidden="true">
+                                <parameters>
+                                    <param name="extAccountId" type="int" desc="Message Center external account identifier"/>
+                                </parameters>
+                            </method>
+                            </methods>
+                        </schema>
+                    </pdomDoc>
+                </GetEntityIfMoreRecentResponse>
+            </SOAP-ENV:Body>
+            </SOAP-ENV:Envelope>`));
+
+            client._transport.mockReturnValueOnce(Promise.resolve(`<?xml version='1.0'?>
+            <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:nms:extAccount' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
+            <SOAP-ENV:Body>
+            <UpdateMCSynchWkfResponse xmlns='urn:nms:extAccount' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
+            </UpdateMCSynchWkfResponse>
+            </SOAP-ENV:Body>
+            </SOAP-ENV:Envelope>`));
+
+            await client.NLWS.nmsExtAccount.updateMCSynchWkf(1);
+        })
+
+    });
 });

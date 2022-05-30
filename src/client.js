@@ -1158,6 +1158,8 @@ class Client {
                         soapCall.writeByte(paramName, XtkCaster.asByte(paramValue));
                     else if (type == "short")
                         soapCall.writeShort(paramName, XtkCaster.asShort(paramValue));
+                    else if (type == "int")
+                        soapCall.writeLong(paramName, XtkCaster.asLong(paramValue));
                     else if (type == "long")
                         soapCall.writeLong(paramName, XtkCaster.asLong(paramValue));
                     else if (type == "int64")
