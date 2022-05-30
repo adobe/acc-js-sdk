@@ -1184,6 +1184,7 @@ class Client {
                             const index = xtkschema.indexOf(":");
                             docName = xtkschema.substr(index+1);
                         }
+                        if (!docName) docName = paramName; // Use te parameter name as the XML root element
                         var xmlValue = that._fromRepresentation(docName, paramValue, callContext.representation);
                         if (type == "DOMDocument")
                             soapCall.writeDocument(paramName, xmlValue);

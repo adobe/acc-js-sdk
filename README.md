@@ -576,6 +576,49 @@ const document = DomUtil.fromJSON(json, "BadgerFish");
 const json = DomUtil.toJSON(documentOrElement, "BadgerFish");
 ```
 
+## Passing XML parameters
+Many Campaign APIs take arguments which are DOM documents or DOM elements. For example, the nms:delivery#DeployTriggerMessages first argument is a DOMElement which is supposed to be a `<where>` clause used as a condition to select Message Center deliveries to publish.
+
+```xml
+    <method name="DeployTriggerMessages" static="true">
+      <parameters>
+        <param inout="in" name="deliveries" type="DOMElement"/>
+        <param inout="in" name="localPublish" type="boolean"/>
+      </parameters>
+    </method>
+```
+
+For example, one would want to use the following condition to republish a particular delivery
+
+```js
+    await client.NLWS.nmsDelivery.DeployTriggerMessages({
+      condition: [ {
+        expr: "@internalName='DM23'"
+      }]
+    }, false);
+```
+
+The JSON object corresponds to the following XML
+```xml
+<where>
+    <condition expr="@internalName='DM23'"/>
+</where>
+```
+
+Note that in XML, unlike JSON, the root element `<where>` is explicitely named "where". When converting JSON to XML, there is no way for the SDK to know which tag name to used for the root XML element. The SDK contains some code to set it for the most common situation, but will rely on the user to specify, when necessary, the name of the root elment. This can be done using the `xtkschema` (all case insensitive) attribute as follows:
+```js
+    await client.NLWS.nmsDelivery.DeployTriggerMessages({
+      xtkschema: 'xtk:where',
+      condition: [ {
+        expr: "@internalName='DM23'"
+      }]
+    }, false);
+```
+
+When the `xtkschema` attribute is set, the part after the colon (i.e. "where" in this example) will be used as the root element, effectively generating the right XML.
+
+In our example, the `DeployTriggerMessages` will work properly regardless of the XML root of its `deliveries` parameter, so it's not needed to actually set the `xtkschema` attribute, but it's a best practice to do so, because some APIs will actually depend on receiving the right tag name.
+
 ## Error Management
 
 If an API call fails (SOAP fault or HTTP error), a `CampaignException` object is thrown. This object contains the following attributes
@@ -1142,6 +1185,17 @@ const folder = {
     "image-name": "test.png"
 };
 await NLWS.xtkSession.write(folder);
+````
+
+Some objects, such as deliveries are created from templates. The `createFromModel` API is preferred in this case. Given a template name, and a patch object, it will return an object created from the template and the patch, applying all sort of business rules and default values. This object can be inserted using a writer.
+
+In this example, an email delivery is created from the "mail" delivery template and it's label is set to "Hello".
+
+Note the xtkschema attribute in the second parameter of the `createFromModel` API call which is needed for the SDK to perform the proper JSON to XML transformation.
+
+```js
+const mail = await client.NLWS.nmsDelivery.createFromModel('mail', { xtkschema:'nms:delivery', label:'Hello'});
+await client.NLWS.xtkSession.write(mail);
 ````
 
 # Workflow API
