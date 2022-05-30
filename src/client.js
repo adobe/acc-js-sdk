@@ -977,11 +977,11 @@ class Client {
      * @returns {boolean} a boolean indicating if the package is installed or not
      */
     hasPackage(packageId, optionalName) {
-    if (optionalName === undefined)
-        packageId = `${packageId}:${optionalName}`;
-    if (!this.isLogged())
-        throw CampaignException.NOT_LOGGED_IN(undefined, `Cannot call hasPackage: session not connected`);
-    return this._installedPackages[packageId] !== undefined;
+        if (optionalName !== undefined)
+            packageId = `${packageId}:${optionalName}`;
+        if (!this.isLogged())
+            throw CampaignException.NOT_LOGGED_IN(undefined, `Cannot call hasPackage: session not connected`);
+        return this._installedPackages[packageId] !== undefined;
     }
 
     /**

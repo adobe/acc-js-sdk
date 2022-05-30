@@ -56,12 +56,12 @@ describe('ACC Client (has package)', () => {
     client._transport.mockReturnValueOnce(LOGON_RESPONSE);
     await client.NLWS.xtkSession.logon();
 
-    expect(client.hasPackage("nms:campaign"));
-    expect(client.hasPackage("nms", "campaign"));
-    expect(!client.hasPackage("nms:mrm"));
-    expect(!client.hasPackage("nms", "mrm"));
-    expect(client.hasPackage("nms:core"));
-    expect(client.hasPackage("nms", "core"));
+    expect(client.hasPackage("nms:campaign")).toBeTruthy();
+    expect(client.hasPackage("nms", "campaign")).toBeTruthy();
+    expect(client.hasPackage("nms:mrm")).toBeFalsy();
+    expect(client.hasPackage("nms", "mrm")).toBeFalsy();
+    expect(client.hasPackage("nms:core")).toBeTruthy();
+    expect(client.hasPackage("nms", "core")).toBeTruthy();
   });
 
   it('should fail when unlogged', async () => {

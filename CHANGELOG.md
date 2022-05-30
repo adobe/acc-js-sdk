@@ -5,6 +5,8 @@ This is a node.js SDK for Campaign API. It exposes the Campaign API exactly like
 
 # Changelog 
 
+* Fix a bug in client.hasPackage which was returning an incorrect result when passed a single parameter (it would always return false). Fixed the corresponding unit test too.
+
 ## Version 1.1.2
 _2022/03/22_
 
