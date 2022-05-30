@@ -47,7 +47,9 @@ async function run(main) {
  */
 async function logon(callback) {
   var main = async () => {
-    const connectionParameters = sdk.ConnectionParameters.ofUserAndPassword(url, user, password);
+    const connectionParameters = sdk.ConnectionParameters.ofUserAndPassword(url, user, password, {
+      clientApp: 'acc-js-sdk sample'
+    });
     const client = await sdk.init(connectionParameters);
     const NLWS = client.NLWS;
   

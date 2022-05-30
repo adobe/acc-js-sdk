@@ -2511,6 +2511,296 @@ describe('ACC Client', function () {
 
             await client.NLWS.nmsExtAccount.updateMCSynchWkf(1);
         })
+    });
 
+    describe("Method-level HTTP headers", () => {
+        it("Should set header", async () => {
+            const client = await Mock.makeClient();
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+            client._transport.mockReturnValueOnce(Mock.GET_XTK_QUERY_SCHEMA_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_QUERY_EXECUTE_RESPONSE);
+            const queryDef = {
+                "schema": "nms:extAccount",
+                "operation": "select",
+                "select": {
+                    "node": [
+                        { "expr": "@id" },
+                        { "expr": "@name" }
+                    ]
+                }
+            };
+            const query = client.NLWS.headers({'X-Test': 'hello'}).xtkQueryDef.create(queryDef);
+
+            let headers = {};
+            client.registerObserver({
+                onSOAPCall: (soapCall) => {
+                    const request = soapCall.request;
+                    headers = request.headers;
+                }
+            });
+            await query.executeQuery();
+            expect(headers).toMatchObject({
+                "SoapAction": "xtk:queryDef#ExecuteQuery",
+                "X-Test": "hello"
+            });
+        });
+
+        it("Should support global and method-level http headers", async () => {
+            const client = await Mock.makeClient({
+                extraHttpHeaders: {
+                    "X-Test": "world",
+                    "X-Test-Global": "global"
+                }
+            });
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+            client._transport.mockReturnValueOnce(Mock.GET_XTK_QUERY_SCHEMA_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_QUERY_EXECUTE_RESPONSE);
+            const queryDef = {
+                "schema": "nms:extAccount",
+                "operation": "select",
+                "select": {
+                    "node": [
+                        { "expr": "@id" },
+                        { "expr": "@name" }
+                    ]
+                }
+            };
+            const query = client.NLWS.headers({'X-Test': 'hello'}).xtkQueryDef.create(queryDef);
+
+            let headers = {};
+            client.registerObserver({
+                onSOAPCall: (soapCall) => {
+                    const request = soapCall.request;
+                    headers = request.headers;
+                }
+            });
+            await query.executeQuery();
+            expect(headers).toMatchObject({
+                "SoapAction": "xtk:queryDef#ExecuteQuery",
+                "X-Test": "hello",
+                "X-Test-Global": "global"
+            });
+        })
+
+        it("Should support undefined method headers", async () => {
+            const client = await Mock.makeClient({
+                extraHttpHeaders: {
+                    "X-Test": "world",
+                    "X-Test-Global": "global"
+                }
+            });
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+            client._transport.mockReturnValueOnce(Mock.GET_XTK_QUERY_SCHEMA_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_QUERY_EXECUTE_RESPONSE);
+            const queryDef = {
+                "schema": "nms:extAccount",
+                "operation": "select",
+                "select": {
+                    "node": [
+                        { "expr": "@id" },
+                        { "expr": "@name" }
+                    ]
+                }
+            };
+            // missing headers
+            const query = client.NLWS.headers().xtkQueryDef.create(queryDef);
+
+            let headers = {};
+            client.registerObserver({
+                onSOAPCall: (soapCall) => {
+                    const request = soapCall.request;
+                    headers = request.headers;
+                }
+            });
+            await query.executeQuery();
+            expect(headers).toMatchObject({
+                "SoapAction": "xtk:queryDef#ExecuteQuery",
+                "X-Test": "world",
+                "X-Test-Global": "global"
+            });
+        })
+
+        it("Should set http headers with an xml representation", async () => {
+            const client = await Mock.makeClient();
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+            client._transport.mockReturnValueOnce(Mock.GET_XTK_QUERY_SCHEMA_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_QUERY_EXECUTE_RESPONSE);
+            const queryDef = DomUtil.parse(`
+                <queryDef schema="nms:extAccount" operation="select">
+                    <select>
+                        <node expr="@id"/>
+                        <node expr="@name"/>
+                    </select>
+                </queryDef>
+            `);
+            const query = client.NLWS
+                .headers({'X-Test': 'hello', 'X-Test-Before': 'before'})
+                .xml
+                .headers({'X-Test': 'world', 'X-Test-After': 'after'})
+                .xtkQueryDef.create(queryDef);
+                let headers = {};
+                client.registerObserver({
+                    onSOAPCall: (soapCall) => {
+                        const request = soapCall.request;
+                        headers = request.headers;
+                    }
+                });
+                await query.executeQuery();
+                console.log(headers);
+                expect(headers).toMatchObject({
+                    "SoapAction": "xtk:queryDef#ExecuteQuery",
+                    "X-Test": "world",
+                    "X-Test-Before": "before",
+                    "X-Test-After": "after"
+                });
+        });
+    });
+
+    describe("ACC-SDK HTTP headers", () => {
+
+        const collectHeaders = async (client, callback) => {
+            let headers = {};
+            client.registerObserver({
+                onSOAPCall: (soapCall) => {
+                    const request = soapCall.request;
+                    headers = request.headers;
+                },
+                onHTTPCall: (request) => {
+                    headers = request.headers;
+                }
+            });
+            await callback();
+            return headers;
+        };
+
+        it("Should set headers by default", async () => {
+            const client = await Mock.makeClient();
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+            client._transport.mockReturnValueOnce(Mock.GET_XTK_QUERY_SCHEMA_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_QUERY_EXECUTE_RESPONSE);
+            const queryDef = {
+                "schema": "nms:extAccount",
+                "operation": "select",
+                "select": {
+                    "node": [
+                        { "expr": "@id" },
+                        { "expr": "@name" }
+                    ]
+                }
+            };
+            const query = client.NLWS.xtkQueryDef.create(queryDef);
+
+            const headers = await collectHeaders(client, async() => {
+                await query.executeQuery();
+            });
+
+            expect(headers).toMatchObject({
+                "ACC-SDK-Version": `${sdk.getSDKVersion().name} ${sdk.getSDKVersion().version}`,
+                "ACC-SDK-Auth": "UserPassword admin",
+                "X-Query-Source": `${sdk.getSDKVersion().name} ${sdk.getSDKVersion().version}`,
+            });
+            // This header is only set if "clientApp" connection parameter is set
+            expect(headers["ACC-SDK-Client-App"]).toBeUndefined();
+        });
+
+        it("Should disable ACC-SDK headers", async () => {
+            const client = await Mock.makeClient({
+                noSDKHeaders: true
+            });
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+            client._transport.mockReturnValueOnce(Mock.GET_XTK_QUERY_SCHEMA_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_QUERY_EXECUTE_RESPONSE);
+            const queryDef = {
+                "schema": "nms:extAccount",
+                "operation": "select",
+                "select": {
+                    "node": [
+                        { "expr": "@id" },
+                        { "expr": "@name" }
+                    ]
+                }
+            };
+            const query = client.NLWS.xtkQueryDef.create(queryDef);
+
+            const headers = await collectHeaders(client, async() => {
+                await query.executeQuery();
+            });
+            expect(headers["ACC-SDK-Version"]).toBeUndefined();
+            expect(headers["ACC-SDK-Auth"]).toBeUndefined();
+            expect(headers["X-Query-Source"]).toBe(`${sdk.getSDKVersion().name} ${sdk.getSDKVersion().version}`);
+        });
+
+        it("Should support ACC-SDK-Client-App header", async () => {
+            const client = await Mock.makeClient({
+                clientApp: 'Test client app'
+            });
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+            client._transport.mockReturnValueOnce(Mock.GET_XTK_QUERY_SCHEMA_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_QUERY_EXECUTE_RESPONSE);
+            const queryDef = {
+                "schema": "nms:extAccount",
+                "operation": "select",
+                "select": {
+                    "node": [
+                        { "expr": "@id" },
+                        { "expr": "@name" }
+                    ]
+                }
+            };
+            const query = client.NLWS.xtkQueryDef.create(queryDef);
+
+            const headers = await collectHeaders(client, async() => {
+                await query.executeQuery();
+            });
+            expect(headers).toMatchObject({
+                "ACC-SDK-Version": `${sdk.getSDKVersion().name} ${sdk.getSDKVersion().version}`,
+                "ACC-SDK-Auth": "UserPassword admin",
+                "ACC-SDK-Client-App": "Test client app",
+                "X-Query-Source": `${sdk.getSDKVersion().name} ${sdk.getSDKVersion().version},Test client app`,
+            });
+        });
+
+        it("Should set ACC-SDK headers on ping JSP", async () => {
+            const client = await Mock.makeClient({
+                clientApp: 'Test client app'
+            });
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+            const headers = await collectHeaders(client, async() => {
+                client._transport.mockReturnValueOnce(Mock.PING);
+                await client.ping();
+            });
+            expect(headers).toMatchObject({
+                "ACC-SDK-Version": `${sdk.getSDKVersion().name} ${sdk.getSDKVersion().version}`,
+                "ACC-SDK-Auth": "UserPassword admin",
+                "ACC-SDK-Client-App": "Test client app",
+                "X-Query-Source": `${sdk.getSDKVersion().name} ${sdk.getSDKVersion().version},Test client app`,
+            });
+        });
+
+        it("Should set ACC-SDK headers on mcping JSP", async () => {
+            const client = await Mock.makeClient({
+                clientApp: 'Test client app'
+            });
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+            const headers = await collectHeaders(client, async() => {
+                client._transport.mockReturnValueOnce(Mock.MC_PING);
+                await client.mcPing();
+            });
+            expect(headers).toMatchObject({
+                "ACC-SDK-Version": `${sdk.getSDKVersion().name} ${sdk.getSDKVersion().version}`,
+                "ACC-SDK-Auth": "UserPassword admin",
+                "ACC-SDK-Client-App": "Test client app",
+                "X-Query-Source": `${sdk.getSDKVersion().name} ${sdk.getSDKVersion().version},Test client app`,
+            });
+        });
     });
 });

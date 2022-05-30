@@ -79,11 +79,12 @@ const NS_XSD = "http://www.w3.org/2001/XMLSchema";
  * @param {string} securityToken  Campaign security token
  * @param {string} userAgentString The user agent string to use for HTTP requests
  * @param {string} charset The charset encoding used for http requests, usually UTF-8
+ * @param {[string]: string} extraHttpHeaders key/value pair of HTTP header (will override any other headers)
  * @memberof SOAP
  */
 class SoapMethodCall {
     
-    constructor(transport, urn, methodName, sessionToken, securityToken, userAgentString, charset) {
+    constructor(transport, urn, methodName, sessionToken, securityToken, userAgentString, charset, extraHttpHeaders) {
         this.request = undefined;       // The HTTP request (object litteral passed to the transport layer)
         this.response = undefined;      // The HTTP response object (in case of success)
 
@@ -96,11 +97,13 @@ class SoapMethodCall {
         this.internal = false;
         // Enable soap retry
         this.retry = true;
+        this._retryCount = 0;
 
         this._sessionToken = sessionToken || "";
         this._securityToken = securityToken || "";
         this._userAgentString = userAgentString;
         this._charset = charset || "";
+        this._extraHttpHeaders = extraHttpHeaders || {};
 
         // THe SOAP call being built
         this._doc = undefined;           // XML document for SOAP call
@@ -213,7 +216,7 @@ class SoapMethodCall {
      * @param {string} tag the parameter name
      * @param {*} value the parameter value, which will be casted to a int32 according to xtk rules
      */
-    writeLong(tag, value) {
+     writeLong(tag, value) {
         value = XtkCaster.asLong(value);
         this._addNode(tag, "xsd:int", XtkCaster.asString(value), SOAP_ENCODING_NATIVE);
     }
@@ -516,20 +519,36 @@ class SoapMethodCall {
      */
     _createHTTPRequest(url) {
 
+        const headers = {
+            'Content-type': `application/soap+xml${this._charset ? ";charset=" + this._charset : ""}`,
+            'SoapAction': `${this.urn}#${this.methodName}`,
+            'X-Security-Token': this._securityToken
+        };
+
+        // Add HTTP headers specific to the SOAP call for better tracing/troubleshooting
+        if (this._extraHttpHeaders && this._extraHttpHeaders['ACC-SDK-Version']) {
+            // "this.retry" means that the call can be retried, not that it is being retried. The HTTP header howerver, indicates that this
+            // is actually a retry of a previously failed call (expired token)
+            if (this._retryCount > 0) headers["ACC-SDK-Call-RetryCount"] = `${this._retryCount}`;
+            if (this.internal) headers["ACC-SDK-Call-Internal"] = "1";
+        }
+
         const options = {
             url: url,
             method: 'POST',
-            headers: {
-                'Content-type': `application/soap+xml${this._charset ? ";charset=" + this._charset : ""}`,
-                'SoapAction': `${this.urn}#${this.methodName}`,
-                'X-Security-Token': this._securityToken
-            },
+            headers: headers,
             data: DomUtil.toXMLString(this._doc)
         };
         if (this._sessionToken)
             options.headers.Cookie = '__sessiontoken=' + this._sessionToken;
         if (this._userAgentString)
             options.headers['User-Agent'] = this._userAgentString;
+
+        // Override http headers with custom headers
+        for (let h in this._extraHttpHeaders) {
+            options.headers[h] = this._extraHttpHeaders[h];
+        }
+
         return options;
     }
     

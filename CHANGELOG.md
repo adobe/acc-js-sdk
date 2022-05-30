@@ -10,6 +10,8 @@ This is a node.js SDK for Campaign API. It exposes the Campaign API exactly like
 * When using XML representations and DOMDocument method parameter type, the SDK expects to be passed an actual DOM document. Now it supports being passed a DOM element too. This is a common case when using the nms:delivery#createFromModel API followed by a xtk:session#Write API call.
 * Avoid the error 'Cannot transform entity to xml because no XML root name was given' by using SOAP method parameter name as the default for XML document root when no other root is available
 * Document how to set the password of an external account
+* By default, SDK will send additional HTTP headers to help troubleshooting and usage tracking
+* Add the ability to pass extra HTTP headers to API calls, either globally (to all HTTP headers), or locally, i.e. for a specific method
 
 ## Version 1.1.2
 _2022/03/22_

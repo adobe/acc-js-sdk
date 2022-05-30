@@ -25,8 +25,8 @@ const sdk = require('../src/index.js');
 
 const URL = "https://soap-test/nl/jsp/soaprouter.jsp";
 
-function makeSoapMethodCall(transport, urn, methodName, sessionToken, securityToken, userAgentString, optionalCharset) {
-    const call = new SoapMethodCall(transport, urn, methodName, sessionToken, securityToken, userAgentString, optionalCharset);
+function makeSoapMethodCall(transport, urn, methodName, sessionToken, securityToken, userAgentString, optionalCharset, charset, extraHttpHeaders) {
+    const call = new SoapMethodCall(transport, urn, methodName, sessionToken, securityToken, userAgentString, optionalCharset, charset, extraHttpHeaders);
     return call;
 }
 
@@ -865,6 +865,24 @@ describe("Campaign exception", () => {
         expect(req.headers["X-Security-Token"].indexOf("$session$")).toBe(-1);
         expect(req.headers["X-Security-Token"].indexOf("$security$")).toBe(-1);
     })
+
+    describe('Extra Http headers', () => {
+        it("Should take additional headers", () => {
+            const call = makeSoapMethodCall(undefined, "xtk:session", "Date", "$session$", "$security$", "My User Agent", undefined, { 'X-ACC-UI-Version': '1.0' });
+            const request = call._createHTTPRequest(URL);
+            expect(request.headers['User-Agent']).toBe("My User Agent");
+            expect(request.headers['X-ACC-UI-Version']).toBe("1.0");
+            expect(request.headers['SoapAction']).toBe("xtk:session#Date");
+        });
+
+        it("Should override default headers headers", () => {
+            const call = makeSoapMethodCall(undefined, "xtk:session", "Date", "$session$", "$security$", "My User Agent", undefined, { 'X-ACC-UI-Version': '1.0', 'SoapAction': 'My soap action' });
+            const request = call._createHTTPRequest(URL);
+            expect(request.headers['User-Agent']).toBe("My User Agent");
+            expect(request.headers['X-ACC-UI-Version']).toBe("1.0");
+            expect(request.headers['SoapAction']).toBe("My soap action");
+        });
+    });
 
 });
 
