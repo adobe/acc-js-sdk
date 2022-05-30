@@ -16,7 +16,7 @@ jobs:
         node-version: 10.0.0
     - name: Publish if version has been updated
       #uses: pascalgn/npm-publish-action@06e0830ea83eea10ed4a62654eeaedafb8bf50fc
-      uses: mkiki/npm-publish-action@c4315ef5790b7bcec2cbb75b34e37681a409d78d
+      uses: mkiki/npm-publish-action@52879298d00c0a02781e1f02c9e917e01cff1bc7
       with: # All of theses inputs are optional
         tag_name: "v%s"
         tag_message: "v%s"
