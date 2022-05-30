@@ -388,6 +388,22 @@ describe('SOAP', function() {
             expect(actualElement.getAttribute("att")).toBe("Hello");
         });
 
+        it('Should support passing DOM elements instead of document parameters', function() {
+            const xml = '<root att="Hello"><child/></root>';
+            const doc = DomUtil.parse(xml);
+
+            const call = makeSoapMethodCall(undefined, "xtk:session", "Document", "$session$", "$security$");
+            call.writeDocument("p", doc.documentElement);
+            const request = call._createHTTPRequest(URL);
+            const env = DomUtil.parse(request.data).documentElement;
+            const body = hasChildElement(env, "SOAP-ENV:Body");
+            const method = hasChildElement(body, "m:Document");
+            const param = hasChildElement(method, "p");
+            const actualElement = hasChildElement(param, "root");
+            expect(actualElement).toBeTruthy();
+            expect(actualElement.getAttribute("att")).toBe("Hello");
+        });
+
         it('Should write null document', function() {
             const call = makeSoapMethodCall(undefined, "xtk:session", "Document", "$session$", "$security$");
             call.writeDocument("p", null);

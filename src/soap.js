@@ -299,7 +299,8 @@ class SoapMethodCall {
     writeDocument(tag, document) {
         const node = this._addNode(tag, "", null, SOAP_ENCODING_XML);
         if (document !== null && document !== undefined) {
-            const child = this._doc.importNode(document.documentElement, true);
+            const element = document.nodeType === 1 ? document : document.documentElement;
+            const child = this._doc.importNode(element, true);
             node.appendChild(child);
         }
     }

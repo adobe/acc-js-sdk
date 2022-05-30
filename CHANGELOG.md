@@ -7,6 +7,7 @@ This is a node.js SDK for Campaign API. It exposes the Campaign API exactly like
 
 * Fix a bug in client.hasPackage which was returning an incorrect result when passed a single parameter (it would always return false). Fixed the corresponding unit test too.
 * Fix a bug causing API calls having a input parameter of type "int" to fail. Usually the type is described as "long", but sometimes "int" is used instead, such as, for instance, in the nms:extAccount#UpdateMCSynchWkf method.
+* When using XML representations and DOMDocument method parameter type, the SDK expects to be passed an actual DOM document. Now it supports being passed a DOM element too. This is a common case when using the nms:delivery#createFromModel API followed by a xtk:session#Write API call.
 
 ## Version 1.1.2
 _2022/03/22_
