@@ -14,6 +14,7 @@
     "jsdom": "^19.0.0"
   },
   "devDependencies": {
+    "copyfiles": "^2.4.1",
     "docdash": "^1.2.0",
     "eslint": "^8.7.0",
     "jest": "^27.4.7",
@@ -25,7 +26,8 @@
   "scripts": {
     "publish:npm": "npm publish --access public",
     "unit-tests": "jest --config test/jest.config.js --maxWorkers=2",
-    "jsdoc": "jsdoc -a all -c jsdoc.json -r -R README.md src/*.js -d docs/jsdoc"
+    "jsdoc": "jsdoc -a all -c jsdoc.json -r -R README.md src/*.js -d docs/jsdoc",
+    "copy": "copyfiles './src/**' '../acc-web-ui/node_modules/@adobe/acc-js-sdk/'"
   },
   "jshintConfig": {
     "esversion": 8
