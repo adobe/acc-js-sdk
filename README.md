@@ -130,7 +130,9 @@ noStorage|false|De-activate using of local storage
 storage|localStorage|Overrides the local storage for caches
 refreshClient|undefined|Async callback to run when the session token is expired
 charset|UTF-8|The charset encoding used for http requests. In version 1.1.1 and above, the default will be UTF-8. It's possible to override (including setting an empty character set) with this option.
-
+extraHttpHeaders|[string]:string|An optional dictionary (key/value pairs) of extra HTTP headers to pass to all API calls.
+clientApp|string|An optional string describing the name and version of the SDK client application. It will be passed to the server in the ACC-SDK-Client-App HTTP header
+noSDKHeaders|boolean|Can be set to disable passing ACC-SDK-* HTTP headers to the server
 ```js
 const connectionParameters = sdk.ConnectionParameters.ofUserAndPassword(
                                     "https://myInstance.campaign.adobe.com", 
@@ -576,6 +578,49 @@ const document = DomUtil.fromJSON(json, "BadgerFish");
 const json = DomUtil.toJSON(documentOrElement, "BadgerFish");
 ```
 
+## Passing XML parameters
+Many Campaign APIs take arguments which are DOM documents or DOM elements. For example, the nms:delivery#DeployTriggerMessages first argument is a DOMElement which is supposed to be a `<where>` clause used as a condition to select Message Center deliveries to publish.
+
+```xml
+    <method name="DeployTriggerMessages" static="true">
+      <parameters>
+        <param inout="in" name="deliveries" type="DOMElement"/>
+        <param inout="in" name="localPublish" type="boolean"/>
+      </parameters>
+    </method>
+```
+
+For example, one would want to use the following condition to republish a particular delivery
+
+```js
+    await client.NLWS.nmsDelivery.DeployTriggerMessages({
+      condition: [ {
+        expr: "@internalName='DM23'"
+      }]
+    }, false);
+```
+
+The JSON object corresponds to the following XML
+```xml
+<where>
+    <condition expr="@internalName='DM23'"/>
+</where>
+```
+
+Note that in XML, unlike JSON, the root element `<where>` is explicitely named "where". When converting JSON to XML, there is no way for the SDK to know which tag name to used for the root XML element. The SDK contains some code to set it for the most common situation, but will rely on the user to specify, when necessary, the name of the root elment. This can be done using the `xtkschema` (all case insensitive) attribute as follows:
+```js
+    await client.NLWS.nmsDelivery.DeployTriggerMessages({
+      xtkschema: 'xtk:where',
+      condition: [ {
+        expr: "@internalName='DM23'"
+      }]
+    }, false);
+```
+
+When the `xtkschema` attribute is set, the part after the colon (i.e. "where" in this example) will be used as the root element, effectively generating the right XML.
+
+In our example, the `DeployTriggerMessages` will work properly regardless of the XML root of its `deliveries` parameter, so it's not needed to actually set the `xtkschema` attribute, but it's a best practice to do so, because some APIs will actually depend on receiving the right tag name.
+
 ## Error Management
 
 If an API call fails (SOAP fault or HTTP error), a `CampaignException` object is thrown. This object contains the following attributes
@@ -653,6 +698,64 @@ const password = cipher.decryptPassword(encryptedPassword);
 ````
 
 > **warning** This function is deprecated in version 1.0.0 of the SDK because it may break as we deploy Vault.
+
+In order to set the password of an external account, you can use the `encryptPassword` API as follow
+
+```js
+const password = await this._client.NLWS.xtkSession.encryptPassword('password');
+const account = {
+    xtkschema: "nms:extAccount",
+    name: name,
+    account: 'admin',
+    server: server,
+    password: password,
+};
+await this._client.NLWS.xtkSession.Write(account);
+```
+
+
+## HTTP Headers
+
+### Out-of-the-box headers
+In version 1.1.3 and above, the SDK will pass additional HTTP headers automatically
+
+Header | Description
+-------|------------
+SOAPAction| name of the schema and SOAP method (ex: xtk:query#ExecuteQuery)
+ACC-SDK-Version| Version of the SDK making the scores
+ACC-SDK-Auth| Authentification type and ACC user
+ACC-SDK-Client-App| Name of the application calling the client SDK
+ACC-SDK-Call-RetryCount| In case an API call is retried, indicates the number of retries
+ACC-SDK-Call-Internal| Indicates that an API call is performed byt the SDK for its own purpose
+
+The `ACC-SDK` headers can be removed using the connection parameter `noSDKHeaders`.
+
+### Custom HTTP headers
+In version 1.1.3 and above, it is possible to pass additional HTTP headers or override HTTP headers set by the SDK. This can be done globally (i.e. for all API calls), or locally, i.e. just for a particular call, or both.
+
+Http headers are passed through an object whose keys represent the header name and values the corresponding header value. Nothing particular is done in term of case sensitivity, headers will be passed as passed.
+
+To set global HTTP headers for all API calls of a client, pass an http headers array in the connection parameters
+```js
+const connectionParameters = sdk.ConnectionParameters.ofUserAndPassword(
+                                    "https://myInstance.campaign.adobe.com", 
+                                    "admin", "admin",
+                                    { extraHttpHeaders: {
+                                        "X-ACC-JS-SDK-LBSAFE": "1",
+                                        "X-ACC-WEBUI-VERSION: "1.2"
+                                    } });
+```
+
+Subsequent API calls will have the corresponding headers set.
+
+To set more HTTP headers for a particular API call, use the "headers" method of the NLWS object.
+
+```js
+const query = client.NLWS
+    .headers({'X-Test': 'hello'})
+    .xtkQueryDef.create(queryDef);
+await query.executeQuery();
+```
 
 
 
@@ -1142,6 +1245,17 @@ const folder = {
     "image-name": "test.png"
 };
 await NLWS.xtkSession.write(folder);
+````
+
+Some objects, such as deliveries are created from templates. The `createFromModel` API is preferred in this case. Given a template name, and a patch object, it will return an object created from the template and the patch, applying all sort of business rules and default values. This object can be inserted using a writer.
+
+In this example, an email delivery is created from the "mail" delivery template and it's label is set to "Hello".
+
+Note the xtkschema attribute in the second parameter of the `createFromModel` API call which is needed for the SDK to perform the proper JSON to XML transformation.
+
+```js
+const mail = await client.NLWS.nmsDelivery.createFromModel('mail', { xtkschema:'nms:delivery', label:'Hello'});
+await client.NLWS.xtkSession.write(mail);
 ````
 
 # Workflow API

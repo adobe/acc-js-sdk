@@ -34,7 +34,6 @@ const OptionCache = require('./optionCache.js').OptionCache;
 const request = require('./transport.js').request;
 const Application = require('./application.js').Application;
 const EntityAccessor = require('./entityAccessor.js').EntityAccessor;
-const FileUploader = require('./fileUploader.js').FileUploader;
 const { Util } = require('./util.js');
 
 /**
@@ -106,16 +105,35 @@ const xtkObjectHandler = {
  * @private
  * @memberof Campaign
  */
-const clientHandler = (representation) => {
+const clientHandler = (representation, headers) => {
     return {
         get: function(client, namespace) {
+
             // Force XML or JSON representation (NLWS.xml or NLWS.json)
-            if (namespace == "xml") return new Proxy(client, clientHandler("xml"));
-            if (namespace == "json") return new Proxy(client, clientHandler("SimpleJson"));
+            if (namespace == "xml") return new Proxy(client, clientHandler("xml", headers));
+            if (namespace == "json") return new Proxy(client, clientHandler("SimpleJson", headers));
+
+            // Override HTTP headers (NLWS.headers({...}))
+            // Unlike NLWS.xml or NLWS.json, NLWS.headers returns a function. This function takes key/value
+            // pairs of headers, and, when called, returns a proxy object which will remember the headers
+            // and be able to pass them to subsequent SOAP call context
+            if (namespace == "headers") return (methodHeaders) => {
+                // Build of copy of the http headers and append new headers in order to accomodate
+                // chained calls, such as NLWS.headers(...).headers(...)
+                const newHeaders = {};
+                if (headers) for (let h in headers) newHeaders[h] = headers[h];
+                if (methodHeaders) for (let h in methodHeaders) newHeaders[h] = methodHeaders[h];
+                return new Proxy(client, clientHandler(representation, newHeaders));
+            };
 
             return new Proxy({ client:client, namespace:namespace}, {
                 get: function(callContext, methodName) {
                     callContext.representation = representation;
+                    callContext.headers = callContext.headers || client._connectionParameters._options.extraHttpHeaders;
+                    if (headers) {
+                        for (let h in headers) callContext.headers[h] = headers[h];
+                    }
+
                     if (methodName == ".") return callContext;
 
                     // get Schema id from namespace (find first upper case letter)
@@ -249,6 +267,9 @@ class Credentials {
     * @property {Storage} storage - Overrides the storage interface (i.e. LocalStorage)
     * @property {function} refreshClient - An async callback function with the SDK client as parameter, which will be called when the ACC session is expired
     * @property {string} charset - The charset encoding used for http requests. Defaults to UTF-8 since SDK version 1.1.1
+    * @property {{ name:string, value:string}} extraHttpHeaders - optional key/value pair of HTTP header (will override any other headers)
+    * @property {string} clientApp - optional name/version of the application client of the SDK. This will be passed in HTTP headers for troubleshooting
+    * @property {boolean} noSDKHeaders - set to disable "ACC-SDK" HTTP headers
     * @memberOf Campaign
  */
 
@@ -313,6 +334,12 @@ class ConnectionParameters {
         this._options._storage = storage;
         this._options.refreshClient = options.refreshClient;
         this._options.charset = options.charset === undefined ? "UTF-8": options.charset;
+        this._options.extraHttpHeaders = {};
+        if (options.extraHttpHeaders) {
+            for (let h in options.extraHttpHeaders) this._options.extraHttpHeaders[h] = options.extraHttpHeaders[h];
+        }
+        this._options.clientApp = options.clientApp;
+        this._options.noSDKHeaders = !!options.noSDKHeaders;
     }
 
     /**
@@ -686,13 +713,15 @@ class Client {
      * @private
      * @param {string} urn is the API name space, usually the schema. For instance xtk:session
      * @param {string} method is the method to call, for instance Logon
+     * @param {boolean} internal is a boolean indicating whether the SOAP call is performed by the SDK (internal = true) or on behalf of a user
      * @return {SOAP.SoapMethodCall} a SoapMethodCall which have been initialized with security tokens... and to which the method
      * parameters should be set
      */
-    _prepareSoapCall(urn, method, internal) {
+    _prepareSoapCall(urn, method, internal, extraHttpHeaders) {
         const soapCall = new SoapMethodCall(this._transport, urn, method,
                                             this._sessionToken, this._securityToken,
-                                            this._getUserAgentString(), this._connectionParameters._options.charset);
+                                            this._getUserAgentString(), this._connectionParameters._options.charset,
+                                            extraHttpHeaders);
         soapCall.internal = !!internal;
         return soapCall;
     }
@@ -706,6 +735,7 @@ class Client {
      */
     async _retrySoapCall(soapCall) {
         soapCall.retry = false;
+        soapCall._retryCount = soapCall._retryCount + 1;
         var newClient = await this._refreshClient(this);
         soapCall.finalize(newClient._soapEndPoint(), newClient);
         if (this._traceAPICalls) {
@@ -780,6 +810,18 @@ class Client {
         this._securityToken = "";
         const credentials = this._connectionParameters._credentials;
 
+        const sdkVersion = this.sdk.getSDKVersion();
+        const version = `${sdkVersion.name} ${sdkVersion.version}`;
+        const clientApp = this._connectionParameters._options.clientApp;
+        if (!this._connectionParameters._options.noSDKHeaders) {
+            this._connectionParameters._options.extraHttpHeaders["ACC-SDK-Version"] = version;
+            this._connectionParameters._options.extraHttpHeaders["ACC-SDK-Auth"] = `${credentials._type}`;
+            if (clientApp)
+                this._connectionParameters._options.extraHttpHeaders["ACC-SDK-Client-App"] = clientApp;
+        }
+        // See NEO-35259
+        this._connectionParameters._options.extraHttpHeaders['X-Query-Source'] = `${version}${clientApp? "," + clientApp : ""}`;
+
         // Clear session token cookie to ensure we're not inheriting an expired cookie. See NEO-26589
         if (credentials._type != "SecurityToken" && typeof document != "undefined") {
             document.cookie = '__sessiontoken=;path=/;';
@@ -793,7 +835,7 @@ class Client {
             return Promise.resolve();
         }
         else if (credentials._type == "SecurityToken") {
-           that._sessionInfo = undefined;
+            that._sessionInfo = undefined;
             that._installedPackages = {};
             that._sessionToken = "";
             that._securityToken = credentials._securityToken;
@@ -801,12 +843,14 @@ class Client {
             return Promise.resolve();
         }
         else if (credentials._type == "UserPassword" || credentials._type == "BearerToken") {
-            const soapCall = that._prepareSoapCall("xtk:session", credentials._type === "UserPassword" ? "Logon" : "BearerTokenLogon");
+            const soapCall = that._prepareSoapCall("xtk:session", credentials._type === "UserPassword" ? "Logon" : "BearerTokenLogon", false, this._connectionParameters._options.extraHttpHeaders);
             // No retry for logon SOAP methods
             soapCall.retry = false;
             if (credentials._type == "UserPassword") {
                 const user = credentials._getUser();
                 const password = credentials._getPassword();
+                if (!this._connectionParameters._options.noSDKHeaders)
+                    this._connectionParameters._options.extraHttpHeaders["ACC-SDK-Auth"] = `${credentials._type} ${user}`;
                 soapCall.writeString("login", user);
                 soapCall.writeString("password", password);
                 var parameters = null;
@@ -874,7 +918,7 @@ class Client {
         if (!that.isLogged()) return;
         const credentials = this._connectionParameters._credentials;
         if (credentials._type != "SessionToken" && credentials._type != "AnonymousUser") {
-            var soapCall = that._prepareSoapCall("xtk:session", "Logoff");
+            var soapCall = that._prepareSoapCall("xtk:session", "Logoff", false, this._connectionParameters._options.extraHttpHeaders);
                 return this._makeSoapCall(soapCall).then(function() {
                 that._sessionToken = "";
                 that._securityToken = "";
@@ -979,7 +1023,7 @@ class Client {
      * @returns {boolean} a boolean indicating if the package is installed or not
      */
     hasPackage(packageId, optionalName) {
-    if (optionalName === undefined)
+    if (optionalName !== undefined)
         packageId = `${packageId}:${optionalName}`;
     if (!this.isLogged())
         throw CampaignException.NOT_LOGGED_IN(undefined, `Cannot call hasPackage: session not connected`);
@@ -993,7 +1037,7 @@ class Client {
      * @private
      * @deprecated since version 1.0.0
      */
-    async _getSecretKeyCipher() {
+     async _getSecretKeyCipher() {
         var that = this;
         if (this._secretKeyCipher) return this._secretKeyCipher;
         return that.getOption("XtkSecretKey").then(function(secretKey) {
@@ -1016,7 +1060,7 @@ class Client {
      */
      async getEntityIfMoreRecent(entityType, fullName, representation, internal) {
         const that = this;
-        const soapCall = this._prepareSoapCall("xtk:persist", "GetEntityIfMoreRecent", internal);
+        const soapCall = this._prepareSoapCall("xtk:persist", "GetEntityIfMoreRecent", internal, this._connectionParameters._options.extraHttpHeaders);
         soapCall.writeString("pk", entityType + "|" + fullName);
         soapCall.writeString("md5", "");
         soapCall.writeBoolean("mustExist", false);
@@ -1119,7 +1163,7 @@ class Client {
         // console.log(method.toXMLString());
 
         var urn = that._methodCache.getSoapUrn(schemaId, methodName);
-        var soapCall = that._prepareSoapCall(urn, methodName);
+        var soapCall = that._prepareSoapCall(urn, methodName, false, callContext.headers);
 
         // If method is called with one parameter which is a function, then we assume it's a hook: the function will return
         // the actual list of parameters
@@ -1160,6 +1204,8 @@ class Client {
                         soapCall.writeByte(paramName, XtkCaster.asByte(paramValue));
                     else if (type == "short")
                         soapCall.writeShort(paramName, XtkCaster.asShort(paramValue));
+                    else if (type == "int")
+                        soapCall.writeLong(paramName, XtkCaster.asLong(paramValue));
                     else if (type == "long")
                         soapCall.writeLong(paramName, XtkCaster.asLong(paramValue));
                     else if (type == "int64")
@@ -1184,6 +1230,7 @@ class Client {
                             const index = xtkschema.indexOf(":");
                             docName = xtkschema.substr(index+1);
                         }
+                        if (!docName) docName = paramName; // Use te parameter name as the XML root element
                         var xmlValue = that._fromRepresentation(docName, paramValue, callContext.representation);
                         if (type == "DOMDocument")
                             soapCall.writeDocument(paramName, xmlValue);
@@ -1323,8 +1370,11 @@ class Client {
      */
     async test() {
         const request = {
-            url: `${this._connectionParameters._endpoint}/r/test`
+            url: `${this._connectionParameters._endpoint}/r/test`,
+            headers: {}
         };
+        for (let h in this._connectionParameters._options.extraHttpHeaders)
+            request.headers[h] = this._connectionParameters._options.extraHttpHeaders[h];
         const body = await this._makeHttpCall(request);
         const xml = DomUtil.parse(body);
         const result = this._toRepresentation(xml);
@@ -1344,6 +1394,8 @@ class Client {
                 'Cookie': '__sessiontoken=' + this._sessionToken
             }
         };
+        for (let h in this._connectionParameters._options.extraHttpHeaders)
+            request.headers[h] = this._connectionParameters._options.extraHttpHeaders[h];
         const body = await this._makeHttpCall(request);
         const lines = body.split('\n');
         const doc = DomUtil.newDocument("ping");
@@ -1373,6 +1425,8 @@ class Client {
                 'Cookie': '__sessiontoken=' + this._sessionToken
             }
         };
+        for (let h in this._connectionParameters._options.extraHttpHeaders)
+            request.headers[h] = this._connectionParameters._options.extraHttpHeaders[h];
         const body = await this._makeHttpCall(request);
         const lines = body.split('\n');
         const doc = DomUtil.newDocument("ping");
