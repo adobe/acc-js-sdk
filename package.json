@@ -1,5 +1,5 @@
 {
-  "name": "@adobe/acc-js-sdk",
+  "name": "@gmakkar/acc-js-sdk",
   "version": "1.1.2",
   "description": "ACC Javascript SDK",
   "main": "src/index.js",
@@ -28,6 +28,9 @@
     "unit-tests": "jest --config test/jest.config.js --maxWorkers=2",
     "jsdoc": "jsdoc -a all -c jsdoc.json -r -R README.md src/*.js -d docs/jsdoc",
     "copy": "copyfiles './src/**' '../acc-web-ui/node_modules/@adobe/acc-js-sdk/'"
+  },
+  "publishConfig": {
+    "registry": "https://artifactory.corp.adobe.com/artifactory/api/npm/npm-adobe-release/"
   },
   "jshintConfig": {
     "esversion": 8
