@@ -14,7 +14,6 @@
     "jsdom": "^19.0.0"
   },
   "devDependencies": {
-    "copyfiles": "^2.4.1",
     "docdash": "^1.2.0",
     "eslint": "^8.7.0",
     "jest": "^27.4.7",
@@ -22,12 +21,14 @@
     "jsdoc": "^3.6.7",
     "jshint": "^2.13.3"
   },
+  "publishConfig": {
+    "registry": "https://artifactory.corp.adobe.com/artifactory/api/npm/npm-adobe-release/"
+  },
   "author": "",
   "scripts": {
     "publish:npm": "npm publish --access public",
     "unit-tests": "jest --config test/jest.config.js --maxWorkers=2",
-    "jsdoc": "jsdoc -a all -c jsdoc.json -r -R README.md src/*.js -d docs/jsdoc",
-    "copy": "copyfiles './src/**' '../acc-web-ui/node_modules/@adobe/acc-js-sdk/'"
+    "jsdoc": "jsdoc -a all -c jsdoc.json -r -R README.md src/*.js -d docs/jsdoc"
   },
   "jshintConfig": {
     "esversion": 8
