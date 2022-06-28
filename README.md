@@ -1452,7 +1452,20 @@ var event = await query.executeQuery();
 console.log(`>> Event: ${JSON.stringify(event)}`);
 ```
 
-
+# File Upload
+This API is used to upload a file and return the metadata that needs to be saved in delivery.
+```
+await client.fileUploader.start(file);
+```
+will return
+```
+{
+  label: "fileName",
+  md5: <md5-of-file-content>,
+  type: <file-type>,
+  size: <file-size-in-bytes>,
+}
+```
 
 # Application
 

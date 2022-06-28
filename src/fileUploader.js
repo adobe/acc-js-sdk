@@ -17,7 +17,7 @@
                 var data = new FormData()
                 data.append('file_noMd5', file)
                 try {
-                    const response = await fetch('https://accintg-dev89.rd.campaign.adobe.com/nl/jsp/uploadFile.jsp', {
+                    const response = await fetch(`${this.client._connectionParameters._endpoint}/nl/jsp/uploadFile.jsp`, {
                         processData: false,
                         credentials: 'include',
                         method: 'POST',
