@@ -34,7 +34,6 @@ const OptionCache = require('./optionCache.js').OptionCache;
 const request = require('./transport.js').request;
 const Application = require('./application.js').Application;
 const EntityAccessor = require('./entityAccessor.js').EntityAccessor;
-const FileUploader = require('./fileUploader.js').FileUploader;
 const { Util } = require('./util.js');
 
 /**
