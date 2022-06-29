@@ -1455,7 +1455,7 @@ console.log(`>> Event: ${JSON.stringify(event)}`);
 # File Upload
 This API is used to upload a file and return the metadata that needs to be saved in delivery.
 ```
-await client.fileUploader.start(file);
+await client.fileUploader.upload(file);
 ```
 will return
 ```
@@ -1464,6 +1464,7 @@ will return
   md5: <md5-of-file-content>,
   type: <file-type>,
   size: <file-size-in-bytes>,
+  url: <public-url-of-uploaded-file>
 }
 ```
 
