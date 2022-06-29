@@ -232,7 +232,6 @@ const fileUploader= (client) => {
     const publishIfNeeded= async(fileRes) => {
         const soapCall = client._prepareSoapCall('xtk:fileRes', 'PublishIfNeeded');
         soapCall.writeDocument("entity", DomUtil.parse(DomUtil.toXMLString(fileRes)));
-        //TODO: soapCall.writeDocument("params", new NL.XML.Node("params"));
         await client._makeSoapCall(soapCall)
     }
 
@@ -254,6 +253,7 @@ const fileUploader= (client) => {
                 var data = new FormData()
                 data.append('file_noMd5', file)
                 try {
+                    //TODO: Needs to be refactored after cookie issue get resolved.
                     const response = await fetch(`${client._connectionParameters._endpoint}/nl/jsp/uploadFile.jsp`, {
                         processData: false,
                         credentials: 'include',
@@ -274,7 +274,6 @@ const fileUploader= (client) => {
                             const fileRes = await write(counter, data); // Step 2
                             await publishIfNeeded(fileRes) // Step 3
                             const url = await getPublicUrl(fileRes) // Step 3
-                            console.log("SUCCESS", url); // Final Output
                             resolve({
                                 label: data[0].fileName,
                                 md5: data[0].md5,
@@ -290,7 +289,6 @@ const fileUploader= (client) => {
                     iframe.contentWindow.document.write(html);
                     iframe.contentWindow.document.close();
                 } catch (ex) {
-                    console.log('ec', ex);
                     reject(ex);
                 }
             })
