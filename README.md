@@ -1460,7 +1460,7 @@ await client.fileUploader.upload(file);
 will return
 ```
 {
-  label: "fileName",
+  label: <file-name>,
   md5: <md5-of-file-content>,
   type: <file-type>,
   size: <file-size-in-bytes>,
