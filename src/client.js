@@ -250,9 +250,12 @@ const fileUploader= (client) => {
     return {
         upload: async (file) => {
             return new Promise(async (resolve, reject) => {
-                var data = new FormData()
-                data.append('file_noMd5', file)
+                if (!Util.isBrowser()){
+                    reject('File uploading is only supported in browser based calls.');
+                }
                 try {
+                    var data = new FormData()
+                    data.append('file_noMd5', file)
                     //TODO: Needs to be refactored after cookie issue get resolved.
                     const response = await fetch(`${client._connectionParameters._endpoint}/nl/jsp/uploadFile.jsp`, {
                         processData: false,
