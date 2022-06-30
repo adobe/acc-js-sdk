@@ -9,7 +9,7 @@ the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR REPRESENTA
 OF ANY KIND, either express or implied. See the License for the specific language
 governing permissions and limitations under the License.
 */
-(function() {
+(function () {
     "use strict";
 
 
@@ -23,8 +23,8 @@ governing permissions and limitations under the License.
     /**
      * Client to ACC instance
      */
-    const { SoapMethodCall } = require('./soap.js');
-    const { CampaignException, makeCampaignException } = require('./campaign.js');
+    const {SoapMethodCall} = require('./soap.js');
+    const {CampaignException, makeCampaignException} = require('./campaign.js');
     const XtkCaster = require('./xtkCaster.js').XtkCaster;
     const XtkEntityCache = require('./xtkEntityCache.js').XtkEntityCache;
     const Cipher = require('./crypto.js').Cipher;
@@ -34,7 +34,7 @@ governing permissions and limitations under the License.
     const request = require('./transport.js').request;
     const Application = require('./application.js').Application;
     const EntityAccessor = require('./entityAccessor.js').EntityAccessor;
-    const { Util } = require('./util.js');
+    const {Util} = require('./util.js');
 
     /**
      * @namespace Campaign
@@ -70,10 +70,10 @@ governing permissions and limitations under the License.
      * @memberof Campaign
      */
     const xtkObjectHandler = {
-        get: function(callContext, methodName) {
+        get: function (callContext, methodName) {
             if (methodName == ".") return callContext;
 
-            const caller = function(thisArg, argumentsList) {
+            const caller = function (thisArg, argumentsList) {
                 const callContext = thisArg["."];
                 if (methodName == "inspect") return callContext.object;
                 methodName = methodName.substr(0, 1).toUpperCase() + methodName.substr(1);
@@ -81,7 +81,7 @@ governing permissions and limitations under the License.
             };
 
             return new Proxy(caller, {
-                apply: function(target, thisArg, argumentsList) {
+                apply: function (target, thisArg, argumentsList) {
                     return target(thisArg, argumentsList);
                 }
             });
@@ -107,7 +107,7 @@ governing permissions and limitations under the License.
      */
     const clientHandler = (representation, headers) => {
         return {
-            get: function(client, namespace) {
+            get: function (client, namespace) {
 
                 // Force XML or JSON representation (NLWS.xml or NLWS.json)
                 if (namespace == "xml") return new Proxy(client, clientHandler("xml", headers));
@@ -126,8 +126,8 @@ governing permissions and limitations under the License.
                     return new Proxy(client, clientHandler(representation, newHeaders));
                 };
 
-                return new Proxy({ client:client, namespace:namespace}, {
-                    get: function(callContext, methodName) {
+                return new Proxy({client: client, namespace: namespace}, {
+                    get: function (callContext, methodName) {
                         callContext.representation = representation;
                         callContext.headers = callContext.headers || client._connectionParameters._options.extraHttpHeaders;
                         if (headers) {
@@ -138,17 +138,17 @@ governing permissions and limitations under the License.
 
                         // get Schema id from namespace (find first upper case letter)
                         var schemaId = "";
-                        for (var i=0; i<namespace.length; i++) {
+                        for (var i = 0; i < namespace.length; i++) {
                             const c = namespace[i];
-                            if (c >='A' && c<='Z') {
-                                schemaId = schemaId + ":" + c.toLowerCase() + namespace.substr(i+1);
+                            if (c >= 'A' && c <= 'Z') {
+                                schemaId = schemaId + ":" + c.toLowerCase() + namespace.substr(i + 1);
                                 break;
                             }
                             schemaId = schemaId + c;
                         }
                         callContext.schemaId = schemaId;
 
-                        const caller = function(thisArg, argumentsList) {
+                        const caller = function (thisArg, argumentsList) {
                             const callContext = thisArg["."];
                             const namespace = callContext.namespace;
                             const methodNameLC = methodName.toLowerCase();
@@ -159,7 +159,7 @@ governing permissions and limitations under the License.
                                 return callContext.client.logoff();
                             else if (namespace == "xtkSession" && methodNameLC == "getoption") {
                                 var promise = callContext.client._callMethod(methodName, callContext, argumentsList);
-                                return promise.then(function(optionAndValue) {
+                                return promise.then(function (optionAndValue) {
                                     const optionName = argumentsList[0];
                                     client._optionCache.put(optionName, optionAndValue);
                                     return optionAndValue;
@@ -171,14 +171,14 @@ governing permissions and limitations under the License.
                         };
 
                         if (methodName == "create") {
-                            return function(body) {
+                            return function (body) {
                                 callContext.object = body;
                                 return new Proxy(callContext, xtkObjectHandler);
                             };
                         }
 
                         return new Proxy(caller, {
-                            apply: function(target, thisArg, argumentsList) {
+                            apply: function (target, thisArg, argumentsList) {
                                 return target(thisArg, argumentsList);
                             }
                         });
@@ -295,11 +295,11 @@ governing permissions and limitations under the License.
 
             // Default value
             if (options === undefined || options === null)
-                options = { };
+                options = {};
             // Before version 1.0.0, the 4th parameter could be a boolean for the 'rememberMe' option.
             // Passing a boolean is not supported any more in 1.0.0. The Client constructor takes an
             // option object. The rememberMe parameter can be passed directly to the logon function
-            if (typeof options  != "object")
+            if (typeof options != "object")
                 throw CampaignException.INVALID_CONNECTION_OPTIONS(options);
 
             this._options.representation = options.representation;
@@ -312,9 +312,9 @@ governing permissions and limitations under the License.
             // Defaults for rememberMe
             this._options.rememberMe = !!options.rememberMe;
 
-            this._options.entityCacheTTL = options.entityCacheTTL || 1000*300; // 5 mins
-            this._options.methodCacheTTL = options.methodCacheTTL || 1000*300; // 5 mins
-            this._options.optionCacheTTL = options.optionCacheTTL || 1000*300; // 5 mins
+            this._options.entityCacheTTL = options.entityCacheTTL || 1000 * 300; // 5 mins
+            this._options.methodCacheTTL = options.methodCacheTTL || 1000 * 300; // 5 mins
+            this._options.optionCacheTTL = options.optionCacheTTL || 1000 * 300; // 5 mins
             this._options.traceAPICalls = options.traceAPICalls === null || options.traceAPICalls ? !!options.traceAPICalls : false;
             this._options.transport = options.transport || request;
 
@@ -333,7 +333,7 @@ governing permissions and limitations under the License.
             }
             this._options._storage = storage;
             this._options.refreshClient = options.refreshClient;
-            this._options.charset = options.charset === undefined ? "UTF-8": options.charset;
+            this._options.charset = options.charset === undefined ? "UTF-8" : options.charset;
             this._options.extraHttpHeaders = {};
             if (options.extraHttpHeaders) {
                 for (let h in options.extraHttpHeaders) this._options.extraHttpHeaders[h] = options.extraHttpHeaders[h];
@@ -368,6 +368,7 @@ governing permissions and limitations under the License.
             const credentials = new Credentials("BearerToken", bearerToken);
             return new ConnectionParameters(endpoint, credentials, options);
         }
+
         /**
          * Creates connection parameters for a Campaign instance, using an IMS service token and a user name (the user to impersonate)
          *
@@ -441,19 +442,19 @@ governing permissions and limitations under the License.
                 "operation": "get",
                 "select": {
                     "node": [
-                        { "expr": "@id" },
-                        { "expr": "@name" },
-                        { "expr": "@label" },
-                        { "expr": "@type" },
-                        { "expr": "@account" },
-                        { "expr": "@password" },
-                        { "expr": "@server" }
+                        {"expr": "@id"},
+                        {"expr": "@name"},
+                        {"expr": "@label"},
+                        {"expr": "@type"},
+                        {"expr": "@account"},
+                        {"expr": "@password"},
+                        {"expr": "@server"}
                     ]
                 },
                 "where": {
                     "condition": [
-                        { "expr": client.sdk.escapeXtk`@name=${extAccountName}` },
-                        { "expr": "@type=3" }
+                        {"expr": client.sdk.escapeXtk`@name=${extAccountName}`},
+                        {"expr": "@type=3"}
                     ]
                 }
             };
@@ -480,12 +481,12 @@ governing permissions and limitations under the License.
 // File Uploader
 // ========================================================================================
 
-    const fileUploader= (client) => {
+    const fileUploader = (client) => {
         /**
          * Will increament the counter
          * @returns {Promise<number|*>}
          */
-        const increaseValue= async () => {
+        const increaseValue = async () => {
             const soapCall = client._prepareSoapCall('xtk:counter', 'IncreaseValue')
             soapCall.writeString('name', 'xtkResource')
             await client._makeSoapCall(soapCall)
@@ -498,7 +499,7 @@ governing permissions and limitations under the License.
          * @param data
          * @returns {Promise<*>}
          */
-        const write= async (counter, data) => {
+        const write = async (counter, data) => {
             const soapCall = client._prepareSoapCall('xtk:persist', 'Write');
             const fileRes = soapCall.createElement("fileRes");
             fileRes.setAttribute("internalName", "RES" + counter);
@@ -519,7 +520,7 @@ governing permissions and limitations under the License.
          * @param fileRes
          * @returns {Promise<void>}
          */
-        const publishIfNeeded= async(fileRes) => {
+        const publishIfNeeded = async (fileRes) => {
             const soapCall = client._prepareSoapCall('xtk:fileRes', 'PublishIfNeeded');
             soapCall.writeDocument("entity", DomUtil.parse(DomUtil.toXMLString(fileRes)));
             await client._makeSoapCall(soapCall)
@@ -530,7 +531,7 @@ governing permissions and limitations under the License.
          * @param fileRes
          * @returns {Promise<string|*>}
          */
-        const  getPublicUrl = async (fileRes) => {
+        const getPublicUrl = async (fileRes) => {
             const soapCall = client._prepareSoapCall('xtk:fileRes', 'GetURL');
             soapCall.writeDocument("entity", DomUtil.parse(DomUtil.toXMLString(fileRes)));
             await client._makeSoapCall(soapCall)
@@ -540,7 +541,7 @@ governing permissions and limitations under the License.
         return {
             upload: async (file) => {
                 return new Promise(async (resolve, reject) => {
-                    if (!Util.isBrowser()){
+                    if (!Util.isBrowser()) {
                         reject('File uploading is only supported in browser based calls.');
                     }
                     try {
@@ -642,7 +643,7 @@ governing permissions and limitations under the License.
              * File Uploader API
              * @type {{upload: (function(*=): Promise<unknown>)}}
              */
-            this.fileUploader= fileUploader(this);
+            this.fileUploader = fileUploader(this);
 
             /**
              * Accessor to DOM helpers
@@ -773,7 +774,7 @@ governing permissions and limitations under the License.
          * @param {Campaign.Observer} observer
          */
         unregisterObserver(observer) {
-            for (var i=0; i<this._observers.length; i++) {
+            for (var i = 0; i < this._observers.length; i++) {
                 if (this._observers[i] == observer) {
                     this._observers.splice(i, 1);
                     break;
@@ -806,7 +807,7 @@ governing permissions and limitations under the License.
             // When using bearer token authentication we are considered logged only after
             // the bearer token has been converted into session token and security token
             // by method xtk:session#BearerTokenLogon
-            if( credentialsType == "BearerToken")
+            if (credentialsType == "BearerToken")
                 return this._sessionToken != undefined &&
                     this._sessionToken != null &&
                     this._sessionToken != "" &&
@@ -876,6 +877,7 @@ governing permissions and limitations under the License.
         _soapEndPoint() {
             return this._connectionParameters._endpoint + "/nl/jsp/soaprouter.jsp";
         }
+
         /**
          * After a SOAP method call has been prepared with '_prepareSoapCall', and parameters have been added,
          * this function actually executes the SOAP call
@@ -892,25 +894,24 @@ governing permissions and limitations under the License.
             const safeCallData = Util.trim(soapCall.request.data);
             if (that._traceAPICalls)
                 console.log(`SOAP//request ${safeCallData}`);
-            that._notifyObservers((observer) => observer.onSOAPCall && observer.onSOAPCall(soapCall, safeCallData) );
+            that._notifyObservers((observer) => observer.onSOAPCall && observer.onSOAPCall(soapCall, safeCallData));
 
             return soapCall.execute()
                 .then(() => {
                     const safeCallResponse = Util.trim(soapCall.response);
                     if (that._traceAPICalls)
                         console.log(`SOAP//response ${safeCallResponse}`);
-                    that._notifyObservers((observer) => observer.onSOAPCallSuccess && observer.onSOAPCallSuccess(soapCall, safeCallResponse) );
+                    that._notifyObservers((observer) => observer.onSOAPCallSuccess && observer.onSOAPCallSuccess(soapCall, safeCallResponse));
                     return Promise.resolve();
                 })
                 .catch((ex) => {
                     if (that._traceAPICalls)
                         console.log(`SOAP//failure ${ex.toString()}`);
-                    that._notifyObservers((observer) => observer.onSOAPCallFailure && observer.onSOAPCallFailure(soapCall, ex) );
+                    that._notifyObservers((observer) => observer.onSOAPCallFailure && observer.onSOAPCallFailure(soapCall, ex));
                     // Call session expiration callback in case of 401
                     if (ex.statusCode == 401 && that._refreshClient && soapCall.retry) {
                         return this._retrySoapCall(soapCall);
-                    }
-                    else
+                    } else
                         return Promise.reject(ex);
                 });
         }
@@ -937,7 +938,7 @@ governing permissions and limitations under the License.
                     this._connectionParameters._options.extraHttpHeaders["ACC-SDK-Client-App"] = clientApp;
             }
             // See NEO-35259
-            this._connectionParameters._options.extraHttpHeaders['X-Query-Source'] = `${version}${clientApp? "," + clientApp : ""}`;
+            this._connectionParameters._options.extraHttpHeaders['X-Query-Source'] = `${version}${clientApp ? "," + clientApp : ""}`;
 
             // Clear session token cookie to ensure we're not inheriting an expired cookie. See NEO-26589
             if (credentials._type != "SecurityToken" && typeof document != "undefined") {
@@ -950,16 +951,14 @@ governing permissions and limitations under the License.
                 that._securityToken = "";
                 that.application = new Application(that);
                 return Promise.resolve();
-            }
-            else if (credentials._type == "SecurityToken") {
+            } else if (credentials._type == "SecurityToken") {
                 that._sessionInfo = undefined;
                 that._installedPackages = {};
                 that._sessionToken = "";
                 that._securityToken = credentials._securityToken;
                 that.application = new Application(that);
                 return Promise.resolve();
-            }
-            else if (credentials._type == "UserPassword" || credentials._type == "BearerToken") {
+            } else if (credentials._type == "UserPassword" || credentials._type == "BearerToken") {
                 const soapCall = that._prepareSoapCall("xtk:session", credentials._type === "UserPassword" ? "Logon" : "BearerTokenLogon", false, this._connectionParameters._options.extraHttpHeaders);
                 // No retry for logon SOAP methods
                 soapCall.retry = false;
@@ -976,12 +975,11 @@ governing permissions and limitations under the License.
                         parameters.setAttribute("rememberMe", "true");
                     }
                     soapCall.writeElement("parameters", parameters);
-                }
-                else {
+                } else {
                     const bearerToken = credentials._bearerToken;
                     soapCall.writeString("bearerToken", bearerToken);
                 }
-                return this._makeSoapCall(soapCall).then(function() {
+                return this._makeSoapCall(soapCall).then(function () {
                     const sessionToken = soapCall.getNextString();
 
                     that._sessionInfo = soapCall.getNextDocument();
@@ -1009,8 +1007,7 @@ governing permissions and limitations under the License.
 
                     that.application = new Application(that);
                 });
-            }
-            else {
+            } else {
                 //throw CampaignException.INVALID_CREDENTIALS_TYPE(credentials._type, "Cannot logon");
                 return Promise.reject(CampaignException.INVALID_CREDENTIALS_TYPE(credentials._type, "Cannot logon"));
             }
@@ -1036,14 +1033,13 @@ governing permissions and limitations under the License.
             const credentials = this._connectionParameters._credentials;
             if (credentials._type != "SessionToken" && credentials._type != "AnonymousUser") {
                 var soapCall = that._prepareSoapCall("xtk:session", "Logoff", false, this._connectionParameters._options.extraHttpHeaders);
-                return this._makeSoapCall(soapCall).then(function() {
+                return this._makeSoapCall(soapCall).then(function () {
                     that._sessionToken = "";
                     that._securityToken = "";
                     that.application = null;
                     soapCall.checkNoMoreArgs();
                 });
-            }
-            else {
+            } else {
                 that._sessionToken = "";
                 that._securityToken = "";
                 that.application = null;
@@ -1092,7 +1088,13 @@ governing permissions and limitations under the License.
                 type = 6;
                 attName = "stringValue";
             }
-            var doc = { xtkschema: "xtk:option", _operation: "insertOrUpdate", _key: "@name", name: name, dataType: type };
+            var doc = {
+                xtkschema: "xtk:option",
+                _operation: "insertOrUpdate",
+                _key: "@name",
+                name: name,
+                dataType: type
+            };
             if (description != null && description != undefined)
                 doc.description = description;
             doc[attName] = value;
@@ -1157,7 +1159,7 @@ governing permissions and limitations under the License.
         async _getSecretKeyCipher() {
             var that = this;
             if (this._secretKeyCipher) return this._secretKeyCipher;
-            return that.getOption("XtkSecretKey").then(function(secretKey) {
+            return that.getOption("XtkSecretKey").then(function (secretKey) {
                 that._secretKeyCipher = new Cipher(secretKey);
                 return that._secretKeyCipher;
             });
@@ -1181,7 +1183,7 @@ governing permissions and limitations under the License.
             soapCall.writeString("pk", entityType + "|" + fullName);
             soapCall.writeString("md5", "");
             soapCall.writeBoolean("mustExist", false);
-            return this._makeSoapCall(soapCall).then(function() {
+            return this._makeSoapCall(soapCall).then(function () {
                 var doc = soapCall.getNextDocument();
                 soapCall.checkNoMoreArgs();
                 doc = that._toRepresentation(doc, representation);
@@ -1240,8 +1242,7 @@ governing permissions and limitations under the License.
                 optionalStartSchemaOrSchemaName = await this.getSchema(optionalStartSchemaOrSchemaName, undefined, true);
                 if (!optionalStartSchemaOrSchemaName)
                     throw CampaignException.BAD_PARAMETER("optionalStartSchemaOrSchemaName", optionalStartSchemaOrSchemaName, `Schema '${optionalStartSchemaOrSchemaName}' not found.`);
-            }
-            else
+            } else
                 throw CampaignException.BAD_PARAMETER("optionalStartSchemaOrSchemaName", optionalStartSchemaOrSchemaName, `getEnum expects a valid schema name wich is a string. Given ${typeof optionalStartSchemaOrSchemaName} instead`);
 
             const schema = optionalStartSchemaOrSchemaName;
@@ -1308,7 +1309,7 @@ governing permissions and limitations under the License.
                 var paramIndex = 0;
                 while (param) {
                     const inout = DomUtil.getAttributeAsString(param, "inout");
-                    if (!inout || inout=="in") {
+                    if (!inout || inout == "in") {
                         const type = DomUtil.getAttributeAsString(param, "type");
                         const paramName = DomUtil.getAttributeAsString(param, "name");
                         const paramValue = parametersIsArray ? parameters[paramIndex] : parameters;
@@ -1345,7 +1346,7 @@ governing permissions and limitations under the License.
                             if (!xtkschema) xtkschema = paramValue["@xtkschema"];
                             if (xtkschema) {
                                 const index = xtkschema.indexOf(":");
-                                docName = xtkschema.substr(index+1);
+                                docName = xtkschema.substr(index + 1);
                             }
                             if (!docName) docName = paramName; // Use te parameter name as the XML root element
                             var xmlValue = that._fromRepresentation(docName, paramValue, callContext.representation);
@@ -1353,15 +1354,14 @@ governing permissions and limitations under the License.
                                 soapCall.writeDocument(paramName, xmlValue);
                             else
                                 soapCall.writeElement(paramName, xmlValue.documentElement);
-                        }
-                        else
+                        } else
                             throw CampaignException.BAD_SOAP_PARAMETER(soapCall, paramName, paramValue, `Unsupported parameter type '${type}' for parameter '${paramName}' of method '${methodName}' of schema '${schemaId}`);
                     }
                     param = DomUtil.getNextSiblingElement(param, "param");
                 }
             }
 
-            return that._makeSoapCall(soapCall).then(function() {
+            return that._makeSoapCall(soapCall).then(function () {
                 if (!isStatic) {
                     // Non static methods, such as xtk:query#SelectAll return a element named "entity" which is the object itself on which
                     // the method is called. This is the new version of the object (in XML form)
@@ -1375,7 +1375,7 @@ governing permissions and limitations under the License.
                     var param = DomUtil.getFirstChildElement(params, "param");
                     while (param) {
                         const inout = DomUtil.getAttributeAsString(param, "inout");
-                        if (inout=="out") {
+                        if (inout == "out") {
                             const type = DomUtil.getAttributeAsString(param, "type");
                             const paramName = DomUtil.getAttributeAsString(param, "name");
                             var returnValue;
@@ -1415,12 +1415,10 @@ governing permissions and limitations under the License.
                                         returnValue[querySchemaName] = [];
                                     }
                                 }
-                            }
-                            else if (type == "DOMElement") {
+                            } else if (type == "DOMElement") {
                                 returnValue = soapCall.getNextElement();
                                 returnValue = that._toRepresentation(returnValue, callContext.representation);
-                            }
-                            else {
+                            } else {
                                 // type can reference a schema element. The naming convension is that the type name
                                 // is {schemaName}{elementNameCamelCase}. For instance, the type "sessionUserInfo"
                                 // matches the "userInfo" element of the "xtkSession" schema
@@ -1463,19 +1461,19 @@ governing permissions and limitations under the License.
                 const safeCallData = Util.trim(request.data);
                 if (this._traceAPICalls)
                     console.log(`HTTP//request ${request.method} ${request.url}${safeCallData ? " " + safeCallData : ""}`);
-                this._notifyObservers((observer) => observer.onHTTPCall && observer.onHTTPCall(request, safeCallData) );
+                this._notifyObservers((observer) => observer.onHTTPCall && observer.onHTTPCall(request, safeCallData));
                 const body = await this._transport(request);
 
                 const safeCallResponse = Util.trim(body);
                 if (this._traceAPICalls)
                     console.log(`HTTP//response${safeCallResponse ? " " + safeCallResponse : ""}`);
-                this._notifyObservers((observer) => observer.onHTTPCallSuccess && observer.onHTTPCallSuccess(request, safeCallResponse) );
+                this._notifyObservers((observer) => observer.onHTTPCallSuccess && observer.onHTTPCallSuccess(request, safeCallResponse));
                 return body;
-            } catch(err) {
+            } catch (err) {
                 if (this._traceAPICalls)
                     console.log("HTTP//failure", err);
-                this._notifyObservers((observer) => observer.onHTTPCallFailure && observer.onHTTPCallFailure(request, err) );
-                throw makeCampaignException({ request:request, reqponse:err.response }, err);
+                this._notifyObservers((observer) => observer.onHTTPCallFailure && observer.onHTTPCallFailure(request, err));
+                throw makeCampaignException({request: request, reqponse: err.response}, err);
             }
         }
 
@@ -1560,11 +1558,10 @@ governing permissions and limitations under the License.
                 const index2 = error.indexOf('/');
                 const index3 = error.indexOf(')');
                 if (index1 != -1 && index2 != -1 && index3 != -1) {
-                    rtCount = error.substring(index1+1, index2);
-                    threshold = error.substring(index2+1, index3);
+                    rtCount = error.substring(index1 + 1, index2);
+                    threshold = error.substring(index2 + 1, index3);
                 }
-            }
-            else {
+            } else {
                 if (lines.length > 1) {
                     const timestamp = lines[1].trim();
                     if (timestamp != "") root.setAttribute("timestamp", timestamp);
@@ -1575,7 +1572,7 @@ governing permissions and limitations under the License.
                     const index3 = queue.indexOf(' pending events');
                     if (index2 != -1 && index3 != -1) {
                         rtCount = queue.substring(0, index2);
-                        threshold = queue.substring(index2+1, index3);
+                        threshold = queue.substring(index2 + 1, index3);
                     }
                 }
             }
