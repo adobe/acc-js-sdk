@@ -488,6 +488,17 @@ class ConnectionParameters {
  */
 class Client {
 
+    getDirtyCacheEntitiesWebUi(representation, internal) {
+        const that = this;
+        const soapCall = this._prepareSoapCall("xtk:session", "GetDirtyCacheEntitiesWebUi", internal, this._connectionParameters._options.extraHttpHeaders);
+        soapCall.writeString("script", '<cache buildNumber="9469" lastModified="2022-06-30T00:00:00.000"><xtk:schema></xtk:schema></cache>');
+        return this._makeSoapCall(soapCall).then(function() {
+            var doc = soapCall.getNextDocument();
+            soapCall.checkNoMoreArgs();
+            doc = that._toRepresentation(doc, representation);
+            return doc;
+        });
+    }
     /**
      * ACC API Client.
      * Do not create directly, use SDK.init instead
@@ -541,6 +552,44 @@ class Client {
          * @type {Campaign.Application}
          */
         this.application = null;
+        this.lastTime = "2022-06-30T00:00:00.000";
+		
+      setInterval(() => {
+        console.log("refresh");
+        //var entities = getDirtyCacheEntitiesWebUi("xml", true);
+        const that = this;
+        const soapCall = this._prepareSoapCall("xtk:session", "GetDirtyCacheEntitiesWebUi", true, this._connectionParameters._options.extraHttpHeaders);
+        //soapCall.writeString("script", '<cache buildNumber="9469" lastModified="2022-06-30T00:00:00.000"><xtk:schema></xtk:schema></cache>');
+        //var xmlValue = that._fromRepresentation(docName, paramValue, callContext.representation);
+        //var xmlDoc = DomUtil.parse(`<cache buildNumber="9469" lastModified="2022-06-30T00:00:00.000"><xtk:schema></xtk:schema></cache>`);
+
+
+        // renvoyé le lastModified
+        var jsonCache = {
+          buildNumber: "9469",
+          lastModified: this.lastTime,
+          "xtk:schema": {}
+        }
+
+        // use Json because xtk:schema does not work directly in DomUtil.parse(`<cache buildNumber="9469" lastModified="2022-06-30T00:00:00.000"><xtk:schema></xtk:schema></cache>`);
+        var xmlDoc = DomUtil.fromJSON("cache", jsonCache, 'SimpleJson');
+        soapCall.writeDocument("script", xmlDoc);
+        //soapCall.writeElement(paramName, xmlValue.documentElement);
+
+        var entities = this._makeSoapCall(soapCall).then(function () {
+          var doc = soapCall.getNextDocument();
+          soapCall.checkNoMoreArgs();
+          doc = that._toRepresentation(doc, 'xml');
+          var xmlString = DomUtil.toXMLString(doc);
+          console.log("doc: " + xmlString);
+          that.lastTime = DomUtil.getAttributeAsString(doc, "time"); // save time to be able to send it as an attribute in the next soap call 
+          console.log("timestamp: " + that.lastTime);
+          that._entityCache.refresh(doc);
+          return doc;
+        });
+
+        console.log("entities: " + entities);
+      }, 10000); // every 10 seconds
     }
 
     /**
@@ -803,7 +852,7 @@ class Client {
      */
     logon() {
         const that = this;
-
+        		
         this.application = null;
         this._sessionToken = "";
         this._securityToken = "";
@@ -896,6 +945,8 @@ class Client {
             //throw CampaignException.INVALID_CREDENTIALS_TYPE(credentials._type, "Cannot logon");
             return Promise.reject(CampaignException.INVALID_CREDENTIALS_TYPE(credentials._type, "Cannot logon"));
         }
+		
+		
     }
 
     /**
@@ -1071,6 +1122,8 @@ class Client {
         });
     }
 
+
+	
     /**
      * Get a compiled schema (not a source schema) definition as a DOM or JSON object depending on hte current representation
      * 

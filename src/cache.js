@@ -1,3 +1,5 @@
+const { DomUtil } = require("./domUtil");
+
 /*
 Copyright 2020 Adobe. All rights reserved.
 This file is licensed to you under the Apache License, Version 2.0 (the "License");
@@ -178,6 +180,7 @@ class Cache {
       this._cache = {};
       // timestamp at which the cache was last cleared
       this._lastCleared = this._loadLastCleared();
+ 
   }
 
   // Load timestamp at which the cache was last cleared
@@ -265,6 +268,16 @@ class Cache {
   clear() {
       this._cache = {};
       this._saveLastCleared();
+  }
+
+  refresh(xmlDoc) {
+    var child = DomUtil.getFirstChildElement(xmlDoc,"entityCache");
+    while (child) {
+      let schemaId = DomUtil.getAttributeAsString(child, "pk");
+      console.log("remove "+schemaId);
+      this._remove(schemaId);
+      child = DomUtil.getNextSiblingElement(child);
+    }
   }
 }
 
