@@ -180,7 +180,6 @@ class Cache {
       this._cache = {};
       // timestamp at which the cache was last cleared
       this._lastCleared = this._loadLastCleared();
- 
   }
 
   // Load timestamp at which the cache was last cleared
