@@ -269,13 +269,22 @@ class Cache {
       this._saveLastCleared();
   }
 
-  refresh(xmlDoc) {
-    var child = DomUtil.getFirstChildElement(xmlDoc,"entityCache");
-    while (child) {
-      let schemaId = DomUtil.getAttributeAsString(child, "pk");
-      console.log("remove "+schemaId);
-      this._remove(schemaId);
-      child = DomUtil.getNextSiblingElement(child);
+  refresh(xmlDoc, refreshedtype) {
+    var clearCache = DomUtil.getAttributeAsString(xmlDoc, "emptyCache");
+    if (clearCache == "true") {
+      console.log("Clear cache");
+      this.clear();
+    } else {
+      var child = DomUtil.getFirstChildElement(xmlDoc, "entityCache");
+      while (child) {
+        let schemaId = DomUtil.getAttributeAsString(child, "pk");
+        let schemaType = DomUtil.getAttributeAsString(child, "schema");
+        if (schemaType == refreshedtype) {
+          console.log("remove " + schemaId);
+          this._remove(schemaId);
+          child = DomUtil.getNextSiblingElement(child);
+        }
+      }
     }
   }
 }

@@ -544,6 +544,7 @@ class Client {
 
         // temporary start in 2000
         this.lastTime = "2000-01-01T00:00:00.000";
+        this.buildNumber = "0"; // temporary build number start
         setInterval(() => {
 
           console.log("refresh");
@@ -552,7 +553,7 @@ class Client {
 
           // use Json because xtk:schema does not work directly in DomUtil.parse(`<cache buildNumber="9469" lastModified="2022-06-30T00:00:00.000"><xtk:schema></xtk:schema></cache>`);
           var jsonCache = {
-            buildNumber: "9469", // temporary build number start
+            buildNumber: this.buildNumber, 
             lastModified: this.lastTime,
             "xtk:schema": {}
           }
@@ -560,7 +561,7 @@ class Client {
           var xmlDoc = DomUtil.fromJSON("cache", jsonCache, 'SimpleJson');
           soapCall.writeDocument("script", xmlDoc);
 
-          var entities = this._makeSoapCall(soapCall).then(function () {
+          this._makeSoapCall(soapCall).then(function () {
             var doc = soapCall.getNextDocument();
             soapCall.checkNoMoreArgs();
             doc = that._toRepresentation(doc, 'xml');
@@ -568,7 +569,9 @@ class Client {
             console.log("doc: " + xmlString);
             that.lastTime = DomUtil.getAttributeAsString(doc, "time"); // save time to be able to send it as an attribute in the next soap call
             console.log("timestamp: " + that.lastTime);
-            that._entityCache.refresh(doc);
+            that.buildNumber = DomUtil.getAttributeAsString(doc, "buildNumber");
+            console.log("buildNumber: " + that.buildNumber);
+            that._entityCache.refresh(doc, "xtk:schema");
             return doc;
           });
         }, 10000); // every 10 seconds
