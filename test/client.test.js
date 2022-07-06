@@ -12,9 +12,9 @@ governing permissions and limitations under the License.
 
 
 /**********************************************************************************
- * 
+ *
  * Unit tests for the ACC client
- * 
+ *
  *********************************************************************************/
 
 const sdk = require('../src/index.js');
@@ -74,7 +74,7 @@ describe('ACC Client', function () {
                 var sessionInfoXml = client.getSessionInfo("xml");
                 expect(DomUtil.findElement(sessionInfoXml, "serverInfo", true).getAttribute("buildNumber")).toBe("9219");
                 await client.NLWS.xtkSession.logoff();
-                expect(client.isLogged()).toBe(false);    
+                expect(client.isLogged()).toBe(false);
             })
             expect(logs.length).toBe(4);
             expect(logs[0]).toMatch(/SOAP.*request.*Logon/is)
@@ -286,7 +286,7 @@ describe('ACC Client', function () {
                 client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
                 client._transport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
                 await client.NLWS.xtkSession.logon();
-    
+
                 // Setting an option for the first time will
                 // - try to read the option from the database (as it's not in cache yet): xtk:session#GetOption
                 // - use a writer to write the result to the database
@@ -309,7 +309,7 @@ describe('ACC Client', function () {
                 client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
                 client._transport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
                 await client.NLWS.xtkSession.logon();
-    
+
                 // Setting an option for the first time will
                 // - try to read the option from the database (as it's not in cache yet): xtk:session#GetOption
                 // - use a writer to write the result to the database
@@ -332,7 +332,7 @@ describe('ACC Client', function () {
                 client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
                 client._transport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
                 await client.NLWS.xtkSession.logon();
-    
+
                 // Setting an option for the first time will
                 // - try to read the option from the database (as it's not in cache yet): xtk:session#GetOption. In this case, it will return a numeric option
                 // - use a writer to write the result to the database
@@ -417,7 +417,7 @@ describe('ACC Client', function () {
             expect(schema["@name"]).toBe("extAccount");
 
             // Ask with invalid representation
-            await expect(client.getSchema("nms:extAccount", "invalid")).rejects.toMatchObject({ errorCode: 'SDK-000004' }); 
+            await expect(client.getSchema("nms:extAccount", "invalid")).rejects.toMatchObject({ errorCode: 'SDK-000004' });
 
             // Get missing schema
             client.clearAllCaches();
@@ -475,7 +475,7 @@ describe('ACC Client', function () {
             await expect(client.getSysEnum("encryptionType", startSchema)).rejects.toMatchObject({ errorCode: "SDK-000006" });
             client._representation = "xml";
 
-            // Get non-cached XML representation 
+            // Get non-cached XML representation
             client.clearAllCaches();
             client._transport.mockReturnValueOnce(Mock.GET_NMS_EXTACCOUNT_SCHEMA_RESPONSE);
             sysEnum = await client.getSysEnum("nms:extAccount:encryptionType");
@@ -691,7 +691,7 @@ describe('ACC Client', function () {
             client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
             const key = Mock.makeKey();
-            
+
             client._transport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
             client._transport.mockReturnValueOnce(Mock.GET_SECRET_KEY_OPTION_RESPONSE(key));
             var cipher = await client._getSecretKeyCipher();
@@ -1009,13 +1009,13 @@ describe('ACC Client', function () {
         });
 
         it("Should support mutable calls", async () => {
-            // Some methods can mutate the object on which they apply. This is for instance the case of the xtk:queryDef#SelectAll method. 
-            // You call it on a queryDef, and it internally returns a new query definition which contain select nodes for all the nodes of the schema. 
+            // Some methods can mutate the object on which they apply. This is for instance the case of the xtk:queryDef#SelectAll method.
+            // You call it on a queryDef, and it internally returns a new query definition which contain select nodes for all the nodes of the schema.
             // When such a method is called, the SDK will know how to "mutate" the corresponding object.
             const client = await Mock.makeClient();
             client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
-            
+
             var queryDef = {
                 "schema": "xtk:option",
                 "operation": "getIfExists",
@@ -1051,7 +1051,7 @@ describe('ACC Client', function () {
                     </SOAP-ENV:Body>
                     </SOAP-ENV:Envelope>`));
             await query.selectAll(false);
-            
+
             // Check that query has new nodes
             const object = query.inspect();         // JSON query object
             expect(object.select.node.length).toBe(14);
@@ -1289,7 +1289,7 @@ describe('ACC Client', function () {
 
     describe("Logon with session token", () => {
         // With session token logon, the session token is passed by the caller, and therefore the will be no "Logon" call
-      
+
         it("Should create logged client", async() => {
             const connectionParameters = sdk.ConnectionParameters.ofSessionToken("http://acc-sdk:8080", "mc/");
             const client = await sdk.init(connectionParameters);
@@ -1305,7 +1305,7 @@ describe('ACC Client', function () {
 
     describe("Anonymous login", () => {
         // With anonymous login, one is always logged
-      
+
         it("Should create anonymous client", async() => {
             const connectionParameters = sdk.ConnectionParameters.ofAnonymousUser("http://acc-sdk:8080");
             const client = await sdk.init(connectionParameters);
@@ -1554,7 +1554,7 @@ describe('ACC Client', function () {
                 "xtk:session#GetOption", true,
             ];
             const observed = [];
-            
+
             client.registerObserver({
                 onSOAPCall: (soapCall) => {
                     const request = soapCall.request;
@@ -1599,7 +1599,7 @@ describe('ACC Client', function () {
                         </SOAP-ENV:Envelope>`));
             await expect(client.getOption("XtkDatabaseId")).rejects.toMatchObject({ errorCode: "XXX-000000" });
             expect(observedException).toMatchObject({ errorCode: "XXX-000000" });
-            
+
         });
 
         it("Should ignore unregistering non-existant observers", async () => {
@@ -1614,7 +1614,7 @@ describe('ACC Client', function () {
             const client = await Mock.makeClient();
             var countCalls = 0;
             var countSuccesses = 0;
-            
+
             const observer1 = {
                 onSOAPCall: () => { countCalls = countCalls + 1; },
                 onSOAPCallSuccess: () => { countSuccesses = countSuccesses + 1; }
@@ -1644,7 +1644,7 @@ describe('ACC Client', function () {
             const client = await Mock.makeClient();
             var countCalls = 0;
             var countSuccesses = 0;
-            
+
             const observer1 = {
                 onSOAPCall: () => { countCalls = countCalls + 1; },
                 onSOAPCallSuccess: () => { countSuccesses = countSuccesses + 1; }
@@ -1669,7 +1669,7 @@ describe('ACC Client', function () {
             expect(countCalls).toBe(1);
             expect(countSuccesses).toBe(2);
         });
-      
+
         it("Should observe internal SOAP calls", async () => {
             const client = await Mock.makeClient();
             const expected = [
@@ -1679,7 +1679,7 @@ describe('ACC Client', function () {
                 "xtk:session#GetOption", false,
             ];
             const observed = [];
-            
+
             client.registerObserver({
                 onSOAPCall: (soapCall) => {
                     const request = soapCall.request;
@@ -1704,7 +1704,7 @@ describe('ACC Client', function () {
                 client.traceAPICalls(true);
                 client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
                 await client.NLWS.xtkSession.logon();
-    
+
                 client._transport.mockReturnValueOnce(Mock.PING);
                 const ping = await client.ping();
                 expect(ping.status).toBe("OK");
@@ -1728,7 +1728,7 @@ describe('ACC Client', function () {
             expect(logs[0]).toMatch(/HTTP.*request.*GET.*test.com/is)
             expect(logs[1]).toMatch(/HTTP.*response/is)
         })
-        
+
         it("Should trace HTTP call with data and no answer", async () => {
             const logs = await Mock.withMockConsole(async () => {
                 const client = await Mock.makeClient();
@@ -1783,7 +1783,7 @@ describe('ACC Client', function () {
                 url: "http://acc-sdk:8080/nl/jsp/ping.jsp"
             });
             expect(observer.onHTTPCall.mock.calls[0][1]).toBeUndefined();
-            
+
             expect(observer.onHTTPCallSuccess.mock.calls.length).toBe(1);
             expect(observer.onHTTPCallSuccess.mock.calls[0].length).toBe(2);    // 2 arguments
             expect(observer.onHTTPCallSuccess.mock.calls[0][0]).toMatchObject({
@@ -1904,7 +1904,7 @@ describe('ACC Client', function () {
             expect(client.isLogged()).toBeFalsy();
             // Ensure logoff has been called
             expect(logoff.mock.calls.length).toBe(1);
-        })   
+        })
      })
 
     describe("Bearer token authentication", () => {
@@ -1968,7 +1968,7 @@ describe('ACC Client', function () {
                 await newClient.logon();
                 return newClient;
             }
-            const connectionParameters = sdk.ConnectionParameters.ofBearerToken("http://acc-sdk:8080", 
+            const connectionParameters = sdk.ConnectionParameters.ofBearerToken("http://acc-sdk:8080",
                                                     "$token$", {refreshClient: refreshClient});
             const client = await sdk.init(connectionParameters);
             client.traceAPICalls(true);
@@ -2329,7 +2329,7 @@ describe('ACC Client', function () {
             expect(cached.value).toMatch("<schema");
 
             // Now simulate reusing the local storage. We need a new client to make sure we do not reuse
-            // the in-memory cache of the client. 
+            // the in-memory cache of the client.
             client = await Mock.makeClient({ storage: storage });
             client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
@@ -2374,7 +2374,7 @@ describe('ACC Client', function () {
             const method = scope["staticP1"]; // SOAP method to call
             const paramsFn = jest.fn(); // function returning SOAP call parameters
             paramsFn.mockReturnValueOnce(["XtkDatabaseId"]);
-            
+
             client._transport.mockReturnValueOnce(Promise.resolve(`<?xml version='1.0'?>
                 <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:xtk:session' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
                 <SOAP-ENV:Body>
@@ -2402,7 +2402,7 @@ describe('ACC Client', function () {
             const method = scope["nonStaticP1"]; // SOAP method to call
             const paramsFn = jest.fn(); // function returning SOAP call parameters
             paramsFn.mockReturnValueOnce(["XtkDatabaseId"]);
-            
+
             client._transport.mockReturnValueOnce(Promise.resolve(`<?xml version='1.0'?>
                 <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:xtk:session' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
                 <SOAP-ENV:Body>
@@ -2803,4 +2803,12 @@ describe('ACC Client', function () {
             });
         });
     });
+
+    describe('File uploader', () => {
+        it('is supported in browser', async ()=> {
+            const client = await Mock.makeClient();
+            expect(client.fileUploader).toBeDefined()
+            await expect(client.fileUploader.upload()).rejects.toEqual('File uploading is only supported in browser based calls.')
+        })
+    })
 });
