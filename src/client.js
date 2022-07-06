@@ -490,26 +490,27 @@ const fileUploader = (client) => {
       return xtkCounter
   }
 
+  const createFileRes = (counter, data) => {
+      return {
+          internalName: 'RES' + counter,
+          md5: data[0].md5,
+          label: data[0].fileName,
+          fileName: data[0].fileName,
+          originalName: data[0].fileName,
+          useMd5AsFilename: '1',
+          storageType: 5,
+          xtkschema: 'xtk:fileRes'
+
+      }
+  }
+
     /**
      * Will write fileRes
-     * @param counter
-     * @param data
-     * @returns {Promise<*>}
+     * @param fileRes
+     * @returns {Promise<void>}
      */
-    const write = async (counter, data) => {
-        const fileRes = {
-            internalName: 'RES' + counter,
-            md5: data[0].md5,
-            label: data[0].fileName,
-            fileName: data[0].fileName,
-            originalName: data[0].fileName,
-            useMd5AsFilename: '1',
-            storageType: 5,
-            xtkschema: 'xtk:fileRes'
-
-        };
+    const write = async (fileRes) => {
         await client.NLWS.xtkSession.write(fileRes);
-        return fileRes;
     }
 
   /**
@@ -556,7 +557,8 @@ const fileUploader = (client) => {
           document.controller = {
             uploadFileCallBack: async (data) => {
               const counter = await increaseValue(); // Step 1
-              const fileRes = await write(counter, data); // Step 2
+              const fileRes= createFileRes(counter, data)
+              await write(fileRes); // Step 2
               await publishIfNeeded(fileRes) // Step 3
               const url = await getPublicUrl(fileRes) // Step 3
               resolve({
