@@ -527,8 +527,7 @@ const fileUploader = (client) => {
    * @returns {Promise<string|*>}
    */
   const getPublicUrl = async (fileRes) => {
-      const url= await client.NLWS.xtkFileRes.create(fileRes).getURL()
-      return url
+      return await client.NLWS.xtkFileRes.create(fileRes).getURL()
   }
   return {
     upload: async (file) => {
