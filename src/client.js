@@ -1250,7 +1250,7 @@ class Client {
                         if (type == "DOMDocument")
                             soapCall.writeDocument(paramName, xmlValue);
                         else
-                            soapCall.writeElement(paramName, xmlValue.documentElement);
+                            soapCall.writeElement(paramName, xmlValue);
                     }
                     else
                         throw CampaignException.BAD_SOAP_PARAMETER(soapCall, paramName, paramValue, `Unsupported parameter type '${type}' for parameter '${paramName}' of method '${methodName}' of schema '${schemaId}`);

@@ -291,6 +291,7 @@ class SoapMethodCall {
     writeElement(tag, element) {
         const node = this._addNode(tag, "ns:Element", null, SOAP_ENCODING_XML);
         if (element !== null && element !== undefined) {
+            if (element.nodeType === 9) element = element.documentElement;
             const child = this._doc.importNode(element, true);
             node.appendChild(child);
         }

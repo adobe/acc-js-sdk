@@ -25,6 +25,9 @@ _2022/05/30_
 * By default, SDK will send additional HTTP headers to help troubleshooting and usage tracking
 * Add the ability to pass extra HTTP headers to API calls, either globally (to all HTTP headers), or locally, i.e. for a specific method
 * Remove .vscode folder from the sources
+* Example for xtkBuilder.installPackage API
+* For APIs which have parameters of type DOMElement and which are called using XML, support passing either a DOMElement or a DOMDocument
+
 
 ## Version 1.1.2
 _2022/03/22_
