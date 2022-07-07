@@ -1238,7 +1238,7 @@ class Application {
      * @returns {Campaign.XtkSchema} the schema, or null if the schema was not found
      */
      async getSchema(schemaId) {
-        return this._schemaCache.getSchema(schemaId);
+        return this._getSchema(schemaId);
     }
 
     // Private function: get a schema without using the cache

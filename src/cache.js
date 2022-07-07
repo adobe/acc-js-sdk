@@ -281,6 +281,7 @@ class Cache {
         let schemaType = DomUtil.getAttributeAsString(child, "schema");
         if (schemaType == refreshedtype) {
           console.log("remove " + schemaId);
+          delete this._cache[schemaId];
           this._remove(schemaId);
           child = DomUtil.getNextSiblingElement(child);
         }
