@@ -58,7 +58,7 @@ if (!Util.isBrowser()) {
       url: options.url,
       headers: options.headers,
       data: options.data,
-      timeout: 5000,
+      timeout: 10000,
     };
     return axios(request)
     .then((response) => {
