@@ -23,6 +23,5 @@ yarn-error.log
 
 out/
 docs/
-.vscode/
 dist/
 .DS_Store
