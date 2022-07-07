@@ -24,6 +24,7 @@ _2022/05/30_
 * Document how to set the password of an external account
 * By default, SDK will send additional HTTP headers to help troubleshooting and usage tracking
 * Add the ability to pass extra HTTP headers to API calls, either globally (to all HTTP headers), or locally, i.e. for a specific method
+* Remove .vscode folder from the sources
 
 ## Version 1.1.2
 _2022/03/22_
