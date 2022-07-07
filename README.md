@@ -794,10 +794,10 @@ NLWS.xml.pushDown({ timeout: 60000, foo: 'bar' }).xtkBuilder.installPackage(dom)
 ```
 
 ## Troubleshooting
-In the version 1.1.4 of the SDK, we are automatically adding the SOAP method name in the URL in order to simplify troubleshooting. Normally, all SOAP method calls are make to the soaprouter.jsp endpoint, which makes it difficult to understand which actual API call is being made.
+In the version 1.1.5 of the SDK, we are automatically adding the SOAP method name in the URL in order to simplify troubleshooting. Normally, all SOAP method calls are make to the soaprouter.jsp endpoint, which makes it difficult to understand which actual API call is being made.
 In fact the SOAP call name is available via the SOAPAction HTTP header, but it's usually not immediatelly visible.
 
-The SOAP calls URLs are now formed like this: `http://acc-sdk:8080/nl/jsp/soaprouter.jsp?xtk:queryDef#ExecuteQuery` where the SOAP method name is added as a query parameter. Campaign server ignores this parameter.
+The SOAP calls URLs are now formed like this: `http://acc-sdk:8080/nl/jsp/soaprouter.jsp?xtk:queryDef:ExecuteQuery` where the SOAP method name is added as a query parameter. Campaign server ignores this parameter.
 
 This can be disabled using the `noMethodInURL` connection parameter
 

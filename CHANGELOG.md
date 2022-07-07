@@ -5,8 +5,13 @@ This is a node.js SDK for Campaign API. It exposes the Campaign API exactly like
 
 # Changelog 
 
+## Version 1.1.5
+_2022/07/07__
+
+* The SOAP method name was not showing up properly in the Chrome console
+
 ## Version 1.1.4
-_2022/06/xx_
+_2022/07/07__
 
 * Added `application.version` which returns the server version in the format major.minor.servicePack (ex: 8.2.10)
 * Added the ability to push down parameters to the SOAP and transport layers. See the pushDown section of the readme file.
