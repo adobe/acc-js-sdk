@@ -1461,6 +1461,7 @@ The `application` object can be obtained from a client, and will mimmic the Camp
 | Attribute/Method | Description |
 |---|---|
 | **buildNumber** | The server build number
+| **version** | In SDK version 1.1.4 and above, returns the server version formatted as major.minor.servicePack (ex: 8.2.10)
 | **instanceName** | The name of the Campaign instance
 | **operator** | Information about the current operator (i.e. logged user), of class `CurrentLogin`
 | **packages** | List of installed packages, as an array of strings

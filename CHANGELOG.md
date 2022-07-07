@@ -5,6 +5,11 @@ This is a node.js SDK for Campaign API. It exposes the Campaign API exactly like
 
 # Changelog 
 
+## Version 1.1.4
+_2022/06/xx_
+
+* Added `application.version` which returns the server version in the format major.minor.servicePack (ex: 8.2.10)
+
 ## Version 1.1.3
 _2022/05/30_
 
