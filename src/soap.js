@@ -552,11 +552,7 @@ class SoapMethodCall {
             request.headers[h] = this._extraHttpHeaders[h];
         }
 
-        const extraOptions = {
-            ...this._pushDownOptions,
-            ...requestOptions,
-        };
-        
+        const extraOptions = Object.assign({}, this._pushDownOptions, requestOptions);
         return [ request, extraOptions ];
     }
     

@@ -23,7 +23,7 @@ const DomUtil = require('./domUtil.js').DomUtil;
 const XtkCaster = require('./xtkCaster.js').XtkCaster;
 const { Client, Credentials, ConnectionParameters } = require('./client.js');
 const request = require('./transport.js').request;
-const { TestUtil } = require('./testUtil');
+const { TestUtil } = require('./testUtil.js');
 const { HttpError } = require('./transport.js');
 
 /**

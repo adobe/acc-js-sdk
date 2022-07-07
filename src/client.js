@@ -284,6 +284,8 @@ class Credentials {
     * @property {{ name:string, value:string}} extraHttpHeaders - optional key/value pair of HTTP header (will override any other headers)
     * @property {string} clientApp - optional name/version of the application client of the SDK. This will be passed in HTTP headers for troubleshooting
     * @property {boolean} noSDKHeaders - set to disable "ACC-SDK" HTTP headers
+    * @property {boolean} noMethodInURL - Can be set to true to remove the method name from the URL
+    * @property {number} timeout - Can be set to change the HTTP call timeout. Value is passed in ms.
     * @memberOf Campaign
  */
  
@@ -305,7 +307,7 @@ class ConnectionParameters {
     constructor(endpoint, credentials, options) {
         // this._options will be populated with the data from "options" and with
         // default values. But the "options" parameter will not be modified
-        this._options = { ...options };
+        this._options = Object.assign({}, options);
 
         // Default value
         if (options === undefined || options === null)
@@ -735,7 +737,7 @@ class Client {
         const soapCall = new SoapMethodCall(this._transport, urn, method, 
                                             this._sessionToken, this._securityToken, 
                                             this._getUserAgentString(),
-                                            { ...this._connectionParameters._options, ...pushDownOptions },
+                                            Object.assign({}, this._connectionParameters._options, pushDownOptions),
                                             extraHttpHeaders);
         soapCall.internal = !!internal;
         return soapCall;

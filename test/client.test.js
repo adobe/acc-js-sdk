@@ -25,7 +25,6 @@ const { HttpError } = require('../src/transport.js');
 const { Cipher } = require('../src/crypto.js');
 const { EntityAccessor } = require('../src/entityAccessor.js');
 
-
 describe('ACC Client', function () {
 
     describe('Init', function () {
@@ -2281,17 +2280,19 @@ describe('ACC Client', function () {
         });
 
         it("Should ignore protocol for local storage root key", async () => {
+            const version = sdk.getSDKVersion().version; // "${version}" or similar
+
             var connectionParameters = sdk.ConnectionParameters.ofUserAndPassword("http://acc-sdk:8080", "admin", "admin", {});
             var client = await sdk.init(connectionParameters);
-            expect(client._optionCache._storage._rootKey).toBe("acc.js.sdk.1.1.3.acc-sdk:8080.cache.OptionCache$");
+            expect(client._optionCache._storage._rootKey).toBe(`acc.js.sdk.${version}.acc-sdk:8080.cache.OptionCache$`);
 
             connectionParameters = sdk.ConnectionParameters.ofUserAndPassword("https://acc-sdk:8080", "admin", "admin", {});
             client = await sdk.init(connectionParameters);
-            expect(client._optionCache._storage._rootKey).toBe("acc.js.sdk.1.1.3.acc-sdk:8080.cache.OptionCache$");
+            expect(client._optionCache._storage._rootKey).toBe(`acc.js.sdk.${version}.acc-sdk:8080.cache.OptionCache$`);
 
             connectionParameters = sdk.ConnectionParameters.ofUserAndPassword("acc-sdk:8080", "admin", "admin", {});
             client = await sdk.init(connectionParameters);
-            expect(client._optionCache._storage._rootKey).toBe("acc.js.sdk.1.1.3.acc-sdk:8080.cache.OptionCache$");
+            expect(client._optionCache._storage._rootKey).toBe(`acc.js.sdk.${version}.acc-sdk:8080.cache.OptionCache$`);
         })
 
         it("Should support no storage", async () => {

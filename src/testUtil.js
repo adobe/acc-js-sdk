@@ -1,4 +1,4 @@
-const { DomUtil } = require("./domUtil");
+const { DomUtil } = require("./domUtil.js");
 
 /*
 Copyright 2022 Adobe. All rights reserved.
@@ -14,7 +14,7 @@ governing permissions and limitations under the License.
 (function() {
 "use strict";    
   
-const { newSchema } = require("./application");
+const { newSchema } = require("./application.js");
 
 /**********************************************************************************
  * 

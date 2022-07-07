@@ -1209,7 +1209,7 @@ class Application {
              */
             this.buildNumber = EntityAccessor.getAttributeAsString(serverInfo, "buildNumber");
             /**
-             * The server version
+             * The server version, formatted as major.minor.servicePack (ex: 8.2.10)
              * @type {string}
              */
             this.version = EntityAccessor.getAttributeAsString(serverInfo, "majNumber") + "." +
