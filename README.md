@@ -133,6 +133,8 @@ charset|UTF-8|The charset encoding used for http requests. In version 1.1.1 and 
 extraHttpHeaders|[string]:string|An optional dictionary (key/value pairs) of extra HTTP headers to pass to all API calls.
 clientApp|string|An optional string describing the name and version of the SDK client application. It will be passed to the server in the ACC-SDK-Client-App HTTP header
 noSDKHeaders|boolean|Can be set to disable passing ACC-SDK-* HTTP headers to the server
+noMethodInURL|boolean|Can be set to true to remove the method name from the URL
+timeout|number|Can be used to set the APIs call timeout (in ms)
 ```js
 const connectionParameters = sdk.ConnectionParameters.ofUserAndPassword(
                                     "https://myInstance.campaign.adobe.com", 
@@ -189,8 +191,8 @@ If you want to use the SDK client-side in a web page returned by Campaign, you c
 For this scenario, the `ofSecurityToken` function can be used. Pass it a security token (usually available as document.__securitytoken), and the SDK will let the browser handle the session token (cookie) for you.
 
 ```html
-    <script src="acc-sdk.js"></script>
-    <script>
+<script src="acc-sdk.js"></script>
+<script>
         (async () => {
             try {
                 const sdk = document.accSDK;
@@ -204,8 +206,8 @@ For this scenario, the `ofSecurityToken` function can be used. Pass it a securit
                 console.error(ex);
             }
         })();
-    </script>
-    </body>
+</script>
+</body>
 </html>
 ```
 
@@ -320,7 +322,8 @@ The Simple JSON format works like this:
 
 The XML root element tag is determined by the SDK as it's generating the XML, usually from the current schema name.
 
-* XML: `<root/>`
+* XML: `<root/>
+`
 * JSON: `{}`
 
 XML attributes are mapped to JSON attributes with the same name, whose litteral value can be a string, number, or boolean. There's no "@" sign in the JSON attribute name.
@@ -357,7 +360,9 @@ Text of a child element
 * Alternative JSON: `{ item: { $: "Hello" } }`
 
 If an element contains both text, and children, you need to use the alternative `$` syntax
-* XML: `<root><item>Hello<child id="1"/></item></root>`
+* XML: `<root><item>Hello<child id="1"/>
+</item>
+</root>`
 * JSON: `{ item: { $: "Hello", child: { id:1 } }`
 
 
@@ -510,8 +515,8 @@ const DomUtil = client.DomUtil;
 Create DOM from XML string:
 ```js
 const doc = DomUtil.parse(`<root>
-      <one/>
-    </root>`);
+<one/>
+</root>`);
 ```
 
 Writes a DOM document or element as a string:
@@ -582,12 +587,12 @@ const json = DomUtil.toJSON(documentOrElement, "BadgerFish");
 Many Campaign APIs take arguments which are DOM documents or DOM elements. For example, the nms:delivery#DeployTriggerMessages first argument is a DOMElement which is supposed to be a `<where>` clause used as a condition to select Message Center deliveries to publish.
 
 ```xml
-    <method name="DeployTriggerMessages" static="true">
-      <parameters>
-        <param inout="in" name="deliveries" type="DOMElement"/>
-        <param inout="in" name="localPublish" type="boolean"/>
-      </parameters>
-    </method>
+<method name="DeployTriggerMessages" static="true">
+<parameters>
+<param inout="in" name="deliveries" type="DOMElement"/>
+<param inout="in" name="localPublish" type="boolean"/>
+</parameters>
+</method>
 ```
 
 For example, one would want to use the following condition to republish a particular delivery
@@ -603,7 +608,7 @@ For example, one would want to use the following condition to republish a partic
 The JSON object corresponds to the following XML
 ```xml
 <where>
-    <condition expr="@internalName='DM23'"/>
+<condition expr="@internalName='DM23'"/>
 </where>
 ```
 
@@ -757,6 +762,49 @@ const query = client.NLWS
 await query.executeQuery();
 ```
 
+## Timeouts
+
+By default, the SDK has a timeout of 5s when running in a node.js environment, and uses the browser defaults when run inside a browser (using the fetch API).
+
+It is possible to overwrite the transport layer (see `The Transport Protocol` and use your own code to make and configure HTTP requests) to tune the timeout value. It is a bit cumbersome though.
+
+Instead, you can use the `timeout` parameter, and set it either globally, as a connection parameter, or even at the API call level but using the `PushDown` mechanism described below.
+
+Sets a timeout of 10s gloally
+```js
+const connectionParameters = sdk.ConnectionParameters.ofUserAndPassword(
+                                    "https://myInstance.campaign.adobe.com", 
+                                    "admin", "admin",
+                                    { timeout: 10000 });
+```
+
+Override the timeout to 1 min for a particular API call
+```js
+NLWS.xml.pushDown({ timeout: 60000 }).xtkBuilder.installPackage(dom);
+```
+
+## Pushdown mechanism
+The Pushdown mechanism can be used to push down variables to the transport layer. A common use case it to pass a custom timeout value down to the transport layer.
+
+The pushed down parameters are passed as a second parameter to the transport function. This parameter will contain all the connection parameters as well as any parameter that you can push down at the API call level. API call pushdowns can override default pushdowns.
+
+Any key/value pairs can be pushed down. This example pushes down the timeout and foo variables to the transport layer.
+```js
+NLWS.xml.pushDown({ timeout: 60000, foo: 'bar' }).xtkBuilder.installPackage(dom);
+```
+
+## Troubleshooting
+In the version 1.1.4 of the SDK, we are automatically adding the SOAP method name in the URL in order to simplify troubleshooting. Normally, all SOAP method calls are make to the soaprouter.jsp endpoint, which makes it difficult to understand which actual API call is being made.
+In fact the SOAP call name is available via the SOAPAction HTTP header, but it's usually not immediatelly visible.
+
+The SOAP calls URLs are now formed like this: `http://acc-sdk:8080/nl/jsp/soaprouter.jsp?xtk:queryDef#ExecuteQuery` where the SOAP method name is added as a query parameter. Campaign server ignores this parameter.
+
+This can be disabled using the `noMethodInURL` connection parameter
+
+const connectionParameters = sdk.ConnectionParameters.ofUserAndPassword(
+                                    "https://myInstance.campaign.adobe.com", 
+                                    "admin", "admin",
+                                    { noMethodInURL: true });
 
 
 # Samples
@@ -982,11 +1030,15 @@ The transport protocol defines
 - What is the corresponding response
 - How errors are handled
 
-The transport protocol exports a single asynchronous function `request` which takes a `Request` literal object with the following attributes. Note that it matches axios requests.
+The transport protocol exports a single asynchronous function `request` which takes two parameters.
+
+The first parameter is the request object with the following attributes. Note that it matches axios requests.
 * `method` is the HTTP verb
 * `url` is the URL to call
 * `headers` is an object containing key value pairs with http headers and their values
 * `data` is the request payload
+
+The second parameter is an set of additional parameters that have been pushed down to the transport layer (see the `Pushdown` paragraph for more details). In particular, the `timeout` parameter should be honored by the transport layer.
 
 If the request is successful, a promise is returned with the result payload, as a string.
 
@@ -995,7 +1047,7 @@ If the request fails, the promise is rejected with an error object with class `H
 * `statusText` is the HTTP status text coming with the error
 * `data` is the response data, if any
 
-For proper error handling by the ACC SDK, it's important that the actual class of returned objects is names "HttpError"
+For proper error handling by the ACC SDK, it's important that the actual class of returned objects is named "HttpError"
 
 The transport can be overriden by using the `client.setTransport` call and passing it a transport function, i.e. an async function which
 * Takes a `Request` object litteral as a parameter
@@ -1052,14 +1104,14 @@ xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/"
 xmlns:ns="http://xml.apache.org/xml-soap">
 <SOAP-ENV:Header>
-    <Cookie>__sessiontoken=***</Cookie>
-    <X-Security-Token>***</X-Security-Token>
+<Cookie>__sessiontoken=***</Cookie>
+<X-Security-Token>***</X-Security-Token>
 </SOAP-ENV:Header>
 <SOAP-ENV:Body>
-    <m:GetOption xmlns:m="urn:xtk:session" SOAP-ENV:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">
-        <sessiontoken xsi:type="xsd:string">***</sessiontoken>
-        <name xsi:type="xsd:string">XtkDatabaseId</name>
-    </m:GetOption>
+<m:GetOption xmlns:m="urn:xtk:session" SOAP-ENV:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">
+<sessiontoken xsi:type="xsd:string">***</sessiontoken>
+<name xsi:type="xsd:string">XtkDatabaseId</name>
+</m:GetOption>
 </SOAP-ENV:Body>
 </SOAP-ENV:Envelope>
 
@@ -1069,10 +1121,10 @@ xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance'
 xmlns:ns='urn:xtk:session'
 xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
 <SOAP-ENV:Body>
-    <GetOptionResponse xmlns='urn:xtk:session' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
-        <pstrValue xsi:type='xsd:string'>uFE80000000000000F1FA913DD7CC7C4804BA419F</pstrValue>
-        <pbtType xsi:type='xsd:byte'>6</pbtType>
-    </GetOptionResponse>
+<GetOptionResponse xmlns='urn:xtk:session' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
+<pstrValue xsi:type='xsd:string'>uFE80000000000000F1FA913DD7CC7C4804BA419F</pstrValue>
+<pbtType xsi:type='xsd:byte'>6</pbtType>
+</GetOptionResponse>
 </SOAP-ENV:Body>
 </SOAP-ENV:Envelope>
 `````

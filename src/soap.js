@@ -78,14 +78,15 @@ const NS_XSD = "http://www.w3.org/2001/XMLSchema";
  * @param {string} sessionToken Campaign session token
  * @param {string} securityToken  Campaign security token
  * @param {string} userAgentString The user agent string to use for HTTP requests
- * @param {string} charset The charset encoding used for http requests, usually UTF-8
+ * @param {string} pushDownOptions Options to push down to the request (comes from connectionParameters._options)
  * @param {{ name:string, value:string}} extraHttpHeaders key/value pair of HTTP header (will override any other headers)
  * @memberof SOAP
  */
 class SoapMethodCall {
     
-    constructor(transport, urn, methodName, sessionToken, securityToken, userAgentString, charset, extraHttpHeaders) {
+    constructor(transport, urn, methodName, sessionToken, securityToken, userAgentString, pushDownOptions, extraHttpHeaders) {
         this.request = undefined;       // The HTTP request (object litteral passed to the transport layer)
+        this.requestOptions = undefined;
         this.response = undefined;      // The HTTP response object (in case of success)
 
         // Current URN and method (for error reporting)
@@ -102,7 +103,8 @@ class SoapMethodCall {
         this._sessionToken = sessionToken || "";
         this._securityToken = securityToken || "";
         this._userAgentString = userAgentString;
-        this._charset = charset || "";
+        this._pushDownOptions = pushDownOptions || {};
+        this._charset = this._pushDownOptions.charset || '';
         this._extraHttpHeaders = extraHttpHeaders || {};
 
         // THe SOAP call being built
@@ -517,7 +519,7 @@ class SoapMethodCall {
      * @param {string} url is the Campaign SOAP endpoint (soaprouter.jsp)
      * @returns {Object} an options object describing the HTTP request, with cookies, headers and body
      */
-    _createHTTPRequest(url) {
+    _createHTTPRequest(url, requestOptions) {
 
         const headers = {
             'Content-type': `application/soap+xml${this._charset ? ";charset=" + this._charset : ""}`,
@@ -533,23 +535,28 @@ class SoapMethodCall {
             if (this.internal) headers["ACC-SDK-Call-Internal"] = "1";
         }
 
-        const options = {
+        const request = {
             url: url,
             method: 'POST',
             headers: headers,
             data: DomUtil.toXMLString(this._doc)
         };
         if (this._sessionToken)
-            options.headers.Cookie = '__sessiontoken=' + this._sessionToken;
+            request.headers.Cookie = '__sessiontoken=' + this._sessionToken;
         if (this._userAgentString)
-            options.headers['User-Agent'] = this._userAgentString;
+            request.headers['User-Agent'] = this._userAgentString;
 
         // Override http headers with custom headers
         for (let h in this._extraHttpHeaders) {
-            options.headers[h] = this._extraHttpHeaders[h];
+            request.headers[h] = this._extraHttpHeaders[h];
         }
 
-        return options;
+        const extraOptions = {
+            ...this._pushDownOptions,
+            ...requestOptions,
+        };
+        
+        return [ request, extraOptions ];
     }
     
     /**
@@ -595,9 +602,11 @@ class SoapMethodCall {
             sessionTokenElem.textContent = this._sessionToken;
             this._method.prepend(sessionTokenElem);
         }
-        const options = this._createHTTPRequest(url);
+        const noMethodInURL = !!this._pushDownOptions.noMethodInURL;
+        const actualUrl = noMethodInURL ? url : `${url}?${this.urn}#${this.methodName}`;
+
         // Prepare request and empty response objects
-        this.request = options;
+        [this.request, this.requestOptions] = this._createHTTPRequest(actualUrl);
         this.response = undefined;
     }
 
@@ -610,7 +619,7 @@ class SoapMethodCall {
      */
     async execute() {
         const that = this;
-        const promise = this._transport(this.request);
+        const promise = this._transport(this.request, this.requestOptions);
         return promise.then(function(body) {
             if (body.indexOf(`XSV-350008`) != -1)
                 throw CampaignException.SESSION_EXPIRED();

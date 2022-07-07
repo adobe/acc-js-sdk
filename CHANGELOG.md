@@ -9,6 +9,10 @@ This is a node.js SDK for Campaign API. It exposes the Campaign API exactly like
 _2022/06/xx_
 
 * Added `application.version` which returns the server version in the format major.minor.servicePack (ex: 8.2.10)
+* Added the ability to push down parameters to the SOAP and transport layers. See the pushDown section of the readme file.
+* The pushDown mechanism can be used to simply overwrite the request timeout, either globally or at the method level
+* Publicly export the HttpError class so that custom transports can be written more safely. A failure during transport should return an HttpError object
+* By default, the SOAP method name is now added in the URLs for better troubleshooting
 
 ## Version 1.1.3
 _2022/05/30_

@@ -52,13 +52,14 @@ if (!Util.isBrowser()) {
    * - request
    */
 
-  const request = (options) => {
+   const request = (options, requestOptions) => {
+    requestOptions = requestOptions || {};
     const request = {
       method: options.method || "GET",
       url: options.url,
       headers: options.headers,
       data: options.data,
-      timeout: 5000,
+      timeout: requestOptions.timeout || 5000,
     };
     return axios(request)
     .then((response) => {

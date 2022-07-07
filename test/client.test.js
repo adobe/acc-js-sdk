@@ -2803,4 +2803,85 @@ describe('ACC Client', function () {
             });
         });
     });
+
+    describe("Pushdown parameters", () => {
+        it("Should push down custom parameters", async () => {
+            const client = await Mock.makeClient();
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+            client._transport.mockReturnValueOnce(Mock.GET_XTK_QUERY_SCHEMA_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_QUERY_EXECUTE_RESPONSE);
+            const queryDef = {
+                "schema": "nms:extAccount",
+                "operation": "select",
+                "select": {
+                    "node": [
+                        { "expr": "@id" },
+                        { "expr": "@name" }
+                    ]
+                }
+            };
+            // Pushing down the foo=bar attributes
+            const query = client.NLWS.pushDown({'foo': 'bar'}).xtkQueryDef.create(queryDef);
+            await query.executeQuery();
+            const lastCall = client._transport.mock.calls[client._transport.mock.calls.length-1];
+            expect(lastCall[0].url).toBe("http://acc-sdk:8080/nl/jsp/soaprouter.jsp?xtk:queryDef#ExecuteQuery");
+            expect(lastCall[1].charset).toBe("UTF-8");
+            expect(lastCall[1].foo).toBe("bar");
+        });
+
+        it("Should push down custom parameters defined at the connection level", async () => {
+            const client = await Mock.makeClient({ 'cnxDefault': 3, 'foo': 'foo' });
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+            client._transport.mockReturnValueOnce(Mock.GET_XTK_QUERY_SCHEMA_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_QUERY_EXECUTE_RESPONSE);
+            const queryDef = {
+                "schema": "nms:extAccount",
+                "operation": "select",
+                "select": {
+                    "node": [
+                        { "expr": "@id" },
+                        { "expr": "@name" }
+                    ]
+                }
+            };
+            // Pushing down the foo=bar attributes (should overload the "foo" set in connecion parameters)
+            const query = client.NLWS.pushDown({'foo': 'bar'}).xtkQueryDef.create(queryDef);
+            await query.executeQuery();
+            const lastCall = client._transport.mock.calls[client._transport.mock.calls.length-1];
+            expect(lastCall[0].url).toBe("http://acc-sdk:8080/nl/jsp/soaprouter.jsp?xtk:queryDef#ExecuteQuery");
+            expect(lastCall[1].charset).toBe("UTF-8");
+            expect(lastCall[1].foo).toBe("bar");
+            expect(lastCall[1].cnxDefault).toBe(3);
+        });
+
+        it("Should chain push options", async () => {
+            const client = await Mock.makeClient({ 'cnxDefault': 3, 'foo': 'foo' });
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+            client._transport.mockReturnValueOnce(Mock.GET_XTK_QUERY_SCHEMA_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_QUERY_EXECUTE_RESPONSE);
+            const queryDef = {
+                "schema": "nms:extAccount",
+                "operation": "select",
+                "select": {
+                    "node": [
+                        { "expr": "@id" },
+                        { "expr": "@name" }
+                    ]
+                }
+            };
+            // Supports multiple calls to pushDown. each one overrides the previous in case of duplicate key
+            // Also supports undefined
+            const query = client.NLWS.pushDown({'foo': 'bar'}).pushDown().pushDown({'foo': 'fu', x: 2 }).xtkQueryDef.create(queryDef);
+            await query.executeQuery();
+            const lastCall = client._transport.mock.calls[client._transport.mock.calls.length-1];
+            expect(lastCall[0].url).toBe("http://acc-sdk:8080/nl/jsp/soaprouter.jsp?xtk:queryDef#ExecuteQuery");
+            expect(lastCall[1].charset).toBe("UTF-8");
+            expect(lastCall[1].foo).toBe("fu");
+            expect(lastCall[1].cnxDefault).toBe(3);
+            expect(lastCall[1].x).toBe(2);
+        });
+    });
 });
