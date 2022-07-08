@@ -1453,17 +1453,17 @@ console.log(`>> Event: ${JSON.stringify(event)}`);
 ```
 
 # File Upload
-This API is used to upload a file and return the metadata that needs to be saved in delivery.
+This API is used to upload a file and return the metadata that needs to be saved in delivery. Currently, this API is supported only in Browser. 
 ```
-await client.fileUploader.upload(file);
+await client.fileUploader.upload(file); 
 ```
-will return
+where file is an instance of [File](https://developer.mozilla.org/en-US/docs/Web/API/File), will return
 ```
 {
-  label: <file-name>,
-  md5: <md5-of-file-content>,
-  type: <file-type>,
-  size: <file-size-in-bytes>,
+  name: <name-referenceed-by-file-object>, // file.name
+  md5: <md5-of-file-content>, 
+  type: <mime-type-referenceed-by-file-object>, // file.type
+  size: <size-in-bytes-referenceed-by-file-object>, // file.size
   url: <public-url-of-uploaded-file>
 }
 ```
