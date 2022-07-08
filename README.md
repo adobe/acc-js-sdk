@@ -1453,7 +1453,7 @@ console.log(`>> Event: ${JSON.stringify(event)}`);
 ```
 
 # File Upload
-This API is used to upload a file and return the metadata that needs to be saved in delivery. Currently, this API is supported only in Browser. 
+This API is used to upload a file and return the metadata that needs to be saved in delivery. Currently, this API is supported only in Browsers. 
 ```
 await client.fileUploader.upload(file); 
 ```
