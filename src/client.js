@@ -483,7 +483,7 @@ governing permissions and limitations under the License.
   const fileUploader = (client) => {
   /**
    * Will call the SOAP method(IncreaseValue) to increament the counter
-   * @returns {Promise<number|*>}
+   * @returns {Promise<number>}
    */
     const _increaseValue = async () => {
       const xtkCounter= await client.NLWS.xtkCounter.increaseValue({name: 'xtkResource'});
@@ -491,7 +491,7 @@ governing permissions and limitations under the License.
     }
 
     /**
-     * This will create fileRes object
+     * This will create and return fileRes object
      * @param counter
      * @param data
      * @returns {{originalName, internalName: string, fileName, useMd5AsFilename: string, xtkschema: string, storageType: number, label, md5: (string|string|string|null|any|number)}}
@@ -522,7 +522,7 @@ governing permissions and limitations under the License.
     }
 
     /**
-   * This will call the SOAP method PublishIfNedded to publish the fileRes object
+   * This will call the SOAP method(PublishIfNeeded) to publish the fileRes object
    * @param fileRes
    * @returns {Promise<void>}
    * @private
@@ -532,9 +532,9 @@ governing permissions and limitations under the License.
     }
 
     /**
-       * This Will return the public URL of the uploaded file.
+       * This Will call the SOAP method(GetURL) which returns the public URL of the uploaded file.
        * @param fileRes
-       * @returns {Promise<*>}
+       * @returns {Promise<string>}
        * @private
        */
     const _getPublicUrl = async (fileRes) => {
