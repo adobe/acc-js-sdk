@@ -62,24 +62,6 @@ function propagateImplicitValues(xtkDesc, labelOnly) {
     if (!labelOnly && !xtkDesc.description) xtkDesc.description = xtkDesc.label;
 }
 
-// ========================================================================================
-// Schema Cache
-// ========================================================================================
-class SchemaCache {
-    constructor(client) {
-        this._client = client;
-        this._schemas = {};
-    }
-    async getSchema(schemaId) {
-        let schema = this._schemas[schemaId];
-        if (schema === undefined) {
-            schema = await this._client.application._getSchema(schemaId);
-            if (!schema) schema = null; // null = not found
-        this._schemas[schemaId] = schema;
-        }
-        return schema;
-    }
-}
 
 // ========================================================================================
 // Keys
@@ -1197,7 +1179,6 @@ class Application {
      */
     constructor(client) {
         this.client = client;
-        this._schemaCache = new SchemaCache(client);
         const info = this.client.getSessionInfo();
         // When using "SessionToken" authentication, there is no actual logon, and therefore
         // no "sessionInfo" object
@@ -1237,8 +1218,8 @@ class Application {
      * @param {string} schemaId 
      * @returns {Campaign.XtkSchema} the schema, or null if the schema was not found
      */
-     async getSchema(schemaId) {
-        return this._getSchema(schemaId);
+    async getSchema(schemaId) {
+      return this._getSchema(schemaId);
     }
 
     // Private function: get a schema without using the cache
@@ -1297,5 +1278,4 @@ exports.Application = Application;
 // For tests
 exports.newSchema = newSchema;
 exports.newCurrentLogin = newCurrentLogin;
-exports.SchemaCache = SchemaCache;
 })();
