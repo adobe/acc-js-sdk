@@ -24,6 +24,8 @@ const Mock = require('./mock.js').Mock;
 const { HttpError } = require('../src/transport.js');
 const { Cipher } = require('../src/crypto.js');
 const { EntityAccessor } = require('../src/entityAccessor.js');
+const { JSDOM } = require('jsdom');
+const dom = new JSDOM()
 
 
 describe('ACC Client', function () {
@@ -2805,10 +2807,109 @@ describe('ACC Client', function () {
     });
 
     describe('File uploader', () => {
-        it('is supported in browser', async ()=> {
+        it('is not supported on server', async ()=> {
             const client = await Mock.makeClient();
             expect(client.fileUploader).toBeDefined()
             await expect(client.fileUploader.upload()).rejects.toEqual('File uploading is only supported in browser based calls.')
         })
     })
 });
+
+describe.skip('File uploader', () => {
+    beforeEach(() => {
+        global.document = dom.window.document
+        global.window = dom.window
+        global.FormData = function () {
+            this.append = jest.fn()
+        }
+        const okay = `
+            <html xmlns="http://www.w3.org/1999/xhtml">
+                <head>
+                  <script type="text/javascript">if(window.parent&&window.parent.document.controller&&"function"==typeof window.parent.document.controller.uploadFileCallBack){var aFilesInfo=new Array;aFilesInfo.push({paramName:"file",fileName:"test.txt",newFileName:"d8e8fca2dc0f896fd7cb4cb0031ba249.txt",md5:"d8e8fca2dc0f896fd7cb4cb0031ba249"}),window.parent.document.controller.uploadFileCallBack(aFilesInfo)}</script>
+                </head>
+            <body></body>
+            </html>
+        `;
+        global.fetch = () => {
+                return Promise.resolve({
+                    // text: () => Promise.resolve('Ok<html xmlns="http://www.w3.org/1999/xhtml"><head><script type="text/javascript">if(window.parent&&window.parent.document.controller&&"function"==typeof window.parent.document.controller.uploadFileCallBack){var aFilesInfo=new Array;aFilesInfo.push({paramName:"file",fileName:"test.txt",newFileName:"d8e8fca2dc0f896fd7cb4cb0031ba249.txt",md5:"d8e8fca2dc0f896fd7cb4cb0031ba249"}),window.parent.document.controller.uploadFileCallBack(aFilesInfo)}</script></head><body></body></html>'),
+                    text: () => Promise.resolve(okay),
+                })
+            }
+
+
+
+        const mockUploadFileCallBack = (data) => {
+            console.log(data);
+        }
+
+        // Evaluates some JS code returned by the upload.jsp. We assume this JS will call the uploadFileCallBack callabck.
+        function evalInScope(js) {
+            const data = eval(`
+                (function () {
+                    var result = undefined;
+                    global.window.parent= {
+                            document: {
+                                controller: {
+                                    uploadFileCallBack: (data) => {
+                                        result = data;
+                                    }
+                                }
+                            }
+                        }
+                    
+
+                    ${js}
+
+                    return result;
+                }())
+            `);
+            mockUploadFileCallBack(data);
+        }
+
+        // Dynamically mock the iframe.contentWindow.document.close(); function
+        const handler = {
+            get: function (target, prop, receiver) {
+                if (prop === 'contentWindow') {
+                    target.contentWindow.document.close = () => {
+                        console.log("Close", DomUtil.toXMLString(target.contentWindow.document.documentElement));
+                        var scripts = target.contentWindow.document.getElementsByTagName('script');
+                        for (let i = 0; i < scripts.length; i++) {
+                            const script = scripts[i];
+                            const js = DomUtil.elementValue(script);
+                            //console.log(js);
+                            evalInScope(js);
+                        }
+                    }
+                }
+                return Reflect.get(...arguments);
+            }
+        };
+
+        const _origiinalCreateElement = document.createElement;
+
+        // Intercept creation of iframe. returns a proxy which will intercept the iframe.contentWindow.document.close(); function
+        global.document.createElement = (tagName) => {
+            const r = _origiinalCreateElement.call(document, tagName);
+            if (tagName === 'iframe') {
+                const p = new Proxy(r, handler);
+                return p;
+            }
+            return r;
+        };
+    })
+    it('is supported in browser', async () => {
+        const client = await Mock.makeClient();
+        client._transport.mockReturnValueOnce(Mock.INCREASE_VALUE_RESPONSE);
+        client._transport.mockReturnValueOnce(Mock.FILE_RES_WRITE_RESPONSE);
+        expect(client.fileUploader).toBeDefined()
+
+
+        await expect(client.fileUploader.upload({
+            type: 'text/html',
+            size: 12345
+        })).rejects.toBeTruthy()
+
+
+    })
+})
