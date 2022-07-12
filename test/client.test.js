@@ -2815,40 +2815,23 @@ describe('ACC Client', function () {
     })
 });
 
-describe.skip('File uploader', () => {
+describe('File uploader', () => {
     beforeEach(() => {
         global.document = dom.window.document
         global.window = dom.window
         global.FormData = function () {
             this.append = jest.fn()
         }
-        const okay = `
-            <html xmlns="http://www.w3.org/1999/xhtml">
-                <head>
-                  <script type="text/javascript">if(window.parent&&window.parent.document.controller&&"function"==typeof window.parent.document.controller.uploadFileCallBack){var aFilesInfo=new Array;aFilesInfo.push({paramName:"file",fileName:"test.txt",newFileName:"d8e8fca2dc0f896fd7cb4cb0031ba249.txt",md5:"d8e8fca2dc0f896fd7cb4cb0031ba249"}),window.parent.document.controller.uploadFileCallBack(aFilesInfo)}</script>
-                </head>
-            <body></body>
-            </html>
-        `;
-        global.fetch = () => {
-                return Promise.resolve({
-                    // text: () => Promise.resolve('Ok<html xmlns="http://www.w3.org/1999/xhtml"><head><script type="text/javascript">if(window.parent&&window.parent.document.controller&&"function"==typeof window.parent.document.controller.uploadFileCallBack){var aFilesInfo=new Array;aFilesInfo.push({paramName:"file",fileName:"test.txt",newFileName:"d8e8fca2dc0f896fd7cb4cb0031ba249.txt",md5:"d8e8fca2dc0f896fd7cb4cb0031ba249"}),window.parent.document.controller.uploadFileCallBack(aFilesInfo)}</script></head><body></body></html>'),
-                    text: () => Promise.resolve(okay),
-                })
-            }
 
-
-
-        const mockUploadFileCallBack = (data) => {
-            console.log(data);
-        }
-
-        // Evaluates some JS code returned by the upload.jsp. We assume this JS will call the uploadFileCallBack callabck.
-        function evalInScope(js) {
+        // Evaluates JavaScript code returned by the upload.jsp. Evaluation is done in the context
+        // of an iframe and will call the parent window document.controller uploadFileCallBack 
+        // function
+        function evalJSReturnedByUploadJSP(js) {
             const data = eval(`
                 (function () {
                     var result = undefined;
-                    global.window.parent= {
+                    window = {
+                        parent: {
                             document: {
                                 controller: {
                                     uploadFileCallBack: (data) => {
@@ -2857,14 +2840,13 @@ describe.skip('File uploader', () => {
                                 }
                             }
                         }
-                    
-
-                    ${js}
-
+                    };
+                    ${js};
                     return result;
                 }())
             `);
-            mockUploadFileCallBack(data);
+            // Call real callback
+            global.document.controller.uploadFileCallBack(data);
         }
 
         // Dynamically mock the iframe.contentWindow.document.close(); function
@@ -2877,8 +2859,7 @@ describe.skip('File uploader', () => {
                         for (let i = 0; i < scripts.length; i++) {
                             const script = scripts[i];
                             const js = DomUtil.elementValue(script);
-                            //console.log(js);
-                            evalInScope(js);
+                            evalJSReturnedByUploadJSP(js);
                         }
                     }
                 }
@@ -2886,9 +2867,9 @@ describe.skip('File uploader', () => {
             }
         };
 
-        const _origiinalCreateElement = document.createElement;
 
         // Intercept creation of iframe. returns a proxy which will intercept the iframe.contentWindow.document.close(); function
+        const _origiinalCreateElement = document.createElement;
         global.document.createElement = (tagName) => {
             const r = _origiinalCreateElement.call(document, tagName);
             if (tagName === 'iframe') {
@@ -2897,18 +2878,118 @@ describe.skip('File uploader', () => {
             }
             return r;
         };
-    })
+    });
+    
     it('is supported in browser', async () => {
+        // Create a mock client and logon
         const client = await Mock.makeClient();
+        client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+        client._transport._xxx = 3;
+        await client.NLWS.xtkSession.logon();
+
+        // Mock the upload protocol
+        // - the upload.jsp (which returns the content of an iframe and JS to eval)
+        // - call to xtk:counter#IncreaseValue (first, retreive the schema xtk:counter then call the function)
+        // - call to xtk:session#Write
+        // - call to xtk:fileRes#PublishIfNeeded
+        // - call to xtk:fileRes#GetURL
+
+        client._transport.mockReturnValueOnce(Promise.resolve(`
+        <html xmlns="http://www.w3.org/1999/xhtml">
+            <head>
+              <script type="text/javascript">if(window.parent&&window.parent.document.controller&&"function"==typeof window.parent.document.controller.uploadFileCallBack){var aFilesInfo=new Array;aFilesInfo.push({paramName:"file",fileName:"test.txt",newFileName:"d8e8fca2dc0f896fd7cb4cb0031ba249.txt",md5:"d8e8fca2dc0f896fd7cb4cb0031ba249"}),window.parent.document.controller.uploadFileCallBack(aFilesInfo)}</script>
+            </head>
+        <body></body>
+        </html>`));
+
+        client._transport.mockReturnValueOnce(Promise.resolve(`<?xml version='1.0'?>
+        <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:wpp:default' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
+        <SOAP-ENV:Body>
+            <GetEntityIfMoreRecentResponse xmlns='urn:wpp:default' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
+                <pdomDoc xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
+                    <schema name="counter" namespace="xtk" xtkschema="xtk:schema">
+                        <element name="counter"></element>
+                        <methods>
+                        <method name="IncreaseValue" static="true">
+                          <parameters>
+                            <param name="name" type="string" label="Name" desc="Counter name"/>
+                            <param name="value" type="long" inout="out" label="Value" desc="New value of counter"/>
+                          </parameters>
+                        </method>
+                      </methods>                   
+                       </schema>
+                </pdomDoc>
+            </GetEntityIfMoreRecentResponse>
+        </SOAP-ENV:Body>
+        </SOAP-ENV:Envelope>`));
         client._transport.mockReturnValueOnce(Mock.INCREASE_VALUE_RESPONSE);
+
+        client._transport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
         client._transport.mockReturnValueOnce(Mock.FILE_RES_WRITE_RESPONSE);
-        expect(client.fileUploader).toBeDefined()
 
+        client._transport.mockReturnValueOnce(Promise.resolve(`<?xml version='1.0'?>
+        <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:wpp:default' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
+        <SOAP-ENV:Body>
+            <GetEntityIfMoreRecentResponse xmlns='urn:wpp:default' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
+                <pdomDoc xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
+                    <schema name="fileRes" namespace="xtk" xtkschema="xtk:schema">
+                        <element name="fileRes"></element>
+                        <methods>
+                        <method name="PublishIfNeeded">
+                        </method>
+                        <method name="GetURL">
+                        <parameters>
+                          <param name="url" type="string" inout="out"/>
+                        </parameters>
+                          </method>
+                    </methods>                   
+                       </schema>
+                </pdomDoc>
+            </GetEntityIfMoreRecentResponse>
+        </SOAP-ENV:Body>
+        </SOAP-ENV:Envelope>`));
+        client._transport.mockReturnValueOnce(Promise.resolve(`<?xml version='1.0'?>
+<SOAP-ENV:Envelope
+    xmlns:xsd='http://www.w3.org/2001/XMLSchema'
+    xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance'
+    xmlns:ns='urn:xtk:fileRes'
+    xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
+    <SOAP-ENV:Body>
+        <PublishIfNeededResponse
+            xmlns='urn:xtk:fileRes' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
+        </PublishIfNeededResponse>
+    </SOAP-ENV:Body>
+</SOAP-ENV:Envelope>
+`));
 
-        await expect(client.fileUploader.upload({
+        client._transport.mockReturnValueOnce(Promise.resolve(`<?xml version='1.0'?>
+<SOAP-ENV:Envelope
+    xmlns:xsd='http://www.w3.org/2001/XMLSchema'
+    xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance'
+    xmlns:ns='urn:xtk:fileRes'
+    xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
+    <SOAP-ENV:Body>
+        <GetURLResponse
+            xmlns='urn:xtk:fileRes' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
+            <pUrl xsi:type='xsd:string'>http://hello.com</pUrl>
+        </GetURLResponse>
+    </SOAP-ENV:Body>
+</SOAP-ENV:Envelope>
+
+`));
+
+        // Call upload
+        const result = await client.fileUploader.upload({
             type: 'text/html',
             size: 12345
-        })).rejects.toBeTruthy()
+        });
+        expect(result).toMatchObject({
+            md5: "d8e8fca2dc0f896fd7cb4cb0031ba249",
+            name: "test.txt",
+            size: 12345,
+            type: "text/html",
+            url: "http://hello.com"
+        });
 
 
     })

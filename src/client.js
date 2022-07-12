@@ -540,6 +540,7 @@ governing permissions and limitations under the License.
     const _getPublicUrl = async (fileRes) => {
       return await client.NLWS.xtkFileRes.create(fileRes).getURL()
     }
+
     return {
       /**
         * This is the exposed/public method for fileUploader instance which will do all the processing related to the upload process internally and returns the promise containing all the required data.
@@ -547,25 +548,28 @@ governing permissions and limitations under the License.
         * @returns {Promise<{name: string, md5: string, type: string, size: string, url: string}>}
         */
       upload: async (file) => {
-        return new Promise(async (resolve, reject) => {
+        return new Promise((resolve, reject) => {
           if (!Util.isBrowser()) {
             reject('File uploading is only supported in browser based calls.');
           }
-          try {
-            var data = new FormData()
-            data.append('file_noMd5', file)
-            //TODO: Needs to be refactored after cookie issue get resolved.
-            const response = await fetch(`${client._connectionParameters._endpoint}/nl/jsp/uploadFile.jsp`, {
-              processData: false,
-              credentials: 'include',
-              method: 'POST',
-              body: data,
-              headers: {
-                'x-security-token': client._securityToken,
-                'Cookie': '__sessiontoken=' + client._sessionToken,
-              }
-            })
-            const okay = await response.text()
+          //try {
+          var data = new FormData();
+          data.append('file_noMd5', file);
+          //TODO: Needs to be refactored after cookie issue get resolved.
+
+          const httpPromise = client._makeHttpCall({
+            url: `${client._connectionParameters._endpoint}/nl/jsp/uploadFile.jsp`,
+            processData: false,
+            credentials: 'include',
+            method: 'POST',
+            body: data,
+            headers: {
+              'x-security-token': client._securityToken,
+              'Cookie': '__sessiontoken=' + client._sessionToken,
+            }
+          });
+          httpPromise.then((okay) => {
+            //const okay = await response.data;
             var iframe = document.createElement('iframe');
             iframe.style.height = 0;
             iframe.style.width = 0;
@@ -590,9 +594,14 @@ governing permissions and limitations under the License.
             iframe.contentWindow.document.open();
             iframe.contentWindow.document.write(html);
             iframe.contentWindow.document.close();
-          } catch (ex) {
-            reject(ex);
-          }
+          })
+            .catch((error) => {
+              reject(error);
+            })
+
+          //} catch (ex) {
+          //  reject(ex);
+          //}
         })
       }
     }
