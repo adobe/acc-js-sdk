@@ -2108,6 +2108,7 @@ describe('Application', () => {
             const application = client.application;
             expect(application).not.toBeNull();
             expect(application.buildNumber).toBeUndefined();
+            expect(application.version).toBeUndefined();
             expect(application.instanceName).toBeUndefined();
             expect(application.operator).toBeUndefined();
             expect(application.package).toBeUndefined();
@@ -2145,4 +2146,14 @@ describe('Application', () => {
             expect(schema2).toBeNull();
         });
     });
+
+    describe("Version", () => {
+        it("Should get proper version information", async () => {
+            const client = await Mock.makeClient();
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+            expect(client.application.buildNumber).toBe('9219');
+            expect(client.application.version).toBe('6.7.0');
+        })
+    })
 });

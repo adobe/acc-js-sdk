@@ -27,7 +27,6 @@ const { EntityAccessor } = require('../src/entityAccessor.js');
 const { JSDOM } = require('jsdom');
 const dom = new JSDOM()
 
-
 describe('ACC Client', function () {
 
   describe('Init', function () {
@@ -2283,17 +2282,19 @@ describe('ACC Client', function () {
     });
 
     it("Should ignore protocol for local storage root key", async () => {
+      const version = sdk.getSDKVersion().version; // "${version}" or similar
+
       var connectionParameters = sdk.ConnectionParameters.ofUserAndPassword("http://acc-sdk:8080", "admin", "admin", {});
       var client = await sdk.init(connectionParameters);
-      expect(client._optionCache._storage._rootKey).toBe("acc.js.sdk.1.1.3.acc-sdk:8080.cache.OptionCache$");
+      expect(client._optionCache._storage._rootKey).toBe(`acc.js.sdk.${version}.acc-sdk:8080.cache.OptionCache$`);
 
       connectionParameters = sdk.ConnectionParameters.ofUserAndPassword("https://acc-sdk:8080", "admin", "admin", {});
       client = await sdk.init(connectionParameters);
-      expect(client._optionCache._storage._rootKey).toBe("acc.js.sdk.1.1.3.acc-sdk:8080.cache.OptionCache$");
+      expect(client._optionCache._storage._rootKey).toBe(`acc.js.sdk.${version}.acc-sdk:8080.cache.OptionCache$`);
 
       connectionParameters = sdk.ConnectionParameters.ofUserAndPassword("acc-sdk:8080", "admin", "admin", {});
       client = await sdk.init(connectionParameters);
-      expect(client._optionCache._storage._rootKey).toBe("acc.js.sdk.1.1.3.acc-sdk:8080.cache.OptionCache$");
+      expect(client._optionCache._storage._rootKey).toBe(`acc.js.sdk.${version}.acc-sdk:8080.cache.OptionCache$`);
     })
 
     it("Should support no storage", async () => {
@@ -2806,28 +2807,108 @@ describe('ACC Client', function () {
     });
   });
 
-  describe('File uploader', () => {
-    it('is not supported on server', async ()=> {
+  describe("Pushdown parameters", () => {
+    it("Should push down custom parameters", async () => {
+      const client = await Mock.makeClient();
+      client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+      await client.NLWS.xtkSession.logon();
+      client._transport.mockReturnValueOnce(Mock.GET_XTK_QUERY_SCHEMA_RESPONSE);
+      client._transport.mockReturnValueOnce(Mock.GET_QUERY_EXECUTE_RESPONSE);
+      const queryDef = {
+        "schema": "nms:extAccount",
+        "operation": "select",
+        "select": {
+          "node": [
+            { "expr": "@id" },
+            { "expr": "@name" }
+          ]
+        }
+      };
+      // Pushing down the foo=bar attributes
+      const query = client.NLWS.pushDown({'foo': 'bar'}).xtkQueryDef.create(queryDef);
+      await query.executeQuery();
+      const lastCall = client._transport.mock.calls[client._transport.mock.calls.length-1];
+      expect(lastCall[0].url).toBe("http://acc-sdk:8080/nl/jsp/soaprouter.jsp?xtk:queryDef#ExecuteQuery");
+      expect(lastCall[1].charset).toBe("UTF-8");
+      expect(lastCall[1].foo).toBe("bar");
+    });
+
+    it("Should push down custom parameters defined at the connection level", async () => {
+      const client = await Mock.makeClient({ 'cnxDefault': 3, 'foo': 'foo' });
+      client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+      await client.NLWS.xtkSession.logon();
+      client._transport.mockReturnValueOnce(Mock.GET_XTK_QUERY_SCHEMA_RESPONSE);
+      client._transport.mockReturnValueOnce(Mock.GET_QUERY_EXECUTE_RESPONSE);
+      const queryDef = {
+        "schema": "nms:extAccount",
+        "operation": "select",
+        "select": {
+          "node": [
+            { "expr": "@id" },
+            { "expr": "@name" }
+          ]
+        }
+      };
+      // Pushing down the foo=bar attributes (should overload the "foo" set in connecion parameters)
+      const query = client.NLWS.pushDown({'foo': 'bar'}).xtkQueryDef.create(queryDef);
+      await query.executeQuery();
+      const lastCall = client._transport.mock.calls[client._transport.mock.calls.length-1];
+      expect(lastCall[0].url).toBe("http://acc-sdk:8080/nl/jsp/soaprouter.jsp?xtk:queryDef#ExecuteQuery");
+      expect(lastCall[1].charset).toBe("UTF-8");
+      expect(lastCall[1].foo).toBe("bar");
+      expect(lastCall[1].cnxDefault).toBe(3);
+    });
+
+    it("Should chain push options", async () => {
+      const client = await Mock.makeClient({ 'cnxDefault': 3, 'foo': 'foo' });
+      client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+      await client.NLWS.xtkSession.logon();
+      client._transport.mockReturnValueOnce(Mock.GET_XTK_QUERY_SCHEMA_RESPONSE);
+      client._transport.mockReturnValueOnce(Mock.GET_QUERY_EXECUTE_RESPONSE);
+      const queryDef = {
+        "schema": "nms:extAccount",
+        "operation": "select",
+        "select": {
+          "node": [
+            { "expr": "@id" },
+            { "expr": "@name" }
+          ]
+        }
+      };
+      // Supports multiple calls to pushDown. each one overrides the previous in case of duplicate key
+      // Also supports undefined
+      const query = client.NLWS.pushDown({'foo': 'bar'}).pushDown().pushDown({'foo': 'fu', x: 2 }).xtkQueryDef.create(queryDef);
+      await query.executeQuery();
+      const lastCall = client._transport.mock.calls[client._transport.mock.calls.length-1];
+      expect(lastCall[0].url).toBe("http://acc-sdk:8080/nl/jsp/soaprouter.jsp?xtk:queryDef#ExecuteQuery");
+      expect(lastCall[1].charset).toBe("UTF-8");
+      expect(lastCall[1].foo).toBe("fu");
+      expect(lastCall[1].cnxDefault).toBe(3);
+      expect(lastCall[1].x).toBe(2);
+    });
+  });
+
+  describe('File uploader - on server', () => {
+    it('is not supported', async ()=> {
       const client = await Mock.makeClient();
       expect(client.fileUploader).toBeDefined()
       await expect(client.fileUploader.upload()).rejects.toEqual('File uploading is only supported in browser based calls.')
     })
   })
-});
 
-describe('File uploader', () => {
-  beforeEach(() => {
-    global.document = dom.window.document
-    global.window = dom.window
-    global.FormData = function () {
-      this.append = jest.fn()
-    }
+  describe('File uploader - on browser', () => {
+    beforeEach(() => {
+      global.document = dom.window.document
+      global.window = dom.window
+      global.FormData = function () {
+        this.append = jest.fn()
+      }
 
-    // Evaluates JavaScript code returned by the upload.jsp. Evaluation is done in the context
-    // of an iframe and will call the parent window document.controller uploadFileCallBack
-    // function
-    function evalJSReturnedByUploadJSP(js) {
-      const data = eval(`
+      // Evaluates JavaScript code returned by the upload.jsp. Evaluation is done in the context
+      // of an iframe and will call the parent window document.controller uploadFileCallBack
+      // function
+      function evalJSReturnedByUploadJSP(js) {
+        const data = eval(`
                 (function () {
                     var result = undefined;
                     window = {
@@ -2845,56 +2926,56 @@ describe('File uploader', () => {
                     return result;
                 }())
             `);
-      // Call real callback
-      global.document.controller.uploadFileCallBack(data);
-    }
+        // Call real callback
+        global.document.controller.uploadFileCallBack(data);
+      }
 
-    // Dynamically mock the iframe.contentWindow.document.close(); function
-    const handler = {
-      get: function (target, prop) {
-        if (prop === 'contentWindow') {
-          target.contentWindow.document.close = () => {
-            var scripts = target.contentWindow.document.getElementsByTagName('script');
-            for (let i = 0; i < scripts.length; i++) {
-              const script = scripts[i];
-              const js = DomUtil.elementValue(script);
-              evalJSReturnedByUploadJSP(js);
+      // Dynamically mock the iframe.contentWindow.document.close(); function
+      const handler = {
+        get: function (target, prop) {
+          if (prop === 'contentWindow') {
+            target.contentWindow.document.close = () => {
+              var scripts = target.contentWindow.document.getElementsByTagName('script');
+              for (let i = 0; i < scripts.length; i++) {
+                const script = scripts[i];
+                const js = DomUtil.elementValue(script);
+                evalJSReturnedByUploadJSP(js);
+              }
             }
           }
+          return Reflect.get(...arguments);
         }
-        return Reflect.get(...arguments);
-      }
-    };
+      };
 
 
-    // Intercept creation of iframe. returns a proxy which will intercept the iframe.contentWindow.document.close(); function
-    const _origiinalCreateElement = document.createElement;
-    global.document.createElement = (tagName) => {
-      const r = _origiinalCreateElement.call(document, tagName);
-      if (tagName === 'iframe') {
-        const p = new Proxy(r, handler);
-        return p;
-      }
-      return r;
-    };
+      // Intercept creation of iframe. returns a proxy which will intercept the iframe.contentWindow.document.close(); function
+      const _origiinalCreateElement = document.createElement;
+      global.document.createElement = (tagName) => {
+        const r = _origiinalCreateElement.call(document, tagName);
+        if (tagName === 'iframe') {
+          const p = new Proxy(r, handler);
+          return p;
+        }
+        return r;
+      };
 
-  });
+    });
 
-  it('is supported in browser with successful post upload calls', async () => {
-    // Create a mock client and logon
-    const client = await Mock.makeClient();
-    client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
-    client._transport._xxx = 3;
-    await client.NLWS.xtkSession.logon();
+    it('works with successful post upload calls', async () => {
+      // Create a mock client and logon
+      const client = await Mock.makeClient();
+      client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+      client._transport._xxx = 3;
+      await client.NLWS.xtkSession.logon();
 
-    // Mock the upload protocol
-    // - the upload.jsp (which returns the content of an iframe and JS to eval)
-    // - call to xtk:counter#IncreaseValue (first, retreive the schema xtk:counter then call the function)
-    // - call to xtk:session#Write
-    // - call to xtk:fileRes#PublishIfNeeded
-    // - call to xtk:fileRes#GetURL
+      // Mock the upload protocol
+      // - the upload.jsp (which returns the content of an iframe and JS to eval)
+      // - call to xtk:counter#IncreaseValue (first, retreive the schema xtk:counter then call the function)
+      // - call to xtk:session#Write
+      // - call to xtk:fileRes#PublishIfNeeded
+      // - call to xtk:fileRes#GetURL
 
-    client._transport.mockReturnValueOnce(Promise.resolve(`
+      client._transport.mockReturnValueOnce(Promise.resolve(`
         <html xmlns="http://www.w3.org/1999/xhtml">
             <head>
               <script type="text/javascript">if(window.parent&&window.parent.document.controller&&"function"==typeof window.parent.document.controller.uploadFileCallBack){var aFilesInfo=new Array;aFilesInfo.push({paramName:"file",fileName:"test.txt",newFileName:"d8e8fca2dc0f896fd7cb4cb0031ba249.txt",md5:"d8e8fca2dc0f896fd7cb4cb0031ba249"}),window.parent.document.controller.uploadFileCallBack(aFilesInfo)}</script>
@@ -2902,66 +2983,67 @@ describe('File uploader', () => {
         <body></body>
         </html>`));
 
-    client._transport.mockReturnValueOnce(Promise.resolve(Mock.GET_XTK_COUNTER_RESPONSE));
-    client._transport.mockReturnValueOnce(Mock.INCREASE_VALUE_RESPONSE);
+      client._transport.mockReturnValueOnce(Promise.resolve(Mock.GET_XTK_COUNTER_RESPONSE));
+      client._transport.mockReturnValueOnce(Mock.INCREASE_VALUE_RESPONSE);
 
-    client._transport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
-    client._transport.mockReturnValueOnce(Mock.FILE_RES_WRITE_RESPONSE);
+      client._transport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
+      client._transport.mockReturnValueOnce(Mock.FILE_RES_WRITE_RESPONSE);
 
-    client._transport.mockReturnValueOnce(Promise.resolve(Mock.GET_FILERES_QUERY_SCHEMA_RESPONSE));
-    client._transport.mockReturnValueOnce(Promise.resolve(Mock.PUBLISH_IF_NEEDED_RESPONSE));
+      client._transport.mockReturnValueOnce(Promise.resolve(Mock.GET_FILERES_QUERY_SCHEMA_RESPONSE));
+      client._transport.mockReturnValueOnce(Promise.resolve(Mock.PUBLISH_IF_NEEDED_RESPONSE));
 
-    client._transport.mockReturnValueOnce(Promise.resolve(Mock.GET_URL_RESPONSE));
+      client._transport.mockReturnValueOnce(Promise.resolve(Mock.GET_URL_RESPONSE));
 
-    // Call upload
-    const result = await client.fileUploader.upload({
-      type: 'text/html',
-      size: 12345
-    })
-    expect(result).toMatchObject({
-      md5: "d8e8fca2dc0f896fd7cb4cb0031ba249",
-      name: "test.txt",
-      size: 12345,
-      type: "text/html",
-      url: "http://hello.com"
-    });
-  })
-
-  it('is supported in browser with partial failure', async () => {
-    // Create a mock client and logon
-    const client = await Mock.makeClient();
-    client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
-    client._transport._xxx = 3;
-    await client.NLWS.xtkSession.logon();
-
-    // Mock the upload protocol
-    // - the upload.jsp (which returns the content of an iframe and JS to eval)
-    // - call to xtk:counter#IncreaseValue (first, retreive the schema xtk:counter then call the function)
-    // - call to xtk:session#Write
-    // - call to xtk:fileRes#PublishIfNeeded
-    // - call to xtk:fileRes#GetURL
-
-    client._transport.mockReturnValueOnce(Promise.reject(`Some error occurred!!!`));
-
-    client._transport.mockReturnValueOnce(Promise.resolve(Mock.GET_XTK_COUNTER_RESPONSE));
-    client._transport.mockReturnValueOnce(Mock.INCREASE_VALUE_RESPONSE);
-
-    client._transport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
-    client._transport.mockReturnValueOnce(Mock.FILE_RES_WRITE_RESPONSE);
-
-    client._transport.mockReturnValueOnce(Promise.resolve(Mock.GET_FILERES_QUERY_SCHEMA_RESPONSE));
-    client._transport.mockReturnValueOnce(Promise.resolve(Mock.PUBLISH_IF_NEEDED_RESPONSE));
-
-    client._transport.mockReturnValueOnce(Promise.resolve(Mock.GET_URL_RESPONSE));
-    // For async handling
-    expect.assertions(1)
-    // Call upload
-    await client.fileUploader.upload({
-      type: 'text/html',
-      size: 12345
-    }).catch((ex) => {
-      expect(ex.message).toMatch('500 - Error calling method \'/nl/jsp/uploadFile.jsp\': Some error occurred!!!');
+      // Call upload
+      const result = await client.fileUploader.upload({
+        type: 'text/html',
+        size: 12345
+      })
+      expect(result).toMatchObject({
+        md5: "d8e8fca2dc0f896fd7cb4cb0031ba249",
+        name: "test.txt",
+        size: 12345,
+        type: "text/html",
+        url: "http://hello.com"
+      });
     })
 
+    it('throws error with dependant failures', async () => {
+      // Create a mock client and logon
+      const client = await Mock.makeClient();
+      client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+      client._transport._xxx = 3;
+      await client.NLWS.xtkSession.logon();
+
+      // Mock the upload protocol
+      // - the upload.jsp (which returns the content of an iframe and JS to eval)
+      // - call to xtk:counter#IncreaseValue (first, retreive the schema xtk:counter then call the function)
+      // - call to xtk:session#Write
+      // - call to xtk:fileRes#PublishIfNeeded
+      // - call to xtk:fileRes#GetURL
+
+      client._transport.mockReturnValueOnce(Promise.reject(`Some error occurred!!!`));
+
+      client._transport.mockReturnValueOnce(Promise.resolve(Mock.GET_XTK_COUNTER_RESPONSE));
+      client._transport.mockReturnValueOnce(Mock.INCREASE_VALUE_RESPONSE);
+
+      client._transport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
+      client._transport.mockReturnValueOnce(Mock.FILE_RES_WRITE_RESPONSE);
+
+      client._transport.mockReturnValueOnce(Promise.resolve(Mock.GET_FILERES_QUERY_SCHEMA_RESPONSE));
+      client._transport.mockReturnValueOnce(Promise.resolve(Mock.PUBLISH_IF_NEEDED_RESPONSE));
+
+      client._transport.mockReturnValueOnce(Promise.resolve(Mock.GET_URL_RESPONSE));
+      // For async handling
+      expect.assertions(1)
+      // Call upload
+      await client.fileUploader.upload({
+        type: 'text/html',
+        size: 12345
+      }).catch((ex) => {
+        expect(ex.message).toMatch('500 - Error calling method \'/nl/jsp/uploadFile.jsp\': Some error occurred!!!');
+      })
+
+    })
   })
-})
+});

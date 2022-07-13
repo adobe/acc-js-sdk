@@ -105,13 +105,13 @@ governing permissions and limitations under the License.
  * @private
  * @memberof Campaign
  */
-  const clientHandler = (representation, headers) => {
+  const clientHandler = (representation, headers, pushDownOptions) => {
     return {
       get: function(client, namespace) {
 
         // Force XML or JSON representation (NLWS.xml or NLWS.json)
-        if (namespace == "xml") return new Proxy(client, clientHandler("xml", headers));
-        if (namespace == "json") return new Proxy(client, clientHandler("SimpleJson", headers));
+        if (namespace == "xml") return new Proxy(client, clientHandler("xml", headers, pushDownOptions));
+        if (namespace == "json") return new Proxy(client, clientHandler("SimpleJson", headers, pushDownOptions));
 
         // Override HTTP headers (NLWS.headers({...}))
         // Unlike NLWS.xml or NLWS.json, NLWS.headers returns a function. This function takes key/value
@@ -123,15 +123,29 @@ governing permissions and limitations under the License.
           const newHeaders = {};
           if (headers) for (let h in headers) newHeaders[h] = headers[h];
           if (methodHeaders) for (let h in methodHeaders) newHeaders[h] = methodHeaders[h];
-          return new Proxy(client, clientHandler(representation, newHeaders));
+          return new Proxy(client, clientHandler(representation, newHeaders, pushDownOptions));
+        };
+
+        // Pushes down addition options to the SOAP and transport layers
+        if (namespace == "pushDown") return (methodPushDownOptions) => {
+          // Build of copy of the pushDownOptions in order to accomodate
+          // chained calls, such as NLWS.pushDown(...).pushDown(...)
+          const newPushDownOptions = {};
+          if (pushDownOptions) for (let h in pushDownOptions) newPushDownOptions[h] = pushDownOptions[h];
+          if (methodPushDownOptions) for (let h in methodPushDownOptions) newPushDownOptions[h] = methodPushDownOptions[h];
+          return new Proxy(client, clientHandler(representation, headers, newPushDownOptions));
         };
 
         return new Proxy({ client:client, namespace:namespace}, {
           get: function(callContext, methodName) {
             callContext.representation = representation;
             callContext.headers = callContext.headers || client._connectionParameters._options.extraHttpHeaders;
+            callContext.pushDownOptions = {};
             if (headers) {
               for (let h in headers) callContext.headers[h] = headers[h];
+            }
+            if (pushDownOptions) {
+              for (let h in pushDownOptions) callContext.pushDownOptions[h] = pushDownOptions[h];
             }
 
             if (methodName == ".") return callContext;
@@ -270,6 +284,8 @@ governing permissions and limitations under the License.
     * @property {{ name:string, value:string}} extraHttpHeaders - optional key/value pair of HTTP header (will override any other headers)
     * @property {string} clientApp - optional name/version of the application client of the SDK. This will be passed in HTTP headers for troubleshooting
     * @property {boolean} noSDKHeaders - set to disable "ACC-SDK" HTTP headers
+    * @property {boolean} noMethodInURL - Can be set to true to remove the method name from the URL
+    * @property {number} timeout - Can be set to change the HTTP call timeout. Value is passed in ms.
     * @memberOf Campaign
  */
 
@@ -291,7 +307,7 @@ governing permissions and limitations under the License.
     constructor(endpoint, credentials, options) {
       // this._options will be populated with the data from "options" and with
       // default values. But the "options" parameter will not be modified
-      this._options = {};
+      this._options = Object.assign({}, options);
 
       // Default value
       if (options === undefined || options === null)
@@ -340,6 +356,7 @@ governing permissions and limitations under the License.
       }
       this._options.clientApp = options.clientApp;
       this._options.noSDKHeaders = !!options.noSDKHeaders;
+      this._options.noMethodInURL = !!options.noMethodInURL;
     }
 
     /**
@@ -481,22 +498,22 @@ governing permissions and limitations under the License.
   // ========================================================================================
 
   const fileUploader = (client) => {
-  /**
-   * Will call the SOAP method(IncreaseValue) to increament the counter
-   * @returns {Promise<number>}
-   */
+    /**
+         * Will call the SOAP method(IncreaseValue) to increament the counter
+         * @returns {Promise<number>}
+         */
     const _increaseValue = async () => {
       const xtkCounter= await client.NLWS.xtkCounter.increaseValue({name: 'xtkResource'});
       return xtkCounter
     }
 
     /**
-     * This will create and return fileRes object
-     * @param counter
-     * @param data
-     * @returns {{originalName, internalName: string, fileName, useMd5AsFilename: string, xtkschema: string, storageType: number, label, md5: (string|string|string|null|any|number)}}
-     * @private
-     */
+         * This will create and return fileRes object
+         * @param counter
+         * @param data
+         * @returns {{originalName, internalName: string, fileName, useMd5AsFilename: string, xtkschema: string, storageType: number, label, md5: (string|string|string|null|any|number)}}
+         * @private
+         */
     const _createFileRes = (counter, data) => {
       return {
         internalName: 'RES' + counter,
@@ -512,40 +529,40 @@ governing permissions and limitations under the License.
     }
 
     /**
-     * This will write fileRes object in the system.
-     * @param fileRes
-     * @returns {Promise<void>}
-     * @private
-     */
+         * This will write fileRes object in the system.
+         * @param fileRes
+         * @returns {Promise<void>}
+         * @private
+         */
     const _write = async (fileRes) => {
       await client.NLWS.xtkSession.write(fileRes);
     }
 
     /**
-   * This will call the SOAP method(PublishIfNeeded) to publish the fileRes object
-   * @param fileRes
-   * @returns {Promise<void>}
-   * @private
-   */
+         * This will call the SOAP method(PublishIfNeeded) to publish the fileRes object
+         * @param fileRes
+         * @returns {Promise<void>}
+         * @private
+         */
     const _publishIfNeeded = async (fileRes) => {
       await client.NLWS.xtkFileRes.create(fileRes).publishIfNeeded();
     }
 
     /**
-       * This Will call the SOAP method(GetURL) which returns the public URL of the uploaded file.
-       * @param fileRes
-       * @returns {Promise<string>}
-       * @private
-       */
+         * This Will call the SOAP method(GetURL) which returns the public URL of the uploaded file.
+         * @param fileRes
+         * @returns {Promise<string>}
+         * @private
+         */
     const _getPublicUrl = async (fileRes) => {
       return await client.NLWS.xtkFileRes.create(fileRes).getURL()
     }
     return {
       /**
-        * This is the exposed/public method for fileUploader instance which will do all the processing related to the upload process internally and returns the promise containing all the required data.
-        * @param file
-        * @returns {Promise<{name: string, md5: string, type: string, size: string, url: string}>}
-        */
+             * This is the exposed/public method for fileUploader instance which will do all the processing related to the upload process internally and returns the promise containing all the required data.
+             * @param file
+             * @returns {Promise<{name: string, md5: string, type: string, size: string, url: string}>}
+             */
       upload: (file) => {
         return new Promise((resolve, reject) => {
           if (!Util.isBrowser()) {
@@ -601,6 +618,7 @@ governing permissions and limitations under the License.
     }
   }
 
+
   // ========================================================================================
   // ACC Client
   // ========================================================================================
@@ -650,11 +668,10 @@ governing permissions and limitations under the License.
       this._refreshClient = connectionParameters._options.refreshClient;
 
       // expose utilities
-
       /**
-        * File Uploader API
-        * @type {{upload: (function(*=): Promise<unknown>)}}
-        */
+         * File Uploader API
+         * @type {{upload: (function(*=): Promise<{name: string, md5: string, type: string, size: string, url: string}>)}}
+         */
       this.fileUploader = fileUploader(this);
 
       /**
@@ -847,10 +864,11 @@ governing permissions and limitations under the License.
      * @return {SOAP.SoapMethodCall} a SoapMethodCall which have been initialized with security tokens... and to which the method
      * parameters should be set
      */
-    _prepareSoapCall(urn, method, internal, extraHttpHeaders) {
+    _prepareSoapCall(urn, method, internal, extraHttpHeaders, pushDownOptions) {
       const soapCall = new SoapMethodCall(this._transport, urn, method,
         this._sessionToken, this._securityToken,
-        this._getUserAgentString(), this._connectionParameters._options.charset,
+        this._getUserAgentString(),
+        Object.assign({}, this._connectionParameters._options, pushDownOptions),
         extraHttpHeaders);
       soapCall.internal = !!internal;
       return soapCall;
@@ -1293,7 +1311,7 @@ governing permissions and limitations under the License.
         // console.log(method.toXMLString());
 
       var urn = that._methodCache.getSoapUrn(schemaId, methodName);
-      var soapCall = that._prepareSoapCall(urn, methodName, false, callContext.headers);
+      var soapCall = that._prepareSoapCall(urn, methodName, false, callContext.headers, callContext.pushDownOptions);
 
       // If method is called with one parameter which is a function, then we assume it's a hook: the function will return
       // the actual list of parameters
@@ -1365,7 +1383,7 @@ governing permissions and limitations under the License.
               if (type == "DOMDocument")
                 soapCall.writeDocument(paramName, xmlValue);
               else
-                soapCall.writeElement(paramName, xmlValue.documentElement);
+                soapCall.writeElement(paramName, xmlValue);
             }
             else
               throw CampaignException.BAD_SOAP_PARAMETER(soapCall, paramName, paramValue, `Unsupported parameter type '${type}' for parameter '${paramName}' of method '${methodName}' of schema '${schemaId}`);
