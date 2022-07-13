@@ -26,7 +26,6 @@
   "scripts": {
     "publish:npm": "npm publish --access public",
     "unit-tests": "jest --config test/jest.config.js --maxWorkers=2",
-    "unit-tests:jsdom": "jest --config test/jest.config.js --maxWorkers=2 --env=jsdom",
     "jsdoc": "jsdoc -a all -c jsdoc.json -r -R README.md src/*.js -d docs/jsdoc"
   },
   "jshintConfig": {
