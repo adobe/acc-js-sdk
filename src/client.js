@@ -652,9 +652,9 @@ governing permissions and limitations under the License.
       // expose utilities
 
       /**
-        * File Uploader API
-        * @type {{upload: (function(*=): Promise<unknown>)}}
-        */
+       * File Uploader API
+       * @type {{upload: (function(*=): Promise<{name: string, md5: string, type: string, size: string, url: string}>)}}
+       */
       this.fileUploader = fileUploader(this);
 
       /**
