@@ -10,7 +10,7 @@ OF ANY KIND, either express or implied. See the License for the specific languag
 governing permissions and limitations under the License.
 */
 (function() {
-"use strict";    
+"use strict";
 
 const { Util } = require('./util.js');
 
@@ -27,9 +27,9 @@ class HttpError {
 }
 
 /**********************************************************************************
- * 
+ *
  * Node implementation
- * 
+ *
  *********************************************************************************/
 /* istanbul ignore else */
 if (!Util.isBrowser()) {
@@ -38,13 +38,13 @@ if (!Util.isBrowser()) {
   const axios = require('axios');
 
   /**
-   * 
+   *
    * Request body (options)
    * - headers (kv)
    * - method
    * - url
    * - data
-   * 
+   *
    * Response
    * - data
    * - statusCode
@@ -81,11 +81,11 @@ if (!Util.isBrowser()) {
 }
 
 /**********************************************************************************
- * 
+ *
  * Browser-side implementation of the request-promise-native node module.
  * This simply wraps the fetch API
  * From https://www.npmjs.com/package/request-promise-native
- * 
+ *
  *********************************************************************************/
  else {
 
@@ -94,11 +94,12 @@ if (!Util.isBrowser()) {
     const headers = new Headers();
     for (var k in options.headers) {
         headers.append(k, options.headers[k]);
-    }    
+    }
     const r = new Request(options.url, {
         method: options.method,
         headers: headers,
-        body: options.data
+        body: options.data,
+        credentials: options.credentials || 'same-origin'
     });
 
     const p = fetch(r).then(async (response) => {

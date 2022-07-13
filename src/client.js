@@ -546,8 +546,8 @@ governing permissions and limitations under the License.
         * @param file
         * @returns {Promise<{name: string, md5: string, type: string, size: string, url: string}>}
         */
-      upload: async (file) => {
-        return new Promise(async (resolve, reject) => {
+      upload: (file) => {
+        return new Promise((resolve, reject) => {
           if (!Util.isBrowser()) {
             reject('File uploading is only supported in browser based calls.');
           }
@@ -555,7 +555,8 @@ governing permissions and limitations under the License.
             var data = new FormData()
             data.append('file_noMd5', file)
             //TODO: Needs to be refactored after cookie issue get resolved.
-            const response = await fetch(`${client._connectionParameters._endpoint}/nl/jsp/uploadFile.jsp`, {
+            client._makeHttpCall({
+              url: `${client._connectionParameters._endpoint}/nl/jsp/uploadFile.jsp`,
               processData: false,
               credentials: 'include',
               method: 'POST',
@@ -564,32 +565,34 @@ governing permissions and limitations under the License.
                 'x-security-token': client._securityToken,
                 'Cookie': '__sessiontoken=' + client._sessionToken,
               }
-            })
-            const okay = await response.text()
-            var iframe = document.createElement('iframe');
-            iframe.style.height = 0;
-            iframe.style.width = 0;
-            document.controller = {
-              uploadFileCallBack: async (data) => {
-                const counter = await _increaseValue(); // Step 1
-                const fileRes= _createFileRes(counter, data)
-                await _write(fileRes); // Step 2
-                await _publishIfNeeded(fileRes) // Step 3
-                const url = await _getPublicUrl(fileRes) // Step 3
-                resolve({
-                  name: data[0].fileName,
-                  md5: data[0].md5,
-                  type: file.type,
-                  size: file.size,
-                  url: url
-                })
+            }).then((okay)=>{
+              var iframe = document.createElement('iframe');
+              iframe.style.height = 0;
+              iframe.style.width = 0;
+              document.controller = {
+                uploadFileCallBack: async (data) => {
+                  const counter = await _increaseValue(); // Step 1
+                  const fileRes= _createFileRes(counter, data)
+                  await _write(fileRes); // Step 2
+                  await _publishIfNeeded(fileRes) // Step 3
+                  const url = await _getPublicUrl(fileRes) // Step 3
+                  resolve({
+                    name: data[0].fileName,
+                    md5: data[0].md5,
+                    type: file.type,
+                    size: file.size,
+                    url: url
+                  })
+                }
               }
-            }
-            var html = `<body>${okay}</body>`;
-            document.body.appendChild(iframe);
-            iframe.contentWindow.document.open();
-            iframe.contentWindow.document.write(html);
-            iframe.contentWindow.document.close();
+              var html = `<body>${okay}</body>`;
+              document.body.appendChild(iframe);
+              iframe.contentWindow.document.open();
+              iframe.contentWindow.document.write(html);
+              iframe.contentWindow.document.close();
+            }).catch((ex)=>{
+              reject(ex);
+            })
           } catch (ex) {
             reject(ex);
           }

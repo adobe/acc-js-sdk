@@ -12,37 +12,37 @@ governing permissions and limitations under the License.
 
 
 /**********************************************************************************
- * 
+ *
  * Mock functions for unit tests
- * 
+ *
  *********************************************************************************/
- const sdk = require('../src/index.js');
- const crypto = require("crypto");
+const sdk = require('../src/index.js');
+const crypto = require("crypto");
 
- const makeKey = () => {
-    const a = [];
-    for (let i=0; i<32; i++) {
-        a.push(Math.floor(crypto.randomInt(0, 256))); 
-    }
-    const buffer = Buffer.from(a);
-    const s = buffer.toString('base64');
-    return s;
- }
+const makeKey = () => {
+  const a = [];
+  for (let i=0; i<32; i++) {
+    a.push(Math.floor(crypto.randomInt(0, 256)));
+  }
+  const buffer = Buffer.from(a);
+  const s = buffer.toString('base64');
+  return s;
+}
 
- async function makeAnonymousClient(options) {
-    const connectionParameters = sdk.ConnectionParameters.ofAnonymousUser("http://acc-sdk:8080", options);
-    const client = await sdk.init(connectionParameters);
-    if (!options || !options.transport) // allow tests to explicitely set the transport
-        client._transport = jest.fn();
-    return client;
+async function makeAnonymousClient(options) {
+  const connectionParameters = sdk.ConnectionParameters.ofAnonymousUser("http://acc-sdk:8080", options);
+  const client = await sdk.init(connectionParameters);
+  if (!options || !options.transport) // allow tests to explicitely set the transport
+    client._transport = jest.fn();
+  return client;
 }
 
 async function makeClient(options) {
-    const connectionParameters = sdk.ConnectionParameters.ofUserAndPassword("http://acc-sdk:8080", "admin", "admin", options);
-    const client = await sdk.init(connectionParameters);
-    if (!options || !options.transport) // allow tests to explicitely set the transport
-        client._transport = jest.fn();
-    return client;
+  const connectionParameters = sdk.ConnectionParameters.ofUserAndPassword("http://acc-sdk:8080", "admin", "admin", options);
+  const client = await sdk.init(connectionParameters);
+  if (!options || !options.transport) // allow tests to explicitely set the transport
+    client._transport = jest.fn();
+  return client;
 }
 
 /**
@@ -51,16 +51,16 @@ async function makeClient(options) {
  * @returns an array of logged messages
  */
 async function withMockConsole(fn) {
-    const logs = [];
-    jest.spyOn(console, 'log').mockImplementation((message) => {
-        logs.push(message);
-    });
-    try {
-        await fn();
-        return logs;
-    } finally {
-        console.log.mockRestore();   
-    }
+  const logs = [];
+  jest.spyOn(console, 'log').mockImplementation((message) => {
+    logs.push(message);
+  });
+  try {
+    await fn();
+    return logs;
+  } finally {
+    console.log.mockRestore();
+  }
 }
 
 const R_TEST = Promise.resolve(`<redir status='OK' date='2021-08-27 08:02:07.963-07' build='9236' sha1='cc45440' instance='xxx_mkt_prod1' sourceIP='193.104.215.11' host='xxxol.campaign.adobe.com' localHost='xxxol-mkt-prod1-1'/>`);
@@ -91,7 +91,7 @@ const LOGON_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
     </SOAP-ENV:Body>
     </SOAP-ENV:Envelope>`);
 
-    const BEARER_LOGON_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
+const BEARER_LOGON_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
     <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:xtk:session' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
     <SOAP-ENV:Body>
         <BearerTokenLogonResponse xmlns='urn:xtk:session' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
@@ -302,7 +302,7 @@ const GET_XTK_QUERY_SCHEMA_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
     </SOAP-ENV:Envelope>`);
 
 const GET_MID_EXT_ACCOUNT_RESPONSE = (encryptedPassword) => {
-    return  Promise.resolve(`<?xml version='1.0'?>
+  return  Promise.resolve(`<?xml version='1.0'?>
     <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:xtk:queryDef' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
     <SOAP-ENV:Body>
         <ExecuteQueryResponse xmlns='urn:xtk:queryDef' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
@@ -315,7 +315,7 @@ const GET_MID_EXT_ACCOUNT_RESPONSE = (encryptedPassword) => {
 }
 
 const GET_BAD_EXT_ACCOUNT_RESPONSE = (encryptedPassword) => {
-    return Promise.resolve(`<?xml version='1.0'?>
+  return Promise.resolve(`<?xml version='1.0'?>
     <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:xtk:queryDef' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
     <SOAP-ENV:Body>
         <ExecuteQueryResponse xmlns='urn:xtk:queryDef' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
@@ -328,7 +328,7 @@ const GET_BAD_EXT_ACCOUNT_RESPONSE = (encryptedPassword) => {
 }
 
 const GET_SECRET_KEY_OPTION_RESPONSE = (key) => {
-    return Promise.resolve(`<?xml version='1.0'?>
+  return Promise.resolve(`<?xml version='1.0'?>
     <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:xtk:session' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
     <SOAP-ENV:Body>
         <GetOptionResponse xmlns='urn:xtk:session' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
@@ -354,7 +354,7 @@ const GET_LOGON_MID_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
         </LogonResponse>
     </SOAP-ENV:Body>
     </SOAP-ENV:Envelope>`);
-    
+
 const GET_TSTCNX_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
     <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:xtk:session' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
     <SOAP-ENV:Body>
@@ -432,7 +432,7 @@ const GET_XTK_ALL_SCHEMA_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
         </GetEntityIfMoreRecentResponse>
     </SOAP-ENV:Body>
     </SOAP-ENV:Envelope>`);
-    
+
 const GET_XTK_ALL_TYPES_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
     <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:wpp:default' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
     <SOAP-ENV:Body>
@@ -473,7 +473,7 @@ const GET_USER_INFO_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
         </pUserInfo>
     </GetUserInfoResponse>
     </SOAP-ENV:Body>
-    </SOAP-ENV:Envelope>`); 
+    </SOAP-ENV:Envelope>`);
 
 const GET_MISSING_SCHEMA_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
     <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:wpp:default' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
@@ -483,8 +483,8 @@ const GET_MISSING_SCHEMA_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
             </pdomDoc>
         </GetEntityIfMoreRecentResponse>
     </SOAP-ENV:Body>
-    </SOAP-ENV:Envelope>`); 
-   
+    </SOAP-ENV:Envelope>`);
+
 const GET_XTK_WORKFLOW_SCHEMA_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
     <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:wpp:default' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
     <SOAP-ENV:Body>
@@ -614,6 +614,523 @@ const GET_HELLO_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
     </SOAP-ENV:Body>
     </SOAP-ENV:Envelope>`);
 
+const GET_XTK_COUNTER_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
+        <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:wpp:default' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
+        <SOAP-ENV:Body>
+            <GetEntityIfMoreRecentResponse xmlns='urn:wpp:default' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
+                <pdomDoc xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
+                    <schema name="counter" namespace="xtk" xtkschema="xtk:schema">
+                        <element name="counter"></element>
+                        <methods>
+                        <method name="IncreaseValue" static="true">
+                          <parameters>
+                            <param name="name" type="string" label="Name" desc="Counter name"/>
+                            <param name="value" type="long" inout="out" label="Value" desc="New value of counter"/>
+                          </parameters>
+                        </method>
+                      </methods>                   
+                       </schema>
+                </pdomDoc>
+            </GetEntityIfMoreRecentResponse>
+        </SOAP-ENV:Body>
+        </SOAP-ENV:Envelope>`);
+
+const GET_FILERES_QUERY_SCHEMA_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
+        <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:wpp:default' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
+        <SOAP-ENV:Body>
+            <GetEntityIfMoreRecentResponse xmlns='urn:wpp:default' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
+                <pdomDoc xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
+                    <schema name="fileRes" namespace="xtk" xtkschema="xtk:schema">
+                        <element name="fileRes"></element>
+                        <methods>
+                        <method name="PublishIfNeeded">
+                        </method>
+                        <method name="GetURL">
+                        <parameters>
+                          <param name="url" type="string" inout="out"/>
+                        </parameters>
+                          </method>
+                    </methods>                   
+                       </schema>
+                </pdomDoc>
+            </GetEntityIfMoreRecentResponse>
+        </SOAP-ENV:Body>
+        </SOAP-ENV:Envelope>`);
+
+const INCREASE_VALUE_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
+<SOAP-ENV:Envelope
+    xmlns:xsd='http://www.w3.org/2001/XMLSchema'
+    xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance'
+    xmlns:ns='urn:xtk:counter'
+    xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
+    <SOAP-ENV:Body>
+        <IncreaseValueResponse
+            xmlns='urn:xtk:counter' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
+            <plValue xsi:type='xsd:int'>1</plValue>
+        </IncreaseValueResponse>
+    </SOAP-ENV:Body>
+</SOAP-ENV:Envelope>
+
+`);
+
+const FILE_RES_WRITE_RESPONSE = Promise.resolve(`<?xml version='1.0'?><SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:wpp:default' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'><SOAP-ENV:Body><GetEntityIfMoreRecentResponse xmlns='urn:wpp:default' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'><pdomDoc xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'><schema _cs="Sessions to the application server (xtk)" created="2022-02-03 12:55:02.621Z" createdBy-id="0" dependingSchemas="" desc="Sessions to the application server" entitySchema="xtk:schema" img="" implements="xtk:persist" label="Sessions to the application server" labelSingular="Session" lastModified="2022-07-11 02:29:30.026Z" library="true" mappingType="xmlFile" md5="9D716FE59E174E87C5BA8A834DD4B11B" modifiedBy-id="0" name="session" namespace="xtk" xtkschema="xtk:schema">
+
+  <interface async="true" label="Persistence" name="persist">
+    <method name="NewInstance">
+      <help>New document creation, pre-initialized but not saved</help>
+    </method>
+
+    <method name="Duplicate">
+      <help>Creates a new document from a source document</help>
+      <parameters>
+        <param desc="Primary key of the source document" name="pk" type="primarykey"/>
+      </parameters>
+      <example><para>The following example creates a new operator by duplicating the <varname>12345</varname> identifier operator and changing its name and login.</para>
+        <programlisting>var operator = xtk.operator.create()     // Create an empty operator
+operator.Duplicate("xtk:operator|12345") // Initialize by duplication
+operator.name = "newLogin"       // Customize
+operator.label = "newUserDesc"
+operator.save()                          // Save
+ </programlisting>
+      </example>
+    </method>
+
+    <method name="DuplicateWithMappingId">
+      <help>Duplicates a new document from the source document with the ID mapping</help>
+      <parameters>
+        <param desc="Primary key of the source document" name="pk" type="primarykey"/>
+        <param desc="ID mapping" inout="out" name="mapping" type="DOMElement"/>
+      </parameters>
+    </method>
+
+    <method name="DuplicateTo">
+      <help>Duplicates a new document from a source document to a given folder</help>
+      <parameters>
+        <param desc="Primary key of the source document" name="pk" type="primarykey"/>
+        <param desc="Primary key of the destination folder" name="folder" type="primarykey"/>
+      </parameters>
+    </method>
+
+    <method name="ApplyDuplicateRules">
+      <help>Applies the duplication settings (including default values) to the specified document</help>
+    </method>
+
+    <method name="SetDefaults">
+      <help>Set default values</help>
+    </method>
+    <method name="SetDefaultValues">
+      <help>Fix values by default based on xpath</help>
+      <parameters>
+        <param desc="XPath" name="xpath" type="string"/>
+      </parameters>
+    </method>
+    <method name="Load">
+      <help>Load the entity</help>
+      <parameters>
+        <param desc="Primary key" name="pk" type="primarykey"/>
+      </parameters>
+    </method>
+    <method name="LoadIfExists">
+      <help>Load the entity if it exists</help>
+      <parameters>
+        <param desc="Primary key" name="pk" type="primarykey"/>
+        <param desc="Shows if entity exists" inout="out" name="Exists" type="boolean"/>
+      </parameters>
+    </method>
+    <method name="LoadAsText" static="true">
+      <help>Retrieve entity contents as text</help>
+      <parameters>
+        <param desc="Primary key" name="pk" type="primarykey"/>
+        <param desc="Entity content" inout="out" name="Content" type="string"/>
+      </parameters>
+    </method>
+    <method hidden="true" name="Store">  <!-- ## innefficient -->
+      <help>Save entity</help>
+    </method>
+    <method name="Remove" pkonly="true">
+      <help>Delete entity</help>
+    </method>
+    <method const="true" name="GetPkList" pkonly="true"> <!-- ## should be const, but then schema is lost -->
+      <help>Get the list of instance identifiers</help>
+      <parameters>
+        <param desc="Primary keys" inout="out" name="pkList" type="primarykeylist"/>
+      </parameters>
+    </method>
+
+    <method name="Write" static="true">
+      <help>Update an entity</help>
+      <parameters>
+        <param desc="Document of difference" name="doc" type="DOMDocument"/>
+      </parameters>
+      <example><para>A simple recipient creation:</para>
+    \t  <programlisting>
+xtk.session.Write(
+    {recipient: {xtkschema: "nms:recipient", firstName: "Raul", lastName: "Endymion"}})
+      \t</programlisting>
+      </example>
+    </method>
+
+    <method name="Ingest" static="true">
+      <help>Insert a staging entity only. Return UUID primary key values if present.</help>
+      <parameters>
+        <param desc="New document to be inserted." name="doc" type="DOMDocument"/>
+        <param desc="UUID values result." inout="out" name="sUuids" type="string"/>
+      </parameters>
+      <example><para>A simple staging recipient creation:</para>
+        <programlisting>
+strUuid = xtk.session.Ingest(
+          {recipient: {xtkschema: "nms:recipientStg", firstName: "Raul", lastName: "Endymion"}})
+        </programlisting>
+      </example>
+    </method>
+
+    <method name="IngestExt" static="true">
+      <help>Update a staging entity.</help>
+      <parameters>
+        <param desc="Document to be inserted or updated." name="doc" type="DOMDocument"/>
+      </parameters>
+      <example><para>A simple staging recipient creation:</para>
+        <programlisting>
+xtk.session.IngestExt(
+    {recipient: {xtkschema: "nms:recipientStg", firstName: "Raul", lastName: "Endymion"}})
+        </programlisting>
+      </example>
+    </method>
+
+    <method name="WriteCollection" static="true">
+      <help>Update a list of entities</help>
+      <parameters>
+        <param desc="Document of differences gathering" name="doc" type="DOMDocument"/>
+      </parameters>
+    </method>
+    <method name="DeleteCollection" static="true">
+      <help>Delete a list of entities based on a condition</help>
+      <parameters>
+        <param desc="Entity schema" name="schema" type="string"/>
+        <param desc="Delete condition" name="where" type="DOMElement"/>
+        <param desc="Ignore deleteStatus" name="ignoreDeleteStatus" type="boolean"/>
+      </parameters>
+    </method>
+    <method name="ImportCollection" static="true">
+      <help>Update a list of entities using an import</help>
+      <parameters>
+        <param desc="Data document" name="doc" type="DOMDocument"/>
+      </parameters>
+    </method>
+
+    <method name="GetImages" static="true">
+      <help>Load a list of images</help>
+      <parameters>
+        <param desc="Primary keys" name="pkList" type="string"/>
+        <param desc="Result" inout="out" name="doc" type="DOMDocument"/>
+      </parameters>
+    </method>
+
+    <method name="GetEntityIfMoreRecent" static="true">
+      <help>Load an entity if its MD5 key is different than the one given as a parameter</help>
+      <parameters>
+        <param desc="Primary key" name="pk" type="string"/>
+        <param desc="MD5 key" name="md5" type="string"/>
+        <param desc="Result" inout="out" name="doc" type="DOMDocument"/>
+        <param name="mustExist" type="boolean"/>
+      </parameters>
+    </method>
+
+    <method name="GetDirtyCacheEntities" static="true">
+      <help>Return dirty cached entities</help>
+      <parameters>
+        <param desc="List of cached entities" name="cacheEntities" type="DOMDocument"/>
+        <param desc="List of dirty entities" inout="out" name="dirtyEntities" type="DOMDocument"/>
+      </parameters>
+    </method>
+
+    <method name="GetActiveApplicationMenus" static="true">
+      <help>Returns a document containing the menus of the applications enabled for the current login</help>
+      <parameters>
+        <param desc="Result" inout="out" name="doc" type="DOMDocument"/>
+      </parameters>
+    </method>
+
+    <method name="GetDefaultEntity" static="true">
+      <help>Returns a document containing an empty entity with its default values</help>
+      <parameters>
+        <param desc="Entity schema" name="schema" type="string"/>
+        <param desc="Result" inout="out" name="doc" type="DOMDocument"/>
+      </parameters>
+    </method>
+  </interface>
+
+  <element desc="Information on server version" label="Version" name="serverInfo">
+    <attribute desc="Major version number" label="Major number" name="majNumber" type="short"/>
+    <attribute desc="Minor version number" label="Minor number" name="minNumber" type="short"/>
+    <attribute label="Service pack number" name="servicePack" type="short"/>
+    <attribute desc="Technical minor version number" label="Technical minor version" name="minNumberTechnical" type="short"/>
+    <attribute label="Build number" name="buildNumber" type="short"/>
+    <attribute desc="Minimum client build number to be compatible with the connected server" label="Minimum client build number" name="minClientBuildNumber" type="short"/>
+    <attribute desc="Recommended client build number to be compatible with the connected server" label="Recommended client build number" name="advisedClientBuildNumber" type="short"/>
+    <attribute desc="Recommended client version to be compatible with the connected server" label="Recommended client version" name="advisedClientVersion" type="string"/>
+    <attribute desc="Recommended client setup file name to be compatible with the connected server" label="Recommended client setup file name" name="advisedClientName" type="string"/>
+    <attribute desc="Server build release name" label="Release Name" name="releaseName" type="string"/>
+    <attribute desc="Server build commit identifier" label="Commit ID" name="commitId" type="string"/>
+    <attribute desc="Default namespace used when creating a new entity" label="Default namespace" name="defaultNameSpace" type="string"/>
+    <attribute desc="GMT time of server" label="Server date" name="serverDate" type="datetime"/>
+    <attribute desc="Identifier of database" label="Database identifier" name="databaseId" type="string"/>
+    <attribute desc="Wizard to launch when connecting" label="Wizard to launch" name="wizardToLaunch" type="string"/>
+    <attribute label="Instance name" name="instanceName" type="string"/>
+    <attribute label="Duration before sessions expire." name="sessionTimeOut" type="timespan"/>
+    <attribute label="Security token validity period" name="securityTimeOut" type="timespan"/>
+    <attribute label="SQLDATA authorized" name="allowSQL" type="boolean"/>
+    <attribute label="Secrets are stored in an external service." name="useVault" type="boolean"/>
+    <attribute label="Highest available version of FDA over http protocol" name="fohVersion" type="short"/>
+  </element>
+
+  <element desc="Information on current session" label="Parameters" name="userInfo">
+    <attribute desc="Identifier of session login" label="Id" name="loginId" type="long"/>
+    <attribute desc="Compute string of session login" label="Compute string" name="loginCS" type="string"/>
+    <attribute desc="Name (login) of the operator connected" label="Name (login)" name="login" type="string"/>
+    <attribute desc="Regional parameters used" label="Regional parameters" name="locale" type="string"/>
+    <attribute label="Regional settings of the instance" name="instanceLocale" type="string"/>
+    <attribute desc="Session login time zone" label="Time zone" name="timezone" type="string"/>
+    <attribute label="Save entities in the database" name="datakitInDatabase" type="boolean"/>
+    <attribute desc="Graphical appearance (skin, or theme)" label="Theme" name="theme" type="string"/>
+    <attribute desc="Access from the client console denied" label="No access using from rich client" name="noConsoleCnx" type="boolean"/>
+    <attribute desc="Filter based on folder" label="User root folder" name="homeDir" type="string"/>
+    <attribute desc="Identifier of the organizational entity" label="Id" name="orgUnitId" type="long"/>
+    <element name="login-group" unbound="true">
+      <attribute desc="Identifier of group associated to login" label="Recipient group Id" name="id" type="string"/>
+    </element>
+    <element name="login-right" unbound="true">
+      <attribute desc="Name of the named right associated with login" label="Right" name="right" type="string"/>
+    </element>
+    <element name="installed-package" unbound="true">
+      <attribute desc="Name of the installed package" label="Name" name="name" type="string"/>
+      <attribute desc="Namespace of the installed package" label="Namespace" name="namespace" type="string"/>
+    </element>
+    <!-- Currency removed temporarily
+      <element name="currency" unbound="true" ref="xtk:currency:currency" applicableIf="HasPackage('xtk:currency')"/>
+     -->
+  </element>
+
+
+  <!-- définition du schéma -->
+  <element name="session">
+    <key name="nsName">
+      <keyfield xpath="@namespace"/>
+      <keyfield xpath="@name"/>
+    </key><attribute dataPolicy="identifier" default="DefaultNameSpace()" label="Namespace" length="16" name="namespace" required="true" type="string"/><attribute dataPolicy="identifier" default="NewName()" edit="NamePkEdit" label="Name" length="80" name="name" required="true" type="string"/>
+
+    <attribute desc="User account" label="Account" name="login" type="string"/>
+    <attribute desc="Connection settings" label="Parameters" name="parameters" type="string"/>
+
+    <element name="info">
+      <!-- Server parameters -->
+      <element name="serverInfo" ref="serverInfo"/>
+
+      <!-- User config -->
+      <element name="userInfo" ref="userInfo"/>
+    </element>
+
+  </element>
+
+  <methods>
+    <method access="anonymous" name="Logon" static="true">
+      <help>Opens a session</help>
+      <parameters>
+        <param desc="User account" name="login" type="string"/>
+        <param desc="Password associated with user login" name="password" type="string"/>
+        <param desc="Connection settings" name="parameters" type="DOMElement"/>
+        <param desc="Session token" inout="out" name="sessionToken" type="string"/>
+        <param desc="Session parameters" inout="out" name="sessionInfo" namespace="session" type="sessionInfo"/>
+        <param desc="Security token" inout="out" name="securityToken" optional="true" type="string"/>
+      </parameters>
+    </method>
+    <method access="anonymous" name="BearerTokenLogon" static="true">
+      <help>connection token</help>
+      <parameters>
+        <param desc="token" name="bearerToken" type="string"/>
+        <param desc="Session token" inout="out" name="sessionToken" type="string"/>
+        <param desc="Session parameters" inout="out" name="sessionInfo" namespace="session" type="sessionInfo"/>
+        <param desc="Security token" inout="out" name="securityToken" optional="true" type="string"/>
+      </parameters>
+    </method>
+
+    <method access="anonymous" name="GetUserInfo" static="true">
+      <help>Information about current operator</help>
+      <parameters>
+        <param desc="User parameters" inout="out" name="userInfo" type="sessionUserInfo"/>
+      </parameters>
+    </method>
+
+    <method name="Logoff" static="true">
+      <help>Close current session</help>
+    </method>
+
+    <method access="admin" name="KillSession" static="true">
+      <help>Closes the session specified</help>
+      <parameters>
+        <param desc="Login or session ID" name="Id" type="string"/>
+      </parameters>
+    </method>
+
+    <method access="admin" name="ClearUserContextCache" static="true">
+      <help>Clears the session user context cache</help>
+    </method>
+
+    <method name="TestCnx" static="true">
+      <help>Test the connection.</help>
+    </method>
+
+    <method name="ChangePassword" static="true">
+      <help>Change current password</help>
+      <parameters>
+        <param desc="Old password" name="oldPassword" type="string"/>
+        <param desc="New password" name="newPassword" type="string"/>
+      </parameters>
+    </method>
+
+    <method access="anonymous" name="GetServerTime" static="true">
+      <help>Returns the server date and time</help>
+      <parameters>
+        <param inout="out" name="serverTime" type="datetime"/>
+      </parameters>
+    </method>
+
+    <method access="admin" name="ServerShutdown" static="true">
+      <help>Requests server shutdown</help>
+    </method>
+
+    <method name="GetOption" static="true">
+      <help>Returns the value of an option stored in the database.</help>
+      <parameters>
+        <param label="Option name" name="name" type="string"/>
+        <param desc="Option value as a string" inout="out" label="Option value" name="value" type="string"/>
+        <param inout="out" label="Data type" name="type" type="byte"/>
+      </parameters>
+    </method>
+
+    <method name="GetNewIds" static="true">
+      <help>Gathers a list of internal keys identifiers for the database.</help>
+      <parameters>
+        <param desc="Number of identifiers that this method should return" inout="in" label="Number of identifiers" name="count" type="long"/>
+        <param desc="Comma separated list of identifiers" inout="out" label="List of identifiers" name="idList" type="string"/>
+      </parameters>
+    </method>
+
+    <method name="GetNewIdsEx" static="true">
+      <help>Get a list of unique identifiers from the database, given a sequence name.</help>
+      <parameters>
+        <param desc="Number of identifiers that this method should return" inout="in" label="Number of identifiers" name="count" type="long"/>
+        <param desc="Name of the sequence to increment" inout="in" label="Sequence name" name="sequence" type="string"/>
+        <param desc="Comma separated list of identifiers" inout="out" label="List of identifiers" name="idList" type="string"/>
+      </parameters>
+    </method>
+
+    <method access="conditionalAdmin" name="GetCnxInfo" static="true">
+      <help>Recovers information from the current connections.</help>
+      <parameters>
+        <param desc="Returned document" inout="out" name="cnxInfo" type="DOMDocument"/>
+      </parameters>
+    </method>
+
+    <method access="anonymous" name="FormatDataPolicy" static="true">
+      <help>Applies a transformation to the character string according to the data policy passed as a parameter. Leaves the string unchanged in case of failure.</help>
+      <parameters>
+        <param inout="in" label="Name of the data policy to apply" name="dataPolicy" type="string"/>
+        <param inout="in" label="Value to transform" name="value" type="string"/>
+        <param inout="out" label="Result of the application of the data policy" name="result" type="string"/>
+      </parameters>
+    </method>
+
+    <method name="Encrypt" static="true">
+      <help>Encrypts the character string with the instance key.</help>
+      <parameters>
+        <param inout="in" label="Text to encrypt" name="decrypted" type="string"/>
+        <param inout="out" label="Encrypted text" name="encrypted" type="string"/>
+      </parameters>
+    </method>
+
+    <method name="ReEncryptPassword" static="true">
+      <help>Re-encrypts a password with the secret key.</help>
+      <parameters>
+        <param inout="in" label="Password encrypted with the old key" name="oldPassword" type="string"/>
+        <param inout="out" label="Password encrypted with the secret key" name="newPassword" type="string"/>
+      </parameters>
+    </method>
+
+    <method name="EncryptPassword" static="true">
+      <help>Encrypts the character string with the secret key.</help>
+      <parameters>
+        <param inout="in" label="Text to encrypt" name="decrypted" type="string"/>
+        <param inout="out" label="Encrypted text" name="encrypted" type="string"/>
+      </parameters>
+    </method>
+
+    <method name="EncryptServerPassword" static="true">
+      <help>Encrypts the character string with the server key.</help>
+      <parameters>
+        <param inout="in" label="Text to encrypt" name="decrypted" type="string"/>
+        <param inout="out" label="Encrypted text" name="encrypted" type="string"/>
+      </parameters>
+    </method>
+
+    <method name="HashPassword" static="true">
+      <help>Hash a password with the server key.</help>
+      <parameters>
+        <param inout="in" label="Password to encrypt" name="decrypted" type="string"/>
+        <param inout="out" label="Encrypted password" name="encrypted" type="string"/>
+      </parameters>
+    </method>
+
+    <method name="Diff" static="true">
+      <help>Returns the current version and the original version of a document.</help>
+      <parameters>
+        <param desc="Primary key of the document" inout="in" name="pk" type="primarykey"/>
+        <param inout="out" label="The original document in text format" name="original" type="string"/>
+        <param inout="out" label="The current document in text format" name="current" type="string"/>
+      </parameters>
+    </method>
+
+    <method access="admin" name="GetTAClientId" static="true">
+      <help>Returns the Adobe IO Technical Account Client Id.</help>
+      <parameters>
+        <param inout="out" label="Unique Client Id" name="clientId" type="string"/>
+      </parameters>
+    </method>
+
+  </methods>
+
+</schema></pdomDoc></GetEntityIfMoreRecentResponse></SOAP-ENV:Body></SOAP-ENV:Envelope>
+
+`);
+
+const PUBLISH_IF_NEEDED_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
+<SOAP-ENV:Envelope
+    xmlns:xsd='http://www.w3.org/2001/XMLSchema'
+    xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance'
+    xmlns:ns='urn:xtk:fileRes'
+    xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
+    <SOAP-ENV:Body>
+        <PublishIfNeededResponse
+            xmlns='urn:xtk:fileRes' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
+        </PublishIfNeededResponse>
+    </SOAP-ENV:Body>
+</SOAP-ENV:Envelope>`);
+
+const GET_URL_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
+<SOAP-ENV:Envelope
+    xmlns:xsd='http://www.w3.org/2001/XMLSchema'
+    xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance'
+    xmlns:ns='urn:xtk:fileRes'
+    xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
+    <SOAP-ENV:Body>
+        <GetURLResponse
+            xmlns='urn:xtk:fileRes' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
+            <pUrl xsi:type='xsd:string'>http://hello.com</pUrl>
+        </GetURLResponse>
+    </SOAP-ENV:Body>
+</SOAP-ENV:Envelope>`);
+
+
 
 
 // Public exports
@@ -656,5 +1173,11 @@ exports.Mock = {
   GET_SETELEMENT_RESPONSE: GET_SETELEMENT_RESPONSE,
   GET_GETSCHEMA_HELLO_RESPONSE: GET_GETSCHEMA_HELLO_RESPONSE,
   GET_HELLO_RESPONSE: GET_HELLO_RESPONSE,
-  LOGON_RESPONSE_NO_USERINFO: LOGON_RESPONSE_NO_USERINFO
+  LOGON_RESPONSE_NO_USERINFO: LOGON_RESPONSE_NO_USERINFO,
+  GET_XTK_COUNTER_RESPONSE: GET_XTK_COUNTER_RESPONSE,
+  GET_FILERES_QUERY_SCHEMA_RESPONSE: GET_FILERES_QUERY_SCHEMA_RESPONSE,
+  INCREASE_VALUE_RESPONSE: INCREASE_VALUE_RESPONSE,
+  FILE_RES_WRITE_RESPONSE: FILE_RES_WRITE_RESPONSE,
+  PUBLISH_IF_NEEDED_RESPONSE: PUBLISH_IF_NEEDED_RESPONSE,
+  GET_URL_RESPONSE: GET_URL_RESPONSE
 }
