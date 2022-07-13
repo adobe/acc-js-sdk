@@ -614,6 +614,49 @@ const GET_HELLO_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
     </SOAP-ENV:Body>
     </SOAP-ENV:Envelope>`);
 
+const GET_XTK_COUNTER_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
+        <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:wpp:default' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
+        <SOAP-ENV:Body>
+            <GetEntityIfMoreRecentResponse xmlns='urn:wpp:default' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
+                <pdomDoc xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
+                    <schema name="counter" namespace="xtk" xtkschema="xtk:schema">
+                        <element name="counter"></element>
+                        <methods>
+                        <method name="IncreaseValue" static="true">
+                          <parameters>
+                            <param name="name" type="string" label="Name" desc="Counter name"/>
+                            <param name="value" type="long" inout="out" label="Value" desc="New value of counter"/>
+                          </parameters>
+                        </method>
+                      </methods>                   
+                       </schema>
+                </pdomDoc>
+            </GetEntityIfMoreRecentResponse>
+        </SOAP-ENV:Body>
+        </SOAP-ENV:Envelope>`);
+
+const GET_FILERES_QUERY_SCHEMA_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
+        <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:wpp:default' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
+        <SOAP-ENV:Body>
+            <GetEntityIfMoreRecentResponse xmlns='urn:wpp:default' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
+                <pdomDoc xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
+                    <schema name="fileRes" namespace="xtk" xtkschema="xtk:schema">
+                        <element name="fileRes"></element>
+                        <methods>
+                        <method name="PublishIfNeeded">
+                        </method>
+                        <method name="GetURL">
+                        <parameters>
+                          <param name="url" type="string" inout="out"/>
+                        </parameters>
+                          </method>
+                    </methods>                   
+                       </schema>
+                </pdomDoc>
+            </GetEntityIfMoreRecentResponse>
+        </SOAP-ENV:Body>
+        </SOAP-ENV:Envelope>`);
+
 const INCREASE_VALUE_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
 <SOAP-ENV:Envelope
     xmlns:xsd='http://www.w3.org/2001/XMLSchema'
@@ -1059,6 +1102,33 @@ xtk.session.IngestExt(
 </schema></pdomDoc></GetEntityIfMoreRecentResponse></SOAP-ENV:Body></SOAP-ENV:Envelope>
 
 `);
+
+const PUBLISH_IF_NEEDED_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
+<SOAP-ENV:Envelope
+    xmlns:xsd='http://www.w3.org/2001/XMLSchema'
+    xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance'
+    xmlns:ns='urn:xtk:fileRes'
+    xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
+    <SOAP-ENV:Body>
+        <PublishIfNeededResponse
+            xmlns='urn:xtk:fileRes' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
+        </PublishIfNeededResponse>
+    </SOAP-ENV:Body>
+</SOAP-ENV:Envelope>`);
+
+const GET_URL_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
+<SOAP-ENV:Envelope
+    xmlns:xsd='http://www.w3.org/2001/XMLSchema'
+    xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance'
+    xmlns:ns='urn:xtk:fileRes'
+    xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
+    <SOAP-ENV:Body>
+        <GetURLResponse
+            xmlns='urn:xtk:fileRes' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
+            <pUrl xsi:type='xsd:string'>http://hello.com</pUrl>
+        </GetURLResponse>
+    </SOAP-ENV:Body>
+</SOAP-ENV:Envelope>`);
 
 
 
