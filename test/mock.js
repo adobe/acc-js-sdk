@@ -16,33 +16,33 @@ governing permissions and limitations under the License.
  * Mock functions for unit tests
  *
  *********************************************************************************/
- const sdk = require('../src/index.js');
- const crypto = require("crypto");
+const sdk = require('../src/index.js');
+const crypto = require("crypto");
 
- const makeKey = () => {
-    const a = [];
-    for (let i=0; i<32; i++) {
-        a.push(Math.floor(crypto.randomInt(0, 256)));
-    }
-    const buffer = Buffer.from(a);
-    const s = buffer.toString('base64');
-    return s;
- }
+const makeKey = () => {
+  const a = [];
+  for (let i=0; i<32; i++) {
+    a.push(Math.floor(crypto.randomInt(0, 256)));
+  }
+  const buffer = Buffer.from(a);
+  const s = buffer.toString('base64');
+  return s;
+}
 
- async function makeAnonymousClient(options) {
-    const connectionParameters = sdk.ConnectionParameters.ofAnonymousUser("http://acc-sdk:8080", options);
-    const client = await sdk.init(connectionParameters);
-    if (!options || !options.transport) // allow tests to explicitely set the transport
-        client._transport = jest.fn();
-    return client;
+async function makeAnonymousClient(options) {
+  const connectionParameters = sdk.ConnectionParameters.ofAnonymousUser("http://acc-sdk:8080", options);
+  const client = await sdk.init(connectionParameters);
+  if (!options || !options.transport) // allow tests to explicitely set the transport
+    client._transport = jest.fn();
+  return client;
 }
 
 async function makeClient(options) {
-    const connectionParameters = sdk.ConnectionParameters.ofUserAndPassword("http://acc-sdk:8080", "admin", "admin", options);
-    const client = await sdk.init(connectionParameters);
-    if (!options || !options.transport) // allow tests to explicitely set the transport
-        client._transport = jest.fn();
-    return client;
+  const connectionParameters = sdk.ConnectionParameters.ofUserAndPassword("http://acc-sdk:8080", "admin", "admin", options);
+  const client = await sdk.init(connectionParameters);
+  if (!options || !options.transport) // allow tests to explicitely set the transport
+    client._transport = jest.fn();
+  return client;
 }
 
 /**
@@ -51,16 +51,16 @@ async function makeClient(options) {
  * @returns an array of logged messages
  */
 async function withMockConsole(fn) {
-    const logs = [];
-    jest.spyOn(console, 'log').mockImplementation((message) => {
-        logs.push(message);
-    });
-    try {
-        await fn();
-        return logs;
-    } finally {
-        console.log.mockRestore();
-    }
+  const logs = [];
+  jest.spyOn(console, 'log').mockImplementation((message) => {
+    logs.push(message);
+  });
+  try {
+    await fn();
+    return logs;
+  } finally {
+    console.log.mockRestore();
+  }
 }
 
 const R_TEST = Promise.resolve(`<redir status='OK' date='2021-08-27 08:02:07.963-07' build='9236' sha1='cc45440' instance='xxx_mkt_prod1' sourceIP='193.104.215.11' host='xxxol.campaign.adobe.com' localHost='xxxol-mkt-prod1-1'/>`);
@@ -91,7 +91,7 @@ const LOGON_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
     </SOAP-ENV:Body>
     </SOAP-ENV:Envelope>`);
 
-    const BEARER_LOGON_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
+const BEARER_LOGON_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
     <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:xtk:session' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
     <SOAP-ENV:Body>
         <BearerTokenLogonResponse xmlns='urn:xtk:session' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
@@ -302,7 +302,7 @@ const GET_XTK_QUERY_SCHEMA_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
     </SOAP-ENV:Envelope>`);
 
 const GET_MID_EXT_ACCOUNT_RESPONSE = (encryptedPassword) => {
-    return  Promise.resolve(`<?xml version='1.0'?>
+  return  Promise.resolve(`<?xml version='1.0'?>
     <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:xtk:queryDef' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
     <SOAP-ENV:Body>
         <ExecuteQueryResponse xmlns='urn:xtk:queryDef' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
@@ -315,7 +315,7 @@ const GET_MID_EXT_ACCOUNT_RESPONSE = (encryptedPassword) => {
 }
 
 const GET_BAD_EXT_ACCOUNT_RESPONSE = (encryptedPassword) => {
-    return Promise.resolve(`<?xml version='1.0'?>
+  return Promise.resolve(`<?xml version='1.0'?>
     <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:xtk:queryDef' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
     <SOAP-ENV:Body>
         <ExecuteQueryResponse xmlns='urn:xtk:queryDef' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
@@ -328,7 +328,7 @@ const GET_BAD_EXT_ACCOUNT_RESPONSE = (encryptedPassword) => {
 }
 
 const GET_SECRET_KEY_OPTION_RESPONSE = (key) => {
-    return Promise.resolve(`<?xml version='1.0'?>
+  return Promise.resolve(`<?xml version='1.0'?>
     <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:xtk:session' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
     <SOAP-ENV:Body>
         <GetOptionResponse xmlns='urn:xtk:session' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
@@ -1174,6 +1174,10 @@ exports.Mock = {
   GET_GETSCHEMA_HELLO_RESPONSE: GET_GETSCHEMA_HELLO_RESPONSE,
   GET_HELLO_RESPONSE: GET_HELLO_RESPONSE,
   LOGON_RESPONSE_NO_USERINFO: LOGON_RESPONSE_NO_USERINFO,
-    INCREASE_VALUE_RESPONSE: INCREASE_VALUE_RESPONSE,
-    FILE_RES_WRITE_RESPONSE: FILE_RES_WRITE_RESPONSE,
+  GET_XTK_COUNTER_RESPONSE: GET_XTK_COUNTER_RESPONSE,
+  GET_FILERES_QUERY_SCHEMA_RESPONSE: GET_FILERES_QUERY_SCHEMA_RESPONSE,
+  INCREASE_VALUE_RESPONSE: INCREASE_VALUE_RESPONSE,
+  FILE_RES_WRITE_RESPONSE: FILE_RES_WRITE_RESPONSE,
+  PUBLISH_IF_NEEDED_RESPONSE: PUBLISH_IF_NEEDED_RESPONSE,
+  GET_URL_RESPONSE: GET_URL_RESPONSE
 }
