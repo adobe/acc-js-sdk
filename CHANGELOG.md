@@ -5,6 +5,20 @@ This is a node.js SDK for Campaign API. It exposes the Campaign API exactly like
 
 # Changelog 
 
+## Version 1.1.5
+_2022/07/07__
+
+* The SOAP method name was not showing up properly in the Chrome console
+
+## Version 1.1.4
+_2022/07/07__
+
+* Added `application.version` which returns the server version in the format major.minor.servicePack (ex: 8.2.10)
+* Added the ability to push down parameters to the SOAP and transport layers. See the pushDown section of the readme file.
+* The pushDown mechanism can be used to simply overwrite the request timeout, either globally or at the method level
+* Publicly export the HttpError class so that custom transports can be written more safely. A failure during transport should return an HttpError object
+* By default, the SOAP method name is now added in the URLs for better troubleshooting
+
 ## Version 1.1.3
 _2022/05/30_
 
@@ -15,6 +29,10 @@ _2022/05/30_
 * Document how to set the password of an external account
 * By default, SDK will send additional HTTP headers to help troubleshooting and usage tracking
 * Add the ability to pass extra HTTP headers to API calls, either globally (to all HTTP headers), or locally, i.e. for a specific method
+* Remove .vscode folder from the sources
+* Example for xtkBuilder.installPackage API
+* For APIs which have parameters of type DOMElement and which are called using XML, support passing either a DOMElement or a DOMDocument
+
 
 ## Version 1.1.2
 _2022/03/22_

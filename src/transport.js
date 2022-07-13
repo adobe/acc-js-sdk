@@ -14,13 +14,27 @@ governing permissions and limitations under the License.
 
 const { Util } = require('./util.js');
 
+/**
+ * @memberof Utils
+ * @class
+ * @constructor
+ */
 class HttpError {
+  /* Encapsulates an error from an HTTP call
+    * @param {string|number} statusCode - The Http status code
+    * @param {string?} statusText - The Http status text corresponding to the error code
+    * @param {any?} data - The payload of the HTTP response, which usually contains details about the error
+  */
   constructor(statusCode, statusText, data) {
       this.statusCode = statusCode;
       this.statusText = statusText || "";
       this.data = data;
   }
 
+  /**
+   * Returns a short description of the error
+   * @returns {string} a short descrption of the error
+   */
   toString() {
     return `${this.statusCode}${this.statusText ? " " + this.statusText : ""}`;
   }
@@ -52,13 +66,14 @@ if (!Util.isBrowser()) {
    * - request
    */
 
-  const request = (options) => {
+   const request = (options, requestOptions) => {
+    requestOptions = requestOptions || {};
     const request = {
       method: options.method || "GET",
       url: options.url,
       headers: options.headers,
       data: options.data,
-      timeout: 5000,
+      timeout: requestOptions.timeout || 5000,
     };
     return axios(request)
     .then((response) => {

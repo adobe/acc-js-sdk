@@ -1207,23 +1207,30 @@ class Application {
              * The server build number
              * @type {string}
              */
-        this.buildNumber = EntityAccessor.getAttributeAsString(serverInfo, "buildNumber");
+            this.buildNumber = EntityAccessor.getAttributeAsString(serverInfo, "buildNumber");
+            /**
+             * The server version, formatted as major.minor.servicePack (ex: 8.2.10)
+             * @type {string}
+             */
+            this.version = EntityAccessor.getAttributeAsString(serverInfo, "majNumber") + "." +
+                           EntityAccessor.getAttributeAsString(serverInfo, "minNumber") + "." +
+                           EntityAccessor.getAttributeAsString(serverInfo, "servicePack");
             /**
              * The Campaign instance name
              * @type {string}
              */
-        this.instanceName = EntityAccessor.getAttributeAsString(serverInfo, "instanceName");
+            this.instanceName = EntityAccessor.getAttributeAsString(serverInfo, "instanceName");
             const userInfo = EntityAccessor.getElement(info, "userInfo");
             /**
              * The logged operator
              * @type {Campaign.CurrentLogin}
              */
-        this.operator = new CurrentLogin(userInfo);
+            this.operator = new CurrentLogin(userInfo);
             /**
              * The list of installed packages
              * @type {string[]}
              */
-        this.packages = [];
+            this.packages = [];
             for (var p of EntityAccessor.getChildElements(userInfo, "installed-package")) {
             this.packages.push(`${EntityAccessor.getAttributeAsString(p, "namespace")}:${EntityAccessor.getAttributeAsString(p, "name")}`);
             }

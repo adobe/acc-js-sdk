@@ -38,8 +38,8 @@ var resources = [
     { name: "./optionCache.js" },
     { name: "./soap.js" },
     { name: "./crypto.js" },
-    { name: "./testUtil.js" },
     { name: "./application.js" },
+    { name: "./testUtil.js" },
     { name: "./client.js" },
     { name: "./index.js" },
 ];
