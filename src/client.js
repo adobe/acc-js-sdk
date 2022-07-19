@@ -551,7 +551,7 @@ class Client {
 
           console.log("refresh");
           const that = this;
-          const soapCall = this._prepareSoapCall("xtk:session", "GetDirtyCacheEntitiesWebUi", true, this._connectionParameters._options.extraHttpHeaders);
+          const soapCall = this._prepareSoapCall("xtk:session", "GetModifiedEntities", true, this._connectionParameters._options.extraHttpHeaders);
 
           if (this.lastTime == "2000-01-01T00:00:00.000") {
             let storedTime = this._metadataCache.get("time");
