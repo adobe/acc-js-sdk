@@ -2826,7 +2826,7 @@ describe('ACC Client', function () {
             const query = client.NLWS.pushDown({'foo': 'bar'}).xtkQueryDef.create(queryDef);
             await query.executeQuery();
             const lastCall = client._transport.mock.calls[client._transport.mock.calls.length-1];
-            expect(lastCall[0].url).toBe("http://acc-sdk:8080/nl/jsp/soaprouter.jsp?xtk:queryDef#ExecuteQuery");
+            expect(lastCall[0].url).toBe("http://acc-sdk:8080/nl/jsp/soaprouter.jsp?xtk:queryDef:ExecuteQuery");
             expect(lastCall[1].charset).toBe("UTF-8");
             expect(lastCall[1].foo).toBe("bar");
         });
@@ -2851,7 +2851,7 @@ describe('ACC Client', function () {
             const query = client.NLWS.pushDown({'foo': 'bar'}).xtkQueryDef.create(queryDef);
             await query.executeQuery();
             const lastCall = client._transport.mock.calls[client._transport.mock.calls.length-1];
-            expect(lastCall[0].url).toBe("http://acc-sdk:8080/nl/jsp/soaprouter.jsp?xtk:queryDef#ExecuteQuery");
+            expect(lastCall[0].url).toBe("http://acc-sdk:8080/nl/jsp/soaprouter.jsp?xtk:queryDef:ExecuteQuery");
             expect(lastCall[1].charset).toBe("UTF-8");
             expect(lastCall[1].foo).toBe("bar");
             expect(lastCall[1].cnxDefault).toBe(3);
@@ -2878,7 +2878,7 @@ describe('ACC Client', function () {
             const query = client.NLWS.pushDown({'foo': 'bar'}).pushDown().pushDown({'foo': 'fu', x: 2 }).xtkQueryDef.create(queryDef);
             await query.executeQuery();
             const lastCall = client._transport.mock.calls[client._transport.mock.calls.length-1];
-            expect(lastCall[0].url).toBe("http://acc-sdk:8080/nl/jsp/soaprouter.jsp?xtk:queryDef#ExecuteQuery");
+            expect(lastCall[0].url).toBe("http://acc-sdk:8080/nl/jsp/soaprouter.jsp?xtk:queryDef:ExecuteQuery");
             expect(lastCall[1].charset).toBe("UTF-8");
             expect(lastCall[1].foo).toBe("fu");
             expect(lastCall[1].cnxDefault).toBe(3);

@@ -888,7 +888,7 @@ describe("Campaign exception", () => {
         it("Should add the method name by default in the URL", () => {
             const call = makeSoapMethodCall(undefined, "xtk:session", "Empty", "$session$", "$security$");
             call.finalize(URL);
-            expect(call.request.url).toBe("https://soap-test/nl/jsp/soaprouter.jsp?xtk:session#Empty");
+            expect(call.request.url).toBe("https://soap-test/nl/jsp/soaprouter.jsp?xtk:session:Empty");
         });
 
         it("Should be able to disable adding the method name by default in the URL", () => {
