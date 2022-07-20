@@ -31,7 +31,7 @@ const Cipher = require('./crypto.js').Cipher;
 const DomUtil = require('./domUtil.js').DomUtil;
 const MethodCache = require('./methodCache.js').MethodCache;
 const OptionCache = require('./optionCache.js').OptionCache;
-const MetaDataCache = require('./metadataCache.js').MetadataCache;
+const CacheRefresher = require('./cacheRefresher.js').CacheRefresher;
 const request = require('./transport.js').request;
 const Application = require('./application.js').Application;
 const EntityAccessor = require('./entityAccessor.js').EntityAccessor;
@@ -518,7 +518,7 @@ class Client {
         this._entityCache = new XtkEntityCache(this._storage, `${rootKey}.XtkEntityCache`, connectionParameters._options.entityCacheTTL);
         this._methodCache = new MethodCache(this._storage, `${rootKey}.MethodCache`, connectionParameters._options.methodCacheTTL);
         this._optionCache = new OptionCache(this._storage, `${rootKey}.OptionCache`, connectionParameters._options.optionCacheTTL);
-        this._metadataCache = new MetaDataCache(this._storage, `${rootKey}.MetaDataCache`, connectionParameters._options.optionCacheTTL)
+        this._cacheRefresher = new CacheRefresher(this._entityCache, this, connectionParameters, rootKey);
         this.NLWS = new Proxy(this, clientHandler());
 
         this._transport = connectionParameters._options.transport;
@@ -543,61 +543,6 @@ class Client {
          * @type {Campaign.Application}
          */
         this.application = null;
-
-        // temporary start in 2000
-        this.lastTime = "2000-01-01T00:00:00.000";
-        this.buildNumber = "0"; // temporary build number start
-        setInterval(() => {
-
-          console.log("refresh");
-          const that = this;
-          const soapCall = this._prepareSoapCall("xtk:session", "GetModifiedEntities", true, this._connectionParameters._options.extraHttpHeaders);
-
-          if (this.lastTime == "2000-01-01T00:00:00.000") {
-            let storedTime = this._metadataCache.get("time");
-            if (storedTime != undefined) {
-              this.lastTime = storedTime;
-              console.log("get stored time: " + this.lastTime);
-            } else {
-              console.log("default stored time: " + this.lastTime);
-            }
-          }
-          if (this.buildNumber == "0") {
-            let storedBuildNumber = this._metadataCache.get("buildNumber");
-            if (storedBuildNumber != undefined) {
-              this.buildNumber = storedBuildNumber;
-              console.log("get stored buildNumber: " + this.buildNumber);
-            } else {
-              console.log("default buildNumber: " + this.buildNumber);
-            }
-          }
-
-          // use Json because xtk:schema does not work directly in DomUtil.parse(`<cache buildNumber="9469" lastModified="2022-06-30T00:00:00.000"><xtk:schema></xtk:schema></cache>`);
-          var jsonCache = {
-            buildNumber: this.buildNumber, 
-            lastModified: this.lastTime,
-            "xtk:schema": {}
-          }
-
-          var xmlDoc = DomUtil.fromJSON("cache", jsonCache, 'SimpleJson');
-          soapCall.writeDocument("script", xmlDoc);
-
-          this._makeSoapCall(soapCall).then(function () {
-            var doc = soapCall.getNextDocument();
-            soapCall.checkNoMoreArgs();
-            doc = that._toRepresentation(doc, 'xml');
-            var xmlString = DomUtil.toXMLString(doc);
-            console.log("doc: " + xmlString);
-            that.lastTime = DomUtil.getAttributeAsString(doc, "time"); // save time to be able to send it as an attribute in the next soap call
-            console.log("timestamp: " + that.lastTime);
-            that.buildNumber = DomUtil.getAttributeAsString(doc, "buildNumber");
-            console.log("buildNumber: " + that.buildNumber);
-            that._entityCache.refresh(doc, "xtk:schema");
-            that._metadataCache.put("time", that.lastTime);
-            that._metadataCache.put("buildNumber", that.buildNumber);
-            return doc;
-          });
-        }, 10000); // every 10 seconds
     }
 
     /**

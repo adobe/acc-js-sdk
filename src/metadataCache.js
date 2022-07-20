@@ -14,10 +14,9 @@ governing permissions and limitations under the License.
 
 /**********************************************************************************
  * 
- * A cache for option values
+ * A cache for acc properties values ( build Number, last modified)
  * 
  *********************************************************************************/
-const XtkCaster = require('./xtkCaster.js').XtkCaster;
 const { Cache } = require('./cache.js');
 
 
