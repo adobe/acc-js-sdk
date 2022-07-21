@@ -2965,7 +2965,6 @@ describe('ACC Client', function () {
       // Create a mock client and logon
       const client = await Mock.makeClient();
       client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
-      client._transport._xxx = 3;
       await client.NLWS.xtkSession.logon();
 
       // Mock the upload protocol
@@ -3012,7 +3011,6 @@ describe('ACC Client', function () {
       // Create a mock client and logon
       const client = await Mock.makeClient();
       client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
-      client._transport._xxx = 3;
       await client.NLWS.xtkSession.logon();
 
       // Mock the upload protocol

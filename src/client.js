@@ -506,6 +506,7 @@ governing permissions and limitations under the License.
 
     /**
      * Will call the SOAP method(IncreaseValue) to increament the counter
+     * The counter will be used to create the internalName(unique identifier) for the uploaded file.
      * @returns {Promise<number>}
      * @private
      */
@@ -518,7 +519,7 @@ governing permissions and limitations under the License.
      * This will create and return fileRes object
      * @param counter
      * @param data
-     * @returns {{originalName: (jQuery|HTMLElement|*), internalName: string, fileName: (jQuery|HTMLElement|*), useMd5AsFilename: string, xtkschema: string, storageType: number, label: (jQuery|HTMLElement|*), md5: (string|string|*)}}
+     * @returns {{originalName: string, internalName: string, fileName: string, useMd5AsFilename: string, xtkschema: string, storageType: number, label: string, md5: string}}
      * @private
      */
     const _createFileRes = (counter, data) => {
@@ -576,7 +577,7 @@ governing permissions and limitations under the License.
             reject('File uploading is only supported in browser based calls.');
           }
           try {
-            var data = new FormData()
+            const data = new FormData()
             data.append('file_noMd5', file)
             //TODO: Needs to be refactored after cookie issue get resolved.
             client._makeHttpCall({
@@ -590,7 +591,7 @@ governing permissions and limitations under the License.
                 'Cookie': '__sessiontoken=' + client._sessionToken,
               }
             }).then((okay)=>{
-              var iframe = document.createElement('iframe');
+              const iframe = document.createElement('iframe');
               iframe.style.height = 0;
               iframe.style.width = 0;
               document.controller = {
@@ -609,7 +610,7 @@ governing permissions and limitations under the License.
                   })
                 }
               }
-              var html = `<body>${okay}</body>`;
+              const html = `<body>${okay}</body>`;
               document.body.appendChild(iframe);
               iframe.contentWindow.document.open();
               iframe.contentWindow.document.write(html);
