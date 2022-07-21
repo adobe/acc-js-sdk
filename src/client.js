@@ -497,23 +497,30 @@ governing permissions and limitations under the License.
   // File Uploader
   // ========================================================================================
 
+  /**
+   * File Uploader API for JS SDK(Currently available only in browsers)
+   * @param client
+   * @returns {{upload: (function(*=): Promise<{name: string, md5: string, type: string, size: string, url: string}>)}}
+   */
   const fileUploader = (client) => {
+
     /**
-         * Will call the SOAP method(IncreaseValue) to increament the counter
-         * @returns {Promise<number>}
-         */
+     * Will call the SOAP method(IncreaseValue) to increament the counter
+     * @returns {Promise<number>}
+     * @private
+     */
     const _increaseValue = async () => {
       const xtkCounter= await client.NLWS.xtkCounter.increaseValue({name: 'xtkResource'});
       return xtkCounter
     }
 
     /**
-         * This will create and return fileRes object
-         * @param counter
-         * @param data
-         * @returns {{originalName, internalName: string, fileName, useMd5AsFilename: string, xtkschema: string, storageType: number, label, md5: (string|string|string|null|any|number)}}
-         * @private
-         */
+     * This will create and return fileRes object
+     * @param counter
+     * @param data
+     * @returns {{originalName: (jQuery|HTMLElement|*), internalName: string, fileName: (jQuery|HTMLElement|*), useMd5AsFilename: string, xtkschema: string, storageType: number, label: (jQuery|HTMLElement|*), md5: (string|string|*)}}
+     * @private
+     */
     const _createFileRes = (counter, data) => {
       return {
         internalName: 'RES' + counter,
@@ -529,40 +536,40 @@ governing permissions and limitations under the License.
     }
 
     /**
-         * This will write fileRes object in the system.
-         * @param fileRes
-         * @returns {Promise<void>}
-         * @private
-         */
+     * This will write fileRes object in the system.
+     * @param fileRes
+     * @returns {Promise<void>}
+     * @private
+     */
     const _write = async (fileRes) => {
       await client.NLWS.xtkSession.write(fileRes);
     }
 
     /**
-         * This will call the SOAP method(PublishIfNeeded) to publish the fileRes object
-         * @param fileRes
-         * @returns {Promise<void>}
-         * @private
-         */
+     * This will call the SOAP method(PublishIfNeeded) to publish the fileRes object
+     * @param fileRes
+     * @returns {Promise<void>}
+     * @private
+     */
     const _publishIfNeeded = async (fileRes) => {
       await client.NLWS.xtkFileRes.create(fileRes).publishIfNeeded();
     }
 
     /**
-         * This Will call the SOAP method(GetURL) which returns the public URL of the uploaded file.
-         * @param fileRes
-         * @returns {Promise<string>}
-         * @private
-         */
+     * This Will call the SOAP method(GetURL) which returns the public URL of the uploaded file.
+     * @param fileRes
+     * @returns {Promise<string>}
+     * @private
+     */
     const _getPublicUrl = async (fileRes) => {
       return await client.NLWS.xtkFileRes.create(fileRes).getURL()
     }
     return {
       /**
-             * This is the exposed/public method for fileUploader instance which will do all the processing related to the upload process internally and returns the promise containing all the required data.
-             * @param file
-             * @returns {Promise<{name: string, md5: string, type: string, size: string, url: string}>}
-             */
+       * his is the exposed/public method for fileUploader instance which will do all the processing related to the upload process internally and returns the promise containing all the required data.
+       * @param file
+       * @returns {Promise<{name: string, md5: string, type: string, size: string, url: string}>}
+       */
       upload: (file) => {
         return new Promise((resolve, reject) => {
           if (!Util.isBrowser()) {
@@ -669,9 +676,9 @@ governing permissions and limitations under the License.
 
       // expose utilities
       /**
-         * File Uploader API
-         * @type {{upload: (function(*=): Promise<{name: string, md5: string, type: string, size: string, url: string}>)}}
-         */
+       * File Uploader API
+       * @type {{upload: (function(*=): Promise<{name: string, md5: string, type: string, size: string, url: string}>)}}
+       */
       this.fileUploader = fileUploader(this);
 
       /**
