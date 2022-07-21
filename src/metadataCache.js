@@ -43,7 +43,7 @@ class MetadataCache extends Cache {
      * but an internal cache for the Campaign.Client object
      * 
      * Cached object are made of
-     * - the key is the option name
+     * - the key is the propertie name
      * - the value is a string
      * 
      * @param {Storage} storage is an optional Storage object, such as localStorage or sessionStorage

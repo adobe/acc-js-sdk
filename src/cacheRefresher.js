@@ -58,7 +58,8 @@ governing permissions and limitations under the License.
           }
         }
 
-         // use Json because xtk:schema does not work directly in DomUtil.parse(`<cache buildNumber="9469" lastModified="2022-06-30T00:00:00.000"><xtk:schema></xtk:schema></cache>`);
+        // Use Json because xtk:schema does not work directly in DomUtil.parse(`<cache buildNumber="9469" lastModified="2022-06-30T00:00:00.000"><xtk:schema></xtk:schema></cache>`);
+        // due to the semi-colon character
         var jsonCache;
         if (this.lastTime === undefined || this.buildNumber === undefined) {
           jsonCache = {
