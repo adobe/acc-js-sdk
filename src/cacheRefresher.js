@@ -16,7 +16,17 @@ governing permissions and limitations under the License.
   const MetaDataCache = require('./metadataCache.js').MetadataCache;
   const XtkCaster = require('./xtkCaster.js').XtkCaster;
 
+  
   class CacheRefresher {
+   /**
+   * A class to refresh regulary a Cache every 10 seconds, by sending a query to get the last modified entities
+   * it hould be used in a client.
+   *
+   * @param {Cache} cache is the cache to refresh
+   * @param {Client} client is the ACC API Client.
+   * @param {ConnectionParameters} connectionParameters used to created the client provide as parameter
+   * @param {string} rootKey is an optional root key to use for the storage object
+   */
     constructor(cache, client, connectionParameters, rootKey) {
       
       this._cache = cache;
@@ -25,9 +35,9 @@ governing permissions and limitations under the License.
 
       this._storage = connectionParameters._options._storage;
       this._metadataCache = new MetaDataCache(this._storage, `${rootKey}.MetaDataCache`, connectionParameters._options.optionCacheTTL);
-      // temporary start in 2000
-      this.lastTime = "2000-01-01T00:00:00.000Z";
-      this.buildNumber = "0"; // temporary build number start
+      
+      this.lastTime;
+      this.buildNumber; 
 
       this._intervalId = setInterval(() => {
 
@@ -35,24 +45,31 @@ governing permissions and limitations under the License.
         const that = this;
         const soapCall = this._client._prepareSoapCall("xtk:session", "GetModifiedEntities", true, this._connectionParameters._options.extraHttpHeaders);
 
-        if (this.lastTime == "2000-01-01T00:00:00.000Z") {
+        if (this.lastTime === undefined) {
           let storedTime = this._metadataCache.get("time");
           if (storedTime != undefined) {
             this.lastTime = storedTime;
           }
         }
-        if (this.buildNumber == "0") {
+        if (this.buildNumber === undefined) {
           let storedBuildNumber = this._metadataCache.get("buildNumber");
           if (storedBuildNumber != undefined) {
             this.buildNumber = storedBuildNumber;
           }
         }
 
-        // use Json because xtk:schema does not work directly in DomUtil.parse(`<cache buildNumber="9469" lastModified="2022-06-30T00:00:00.000"><xtk:schema></xtk:schema></cache>`);
-        var jsonCache = {
-          buildNumber: this.buildNumber,
-          lastModified: this.lastTime,
-          "xtk:schema": {}
+         // use Json because xtk:schema does not work directly in DomUtil.parse(`<cache buildNumber="9469" lastModified="2022-06-30T00:00:00.000"><xtk:schema></xtk:schema></cache>`);
+        var jsonCache;
+        if (this.lastTime === undefined || this.buildNumber === undefined) {
+          jsonCache = {
+            "xtk:schema": {}
+          }
+        } else {
+          jsonCache = {
+            buildNumber: this.buildNumber,
+            lastModified: this.lastTime,
+            "xtk:schema": {}
+          }
         }
 
         var xmlDoc = DomUtil.fromJSON("cache", jsonCache, 'SimpleJson');
@@ -61,7 +78,7 @@ governing permissions and limitations under the License.
         this._client.registerObserver({
           onSOAPCallFailure: (soapCall, exception) => {
             console.error("exception : " + exception);
-            if (soapCall.methodName != undefined && soapCall.methodName == "GetModifiedEntities" && exception.faultString.includes("is not defined")) {
+            if (soapCall.methodName == "GetModifiedEntities" && exception.errorCode == "SOP-330006" ) {
               clearInterval(this._intervalId);
             }
           }
@@ -81,6 +98,7 @@ governing permissions and limitations under the License.
       }, 10000); // every 10 seconds
     }
 
+    // Refresh Cache : remove entities modified recently listed in xmlDoc
     refresh(xmlDoc, refreshedtype) {
       const bClearCache = XtkCaster.asBoolean(DomUtil.getAttributeAsString(xmlDoc, "emptyCache"));
       if (bClearCache == true ) {
