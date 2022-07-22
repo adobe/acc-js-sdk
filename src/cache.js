@@ -123,6 +123,19 @@ class SafeStorage {
     } catch(ex) { /* Ignore errors in safe class */
     }
   }
+
+  /**
+  * clear the storage
+  * 
+  */
+  clear() {
+    if (!this._delegate || this._rootKey === undefined || this._rootKey === null)
+      return;
+    try {
+      this._delegate.clear();
+    } catch (ex) { /* Ignore errors in safe class */
+    }
+  }
 }
 
 /**
@@ -263,8 +276,8 @@ class Cache {
    * as cleared so that subsequent get operation will not actually return any data cached in persistent storage
    */
   clear() {
-      this._cache = {};
-      this._saveLastCleared();
+    this._cache = {};
+    this._storage.clear();
   }
 
   remove(key) {

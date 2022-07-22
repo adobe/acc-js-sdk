@@ -27,11 +27,12 @@ governing permissions and limitations under the License.
    * @param {ConnectionParameters} connectionParameters used to created the client provide as parameter
    * @param {string} rootKey is an optional root key to use for the storage object
    */
-    constructor(cache, client, connectionParameters, rootKey) {
+    constructor(cache, client, connectionParameters, rootKey, refreshedtype) {
       
       this._cache = cache;
       this._client = client;
       this._connectionParameters = connectionParameters;
+      this._refreshedtype = refreshedtype;
 
       this._storage = connectionParameters._options._storage;
       this._metadataCache = new MetaDataCache(this._storage, `${rootKey}.MetaDataCache`, connectionParameters._options.optionCacheTTL);
@@ -63,13 +64,13 @@ governing permissions and limitations under the License.
         var jsonCache;
         if (this.lastTime === undefined || this.buildNumber === undefined) {
           jsonCache = {
-            "xtk:schema": {}
+            [this._refreshedtype]: {}
           }
         } else {
           jsonCache = {
             buildNumber: this.buildNumber,
             lastModified: this.lastTime,
-            "xtk:schema": {}
+            [this._refreshedtype]: {}
           }
         }
 
@@ -91,7 +92,7 @@ governing permissions and limitations under the License.
             doc = that._client._toRepresentation(doc, 'xml');
             that.lastTime = DomUtil.getAttributeAsString(doc, "time"); // save time to be able to send it as an attribute in the next soap call
             that.buildNumber = DomUtil.getAttributeAsString(doc, "buildNumber");
-            that.refresh(doc, "xtk:schema");
+            that.refresh(doc, that._refreshedtype);
             that._metadataCache.put("time", that.lastTime);
             that._metadataCache.put("buildNumber", that.buildNumber);
             return doc;
@@ -101,6 +102,7 @@ governing permissions and limitations under the License.
 
     // Refresh Cache : remove entities modified recently listed in xmlDoc
     refresh(xmlDoc, refreshedtype) {
+      console.log("cache refresh " + refreshedtype);
       const bClearCache = XtkCaster.asBoolean(DomUtil.getAttributeAsString(xmlDoc, "emptyCache"));
       if (bClearCache == true ) {
         console.log("Clear cache");
@@ -113,8 +115,8 @@ governing permissions and limitations under the License.
           if (schemaType == refreshedtype) {
             console.log("remove " + schemaId); // TODO: delete log
             this._cache.remove(schemaId);
-            child = DomUtil.getNextSiblingElement(child);
           }
+          child = DomUtil.getNextSiblingElement(child);
         }
       }
     }

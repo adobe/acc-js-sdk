@@ -327,7 +327,7 @@ class ConnectionParameters {
             storage = options.storage;
             try {
                 if (!storage)
-                    storage = localStorage;    
+                    storage = sessionStorage;    
             } catch (ex) {
                 /* ignore error if localStorage not found */
             }    
@@ -516,9 +516,10 @@ class Client {
         const rootKey = `acc.js.sdk.${sdk.getSDKVersion().version}.${instanceKey}.cache`;
 
         this._entityCache = new XtkEntityCache(this._storage, `${rootKey}.XtkEntityCache`, connectionParameters._options.entityCacheTTL);
+        this._cacheRefresher = new CacheRefresher(this._entityCache, this, connectionParameters, rootKey, "xtk:schema");
         this._methodCache = new MethodCache(this._storage, `${rootKey}.MethodCache`, connectionParameters._options.methodCacheTTL);
         this._optionCache = new OptionCache(this._storage, `${rootKey}.OptionCache`, connectionParameters._options.optionCacheTTL);
-        this._cacheRefresher = new CacheRefresher(this._entityCache, this, connectionParameters, rootKey);
+        this._cacheRefresher = new CacheRefresher(this._optionCache, this, connectionParameters, rootKey, "xtk:option");
         this.NLWS = new Proxy(this, clientHandler());
 
         this._transport = connectionParameters._options.transport;
@@ -942,15 +943,15 @@ class Client {
      * @return the option value, casted in the expected data type. If the option does not exist, it will return null.
      */
     async getOption(name, useCache = true) {
-        var value;
-        if (useCache)
-            value = this._optionCache.get(name);
-        if (value === undefined) {
-            const option = await this.NLWS.xtkSession.getOption(name);
-            value = this._optionCache.put(name, option);
-            this._optionCache.put(name, option);
-        }
-        return value;
+      var value;
+      if (useCache) {
+        value = this._optionCache.get(name);
+      }
+      if (value === undefined) {
+        const option = await this.NLWS.xtkSession.getOption(name);
+        value = this._optionCache.put(name, option);
+      }
+      return value;
     }
 
     /**
