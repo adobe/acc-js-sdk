@@ -1092,11 +1092,12 @@ class Client {
         var that = this;
         var entity = that._entityCache.get("xtk:schema", schemaId);
         if (!entity) {
-            entity = await that.getEntityIfMoreRecent("xtk:schema", schemaId, "xml", internal);
-        }
-        if (entity)
+          entity = await that.getEntityIfMoreRecent("xtk:schema", schemaId, "xml", internal);
+          if (entity) {
             that._entityCache.put("xtk:schema", schemaId, entity);
-
+            that._methodCache.put(entity);
+          }
+        }
         entity = that._toRepresentation(entity, representation);
         return entity;
     }
