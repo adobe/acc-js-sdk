@@ -18,6 +18,8 @@ governing permissions and limitations under the License.
 
   
   class CacheRefresher {
+
+    
    /**
    * A class to refresh regulary a Cache every 10 seconds, by sending a query to get the last modified entities
    * it hould be used in a client.
@@ -39,66 +41,65 @@ governing permissions and limitations under the License.
       this._metadataCache = new MetaDataCache(this._storage, `${rootKey}.MetaDataCache`, connectionParameters._options.optionCacheTTL);
       
       this.lastTime;
-      this.buildNumber; 
+      this.buildNumber;
+      this._intervalId = setInterval(() => this.callAndRefresh(), 10000); // every 10 seconds
+    }
 
-      this._intervalId = setInterval(() => {
+    callAndRefresh() {
+      const that = this;
+      const soapCall = this._client._prepareSoapCall("xtk:session", "GetModifiedEntities", true, this._connectionParameters._options.extraHttpHeaders);
 
-        console.log("refresh");
-        const that = this;
-        const soapCall = this._client._prepareSoapCall("xtk:session", "GetModifiedEntities", true, this._connectionParameters._options.extraHttpHeaders);
+      if (this.lastTime === undefined) {
+        let storedTime = this._metadataCache.get("time");
+        if (storedTime != undefined) {
+          this.lastTime = storedTime;
+        }
+      }
+      if (this.buildNumber === undefined) {
+        let storedBuildNumber = this._metadataCache.get("buildNumber");
+        if (storedBuildNumber != undefined) {
+          this.buildNumber = storedBuildNumber;
+        }
+      }
 
-        if (this.lastTime === undefined) {
-          let storedTime = this._metadataCache.get("time");
-          if (storedTime != undefined) {
-            this.lastTime = storedTime;
+      // Use Json because xtk:schema does not work directly in DomUtil.parse(`<cache buildNumber="9469" lastModified="2022-06-30T00:00:00.000"><xtk:schema></xtk:schema></cache>`);
+      // due to the semi-colon character
+      var jsonCache;
+      if (this.lastTime === undefined || this.buildNumber === undefined) {
+        jsonCache = {
+          [this._cacheSchema]: {}
+        }
+      } else {
+        jsonCache = {
+          buildNumber: this.buildNumber,
+          lastModified: this.lastTime,
+          [this._cacheSchema]: {}
+        }
+      }
+
+      var xmlDoc = DomUtil.fromJSON("cache", jsonCache, 'SimpleJson');
+      soapCall.writeDocument("script", xmlDoc);
+
+      this._client.registerObserver({
+        onSOAPCallFailure: (soapCall, exception) => {
+          console.error("exception : " + exception);
+          if (soapCall.methodName == "GetModifiedEntities" && exception.errorCode == "SOP-330006") {
+            clearInterval(this._intervalId);
           }
         }
-        if (this.buildNumber === undefined) {
-          let storedBuildNumber = this._metadataCache.get("buildNumber");
-          if (storedBuildNumber != undefined) {
-            this.buildNumber = storedBuildNumber;
-          }
-        }
+      });
 
-        // Use Json because xtk:schema does not work directly in DomUtil.parse(`<cache buildNumber="9469" lastModified="2022-06-30T00:00:00.000"><xtk:schema></xtk:schema></cache>`);
-        // due to the semi-colon character
-        var jsonCache;
-        if (this.lastTime === undefined || this.buildNumber === undefined) {
-          jsonCache = {
-            [this._cacheSchema]: {}
-          }
-        } else {
-          jsonCache = {
-            buildNumber: this.buildNumber,
-            lastModified: this.lastTime,
-            [this._cacheSchema]: {}
-          }
-        }
-
-        var xmlDoc = DomUtil.fromJSON("cache", jsonCache, 'SimpleJson');
-        soapCall.writeDocument("script", xmlDoc);
-
-        this._client.registerObserver({
-          onSOAPCallFailure: (soapCall, exception) => {
-            console.error("exception : " + exception);
-            if (soapCall.methodName == "GetModifiedEntities" && exception.errorCode == "SOP-330006" ) {
-              clearInterval(this._intervalId);
-            }
-          }
-        });
-        
-          this._client._makeSoapCall(soapCall).then(function () {
-            var doc = soapCall.getNextDocument();
-            soapCall.checkNoMoreArgs();
-            doc = that._client._toRepresentation(doc, 'xml');
-            that.lastTime = DomUtil.getAttributeAsString(doc, "time"); // save time to be able to send it as an attribute in the next soap call
-            that.buildNumber = DomUtil.getAttributeAsString(doc, "buildNumber");
-            that.refresh(doc, that._cacheSchema);
-            that._metadataCache.put("time", that.lastTime);
-            that._metadataCache.put("buildNumber", that.buildNumber);
-            return doc;
-          });
-      }, 10000); // every 10 seconds
+      this._client._makeSoapCall(soapCall).then(function () {
+        var doc = soapCall.getNextDocument();
+        soapCall.checkNoMoreArgs();
+        doc = that._client._toRepresentation(doc, 'xml');
+        that.lastTime = DomUtil.getAttributeAsString(doc, "time"); // save time to be able to send it as an attribute in the next soap call
+        that.buildNumber = DomUtil.getAttributeAsString(doc, "buildNumber");
+        that.refresh(doc, that._cacheSchema);
+        that._metadataCache.put("time", that.lastTime);
+        that._metadataCache.put("buildNumber", that.buildNumber);
+        return doc;
+      });
     }
 
     // Refresh Cache : remove entities modified recently listed in xmlDoc
