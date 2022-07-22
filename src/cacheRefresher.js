@@ -26,13 +26,14 @@ governing permissions and limitations under the License.
    * @param {Client} client is the ACC API Client.
    * @param {ConnectionParameters} connectionParameters used to created the client provide as parameter
    * @param {string} rootKey is an optional root key to use for the storage object
+   * @param {string} cacheSchema is the schema present in the cache to be refreshed every 10 seconds
    */
-    constructor(cache, client, connectionParameters, rootKey, refreshedtype) {
+    constructor(cache, client, connectionParameters, rootKey, cacheSchema) {
       
       this._cache = cache;
       this._client = client;
       this._connectionParameters = connectionParameters;
-      this._refreshedtype = refreshedtype;
+      this._cacheSchema = cacheSchema;
 
       this._storage = connectionParameters._options._storage;
       this._metadataCache = new MetaDataCache(this._storage, `${rootKey}.MetaDataCache`, connectionParameters._options.optionCacheTTL);
@@ -64,13 +65,13 @@ governing permissions and limitations under the License.
         var jsonCache;
         if (this.lastTime === undefined || this.buildNumber === undefined) {
           jsonCache = {
-            [this._refreshedtype]: {}
+            [this._cacheSchema]: {}
           }
         } else {
           jsonCache = {
             buildNumber: this.buildNumber,
             lastModified: this.lastTime,
-            [this._refreshedtype]: {}
+            [this._cacheSchema]: {}
           }
         }
 
@@ -92,7 +93,7 @@ governing permissions and limitations under the License.
             doc = that._client._toRepresentation(doc, 'xml');
             that.lastTime = DomUtil.getAttributeAsString(doc, "time"); // save time to be able to send it as an attribute in the next soap call
             that.buildNumber = DomUtil.getAttributeAsString(doc, "buildNumber");
-            that.refresh(doc, that._refreshedtype);
+            that.refresh(doc, that._cacheSchema);
             that._metadataCache.put("time", that.lastTime);
             that._metadataCache.put("buildNumber", that.buildNumber);
             return doc;
@@ -101,8 +102,8 @@ governing permissions and limitations under the License.
     }
 
     // Refresh Cache : remove entities modified recently listed in xmlDoc
-    refresh(xmlDoc, refreshedtype) {
-      console.log("cache refresh " + refreshedtype);
+    refresh(xmlDoc, cacheSchema) {
+      console.log("cache refresh " + cacheSchema);
       const bClearCache = XtkCaster.asBoolean(DomUtil.getAttributeAsString(xmlDoc, "emptyCache"));
       if (bClearCache == true ) {
         console.log("Clear cache");
@@ -112,7 +113,7 @@ governing permissions and limitations under the License.
         while (child) {
           let schemaId = DomUtil.getAttributeAsString(child, "pk");
           let schemaType = DomUtil.getAttributeAsString(child, "schema");
-          if (schemaType == refreshedtype) {
+          if (schemaType == cacheSchema) {
             console.log("remove " + schemaId); // TODO: delete log
             this._cache.remove(schemaId);
           }
