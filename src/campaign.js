@@ -10,10 +10,10 @@ OF ANY KIND, either express or implied. See the License for the specific languag
 governing permissions and limitations under the License.
 */
 (function() {
-"use strict";    
+"use strict";
 
 const { Util } = require("./util.js");
-   
+
 /**
  * @namespace Campaign
  */
@@ -38,7 +38,8 @@ const { Util } = require("./util.js");
   static NOT_LOGGED_IN(call, details)                     { return new CampaignException(     call, 400, 16384, `SDK-000010 Cannot call API because client is not logged in`, details); }
   static DECRYPT_ERROR(details)                           { return new CampaignException(undefined, 400, 16384, `SDK-000011 "Cannot decrypt password: password marker is missing`, details); }
   static SESSION_EXPIRED()                                { return new CampaignException(undefined, 401, 16384, `SDK-000012 "Session has expired or is invalid. Please reconnect.`); }
-  
+  static FILE_UPLOAD_FAILED(details)                      { return new CampaignException(undefined, 500, 16384, `SDK-000013 "Unknown error while uploading file`, details); }
+
 
   /**
    * Returns a short description of the exception
@@ -49,18 +50,18 @@ const { Util } = require("./util.js");
   }
 
   /**
-   * Represents a Campaign exception, i.e. any kind of error that can happen when calling Campaign APIs, 
+   * Represents a Campaign exception, i.e. any kind of error that can happen when calling Campaign APIs,
    * ranging from HTTP errors, XML serialization errors, SOAP errors, authentication errors, etc.
-   * 
+   *
    * Members of this object are trimmed, and all session tokens, security tokens, passwords, etc. are replaced by "***"
-   * 
+   *
    * @param {SoapMethodCall|request} call the call that triggered the error. It can be a SoapMethodCall object, a HTTP request object, or even be undefined if the exception is generated outside of the context of a call
    * @param {number} statusCode the HTTP status code (200, 500, etc.)
    * @param {string} faultCode the fault code, i.e. an error code
    * @param {string} faultString a short description of the error
    * @param {string} detail a more detailed description of the error
    * @param {Error|string} cause an optional error object representing the cause of the exception
-   */  
+   */
   constructor(call, statusCode, faultCode, faultString, detail, cause) {
 
       // Provides a shorter and more friendly description of the call and method name
@@ -80,7 +81,7 @@ const { Util } = require("./util.js");
               };
               methodName = `${call.urn}#${call.methodName}`;  // Example: "xtk:session#Logon"
           }
-          else { 
+          else {
               // HTTP call
               // Extract the path of the request URL if there's one
               // If it's a relative URL, use the URL itself
@@ -140,48 +141,48 @@ const { Util } = require("./util.js");
           faultString = faultString.trim();
       }
 
-      /** 
+      /**
        * The type of exception, always "CampaignException"
        * @type {string}
        */
       this.name = "CampaignException";
-      /** 
+      /**
        * A human friendly message describing the error
        * @type {string}
        */
       this.message = message;
-      /** 
-       * The HTTP status code corresponding to the error 
+      /**
+       * The HTTP status code corresponding to the error
        * @type {number}
        */
       this.statusCode = statusCode;
-      /** 
-       * An object describing the call (SOAP or HTTP) which caused the exception. Can be null 
+      /**
+       * An object describing the call (SOAP or HTTP) which caused the exception. Can be null
        * @type {string}
        */
       this.methodCall = methodCall;
-      /** 
-       * A Campaign-specific error code, such as XSV-350013. May not be set if the exception did not come from a SOAP call 
+      /**
+       * A Campaign-specific error code, such as XSV-350013. May not be set if the exception did not come from a SOAP call
        * @type {string}
        */
       this.errorCode = errorCode;
-      /** 
-       * An error code 
+      /**
+       * An error code
        * @type {string}
        */
       this.faultCode = faultCode;
-      /** 
-       * A short description of the error 
+      /**
+       * A short description of the error
        * @type {string}
        */
       this.faultString = faultString;
-      /** 
-       * A detailed description of the error 
+      /**
+       * A detailed description of the error
        * @type {string}
        */
       this.detail = detail;
-      /** 
-       * The cause of the error, such as the root cause exception 
+      /**
+       * The cause of the error, such as the root cause exception
        */
       this.cause = cause;
 
@@ -199,7 +200,7 @@ const { Util } = require("./util.js");
 
 /**
  * Creates a CampaignException for a SOAP call and from a root exception
- * 
+ *
  * @private
  * @param {SoapMethodCall} call the SOAP call
  * @param {*} err the exception causing the SOAP call.
@@ -210,7 +211,7 @@ function makeCampaignException(call, err) {
   // It's already a CampaignException
   if (err instanceof CampaignException)
       return err;
-  
+
   // Wraps DOM exceptions which can occur when dealing with malformed XML
   const ctor = Object.getPrototypeOf(err).constructor;
   if (ctor && ctor.name == "DOMException") {
@@ -244,9 +245,9 @@ exports.CampaignException = CampaignException;
 exports.makeCampaignException = makeCampaignException;
 
 /**********************************************************************************
- * 
+ *
  * Business constants and helpers
- * 
+ *
  *********************************************************************************/
 
 // Ignore constant definitions from coverage

@@ -6,6 +6,10 @@
 !.vscode/extensions.json
 *.code-workspace
 
+# intelij files
+acc-js-sdk.iml
+.idea/*
+
 # Local History for Visual Studio Code
 .history/
 

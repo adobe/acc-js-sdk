@@ -505,7 +505,7 @@ governing permissions and limitations under the License.
   const fileUploader = (client) => {
 
     /**
-     * Will call the SOAP method(IncreaseValue) to increament the counter
+     * Will call the SOAP method(IncreaseValue) to increase the counter
      * The counter will be used to create the internalName(unique identifier) for the uploaded file.
      * @returns {Promise<number>}
      * @private
@@ -567,8 +567,8 @@ governing permissions and limitations under the License.
     }
     return {
       /**
-       * his is the exposed/public method for fileUploader instance which will do all the processing related to the upload process internally and returns the promise containing all the required data.
-       * @param file
+       * This is the exposed/public method for fileUploader instance which will do all the processing related to the upload process internally and returns the promise containing all the required data.
+       * @param file, where file is an instance of [File](https://developer.mozilla.org/en-US/docs/Web/API/File)
        * @returns {Promise<{name: string, md5: string, type: string, size: string, url: string}>}
        */
       upload: (file) => {
@@ -616,10 +616,10 @@ governing permissions and limitations under the License.
               iframe.contentWindow.document.write(html);
               iframe.contentWindow.document.close();
             }).catch((ex)=>{
-              reject(ex);
+              reject(CampaignException.FILE_UPLOAD_FAILED(ex));
             })
           } catch (ex) {
-            reject(ex);
+            reject(CampaignException.FILE_UPLOAD_FAILED(ex));
           }
         })
       }
