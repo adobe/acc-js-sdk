@@ -591,6 +591,9 @@ governing permissions and limitations under the License.
                 'Cookie': '__sessiontoken=' + client._sessionToken,
               }
             }).then((okay)=>{
+              if(!okay.startsWith('Ok')){
+                throw okay;
+              }
               const iframe = document.createElement('iframe');
               iframe.style.height = 0;
               iframe.style.width = 0;
