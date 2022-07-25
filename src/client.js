@@ -106,13 +106,13 @@ const xtkObjectHandler = {
  * @private
  * @memberof Campaign
  */
-const clientHandler = (representation, headers) => {
+const clientHandler = (representation, headers, pushDownOptions) => {
     return {
         get: function(client, namespace) {
 
             // Force XML or JSON representation (NLWS.xml or NLWS.json)
-            if (namespace == "xml") return new Proxy(client, clientHandler("xml", headers));
-            if (namespace == "json") return new Proxy(client, clientHandler("SimpleJson", headers));
+            if (namespace == "xml") return new Proxy(client, clientHandler("xml", headers, pushDownOptions));
+            if (namespace == "json") return new Proxy(client, clientHandler("SimpleJson", headers, pushDownOptions));
 
             // Override HTTP headers (NLWS.headers({...}))
             // Unlike NLWS.xml or NLWS.json, NLWS.headers returns a function. This function takes key/value
@@ -124,15 +124,29 @@ const clientHandler = (representation, headers) => {
                 const newHeaders = {};
                 if (headers) for (let h in headers) newHeaders[h] = headers[h];
                 if (methodHeaders) for (let h in methodHeaders) newHeaders[h] = methodHeaders[h];
-                return new Proxy(client, clientHandler(representation, newHeaders));
+                return new Proxy(client, clientHandler(representation, newHeaders, pushDownOptions));
+            };
+
+            // Pushes down addition options to the SOAP and transport layers
+            if (namespace == "pushDown") return (methodPushDownOptions) => {
+                // Build of copy of the pushDownOptions in order to accomodate
+                // chained calls, such as NLWS.pushDown(...).pushDown(...)
+                const newPushDownOptions = {};
+                if (pushDownOptions) for (let h in pushDownOptions) newPushDownOptions[h] = pushDownOptions[h];
+                if (methodPushDownOptions) for (let h in methodPushDownOptions) newPushDownOptions[h] = methodPushDownOptions[h];
+                return new Proxy(client, clientHandler(representation, headers, newPushDownOptions));
             };
 
             return new Proxy({ client:client, namespace:namespace}, {
                 get: function(callContext, methodName) {
                     callContext.representation = representation;
                     callContext.headers = callContext.headers || client._connectionParameters._options.extraHttpHeaders;
+                    callContext.pushDownOptions = {};
                     if (headers) {
                         for (let h in headers) callContext.headers[h] = headers[h];
+                    }
+                    if (pushDownOptions) {
+                        for (let h in pushDownOptions) callContext.pushDownOptions[h] = pushDownOptions[h];
                     }
 
                     if (methodName == ".") return callContext;
@@ -271,6 +285,8 @@ class Credentials {
     * @property {{ name:string, value:string}} extraHttpHeaders - optional key/value pair of HTTP header (will override any other headers)
     * @property {string} clientApp - optional name/version of the application client of the SDK. This will be passed in HTTP headers for troubleshooting
     * @property {boolean} noSDKHeaders - set to disable "ACC-SDK" HTTP headers
+    * @property {boolean} noMethodInURL - Can be set to true to remove the method name from the URL
+    * @property {number} timeout - Can be set to change the HTTP call timeout. Value is passed in ms.
     * @memberOf Campaign
  */
  
@@ -292,7 +308,7 @@ class ConnectionParameters {
     constructor(endpoint, credentials, options) {
         // this._options will be populated with the data from "options" and with
         // default values. But the "options" parameter will not be modified
-        this._options = {};
+        this._options = Object.assign({}, options);
 
         // Default value
         if (options === undefined || options === null)
@@ -341,6 +357,7 @@ class ConnectionParameters {
         }
         this._options.clientApp = options.clientApp;
         this._options.noSDKHeaders = !!options.noSDKHeaders;
+        this._options.noMethodInURL = !!options.noMethodInURL;
     }
 
     /**
@@ -719,10 +736,11 @@ class Client {
      * @return {SOAP.SoapMethodCall} a SoapMethodCall which have been initialized with security tokens... and to which the method
      * parameters should be set
      */
-    _prepareSoapCall(urn, method, internal, extraHttpHeaders) {
+    _prepareSoapCall(urn, method, internal, extraHttpHeaders, pushDownOptions) {
         const soapCall = new SoapMethodCall(this._transport, urn, method, 
                                             this._sessionToken, this._securityToken, 
-                                            this._getUserAgentString(), this._connectionParameters._options.charset,
+                                            this._getUserAgentString(),
+                                            Object.assign({}, this._connectionParameters._options, pushDownOptions),
                                             extraHttpHeaders);
         soapCall.internal = !!internal;
         return soapCall;
@@ -1172,7 +1190,7 @@ class Client {
         // console.log(method.toXMLString());
 
         var urn = that._methodCache.getSoapUrn(schemaId, methodName);
-        var soapCall = that._prepareSoapCall(urn, methodName, false, callContext.headers);
+        var soapCall = that._prepareSoapCall(urn, methodName, false, callContext.headers, callContext.pushDownOptions);
 
         // If method is called with one parameter which is a function, then we assume it's a hook: the function will return
         // the actual list of parameters
@@ -1244,7 +1262,7 @@ class Client {
                         if (type == "DOMDocument")
                             soapCall.writeDocument(paramName, xmlValue);
                         else
-                            soapCall.writeElement(paramName, xmlValue.documentElement);
+                            soapCall.writeElement(paramName, xmlValue);
                     }
                     else
                         throw CampaignException.BAD_SOAP_PARAMETER(soapCall, paramName, paramValue, `Unsupported parameter type '${type}' for parameter '${paramName}' of method '${methodName}' of schema '${schemaId}`);
