@@ -277,7 +277,7 @@ class Cache {
    */
   clear() {
     this._cache = {};
-    this._storage.clear();
+    this._saveLastCleared();
   }
 
   remove(key) {
