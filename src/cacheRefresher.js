@@ -82,7 +82,6 @@ governing permissions and limitations under the License.
 
       this._client.registerObserver({
         onSOAPCallFailure: (soapCall, exception) => {
-          console.error("exception : " + exception);
           if (soapCall.methodName == "GetModifiedEntities" && exception.errorCode == "SOP-330006") {
             clearInterval(this._intervalId);
           }

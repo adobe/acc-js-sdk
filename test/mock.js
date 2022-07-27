@@ -614,7 +614,13 @@ const GET_HELLO_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
     </SOAP-ENV:Body>
     </SOAP-ENV:Envelope>`);
 
-
+const GETMODIFIEDENTITIES_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
+    <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:xtk:session' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
+    <SOAP-ENV:Body>
+        <GetModifiedEntitiesResponse xmlns='urn:xtk:session' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
+        </GetModifiedEntitiesResponse>
+    </SOAP-ENV:Body>
+    </SOAP-ENV:Envelope>`);
 
 // Public exports
 exports.Mock = {
@@ -656,5 +662,6 @@ exports.Mock = {
   GET_SETELEMENT_RESPONSE: GET_SETELEMENT_RESPONSE,
   GET_GETSCHEMA_HELLO_RESPONSE: GET_GETSCHEMA_HELLO_RESPONSE,
   GET_HELLO_RESPONSE: GET_HELLO_RESPONSE,
-  LOGON_RESPONSE_NO_USERINFO: LOGON_RESPONSE_NO_USERINFO
+  LOGON_RESPONSE_NO_USERINFO: LOGON_RESPONSE_NO_USERINFO,
+  GETMODIFIEDENTITIES_RESPONSE: GETMODIFIEDENTITIES_RESPONSE
 }
