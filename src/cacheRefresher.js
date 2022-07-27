@@ -1,3 +1,5 @@
+const { MetadataCache } = require("./metadataCache.js");
+
 /*
 Copyright 2022 Adobe. All rights reserved.
 This file is licensed to you under the Apache License, Version 2.0 (the "License");
@@ -13,13 +15,11 @@ governing permissions and limitations under the License.
   "use strict";
 
   const { DomUtil } = require("./domUtil");
-  const MetaDataCache = require('./metadataCache.js').MetadataCache;
   const XtkCaster = require('./xtkCaster.js').XtkCaster;
 
   
   class CacheRefresher {
 
-    
    /**
    * A class to refresh regulary a Cache every 10 seconds, by sending a query to get the last modified entities
    * it hould be used in a client.
@@ -27,10 +27,10 @@ governing permissions and limitations under the License.
    * @param {Cache} cache is the cache to refresh
    * @param {Client} client is the ACC API Client.
    * @param {ConnectionParameters} connectionParameters used to created the client provide as parameter
-   * @param {string} rootKey is an optional root key to use for the storage object
    * @param {string} cacheSchema is the schema present in the cache to be refreshed every 10 seconds
+   * @param {MetadataCache} metadataCache is the metadata cache that contains build information
    */
-    constructor(cache, client, connectionParameters, rootKey, cacheSchema) {
+    constructor(cache, client, connectionParameters, cacheSchema, metadataCache) {
       
       this._cache = cache;
       this._client = client;
@@ -38,7 +38,7 @@ governing permissions and limitations under the License.
       this._cacheSchema = cacheSchema;
 
       this._storage = connectionParameters._options._storage;
-      this._metadataCache = new MetaDataCache(this._storage, `${rootKey}.MetaDataCache`, connectionParameters._options.optionCacheTTL);
+      this._metadataCache = metadataCache;
       
       this.lastTime;
       this.buildNumber;
