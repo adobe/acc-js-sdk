@@ -22,6 +22,7 @@ const { Cache, SafeStorage } = require('../src/cache.js');
 const OptionCache = require('../src/optionCache.js').OptionCache;
 const MethodCache = require('../src/methodCache.js').MethodCache;
 const XtkEntityCache = require('../src/xtkEntityCache.js').XtkEntityCache;
+const MetaDataCache = require('../src/metadataCache.js').MetadataCache;
 const { DomUtil } = require('../src/domUtil.js');
 
 describe('Caches', function() {
@@ -54,7 +55,18 @@ describe('Caches', function() {
             cache.clear();
             expect(cache.get("Hello")).toBeUndefined();
         })
-    })
+
+        it("Should remove key in cache", () => {
+            const cache = new Cache();
+            cache.put("Hello", "World");
+            cache.put("Hi", "A");
+            expect(cache.get("Hello")).toBe("World");
+            expect(cache.get("Hi")).toBe("A");
+            cache.remove("Hello");
+            expect(cache.get("Hello")).toBeUndefined();
+            expect(cache.get("Hi")).toBe("A");
+        })
+    });
 
     describe("Entity cache", function() {
         it("Should cache value", function() {
@@ -426,4 +438,83 @@ describe('Caches', function() {
             expect(cached.value.method.documentElement.tagName).toBe("hello");
         })
     })
+
+    describe("Metadata cache", function () {
+
+        it("Should cache value", function () {
+            const cache = new MetaDataCache();
+            expect(cache.get("hello")).toBeUndefined();
+            cache.put("hello", "world");
+            expect(cache.get("hello")).toBe("world");
+        });
+
+        it("Should cache multiple value", function () {
+            const cache = new MetaDataCache();
+            cache.put("hello", "world");
+            cache.put("foo", "bar");
+            expect(cache.get("hello")).toBe("world");
+            expect(cache.get("foo")).toBe("bar");
+        });
+
+        it("Should overwrite cached value", function () {
+            const cache = new MetaDataCache();
+            cache.put("hello", "world");
+            expect(cache.get("hello")).toBe("world");
+            cache.put("hello", "cruel world");
+            expect(cache.get("hello")).toBe("cruel world");
+        });
+
+        it("Should clear cache", function () {
+            const cache = new MetaDataCache();
+            cache.put("hello", "world");
+            expect(cache.get("hello")).toBe("world");
+            cache.clear();
+            expect(cache.get("hello")).toBeUndefined();
+        });
+
+        it("Should not find", function () {
+            const cache = new MetaDataCache();
+            expect(cache.get("hello")).toBeUndefined();
+        });
+
+    });
+    describe("Metadata cache", function () {
+
+        it("Should cache value", function () {
+            const cache = new MetaDataCache();
+            expect(cache.get("hello")).toBeUndefined();
+            cache.put("hello", "world");
+            expect(cache.get("hello")).toBe("world");
+        });
+
+        it("Should cache multiple value", function () {
+            const cache = new MetaDataCache();
+            cache.put("hello", "world");
+            cache.put("foo", "bar");
+            expect(cache.get("hello")).toBe("world");
+            expect(cache.get("foo")).toBe("bar");
+        });
+
+        it("Should overwrite cached value", function () {
+            const cache = new MetaDataCache();
+            cache.put("hello", "world");
+            expect(cache.get("hello")).toBe("world");
+            cache.put("hello", "cruel world");
+            expect(cache.get("hello")).toBe("cruel world");
+        });
+
+        it("Should clear cache", function () {
+            const cache = new MetaDataCache();
+            cache.put("hello", "world");
+            expect(cache.get("hello")).toBe("world");
+            cache.clear();
+            expect(cache.get("hello")).toBeUndefined();
+        });
+
+        it("Should not find", function () {
+            const cache = new MetaDataCache();
+            expect(cache.get("hello")).toBeUndefined();
+        });
+
+    });
 });

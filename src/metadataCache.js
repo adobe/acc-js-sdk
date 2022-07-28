@@ -58,7 +58,7 @@ class MetadataCache extends Cache {
      * Cache a properties and its value
      * 
      * @param {string} name is the propertie name
-     * @param {Array} rawValue one element array
+     * @param {string} rawValue string value
      */
     put(name, rawValue) {
       return super.put(name, { value: rawValue });

@@ -954,6 +954,7 @@ class Client {
             that._securityToken = "";
             that.application = null;
         }
+        that.stopRefreshCaches();
     }
 
     /**
@@ -1042,6 +1043,12 @@ class Client {
       this._optionCacheRefresher.callAndRefresh();
       this._entityCacheRefresher.callAndRefresh();
     }
+
+    stopRefreshCaches() {
+        this._optionCacheRefresher.stopRefresh();
+        this._entityCacheRefresher.stopRefresh();
+    }
+
 
     /**
      * Tests if a package is installed

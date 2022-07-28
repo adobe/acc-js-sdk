@@ -622,6 +622,45 @@ const GETMODIFIEDENTITIES_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
     </SOAP-ENV:Body>
     </SOAP-ENV:Envelope>`);
 
+const GETMODIFIEDENTITIES_CLEAR_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
+    <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:xtk:session' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
+    <SOAP-ENV:Body>
+        <GetModifiedEntitiesResponse xmlns='urn:xtk:session' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
+            <pdomDirtyEntities xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
+                <cache buildNumber="9469" time="2022-07-28T14:38:55.766Z" emptyCache="true"/>
+            </pdomDirtyEntities>
+        </GetModifiedEntitiesResponse>
+    </SOAP-ENV:Body>
+    </SOAP-ENV:Envelope>`);
+
+
+const GETMODIFIEDENTITIES_SCHEMA_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
+    <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:xtk:session' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
+    <SOAP-ENV:Body>
+        <GetModifiedEntitiesResponse xmlns='urn:xtk:session' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
+           <pdomDirtyEntities xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
+              <cache buildNumber="9469" time="2022-07-28T15:32:00.785Z">
+                 <entityCache lastModified="2022-07-28 15:31:56.331Z" md5="5581959609FEC4B2A9CDBD171BA42E7D" pk="xtk:schema|nms:recipient" schema="xtk:schema"/>
+                 <entityCache lastModified="2022-07-28 15:31:56.353Z" md5="B27CC681D00C3FA85DDA0B210FE76566" pk="xtk:schema|nms:replicationStrategy" schema="xtk:schema"/>
+                 <entityCache lastModified="2022-07-28 15:31:56.478Z" md5="E39D051D4D00805693EBA4F72F5ABD7D" pk="xtk:schema|nms:recipientStg" schema="xtk:schema"/>
+                 <entityCache lastModified="2022-07-28 15:31:56.440Z" md5="23B1FE988F0DCDC88C9F96D06C97FA14" pk="xtk:schema|xxl:xtkFolderXl" schema="xtk:schema"/>
+              </cache>
+           </pdomDirtyEntities>
+        </GetModifiedEntitiesResponse>
+    </SOAP-ENV:Body>
+    </SOAP-ENV:Envelope>`);
+
+
+const GETMODIFIEDENTITIES_UNDEFINED_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
+    <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
+    <SOAP-ENV:Body>
+    <SOAP-ENV:Fault>
+       <faultcode>SOAP-ENV:Client</faultcode>
+       <faultstring xsi:type='xsd:string'>SOP-330006 The method 'GetModifiedEntities' is not defined in SOAP service 'xtk:session'.</faultstring>
+    </SOAP-ENV:Fault>
+    </SOAP-ENV:Body>
+    </SOAP-ENV:Envelope>`);
+
 // Public exports
 exports.Mock = {
   makeClient: makeClient,
@@ -663,5 +702,8 @@ exports.Mock = {
   GET_GETSCHEMA_HELLO_RESPONSE: GET_GETSCHEMA_HELLO_RESPONSE,
   GET_HELLO_RESPONSE: GET_HELLO_RESPONSE,
   LOGON_RESPONSE_NO_USERINFO: LOGON_RESPONSE_NO_USERINFO,
-  GETMODIFIEDENTITIES_RESPONSE: GETMODIFIEDENTITIES_RESPONSE
+  GETMODIFIEDENTITIES_RESPONSE: GETMODIFIEDENTITIES_RESPONSE,
+  GETMODIFIEDENTITIES_CLEAR_RESPONSE: GETMODIFIEDENTITIES_CLEAR_RESPONSE,
+  GETMODIFIEDENTITIES_SCHEMA_RESPONSE: GETMODIFIEDENTITIES_SCHEMA_RESPONSE,
+  GETMODIFIEDENTITIES_UNDEFINED_RESPONSE: GETMODIFIEDENTITIES_UNDEFINED_RESPONSE
 }

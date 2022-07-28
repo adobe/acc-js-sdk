@@ -124,18 +124,6 @@ class SafeStorage {
     }
   }
 
-  /**
-  * clear the storage
-  * 
-  */
-  clear() {
-    if (!this._delegate || this._rootKey === undefined || this._rootKey === null)
-      return;
-    try {
-      this._delegate.clear();
-    } catch (ex) { /* Ignore errors in safe class */
-    }
-  }
 }
 
 /**
