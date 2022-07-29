@@ -36,7 +36,7 @@ var resources = [
     { name: "./xtkEntityCache.js" },
     { name: "./methodCache.js" },
     { name: "./optionCache.js" },
-    { name: "./metadataCache.js" },
+    { name: "./cacheRefresher.js" },
     { name: "./soap.js" },
     { name: "./crypto.js" },
     { name: "./application.js" },

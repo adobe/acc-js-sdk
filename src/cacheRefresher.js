@@ -1,5 +1,3 @@
-const { MetadataCache } = require("./metadataCache.js");
-
 /*
 Copyright 2022 Adobe. All rights reserved.
 This file is licensed to you under the Apache License, Version 2.0 (the "License");
@@ -16,7 +14,53 @@ governing permissions and limitations under the License.
 
     const { DomUtil } = require("./domUtil");
     const XtkCaster = require('./xtkCaster.js').XtkCaster;
+    const { Cache } = require('./cache.js');
 
+    /**
+     * @private
+     * @class
+     * @constructor
+     * @memberof Campaign
+     */
+    class MetadataCache extends Cache {
+
+        /**
+         * A in-memory cache for properties values. Not intended to be used directly,
+         * but an internal cache for the Campaign.Client object
+         * 
+         * Cached object are made of
+         * - the key is the propertie name
+         * - the value is a string
+         * 
+         * @param {Storage} storage is an optional Storage object, such as localStorage or sessionStorage
+         * @param {string} rootKey is an optional root key to use for the storage object
+         * @param {number} ttl is the TTL for objects in ms. Defaults to 5 mins
+         */
+        constructor(storage, rootKey, ttl) {
+            super(storage, rootKey, ttl);
+        }
+
+        /**
+         * Cache a properties and its value
+         * 
+         * @param {string} name is the propertie name
+         * @param {string} rawValue string value
+         */
+        put(name, rawValue) {
+            return super.put(name, { value: rawValue });
+        }
+
+        /**
+         * Get the value of a propertie
+         * 
+         * @param {string} name the propertie name
+         * @returns {*} the value
+         */
+        get(name) {
+            const option = super.get(name);
+            return option ? option.value : undefined;
+        }
+    }
 
     class CacheRefresher {
 
@@ -28,9 +72,9 @@ governing permissions and limitations under the License.
         * @param {Client} client is the ACC API Client.
         * @param {ConnectionParameters} connectionParameters used to created the client provide as parameter
         * @param {string} cacheSchema is the schema present in the cache to be refreshed every 10 seconds
-        * @param {MetadataCache} metadataCache is the metadata cache that contains build information
+        * @param {string} rootKey is an optional root key to use for the storage object
         */
-        constructor(cache, client, connectionParameters, cacheSchema, metadataCache) {
+        constructor(cache, client, connectionParameters, cacheSchema, rootKey) {
 
             this._cache = cache;
             this._client = client;
@@ -38,7 +82,7 @@ governing permissions and limitations under the License.
             this._cacheSchema = cacheSchema;
 
             this._storage = connectionParameters._options._storage;
-            this._metadataCache = metadataCache;
+            this._metadataCache = new MetadataCache(this._storage, `${rootKey}.MetadataCache`, connectionParameters._options.optionCacheTTL);
 
             this._lastTime;
             this._buildNumber;
@@ -132,5 +176,6 @@ governing permissions and limitations under the License.
 
     // Public exports
     exports.CacheRefresher = CacheRefresher;
+    exports.MetadataCache = MetadataCache;
 
 })();

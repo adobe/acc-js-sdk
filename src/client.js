@@ -31,7 +31,6 @@ const Cipher = require('./crypto.js').Cipher;
 const DomUtil = require('./domUtil.js').DomUtil;
 const MethodCache = require('./methodCache.js').MethodCache;
 const OptionCache = require('./optionCache.js').OptionCache;
-const MetaDataCache = require('./metadataCache.js').MetadataCache;
 const CacheRefresher = require('./cacheRefresher.js').CacheRefresher;
 const request = require('./transport.js').request;
 const Application = require('./application.js').Application;
@@ -534,11 +533,10 @@ class Client {
         const rootKey = `acc.js.sdk.${sdk.getSDKVersion().version}.${instanceKey}.cache`;
 
         this._entityCache = new XtkEntityCache(this._storage, `${rootKey}.XtkEntityCache`, connectionParameters._options.entityCacheTTL);
-        this._metadataCache = new MetaDataCache(this._storage, `${rootKey}.MetaDataCache`, connectionParameters._options.optionCacheTTL);
-        this._entityCacheRefresher = new CacheRefresher(this._entityCache, this, connectionParameters, "xtk:schema", this._metadataCache);
+        this._entityCacheRefresher = new CacheRefresher(this._entityCache, this, connectionParameters, "xtk:schema", `${rootKey}.XtkEntityCache`);
         this._methodCache = new MethodCache(this._storage, `${rootKey}.MethodCache`, connectionParameters._options.methodCacheTTL);
         this._optionCache = new OptionCache(this._storage, `${rootKey}.OptionCache`, connectionParameters._options.optionCacheTTL);
-        this._optionCacheRefresher = new CacheRefresher(this._optionCache, this, connectionParameters, "xtk:option", this._metadataCache);
+        this._optionCacheRefresher = new CacheRefresher(this._optionCache, this, connectionParameters, "xtk:option", `${rootKey}.OptionCache`);
         this.NLWS = new Proxy(this, clientHandler());
 
         this._transport = connectionParameters._options.transport;
