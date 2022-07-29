@@ -1654,7 +1654,7 @@ describe('ACC Client', function () {
             expect(countSuccesses).toBe(2);
 
             client.unregisterObserver(observer1);
-            expect(client._observers.length).toBe(3);
+            expect(client._observers.length).toBe(1);
 
             client._transport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
             client._transport.mockReturnValueOnce(Mock.GET_DATABASEID_RESPONSE);

@@ -51,7 +51,8 @@ describe('Caches', function() {
             await cacheRefresher.callAndRefresh();
             expect(metadatacache.get("buildNumber")).toBe("9469");
             expect(metadatacache.get("time")).toBe("2022-07-28T14:38:55.766Z");
-            
+
+            // to cover call of setInterval
             await delay(15000);
             console.log("Waited 15s");
 

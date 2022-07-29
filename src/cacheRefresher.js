@@ -80,15 +80,9 @@ governing permissions and limitations under the License.
             var xmlDoc = DomUtil.fromJSON("cache", jsonCache, 'SimpleJson');
             soapCall.writeDocument("script", xmlDoc);
 
-            this._client.registerObserver({
-                onSOAPCallFailure: (soapCall, exception) => {
-                    if (soapCall.methodName == "GetModifiedEntities" && exception.errorCode == "SOP-330006") {
-                        clearInterval(this._intervalId);
-                        this._intervalId = null;
-                    }
-                }
-            });
-
+            // Do a soap call GetModifiedEntities instead of xtksession.GetModifiedEnties because we don't want to go through methodCache 
+            // which can be wrong just after a build updgarde from a old version of acc that has not the method GetModifiedEntities and 
+            // a new version of acc that has the method GetModifiedEntities
             return this._client._makeSoapCall(soapCall)
                 .then(() => {
                     var doc = soapCall.getNextDocument();
@@ -101,7 +95,12 @@ governing permissions and limitations under the License.
                     that._metadataCache.put("buildNumber", that._buildNumber);
                     Promise.resolve();
                 })
-                .catch((ex) => {});
+                .catch((ex) => {
+                    if (soapCall.methodName == "GetModifiedEntities" && ex.errorCode == "SOP-330006") {
+                        clearInterval(this._intervalId);
+                        this._intervalId = null;
+                    }
+                });
         }
 
         // Refresh Cache : remove entities modified recently listed in xmlDoc
