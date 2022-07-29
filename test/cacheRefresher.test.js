@@ -17,18 +17,14 @@ governing permissions and limitations under the License.
  * 
  *********************************************************************************/
 
-//const assert = require('assert');
+
 const sdk = require('../src/index.js');
 const { Cache } = require('../src/cache.js');
-//const OptionCache = require('../src/optionCache.js').OptionCache;
-//const MethodCache = require('../src/methodCache.js').MethodCache;
-//const XtkEntityCache = require('../src/xtkEntityCache.js').XtkEntityCache;
 const MetaDataCache = require('../src/metadataCache.js').MetadataCache;
-//const { DomUtil } = require('../src/domUtil.js');
 const Mock = require('./mock.js').Mock;
-//const ConnectionParameters = require('../src/client.js').ConnectionParameters;
 const CacheRefresher = require('../src/cacheRefresher.js').CacheRefresher;
-const Client = require('../src/client.js').Client;
+const delay = ms => new Promise(res => setTimeout(res, ms));
+jest.setTimeout(20000);
 
 describe('Caches', function() {
 
@@ -50,6 +46,14 @@ describe('Caches', function() {
             await cacheRefresher.callAndRefresh();
             expect(metadatacache.get("buildNumber")).toBe("9469");
             expect(metadatacache.get("time")).toBe("2022-07-28T14:38:55.766Z");
+
+            client._transport.mockReturnValueOnce(Mock.GETMODIFIEDENTITIES_CLEAR_RESPONSE);
+            await cacheRefresher.callAndRefresh();
+            expect(metadatacache.get("buildNumber")).toBe("9469");
+            expect(metadatacache.get("time")).toBe("2022-07-28T14:38:55.766Z");
+            
+            await delay(15000);
+            console.log("Waited 15s");
 
             client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
             await client.NLWS.xtkSession.logoff();

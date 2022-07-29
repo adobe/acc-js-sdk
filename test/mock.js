@@ -644,6 +644,7 @@ const GETMODIFIEDENTITIES_SCHEMA_RESPONSE = Promise.resolve(`<?xml version='1.0'
                  <entityCache lastModified="2022-07-28 15:31:56.353Z" md5="B27CC681D00C3FA85DDA0B210FE76566" pk="xtk:schema|nms:replicationStrategy" schema="xtk:schema"/>
                  <entityCache lastModified="2022-07-28 15:31:56.478Z" md5="E39D051D4D00805693EBA4F72F5ABD7D" pk="xtk:schema|nms:recipientStg" schema="xtk:schema"/>
                  <entityCache lastModified="2022-07-28 15:31:56.440Z" md5="23B1FE988F0DCDC88C9F96D06C97FA14" pk="xtk:schema|xxl:xtkFolderXl" schema="xtk:schema"/>
+                 <entityCache lastModified="2022-07-28 15:31:56.440Z" md5="23B1FE988F0DCDC88C9F96D06C97FA14" pk="xtk:option|testOption" schema="xtk:option"/>
               </cache>
            </pdomDirtyEntities>
         </GetModifiedEntitiesResponse>
