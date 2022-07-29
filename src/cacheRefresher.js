@@ -86,6 +86,10 @@ governing permissions and limitations under the License.
 
             this._lastTime;
             this._buildNumber;
+            this._intervalId = null;
+        }
+
+        startAutoRefresh() {
             this._intervalId = setInterval(() => this.callAndRefresh(), 10000); // every 10 seconds
         }
 
@@ -168,7 +172,7 @@ governing permissions and limitations under the License.
             }
         }
 
-        stopRefresh() {
+        stopAutoRefresh() {
             clearInterval(this._intervalId);
             this._intervalId = null;
         }

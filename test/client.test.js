@@ -24,6 +24,8 @@ const Mock = require('./mock.js').Mock;
 const { HttpError } = require('../src/transport.js');
 const { Cipher } = require('../src/crypto.js');
 const { EntityAccessor } = require('../src/entityAccessor.js');
+const delay = ms => new Promise(res => setTimeout(res, ms));
+jest.setTimeout(20000);
 
 describe('ACC Client', function () {
 
@@ -69,8 +71,6 @@ describe('ACC Client', function () {
             const logs = await Mock.withMockConsole(async () => {
                 client.traceAPICalls(true);
                 client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
-                client._transport.mockReturnValueOnce(Mock.GETMODIFIEDENTITIES_RESPONSE);
-                client._transport.mockReturnValueOnce(Mock.GETMODIFIEDENTITIES_RESPONSE);
                 client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
                 await client.NLWS.xtkSession.logon();
                 expect(client.isLogged()).toBe(true);
@@ -79,15 +79,11 @@ describe('ACC Client', function () {
                 await client.NLWS.xtkSession.logoff();
                 expect(client.isLogged()).toBe(false);    
             })
-            expect(logs.length).toBe(8);
+            expect(logs.length).toBe(4);
             expect(logs[0]).toMatch(/SOAP.*request.*Logon/is)
             expect(logs[1]).toMatch(/SOAP.*response.*LogonResponse/is)
-            expect(logs[2]).toMatch(/SOAP.*request.*GetModifiedEntities/is)
-            expect(logs[3]).toMatch(/SOAP.*request.*GetModifiedEntities/is)
-            expect(logs[4]).toMatch(/SOAP.*request.*Logoff/is)
-            expect(logs[5]).toMatch(/SOAP.*response.*GetModifiedEntitiesResponse/is)
-            expect(logs[6]).toMatch(/SOAP.*response.*GetModifiedEntitiesResponse/is)
-            expect(logs[7]).toMatch(/SOAP.*response.*LogoffResponse/is)
+            expect(logs[2]).toMatch(/SOAP.*request.*Logoff/is)
+            expect(logs[3]).toMatch(/SOAP.*response.*LogoffResponse/is)
         });
 
         it('Should fail with traces', async () => {
@@ -210,8 +206,6 @@ describe('ACC Client', function () {
         it('Should getEntityIfMoreRecent', async () => {
             const client = await Mock.makeClient({ representation: "xml" });
             client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
-            client._transport.mockReturnValueOnce(Mock.GETMODIFIEDENTITIES_RESPONSE);
-            client._transport.mockReturnValueOnce(Mock.GETMODIFIEDENTITIES_RESPONSE);
             client._transport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
             client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
             await client.NLWS.xtkSession.logon();
@@ -234,8 +228,6 @@ describe('ACC Client', function () {
         it('Should getOption', async () => {
             const client = await Mock.makeClient();
             client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
-            client._transport.mockReturnValueOnce(Mock.GETMODIFIEDENTITIES_RESPONSE);
-            client._transport.mockReturnValueOnce(Mock.GETMODIFIEDENTITIES_RESPONSE);
             client._transport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
             await client.NLWS.xtkSession.logon();
 
@@ -295,8 +287,6 @@ describe('ACC Client', function () {
             it("Should set option when it does not exist", async () => {
                 const client = await Mock.makeClient();
                 client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
-                client._transport.mockReturnValueOnce(Mock.GETMODIFIEDENTITIES_RESPONSE);
-                client._transport.mockReturnValueOnce(Mock.GETMODIFIEDENTITIES_RESPONSE);
                 client._transport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
                 await client.NLWS.xtkSession.logon();
     
@@ -320,8 +310,6 @@ describe('ACC Client', function () {
             it("Should set option with description", async () => {
                 const client = await Mock.makeClient();
                 client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
-                client._transport.mockReturnValueOnce(Mock.GETMODIFIEDENTITIES_RESPONSE);
-                client._transport.mockReturnValueOnce(Mock.GETMODIFIEDENTITIES_RESPONSE);
                 client._transport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
                 await client.NLWS.xtkSession.logon();
     
@@ -345,8 +333,6 @@ describe('ACC Client', function () {
             it("Should set existing option with type", async () => {
                 const client = await Mock.makeClient();
                 client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
-                client._transport.mockReturnValueOnce(Mock.GETMODIFIEDENTITIES_RESPONSE);
-                client._transport.mockReturnValueOnce(Mock.GETMODIFIEDENTITIES_RESPONSE);
                 client._transport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
                 await client.NLWS.xtkSession.logon();
     
@@ -1567,9 +1553,7 @@ describe('ACC Client', function () {
             const client = await Mock.makeClient();
             const expected = [
                 "xtk:session#Logon", true,
-                "xtk:session#GetModifiedEntities", 
-                "xtk:session#GetModifiedEntities", 
-                "xtk:persist#GetEntityIfMoreRecent", true, true, true,
+                "xtk:persist#GetEntityIfMoreRecent", true,
                 "xtk:session#GetOption", true,
             ];
             const observed = [];
@@ -1585,8 +1569,6 @@ describe('ACC Client', function () {
                 }
             });
             client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
-            client._transport.mockReturnValueOnce(Mock.GETMODIFIEDENTITIES_RESPONSE);
-            client._transport.mockReturnValueOnce(Mock.GETMODIFIEDENTITIES_RESPONSE);
             client._transport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
             await client.NLWS.xtkSession.logon();
             client._transport.mockReturnValueOnce(Mock.GET_DATABASEID_RESPONSE);
@@ -1646,11 +1628,9 @@ describe('ACC Client', function () {
             client.registerObserver(observer1);
             client.registerObserver(observer2);
             client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
-            client._transport.mockReturnValueOnce(Mock.GETMODIFIEDENTITIES_RESPONSE);
-            client._transport.mockReturnValueOnce(Mock.GETMODIFIEDENTITIES_RESPONSE);
             await client.NLWS.xtkSession.logon();
 
-            expect(countCalls).toBe(3);
+            expect(countCalls).toBe(1);
             expect(countSuccesses).toBe(2);
 
             client.unregisterObserver(observer1);
@@ -1659,8 +1639,8 @@ describe('ACC Client', function () {
             client._transport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
             client._transport.mockReturnValueOnce(Mock.GET_DATABASEID_RESPONSE);
             await client.getOption("XtkDatabaseId");
-            expect(countCalls).toBe(3);
-            expect(countSuccesses).toBe(6);
+            expect(countCalls).toBe(1);
+            expect(countSuccesses).toBe(4);
         });
 
         it("Should unregister all observers", async () => {
@@ -1678,11 +1658,9 @@ describe('ACC Client', function () {
             client.registerObserver(observer1);
             client.registerObserver(observer2);
             client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
-            client._transport.mockReturnValueOnce(Mock.GETMODIFIEDENTITIES_RESPONSE);
-            client._transport.mockReturnValueOnce(Mock.GETMODIFIEDENTITIES_RESPONSE);
             await client.NLWS.xtkSession.logon();
 
-            expect(countCalls).toBe(3);
+            expect(countCalls).toBe(1);
             expect(countSuccesses).toBe(2);
 
             client.unregisterAllObservers();
@@ -1691,7 +1669,7 @@ describe('ACC Client', function () {
             client._transport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
             client._transport.mockReturnValueOnce(Mock.GET_DATABASEID_RESPONSE);
             await client.getOption("XtkDatabaseId");
-            expect(countCalls).toBe(3);
+            expect(countCalls).toBe(1);
             expect(countSuccesses).toBe(2);
         });
       
@@ -1699,8 +1677,6 @@ describe('ACC Client', function () {
             const client = await Mock.makeClient();
             const expected = [
                 "xtk:session#Logon", false,
-                "xtk:session#GetModifiedEntities", true,
-                "xtk:session#GetModifiedEntities", true,
                 // This call is internal (issued by the framework, not by the called)
                 "xtk:persist#GetEntityIfMoreRecent", true,
                 "xtk:session#GetOption", false,
@@ -1716,8 +1692,6 @@ describe('ACC Client', function () {
                 },
             });
             client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
-            client._transport.mockReturnValueOnce(Mock.GETMODIFIEDENTITIES_RESPONSE);
-            client._transport.mockReturnValueOnce(Mock.GETMODIFIEDENTITIES_RESPONSE);
             client._transport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
             await client.NLWS.xtkSession.logon();
             client._transport.mockReturnValueOnce(Mock.GET_DATABASEID_RESPONSE);
@@ -1732,8 +1706,6 @@ describe('ACC Client', function () {
                 const client = await Mock.makeClient();
                 client.traceAPICalls(true);
                 client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
-                client._transport.mockReturnValueOnce(Mock.GETMODIFIEDENTITIES_RESPONSE);
-                client._transport.mockReturnValueOnce(Mock.GETMODIFIEDENTITIES_RESPONSE);
                 await client.NLWS.xtkSession.logon();
     
                 client._transport.mockReturnValueOnce(Mock.PING);
@@ -1741,15 +1713,11 @@ describe('ACC Client', function () {
                 expect(ping.status).toBe("OK");
                 expect(ping.timestamp).toBe("2021-08-27 15:43:48.862Z");
             })
-            expect(logs.length).toBe(8);
+            expect(logs.length).toBe(4);
             expect(logs[0]).toMatch(/SOAP.*request.*Logon/is)
             expect(logs[1]).toMatch(/SOAP.*response.*LogonResponse/is)
-            expect(logs[2]).toMatch(/SOAP.*request.*GetModifiedEntities/is)
-            expect(logs[3]).toMatch(/SOAP.*request.*GetModifiedEntities/is)
-            expect(logs[4]).toMatch(/HTTP.*request.*nl.jsp.ping.jsp/is)
-            expect(logs[5]).toMatch(/HTTP.*response.*OK/is)
-            expect(logs[6]).toMatch(/SOAP.*response.*GetModifiedEntitiesResponse/is)
-            expect(logs[7]).toMatch(/SOAP.*response.*GetModifiedEntitiesResponse/is)
+            expect(logs[2]).toMatch(/HTTP.*request.*nl.jsp.ping.jsp/is)
+            expect(logs[3]).toMatch(/HTTP.*response.*OK/is)
         });
 
         it("Should trace HTTP call with no data and no answer", async () => {
@@ -1781,22 +1749,16 @@ describe('ACC Client', function () {
                 const client = await Mock.makeClient();
                 client.traceAPICalls(true);
                 client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
-                client._transport.mockReturnValueOnce(Mock.GETMODIFIEDENTITIES_RESPONSE);
-                client._transport.mockReturnValueOnce(Mock.GETMODIFIEDENTITIES_RESPONSE);
                 await client.NLWS.xtkSession.logon();
 
                 client._transport.mockRejectedValueOnce(new HttpError(504, "This call failed"));
                 await expect(client.ping()).rejects.toMatchObject({ statusCode:504, message:"504 - Error calling method '/nl/jsp/ping.jsp': This call failed" });
             });
-            expect(logs.length).toBe(8);
+            expect(logs.length).toBe(4);
             expect(logs[0]).toMatch(/SOAP.*request.*Logon/is)
             expect(logs[1]).toMatch(/SOAP.*response.*LogonResponse/is)
-            expect(logs[2]).toMatch(/SOAP.*request.*GetModifiedEntities/is)
-            expect(logs[3]).toMatch(/SOAP.*request.*GetModifiedEntities/is)
-            expect(logs[4]).toMatch(/HTTP.*request.*nl.jsp.ping.jsp/is)
-            expect(logs[5]).toMatch(/SOAP.*response.*GetModifiedEntitiesResponse/is)
-            expect(logs[6]).toMatch(/SOAP.*response.*GetModifiedEntitiesResponse/is)
-            expect(logs[7]).toMatch(/HTTP.*failure/is)
+            expect(logs[2]).toMatch(/HTTP.*request.*nl.jsp.ping.jsp/is)
+            expect(logs[3]).toMatch(/HTTP.*failure/is)
         });
     })
 
@@ -1922,11 +1884,9 @@ describe('ACC Client', function () {
             const transport = jest.fn();
             client.setTransport(transport);
             client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
-            client._transport.mockReturnValueOnce(Mock.GETMODIFIEDENTITIES_RESPONSE);
-            client._transport.mockReturnValueOnce(Mock.GETMODIFIEDENTITIES_RESPONSE);
             await client.NLWS.xtkSession.logon();
             const calls = transport.mock.calls;
-            expect(calls.length).toBe(3);
+            expect(calls.length).toBe(1);
             expect(calls[0][0].data).toMatch("Logon");
         });
     })
@@ -1957,8 +1917,6 @@ describe('ACC Client', function () {
             const client = await sdk.init(connectionParameters);
             client._transport = jest.fn();
             client._transport.mockReturnValueOnce(Mock.BEARER_LOGON_RESPONSE);
-            client._transport.mockReturnValueOnce(Mock.GETMODIFIEDENTITIES_RESPONSE);
-            client._transport.mockReturnValueOnce(Mock.GETMODIFIEDENTITIES_RESPONSE);
             expect(client.isLogged()).toBeFalsy();
             await client.logon();
             expect(client.isLogged()).toBeTruthy();
@@ -1966,7 +1924,7 @@ describe('ACC Client', function () {
             await client.logoff();
             expect(client.isLogged()).toBeFalsy();
             // Ensure logoff has been called
-            expect(transport.mock.calls.length).toBe(4);
+            expect(transport.mock.calls.length).toBe(2);
         })
 
         it("Call SAOP method", async () => {
@@ -1974,8 +1932,6 @@ describe('ACC Client', function () {
             const client = await sdk.init(connectionParameters);
             client._transport = jest.fn();
             client._transport.mockReturnValueOnce(Mock.BEARER_LOGON_RESPONSE);
-            client._transport.mockReturnValueOnce(Mock.GETMODIFIEDENTITIES_RESPONSE);
-            client._transport.mockReturnValueOnce(Mock.GETMODIFIEDENTITIES_RESPONSE);
             await client.logon();
             client._transport.mockReturnValueOnce(Mock.GET_XTK_QUERY_SCHEMA_RESPONSE);
             var queryDef = {
@@ -2021,8 +1977,6 @@ describe('ACC Client', function () {
             client.traceAPICalls(true);
             client._transport = jest.fn();
             client._transport.mockReturnValueOnce(Mock.BEARER_LOGON_RESPONSE);
-            client._transport.mockReturnValueOnce(Mock.GETMODIFIEDENTITIES_RESPONSE);
-            client._transport.mockReturnValueOnce(Mock.GETMODIFIEDENTITIES_RESPONSE);
             client._transport.mockReturnValueOnce(Promise.resolve(`XSV-350008 Session has expired or is invalid. Please reconnect.`));
             client._transport.mockReturnValueOnce(Mock.GET_XTK_QUERY_SCHEMA_RESPONSE);
             client._transport.mockReturnValueOnce(Promise.resolve(`<?xml version='1.0'?>
@@ -2080,8 +2034,6 @@ describe('ACC Client', function () {
             client.traceAPICalls(true);
             client._transport = jest.fn();
             client._transport.mockReturnValueOnce(Mock.BEARER_LOGON_RESPONSE);
-            client._transport.mockReturnValueOnce(Mock.GETMODIFIEDENTITIES_RESPONSE);
-            client._transport.mockReturnValueOnce(Mock.GETMODIFIEDENTITIES_RESPONSE);
             client._transport.mockReturnValueOnce(Promise.resolve(`XSV-350008 Session has expired or is invalid. Please reconnect.`));
             client._transport.mockReturnValueOnce(Mock.GET_XTK_QUERY_SCHEMA_RESPONSE);
             client._transport.mockReturnValueOnce(Promise.resolve(`<?xml version='1.0'?>
@@ -2219,8 +2171,6 @@ describe('ACC Client', function () {
             // Server is up and getOption
             const client = await Mock.makeClient();
             client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
-            client._transport.mockReturnValueOnce(Mock.GETMODIFIEDENTITIES_RESPONSE);
-            client._transport.mockReturnValueOnce(Mock.GETMODIFIEDENTITIES_RESPONSE);
             client._transport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
             await client.NLWS.xtkSession.logon();
             client._transport.mockReturnValueOnce(Mock.GET_DATABASEID_RESPONSE);
@@ -2247,8 +2197,6 @@ describe('ACC Client', function () {
         it("Should set options cache TTL", async () => {
            const client = await Mock.makeClient({ optionCacheTTL: -1 });
            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
-           client._transport.mockReturnValueOnce(Mock.GETMODIFIEDENTITIES_RESPONSE);
-           client._transport.mockReturnValueOnce(Mock.GETMODIFIEDENTITIES_RESPONSE);
            client._transport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
            await client.NLWS.xtkSession.logon();
            // Get Option and cache result. Check the value is in cache
@@ -2314,8 +2262,6 @@ describe('ACC Client', function () {
             }
             const client = await Mock.makeClient({ storage: storage });
             client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
-            client._transport.mockReturnValueOnce(Mock.GETMODIFIEDENTITIES_RESPONSE);
-            client._transport.mockReturnValueOnce(Mock.GETMODIFIEDENTITIES_RESPONSE);
             client._transport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
             await client.NLWS.xtkSession.logon();
             storage.getItem.mockReturnValueOnce(JSON.stringify({value: { value: "Hello", type: 6 }, cachedAt: 1633715996021 }));
@@ -2362,8 +2308,6 @@ describe('ACC Client', function () {
             }
             const client = await Mock.makeClient({ storage: storage, noStorage: true });
             client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
-            client._transport.mockReturnValueOnce(Mock.GETMODIFIEDENTITIES_RESPONSE);
-            client._transport.mockReturnValueOnce(Mock.GETMODIFIEDENTITIES_RESPONSE);
             client._transport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
             await client.NLWS.xtkSession.logon();
             client._transport.mockReturnValueOnce(Mock.GET_DATABASEID_RESPONSE);
@@ -2412,6 +2356,67 @@ describe('ACC Client', function () {
             var schema = await client.getSchema("nms:extAccount");
             expect(schema["namespace"]).toBe("nms");
             expect(schema["name"]).toBe("extAccount");
+        });
+
+        it("Should get schema from the cache", async () => {
+            const client = await Mock.makeClient();
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+
+            client._transport.mockReturnValueOnce(Mock.GET_NMS_EXTACCOUNT_SCHEMA_RESPONSE);
+            var schema = await client.getSchema("nms:extAccount");
+            expect(schema["namespace"]).toBe("nms");
+            expect(schema["name"]).toBe("extAccount");
+
+            client._transport.mockReturnValueOnce(Mock.GETMODIFIEDENTITIES_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GETMODIFIEDENTITIES_RESPONSE);
+
+            client.startRefreshCaches();
+            await delay(15000);
+            console.log("Waited 15s");
+
+            var schema = await client.getSchema("nms:extAccount");
+            expect(schema["namespace"]).toBe("nms");
+            expect(schema["name"]).toBe("extAccount");
+
+        });
+
+        it("Should get schema from server when removed from cache", async () => {
+            const client = await Mock.makeClient();
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+
+            client._transport.mockReturnValueOnce(Mock.GET_NMS_EXTACCOUNT_SCHEMA_RESPONSE);
+            var schema = await client.getSchema("nms:extAccount");
+            expect(schema["namespace"]).toBe("nms");
+            expect(schema["name"]).toBe("extAccount");
+
+            client._transport.mockReturnValueOnce(Mock.GETMODIFIEDENTITIES_SCHEMA_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GETMODIFIEDENTITIES_SCHEMA_RESPONSE);
+
+            client.startRefreshCaches();
+            await delay(15000);
+            console.log("Waited 15s");
+
+            client._transport.mockReturnValueOnce(Mock.GET_NMS_EXTACCOUNT_SCHEMA_RESPONSE);
+            var schema = await client.getSchema("nms:extAccount");
+            expect(schema["namespace"]).toBe("nms");
+            expect(schema["name"]).toBe("extAccount");
+
+        });
+
+        it("Should stop refresh", async () => {
+            const client = await Mock.makeClient();
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+
+            client.startRefreshCaches();
+            expect(client._optionCacheRefresher._intervalId).not.toBeNull();
+            expect(client._entityCacheRefresher._intervalId).not.toBeNull();
+            client.stopRefreshCaches();
+            expect(client._optionCacheRefresher._intervalId).toBeNull();
+            expect(client._entityCacheRefresher._intervalId).toBeNull();
+
         });
     });
 

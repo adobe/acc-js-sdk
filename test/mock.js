@@ -644,6 +644,7 @@ const GETMODIFIEDENTITIES_SCHEMA_RESPONSE = Promise.resolve(`<?xml version='1.0'
                  <entityCache lastModified="2022-07-28 15:31:56.353Z" md5="B27CC681D00C3FA85DDA0B210FE76566" pk="xtk:schema|nms:replicationStrategy" schema="xtk:schema"/>
                  <entityCache lastModified="2022-07-28 15:31:56.478Z" md5="E39D051D4D00805693EBA4F72F5ABD7D" pk="xtk:schema|nms:recipientStg" schema="xtk:schema"/>
                  <entityCache lastModified="2022-07-28 15:31:56.440Z" md5="23B1FE988F0DCDC88C9F96D06C97FA14" pk="xtk:schema|xxl:xtkFolderXl" schema="xtk:schema"/>
+                 <entityCache lastModified="2022-07-28 15:31:56.440Z" md5="23B1FE988F0DCDC88C9F96D06C97FA14" pk="xtk:schema|nms:extAccount" schema="xtk:schema"/>
                  <entityCache lastModified="2022-07-28 15:31:56.440Z" md5="23B1FE988F0DCDC88C9F96D06C97FA14" pk="xtk:option|testOption" schema="xtk:option"/>
               </cache>
            </pdomDirtyEntities>
@@ -658,6 +659,16 @@ const GETMODIFIEDENTITIES_UNDEFINED_RESPONSE = Promise.resolve(`<?xml version='1
     <SOAP-ENV:Fault>
        <faultcode>SOAP-ENV:Client</faultcode>
        <faultstring xsi:type='xsd:string'>SOP-330006 The method 'GetModifiedEntities' is not defined in SOAP service 'xtk:session'.</faultstring>
+    </SOAP-ENV:Fault>
+    </SOAP-ENV:Body>
+    </SOAP-ENV:Envelope>`);
+
+const GETMODIFIEDENTITIES_ERROR_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
+    <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
+    <SOAP-ENV:Body>
+    <SOAP-ENV:Fault>
+       <faultcode>SOAP-ENV:Client</faultcode>
+       <faultstring xsi:type='xsd:string'>SOP-330011 Error while executing the method 'GetModifiedEntities' of service 'xtk:session'.</faultstring>
     </SOAP-ENV:Fault>
     </SOAP-ENV:Body>
     </SOAP-ENV:Envelope>`);
@@ -706,5 +717,6 @@ exports.Mock = {
   GETMODIFIEDENTITIES_RESPONSE: GETMODIFIEDENTITIES_RESPONSE,
   GETMODIFIEDENTITIES_CLEAR_RESPONSE: GETMODIFIEDENTITIES_CLEAR_RESPONSE,
   GETMODIFIEDENTITIES_SCHEMA_RESPONSE: GETMODIFIEDENTITIES_SCHEMA_RESPONSE,
-  GETMODIFIEDENTITIES_UNDEFINED_RESPONSE: GETMODIFIEDENTITIES_UNDEFINED_RESPONSE
+  GETMODIFIEDENTITIES_UNDEFINED_RESPONSE: GETMODIFIEDENTITIES_UNDEFINED_RESPONSE,
+  GETMODIFIEDENTITIES_ERROR_RESPONSE: GETMODIFIEDENTITIES_ERROR_RESPONSE
 }

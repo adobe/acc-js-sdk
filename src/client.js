@@ -911,7 +911,6 @@ class Client {
                 that._securityToken = securityToken;
 
                 that.application = new Application(that);
-                that.refreshCaches();
             });
         }
         else {
@@ -952,7 +951,6 @@ class Client {
             that._securityToken = "";
             that.application = null;
         }
-        that.stopRefreshCaches();
     }
 
     /**
@@ -1037,14 +1035,14 @@ class Client {
         this.clearOptionCache();
     }
 
-    refreshCaches() {
-      this._optionCacheRefresher.callAndRefresh();
-      this._entityCacheRefresher.callAndRefresh();
+    startRefreshCaches() {
+        this._optionCacheRefresher.startAutoRefresh();
+        this._entityCacheRefresher.startAutoRefresh();
     }
 
     stopRefreshCaches() {
-        this._optionCacheRefresher.stopRefresh();
-        this._entityCacheRefresher.stopRefresh();
+        this._optionCacheRefresher.stopAutoRefresh();
+        this._entityCacheRefresher.stopAutoRefresh();
     }
 
 

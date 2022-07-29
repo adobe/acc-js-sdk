@@ -1058,8 +1058,6 @@ describe('Application', () => {
             it("Should support missing destination", async () => {
                 const client = await Mock.makeClient();
                 client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
-                client._transport.mockReturnValueOnce(Mock.GETMODIFIEDENTITIES_RESPONSE);
-                client._transport.mockReturnValueOnce(Mock.GETMODIFIEDENTITIES_RESPONSE);
                 await client.NLWS.xtkSession.logon();
                 client._transport.mockReturnValueOnce(Promise.resolve(`<?xml version='1.0'?>
                 <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:wpp:default' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
