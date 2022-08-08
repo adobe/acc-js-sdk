@@ -597,7 +597,7 @@ governing permissions and limitations under the License.
               const iframe = document.createElement('iframe');
               iframe.style.height = 0;
               iframe.style.width = 0;
-              document.controller = {
+              document.controller = { // Written to  support https://git.corp.adobe.com/Campaign/ac/blob/v6-master/nl/datakit/nl/jsp/uploadFile.jsp
                 uploadFileCallBack: async (data) => {
                   if(!data || data.length !== 1){
                     // Tried to replicate the logic for file upload functionality written here:
@@ -605,7 +605,7 @@ governing permissions and limitations under the License.
                     throw 'Malformed data'+ data
                   }
                   const counter = await _increaseValue(); // Step 1
-                  const fileRes= _createFileRes(counter, data)
+                  const fileRes = _createFileRes(counter, data)
                   await _write(fileRes); // Step 2
                   await _publishIfNeeded(fileRes) // Step 3
                   const url = await _getPublicUrl(fileRes) // Step 3
