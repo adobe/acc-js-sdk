@@ -542,6 +542,7 @@ class Client {
         this._transport = connectionParameters._options.transport;
         this._traceAPICalls = connectionParameters._options.traceAPICalls;
         this._observers = [];
+        this._refreshers = [];
         this._refreshClient = connectionParameters._options.refreshClient;
 
         // expose utilities
@@ -852,6 +853,7 @@ class Client {
             that._sessionToken = credentials._sessionToken;
             that._securityToken = "";
             that.application = new Application(that);
+            that.application.registerRefresher();
             return Promise.resolve();
         }
         else if (credentials._type == "SecurityToken") {
@@ -860,6 +862,7 @@ class Client {
             that._sessionToken = "";
             that._securityToken = credentials._securityToken;
             that.application = new Application(that);
+            that.application.registerRefresher();
             return Promise.resolve();
         }
         else if (credentials._type == "UserPassword" || credentials._type == "BearerToken") {
@@ -911,6 +914,7 @@ class Client {
                 that._securityToken = securityToken;
 
                 that.application = new Application(that);
+                that.application.registerRefresher();
             });
         }
         else {
@@ -936,6 +940,7 @@ class Client {
     logoff() {
         var that = this;
         if (!that.isLogged()) return;
+        that.application.unregisterRefresher();
         const credentials = this._connectionParameters._credentials;
         if (credentials._type != "SessionToken" && credentials._type != "AnonymousUser") {
             var soapCall = that._prepareSoapCall("xtk:session", "Logoff", false, this._connectionParameters._options.extraHttpHeaders);
@@ -1051,6 +1056,27 @@ class Client {
         this._entityCacheRefresher.stopAutoRefresh();
     }
 
+    registerRefresher(refresher) {
+        this._refreshers.push(refresher);
+    }
+
+    unregisterRefresher(refresher) {
+        for (var i = 0; i < this._refreshers.length; i++) {
+            if (this._refreshers[i] == refresher) {
+                this._refreshers.splice(i, 1);
+                break;
+            }
+        }
+    }
+
+    unregisterAllRefreshers() {
+        this._refreshers = [];
+    }
+
+
+    _notifyRefresher(schemaId) {
+        this._refreshers.map((refresher) => refresher.refreshCache(schemaId));
+    }
 
     /**
      * Tests if a package is installed

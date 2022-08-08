@@ -170,10 +170,14 @@ governing permissions and limitations under the License.
             } else {
                 var child = DomUtil.getFirstChildElement(xmlDoc, "entityCache");
                 while (child) {
-                    let schemaId = DomUtil.getAttributeAsString(child, "pk");
+                    let pkSchemaId = DomUtil.getAttributeAsString(child, "pk");
                     let schemaType = DomUtil.getAttributeAsString(child, "schema");
                     if (schemaType === this._cacheSchema) {
-                        this._cache.remove(schemaId);
+                        this._cache.remove(pkSchemaId);
+                        if (schemaType === "xtk:schema") {
+                            const schemaIds = pkSchemaId.split("|");
+                            this._client._notifyRefresher(schemaIds[1]);
+                        }
                     }
                     child = DomUtil.getNextSiblingElement(child);
                 }

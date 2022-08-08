@@ -22,7 +22,6 @@ const sdk = require('../src/index.js');
 const { Cache } = require('../src/cache.js');
 const Mock = require('./mock.js').Mock;
 const CacheRefresher = require('../src/cacheRefresher.js').CacheRefresher;
-const RefresherStateCache = require('../src/cacheRefresher.js').RefresherStateCache;
 const delay = ms => new Promise(res => setTimeout(res, ms));
 
 
@@ -52,7 +51,7 @@ describe("CacheRefresher cache", function () {
         await client.NLWS.xtkSession.logoff();
     });
 
-    it('Should call refresh after 10 seconds', async () => {
+    it('Should call refresh after 1 seconds', async () => {
         const connectionParameters = sdk.ConnectionParameters.ofUserAndPassword("http://acc-sdk:8080", "admin", "admin");
         const client = await sdk.init(connectionParameters);
         client._transport = jest.fn();
@@ -221,5 +220,50 @@ describe("CacheRefresher cache", function () {
         cacheRefresher.stopAutoRefresh();
         client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
         await client.NLWS.xtkSession.logoff();
+    });
+
+    it('Should notify when refresh cache', async () => {
+        const client = await Mock.makeClient();
+        client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+
+
+        class Refresher {
+            constructor() {
+                this._schemas = {};
+            }
+            add(schemaId) {
+                this._schemas[schemaId] = "1";
+            }
+
+            refreshCache(schemaId) {
+                this._schemas[schemaId] = undefined;
+            }
+            getSchema(schemaId) {
+                return this._schemas[schemaId];
+            }
+        }
+
+        refresher = new Refresher();
+        client.registerRefresher(refresher);
+
+        await client.NLWS.xtkSession.logon();
+        const cache = new Cache();
+        const connectionParameters = sdk.ConnectionParameters.ofUserAndPassword("http://acc-sdk:8080", "admin", "admin");
+        const cacheRefresher = new CacheRefresher(cache, client, connectionParameters, "xtk:schema", "rootkey");
+
+        cache.put("xtk:schema|nms:recipient", "<content recipient>");
+        cache.put("xtk:schema|nms:replicationStrategy", "<content xtk:schema|nms:replicationStrategy>");
+        cache.put("xtk:schema|nms:operation", "<content xtk:schema|nms:operation>");
+
+        refresher.add("nms:recipient");
+
+        client._transport.mockReturnValueOnce(Mock.GETMODIFIEDENTITIES_SCHEMA_RESPONSE);
+        await cacheRefresher.callAndRefresh();
+
+        expect(refresher.getSchema("nms:recipient")).toBeUndefined();
+
+        client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
+        await client.NLWS.xtkSession.logoff();
+        client.unregisterRefresher(refresher);
     });
 });

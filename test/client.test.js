@@ -2951,4 +2951,94 @@ describe('ACC Client', function () {
             expect(lastCall[1].x).toBe(2);
         });
     });
+    describe("Schema cache refresh", () => {
+        it("Should unregister refresher", async () => {
+            const client = await Mock.makeClient();
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+
+            class Refresher {
+                constructor() {
+                    this._schemas = {};
+                }
+
+                refreshCache(schemaId) {
+                    this._schemas[schemaId] = undefined;
+                }
+            }
+
+            client.unregisterAllRefreshers();
+            expect(client._refreshers.length).toBe(0);
+            refresher = new Refresher();
+
+            client.registerRefresher(refresher);
+            expect(client._refreshers.length).toBe(1);
+            client.unregisterRefresher(refresher);
+            expect(client._refreshers.length).toBe(0);
+        });
+
+        it("Should not unregister unknown refresher", async () => {
+            const client = await Mock.makeClient();
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+
+            class Refresher {
+                constructor() {
+                    this._schemas = {};
+                }
+
+                refreshCache(schemaId) {
+                    this._schemas[schemaId] = undefined;
+                }
+            }
+
+            client.unregisterAllRefreshers();
+            expect(client._refreshers.length).toBe(0);
+            refresher = new Refresher();
+
+            client.registerRefresher(refresher);
+            expect(client._refreshers.length).toBe(1);
+
+            refresher2 = new Refresher();
+
+            client.unregisterRefresher(refresher2);
+            expect(client._refreshers.length).toBe(1);
+            client.unregisterAllRefreshers();
+        });
+
+        it("Should be notify when register", async () => {
+            const client = await Mock.makeClient();
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+
+            class Refresher {
+                constructor() {
+                    this._schemas = {};
+                }
+                add(schemaId) {
+                    this._schemas[schemaId] = "1";
+                }
+
+                refreshCache(schemaId) {
+                    this._schemas[schemaId] = undefined;
+                }
+                getSchema(schemaId) {
+                    return this._schemas[schemaId];
+                }
+            }
+
+            client.unregisterAllRefreshers();
+            
+            refresher = new Refresher();
+            refresher.add("nms:recipient");
+            refresher.add("xtk:operator");
+
+            client.registerRefresher(refresher);
+            client._notifyRefresher("nms:recipient");
+            expect(refresher.getSchema("nms:recipient")).toBeUndefined();
+            expect(refresher.getSchema("xtk:operator")).toBe("1");
+
+            client.unregisterRefresher(refresher);
+        });
+    });
 });
