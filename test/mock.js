@@ -618,6 +618,9 @@ const GETMODIFIEDENTITIES_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
     <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:xtk:session' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
     <SOAP-ENV:Body>
         <GetModifiedEntitiesResponse xmlns='urn:xtk:session' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
+           <pdomDirtyEntities xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
+                <cache buildNumber="9468" time="2022-07-27T14:38:55.766Z"/>
+            </pdomDirtyEntities>
         </GetModifiedEntitiesResponse>
     </SOAP-ENV:Body>
     </SOAP-ENV:Envelope>`);

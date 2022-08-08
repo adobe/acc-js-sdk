@@ -22,10 +22,10 @@ governing permissions and limitations under the License.
      * @constructor
      * @memberof Campaign
      */
-    class MetadataCache extends Cache {
+    class RefresherStateCache extends Cache {
 
         /**
-         * A in-memory cache for properties values. Not intended to be used directly,
+         * A in-memory cache to store state of the refresher. Not intended to be used directly,
          * but an internal cache for the Campaign.Client object
          * 
          * Cached object are made of
@@ -41,7 +41,7 @@ governing permissions and limitations under the License.
         }
 
         /**
-         * Cache a properties and its value
+         * Cache a property of the refresh (buildNumber, last refresh time) and its value
          * 
          * @param {string} name is the propertie name
          * @param {string} rawValue string value
@@ -51,7 +51,7 @@ governing permissions and limitations under the License.
         }
 
         /**
-         * Get the value of a propertie
+         * Get the value of a property of the refresh (buildNumber, last refresh time)
          * 
          * @param {string} name the propertie name
          * @returns {*} the value
@@ -82,36 +82,46 @@ governing permissions and limitations under the License.
             this._cacheSchema = cacheSchema;
 
             this._storage = connectionParameters._options._storage;
-            this._metadataCache = new MetadataCache(this._storage, `${rootKey}.MetadataCache`, connectionParameters._options.optionCacheTTL);
+            this._refresherStateCache  = new RefresherStateCache(this._storage, `${rootKey}.RefresherStateCache`, 1000*3600);
 
             this._lastTime;
             this._buildNumber;
             this._intervalId = null;
         }
 
-        startAutoRefresh() {
-            this._intervalId = setInterval(() => this.callAndRefresh(), 10000); // every 10 seconds
+        /**
+         * Start auto refresh
+         * @param {any} refreshFrequency frequency of the refresh in ms ( default velue is 10 000 ms)
+         */
+        startAutoRefresh(refreshFrequency) {
+            if (this._intervalId != null) {
+                clearInterval(this._intervalId);
+            }
+            this._intervalId = setInterval(() => this.callAndRefresh(), refreshFrequency || 10000); // every 10 seconds by default
         }
 
+        /**
+         * Get last modified entities and remove from cache last modified entities
+         */
         callAndRefresh() {
             const that = this;
             const soapCall = this._client._prepareSoapCall("xtk:session", "GetModifiedEntities", true, this._connectionParameters._options.extraHttpHeaders);
 
             if (this._lastTime === undefined) {
-                let storedTime = this._metadataCache.get("time");
+                let storedTime = this._refresherStateCache.get("time");
                 if (storedTime != undefined) {
                     this._lastTime = storedTime;
                 }
             }
             if (this._buildNumber === undefined) {
-                let storedBuildNumber = this._metadataCache.get("buildNumber");
+                let storedBuildNumber = this._refresherStateCache.get("buildNumber");
                 if (storedBuildNumber != undefined) {
                     this._buildNumber = storedBuildNumber;
                 }
             }
 
             // Use Json because xtk:schema does not work directly in DomUtil.parse(`<cache buildNumber="9469" lastModified="2022-06-30T00:00:00.000"><xtk:schema></xtk:schema></cache>`);
-            // due to the semi-colon character
+            // due to the colon character
             var jsonCache;
             if (this._lastTime === undefined || this._buildNumber === undefined) {
                 jsonCache = {
@@ -129,8 +139,7 @@ governing permissions and limitations under the License.
             soapCall.writeDocument("script", xmlDoc);
 
             // Do a soap call GetModifiedEntities instead of xtksession.GetModifiedEnties because we don't want to go through methodCache 
-            // which can be wrong just after a build updgarde from a old version of acc that has not the method GetModifiedEntities and 
-            // a new version of acc that has the method GetModifiedEntities
+            // which might not contain the method GetModifiedEntities just after a build updgrade from a old version of acc 
             return this._client._makeSoapCall(soapCall)
                 .then(() => {
                     var doc = soapCall.getNextDocument();
@@ -138,33 +147,32 @@ governing permissions and limitations under the License.
                     doc = that._client._toRepresentation(doc, 'xml');
                     that._lastTime = DomUtil.getAttributeAsString(doc, "time"); // save time to be able to send it as an attribute in the next soap call
                     that._buildNumber = DomUtil.getAttributeAsString(doc, "buildNumber");
-                    that.refresh(doc, that._cacheSchema);
-                    that._metadataCache.put("time", that._lastTime);
-                    that._metadataCache.put("buildNumber", that._buildNumber);
+                    that.refresh(doc);
+                    that._refresherStateCache.put("time", that._lastTime);
+                    that._refresherStateCache.put("buildNumber", that._buildNumber);
                     Promise.resolve();
                 })
                 .catch((ex) => {
+                    // if the method GetModifiedEntities is not found in this acc version we disable the autoresfresh of the cache
                     if (soapCall.methodName == "GetModifiedEntities" && ex.errorCode == "SOP-330006") {
-                        clearInterval(this._intervalId);
-                        this._intervalId = null;
+                        this.stopAutoRefresh();
+                    } else {
+                        throw ex;
                     }
                 });
         }
 
         // Refresh Cache : remove entities modified recently listed in xmlDoc
-        refresh(xmlDoc, cacheSchema) {
-            console.log("cache refresh " + cacheSchema);
-            const bClearCache = XtkCaster.asBoolean(DomUtil.getAttributeAsString(xmlDoc, "emptyCache"));
-            if (bClearCache == true) {
-                console.log("Clear cache");
+        refresh(xmlDoc) {
+            const clearCache = XtkCaster.asBoolean(DomUtil.getAttributeAsString(xmlDoc, "emptyCache"));
+            if (clearCache == true) {
                 this._cache.clear();
             } else {
                 var child = DomUtil.getFirstChildElement(xmlDoc, "entityCache");
                 while (child) {
                     let schemaId = DomUtil.getAttributeAsString(child, "pk");
                     let schemaType = DomUtil.getAttributeAsString(child, "schema");
-                    if (schemaType == cacheSchema) {
-                        console.log("remove " + schemaId); // TODO: delete log
+                    if (schemaType === this._cacheSchema) {
                         this._cache.remove(schemaId);
                     }
                     child = DomUtil.getNextSiblingElement(child);
@@ -180,6 +188,5 @@ governing permissions and limitations under the License.
 
     // Public exports
     exports.CacheRefresher = CacheRefresher;
-    exports.MetadataCache = MetadataCache;
 
 })();

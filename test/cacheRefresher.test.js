@@ -22,214 +22,204 @@ const sdk = require('../src/index.js');
 const { Cache } = require('../src/cache.js');
 const Mock = require('./mock.js').Mock;
 const CacheRefresher = require('../src/cacheRefresher.js').CacheRefresher;
-const MetadataCache = require('../src/cacheRefresher.js').MetadataCache;
+const RefresherStateCache = require('../src/cacheRefresher.js').RefresherStateCache;
 const delay = ms => new Promise(res => setTimeout(res, ms));
-jest.setTimeout(20000);
 
-describe('Caches', function () {
 
-    describe("Metadata cache", function () {
 
-        it("Should cache value", function () {
-            const cache = new MetadataCache();
-            expect(cache.get("hello")).toBeUndefined();
-            cache.put("hello", "world");
-            expect(cache.get("hello")).toBe("world");
-        });
+describe("CacheRefresher cache", function () {
 
-        it("Should cache multiple value", function () {
-            const cache = new MetadataCache();
-            cache.put("hello", "world");
-            cache.put("foo", "bar");
-            expect(cache.get("hello")).toBe("world");
-            expect(cache.get("foo")).toBe("bar");
-        });
+    it('Should call refresh', async () => {
+        const client = await Mock.makeClient();
+        client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
 
-        it("Should overwrite cached value", function () {
-            const cache = new MetadataCache();
-            cache.put("hello", "world");
-            expect(cache.get("hello")).toBe("world");
-            cache.put("hello", "cruel world");
-            expect(cache.get("hello")).toBe("cruel world");
-        });
+        await client.NLWS.xtkSession.logon();
+        const cache = new Cache();
+        const connectionParameters = sdk.ConnectionParameters.ofUserAndPassword("http://acc-sdk:8080", "admin", "admin");
+        const cacheRefresher = new CacheRefresher(cache, client, connectionParameters, "xtk:schema", "rootkey");
 
-        it("Should clear cache", function () {
-            const cache = new MetadataCache();
-            cache.put("hello", "world");
-            expect(cache.get("hello")).toBe("world");
-            cache.clear();
-            expect(cache.get("hello")).toBeUndefined();
-        });
+        client._transport.mockReturnValueOnce(Mock.GETMODIFIEDENTITIES_CLEAR_RESPONSE);
+        await cacheRefresher.callAndRefresh();
+        expect(cacheRefresher._refresherStateCache.get("buildNumber")).toBe("9469");
+        expect(cacheRefresher._refresherStateCache.get("time")).toBe("2022-07-28T14:38:55.766Z");
 
-        it("Should not find", function () {
-            const cache = new MetadataCache();
-            expect(cache.get("hello")).toBeUndefined();
-        });
+        client._transport.mockReturnValueOnce(Mock.GETMODIFIEDENTITIES_CLEAR_RESPONSE);
+        await cacheRefresher.callAndRefresh();
+        expect(cacheRefresher._refresherStateCache.get("buildNumber")).toBe("9469");
+        expect(cacheRefresher._refresherStateCache.get("time")).toBe("2022-07-28T14:38:55.766Z");
 
+        client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
+        await client.NLWS.xtkSession.logoff();
     });
 
-    describe("CacheRefresher cache", function () {
+    it('Should call refresh after 10 seconds', async () => {
+        const connectionParameters = sdk.ConnectionParameters.ofUserAndPassword("http://acc-sdk:8080", "admin", "admin");
+        const client = await sdk.init(connectionParameters);
+        client._transport = jest.fn();
 
-        it('Should call refresh', async () => {
-            const client = await Mock.makeClient();
+        client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+
+        await client.NLWS.xtkSession.logon();
+        expect(client.isLogged()).toBeTruthy();
+        const cache = new Cache();
+
+        const cacheRefresher = new CacheRefresher(cache, client, connectionParameters, "xtk:schema", "rootkey");
+
+        expect(cacheRefresher._refresherStateCache.get("buildNumber")).toBeUndefined();
+        expect(cacheRefresher._refresherStateCache.get("time")).toBeUndefined();
+
+        cacheRefresher.startAutoRefresh(500); // autorefresh every 500 ms
+
+        client._transport.mockReturnValueOnce(Mock.GETMODIFIEDENTITIES_CLEAR_RESPONSE);
+        // to cover call of setInterval
+        await delay(1000);
+        console.log("Waited 1s");
+
+        expect(cacheRefresher._refresherStateCache.get("buildNumber")).toBe("9469");
+        expect(cacheRefresher._refresherStateCache.get("time")).toBe("2022-07-28T14:38:55.766Z");
+
+        cacheRefresher.stopAutoRefresh();
+        client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
+        await client.NLWS.xtkSession.logoff();
+    });
+
+    it('Should send buildNumber when call refresh', async () => {
+        const client = await Mock.makeClient();
+        const logs = await Mock.withMockConsole(async () => {
+            client.traceAPICalls(true);
             client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
-            
+
             await client.NLWS.xtkSession.logon();
+
             const cache = new Cache();
+
             const connectionParameters = sdk.ConnectionParameters.ofUserAndPassword("http://acc-sdk:8080", "admin", "admin");
             const cacheRefresher = new CacheRefresher(cache, client, connectionParameters, "xtk:schema", "rootkey");
+            cacheRefresher._refresherStateCache.put("buildNumber", "9469");
+            cacheRefresher._refresherStateCache.put("time", "2022-07-28T14:38:55.766Z");
 
             client._transport.mockReturnValueOnce(Mock.GETMODIFIEDENTITIES_CLEAR_RESPONSE);
             await cacheRefresher.callAndRefresh();
-            expect(cacheRefresher._metadataCache.get("buildNumber")).toBe("9469");
-            expect(cacheRefresher._metadataCache.get("time")).toBe("2022-07-28T14:38:55.766Z");
+            expect(cacheRefresher._refresherStateCache.get("buildNumber")).toBe("9469");
+            expect(cacheRefresher._refresherStateCache.get("time")).toBe("2022-07-28T14:38:55.766Z");
 
-            client._transport.mockReturnValueOnce(Mock.GETMODIFIEDENTITIES_CLEAR_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
+
+
+            await client.NLWS.xtkSession.logoff();
+
+        })
+        expect(logs.length).toBe(6);
+        expect(logs[0]).toMatch(/SOAP.*request.*Logon/is)
+        expect(logs[1]).toMatch(/SOAP.*response.*LogonResponse/is)
+        expect(logs[2]).toMatch(/SOAP.*request.*buildNumber.*9469.*2022-07-28T14:38:55.766Z.*GetModifiedEntities*/is)
+        expect(logs[3]).toMatch(/SOAP.*response.*GetModifiedEntitiesResponse/is)
+        expect(logs[4]).toMatch(/SOAP.*request.*Logoff/is)
+        expect(logs[5]).toMatch(/SOAP.*response.*LogoffResponse/is)
+    });
+
+    it('Should refresh cache', async () => {
+        const client = await Mock.makeClient();
+        client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+
+        await client.NLWS.xtkSession.logon();
+        const cache = new Cache();
+        const connectionParameters = sdk.ConnectionParameters.ofUserAndPassword("http://acc-sdk:8080", "admin", "admin");
+        const cacheRefresher = new CacheRefresher(cache, client, connectionParameters, "xtk:schema", "rootkey");
+
+        cache.put("xtk:schema|nms:recipient", "<content recipient>");
+        cache.put("xtk:schema|nms:replicationStrategy", "<content xtk:schema|nms:replicationStrategy>");
+        cache.put("xtk:schema|nms:operation", "<content xtk:schema|nms:operation>");
+        expect(cache.get("xtk:schema|nms:recipient")).toBe("<content recipient>");
+        expect(cache.get("xtk:schema|nms:replicationStrategy")).toBe("<content xtk:schema|nms:replicationStrategy>");
+        expect(cache.get("xtk:schema|nms:operation")).toBe("<content xtk:schema|nms:operation>");
+
+        client._transport.mockReturnValueOnce(Mock.GETMODIFIEDENTITIES_SCHEMA_RESPONSE);
+        await cacheRefresher.callAndRefresh();
+        expect(cacheRefresher._refresherStateCache.get("buildNumber")).toBe("9469");
+        expect(cacheRefresher._refresherStateCache.get("time")).toBe("2022-07-28T15:32:00.785Z");
+        expect(cache.get("xtk:schema|nms:recipient")).toBeUndefined();
+        expect(cache.get("xtk:schema|nms:replicationStrategy")).toBeUndefined();
+        expect(cache.get("xtk:schema|nms:operation")).toBe("<content xtk:schema|nms:operation>");
+
+        client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
+        await client.NLWS.xtkSession.logoff();
+    });
+
+    it('Should stop refresh if method not exist', async () => {
+        const client = await Mock.makeClient();
+        client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+
+        await client.NLWS.xtkSession.logon();
+        const cache = new Cache();
+        const connectionParameters = sdk.ConnectionParameters.ofUserAndPassword("http://acc-sdk:8080", "admin", "admin");
+        const cacheRefresher = new CacheRefresher(cache, client, connectionParameters, "xtk:schema", "rootkey");
+
+        cacheRefresher.startAutoRefresh();
+
+        client._transport.mockReturnValueOnce(Mock.GETMODIFIEDENTITIES_UNDEFINED_RESPONSE);
+        await cacheRefresher.callAndRefresh();
+        expect(cacheRefresher._refresherStateCache.get("buildNumber")).toBeUndefined();
+        expect(cacheRefresher._refresherStateCache.get("time")).toBeUndefined();
+        expect(cacheRefresher._intervalId).toBeNull();
+
+        client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
+        await client.NLWS.xtkSession.logoff();
+    });
+
+    it('Should not stop refresh if error different from undefined', async () => {
+        const client = await Mock.makeClient();
+        client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+
+        await client.NLWS.xtkSession.logon();
+        const cache = new Cache();
+        const connectionParameters = sdk.ConnectionParameters.ofUserAndPassword("http://acc-sdk:8080", "admin", "admin");
+        const cacheRefresher = new CacheRefresher(cache, client, connectionParameters, "xtk:schema", "rootkey");
+
+        cacheRefresher.startAutoRefresh();
+
+        client._transport.mockReturnValueOnce(Mock.GETMODIFIEDENTITIES_ERROR_RESPONSE);
+        try {
             await cacheRefresher.callAndRefresh();
-            expect(cacheRefresher._metadataCache.get("buildNumber")).toBe("9469");
-            expect(cacheRefresher._metadataCache.get("time")).toBe("2022-07-28T14:38:55.766Z");
+            fail('exception is expected');
+        } catch (e) {
+            expect(e).not.toBeNull();
+        }
+        expect(cacheRefresher._refresherStateCache.get("buildNumber")).toBeUndefined();
+        expect(cacheRefresher._refresherStateCache.get("time")).toBeUndefined();
+        expect(cacheRefresher._intervalId).not.toBeNull();
 
-            client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
-            await client.NLWS.xtkSession.logoff();
-        });
+        cacheRefresher.stopAutoRefresh();
+        client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
+        await client.NLWS.xtkSession.logoff();
+    });
 
-        it('Should call refresh after 10 seconds', async () => {
-            const connectionParameters = sdk.ConnectionParameters.ofUserAndPassword("http://acc-sdk:8080", "admin", "admin");
-            const client = await sdk.init(connectionParameters);
-            client._transport = jest.fn();
-                       
-            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+    it('Should be able to call start refresh twice', async () => {
+        const client = await Mock.makeClient();
+        client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
 
-            await client.NLWS.xtkSession.logon();
-            expect(client.isLogged()).toBeTruthy();
-            const cache = new Cache();
-            
-            const cacheRefresher = new CacheRefresher(cache, client, connectionParameters, "xtk:schema", "rootkey");
+        await client.NLWS.xtkSession.logon();
+        const cache = new Cache();
+        const connectionParameters = sdk.ConnectionParameters.ofUserAndPassword("http://acc-sdk:8080", "admin", "admin");
+        const cacheRefresher = new CacheRefresher(cache, client, connectionParameters, "xtk:schema", "rootkey");
 
-            expect(cacheRefresher._metadataCache.get("buildNumber")).toBeUndefined();
-            expect(cacheRefresher._metadataCache.get("time")).toBeUndefined();
+        cacheRefresher.startAutoRefresh(100000);
+        expect(cacheRefresher._intervalId).not.toBeNull();
+        const firstIntervalId = cacheRefresher._intervalId;
+        cacheRefresher.startAutoRefresh(500);
+        expect(cacheRefresher._intervalId).not.toBeNull();
+        expect(cacheRefresher._intervalId != firstIntervalId);
 
-            cacheRefresher.startAutoRefresh();
+        client._transport.mockReturnValueOnce(Mock.GETMODIFIEDENTITIES_CLEAR_RESPONSE);
+        // to cover call of setInterval
+        await delay(1000);
+        console.log("Waited 1s");
 
-            client._transport.mockReturnValueOnce(Mock.GETMODIFIEDENTITIES_CLEAR_RESPONSE);
-            // to cover call of setInterval
-            await delay(12000);
-            console.log("Waited 12s");
+        expect(cacheRefresher._refresherStateCache.get("buildNumber")).toBe("9469");
+        expect(cacheRefresher._refresherStateCache.get("time")).toBe("2022-07-28T14:38:55.766Z");
 
-            expect(cacheRefresher._metadataCache.get("buildNumber")).toBe("9469");
-            expect(cacheRefresher._metadataCache.get("time")).toBe("2022-07-28T14:38:55.766Z");
-
-            cacheRefresher.stopAutoRefresh();
-            client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
-            await client.NLWS.xtkSession.logoff();
-        });
-
-        it('Should send buildNumber when call refresh', async () => {
-            const client = await Mock.makeClient();
-            const logs = await Mock.withMockConsole(async () => {
-                client.traceAPICalls(true);
-                client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
-                
-                await client.NLWS.xtkSession.logon();
-                
-                const cache = new Cache();
-
-                const connectionParameters = sdk.ConnectionParameters.ofUserAndPassword("http://acc-sdk:8080", "admin", "admin");
-                const cacheRefresher = new CacheRefresher(cache, client, connectionParameters, "xtk:schema", "rootkey");
-                cacheRefresher._metadataCache.put("buildNumber", "9469");
-                cacheRefresher._metadataCache.put("time", "2022-07-28T14:38:55.766Z");
-
-                client._transport.mockReturnValueOnce(Mock.GETMODIFIEDENTITIES_CLEAR_RESPONSE);
-                await cacheRefresher.callAndRefresh();
-                expect(cacheRefresher._metadataCache.get("buildNumber")).toBe("9469");
-                expect(cacheRefresher._metadataCache.get("time")).toBe("2022-07-28T14:38:55.766Z");
-
-                client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
-                
-                
-                await client.NLWS.xtkSession.logoff();
-                
-            })
-            expect(logs.length).toBe(8);
-            expect(logs[0]).toMatch(/SOAP.*request.*Logon/is)
-            expect(logs[1]).toMatch(/SOAP.*response.*LogonResponse/is)
-            expect(logs[2]).toMatch(/SOAP.*request.*buildNumber.*9469.*2022-07-28T14:38:55.766Z.*GetModifiedEntities*/is)
-            expect(logs[3]).toMatch(/SOAP.*response.*GetModifiedEntitiesResponse/is)
-            expect(logs[4]).toMatch(/cache refresh xtk:schema*/is)
-            expect(logs[5]).toMatch(/Clear cache*/is)
-            expect(logs[6]).toMatch(/SOAP.*request.*Logoff/is)
-            expect(logs[7]).toMatch(/SOAP.*response.*LogoffResponse/is)
-        });
-
-        it('Should refresh cache', async () => {
-            const client = await Mock.makeClient();
-            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
-
-            await client.NLWS.xtkSession.logon();
-            const cache = new Cache();
-            const connectionParameters = sdk.ConnectionParameters.ofUserAndPassword("http://acc-sdk:8080", "admin", "admin");
-            const cacheRefresher = new CacheRefresher(cache, client, connectionParameters, "xtk:schema", "rootkey");
-
-            cache.put("xtk:schema|nms:recipient", "<content recipient>");
-            cache.put("xtk:schema|nms:replicationStrategy", "<content xtk:schema|nms:replicationStrategy>");
-            cache.put("xtk:schema|nms:operation", "<content xtk:schema|nms:operation>");
-            expect(cache.get("xtk:schema|nms:recipient")).toBe("<content recipient>");
-            expect(cache.get("xtk:schema|nms:replicationStrategy")).toBe("<content xtk:schema|nms:replicationStrategy>");
-            expect(cache.get("xtk:schema|nms:operation")).toBe("<content xtk:schema|nms:operation>");
-
-            client._transport.mockReturnValueOnce(Mock.GETMODIFIEDENTITIES_SCHEMA_RESPONSE);
-            await cacheRefresher.callAndRefresh();
-            expect(cacheRefresher._metadataCache.get("buildNumber")).toBe("9469");
-            expect(cacheRefresher._metadataCache.get("time")).toBe("2022-07-28T15:32:00.785Z");
-            expect(cache.get("xtk:schema|nms:recipient")).toBeUndefined();
-            expect(cache.get("xtk:schema|nms:replicationStrategy")).toBeUndefined();
-            expect(cache.get("xtk:schema|nms:operation")).toBe("<content xtk:schema|nms:operation>");
-
-            client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
-            await client.NLWS.xtkSession.logoff();
-        });
-
-        it('Should stop refresh if method not exist', async () => {
-            const client = await Mock.makeClient();
-            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
-
-            await client.NLWS.xtkSession.logon();
-            const cache = new Cache();
-            const connectionParameters = sdk.ConnectionParameters.ofUserAndPassword("http://acc-sdk:8080", "admin", "admin");
-            const cacheRefresher = new CacheRefresher(cache, client, connectionParameters, "xtk:schema", "rootkey");
-
-            cacheRefresher.startAutoRefresh();
-
-            client._transport.mockReturnValueOnce(Mock.GETMODIFIEDENTITIES_UNDEFINED_RESPONSE);
-            await cacheRefresher.callAndRefresh();
-            expect(cacheRefresher._metadataCache.get("buildNumber")).toBeUndefined();
-            expect(cacheRefresher._metadataCache.get("time")).toBeUndefined();
-            expect(cacheRefresher._intervalId).toBeNull();
-            
-            client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
-            await client.NLWS.xtkSession.logoff();
-        });
-
-        it('Should not stop refresh if error different from undefined', async () => {
-            const client = await Mock.makeClient();
-            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
-
-            await client.NLWS.xtkSession.logon();
-            const cache = new Cache();
-            const connectionParameters = sdk.ConnectionParameters.ofUserAndPassword("http://acc-sdk:8080", "admin", "admin");
-            const cacheRefresher = new CacheRefresher(cache, client, connectionParameters, "xtk:schema", "rootkey");
-
-            cacheRefresher.startAutoRefresh();
-
-            client._transport.mockReturnValueOnce(Mock.GETMODIFIEDENTITIES_ERROR_RESPONSE);
-            await cacheRefresher.callAndRefresh();
-            expect(cacheRefresher._metadataCache.get("buildNumber")).toBeUndefined();
-            expect(cacheRefresher._metadataCache.get("time")).toBeUndefined();
-            expect(cacheRefresher._intervalId).not.toBeNull();
-
-            cacheRefresher.stopAutoRefresh();
-            client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
-            await client.NLWS.xtkSession.logoff();
-        });
+        cacheRefresher.stopAutoRefresh();
+        client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
+        await client.NLWS.xtkSession.logoff();
     });
 });

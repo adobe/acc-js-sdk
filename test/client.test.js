@@ -25,7 +25,6 @@ const { HttpError } = require('../src/transport.js');
 const { Cipher } = require('../src/crypto.js');
 const { EntityAccessor } = require('../src/entityAccessor.js');
 const delay = ms => new Promise(res => setTimeout(res, ms));
-jest.setTimeout(20000);
 
 describe('ACC Client', function () {
 
@@ -2368,17 +2367,17 @@ describe('ACC Client', function () {
             expect(schema["namespace"]).toBe("nms");
             expect(schema["name"]).toBe("extAccount");
 
-            client._transport.mockReturnValueOnce(Mock.GETMODIFIEDENTITIES_RESPONSE);
-            client._transport.mockReturnValueOnce(Mock.GETMODIFIEDENTITIES_RESPONSE);
+            client._transport.mockReturnValue(Promise.resolve(Mock.GETMODIFIEDENTITIES_RESPONSE));
 
-            client.startRefreshCaches();
-            await delay(15000);
-            console.log("Waited 15s");
+            client.startRefreshCaches(500);
+            await delay(800);
+            console.log("Waited 800 ms");
 
             var schema = await client.getSchema("nms:extAccount");
             expect(schema["namespace"]).toBe("nms");
             expect(schema["name"]).toBe("extAccount");
 
+            client.stopRefreshCaches();
         });
 
         it("Should get schema from server when removed from cache", async () => {
@@ -2391,18 +2390,18 @@ describe('ACC Client', function () {
             expect(schema["namespace"]).toBe("nms");
             expect(schema["name"]).toBe("extAccount");
 
-            client._transport.mockReturnValueOnce(Mock.GETMODIFIEDENTITIES_SCHEMA_RESPONSE);
-            client._transport.mockReturnValueOnce(Mock.GETMODIFIEDENTITIES_SCHEMA_RESPONSE);
+            client._transport.mockReturnValueOnce(Promise.resolve(Mock.GETMODIFIEDENTITIES_SCHEMA_RESPONSE));
+            client._transport.mockReturnValueOnce(Promise.resolve(Mock.GETMODIFIEDENTITIES_SCHEMA_RESPONSE));
 
-            client.startRefreshCaches();
-            await delay(15000);
-            console.log("Waited 15s");
+            client._transport.mockReturnValue(Promise.resolve(Mock.GET_NMS_EXTACCOUNT_SCHEMA_RESPONSE));
+            client.startRefreshCaches(500);
+            await delay(800);
+            console.log("Waited 800ms");
 
-            client._transport.mockReturnValueOnce(Mock.GET_NMS_EXTACCOUNT_SCHEMA_RESPONSE);
             var schema = await client.getSchema("nms:extAccount");
             expect(schema["namespace"]).toBe("nms");
             expect(schema["name"]).toBe("extAccount");
-
+            client.stopRefreshCaches();
         });
 
         it("Should stop refresh", async () => {

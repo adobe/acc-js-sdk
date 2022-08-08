@@ -1035,11 +1035,17 @@ class Client {
         this.clearOptionCache();
     }
 
-    startRefreshCaches() {
-        this._optionCacheRefresher.startAutoRefresh();
-        this._entityCacheRefresher.startAutoRefresh();
+    /**
+     * Start auto refresh of all caches
+     * @param {integer} refreshFrequency refresh frequency in ms
+     */
+    startRefreshCaches(refreshFrequency) {
+        this._optionCacheRefresher.startAutoRefresh(refreshFrequency);
+        this._entityCacheRefresher.startAutoRefresh(refreshFrequency);
     }
-
+    /**
+     * Stop auto refresh of all caches
+     */
     stopRefreshCaches() {
         this._optionCacheRefresher.stopAutoRefresh();
         this._entityCacheRefresher.stopAutoRefresh();

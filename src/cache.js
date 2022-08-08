@@ -244,7 +244,7 @@ class Cache {
 
   /**
    * Put a value from the cache
-   * @param {*} key the key or keys of the value to retreive
+   * @param {*} key the key or keys of the value to retrieve
    * @param {*} value the value to cache
    * @returns {CachedObject} a cached object containing the cached value
    */
@@ -268,6 +268,10 @@ class Cache {
     this._saveLastCleared();
   }
 
+  /**
+   * Remove a key from the cache
+   * @param {*} key the key to remove
+   */
   remove(key) {
     delete this._cache[key];
     this._remove(key);
