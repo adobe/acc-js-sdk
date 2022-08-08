@@ -599,6 +599,11 @@ governing permissions and limitations under the License.
               iframe.style.width = 0;
               document.controller = {
                 uploadFileCallBack: async (data) => {
+                  if(!data || data.length !== 1){
+                    // Tried to replicate the logic for file upload functionality written here:
+                    // https://git.corp.adobe.com/Campaign/ac/blob/v6-master/wpp/xtk/web/dce/uploader.js
+                    throw 'Malformed data'+ data
+                  }
                   const counter = await _increaseValue(); // Step 1
                   const fileRes= _createFileRes(counter, data)
                   await _write(fileRes); // Step 2
