@@ -264,8 +264,8 @@ class Cache {
    * as cleared so that subsequent get operation will not actually return any data cached in persistent storage
    */
   clear() {
-    this._cache = {};
-    this._saveLastCleared();
+      this._cache = {};
+      this._saveLastCleared();
   }
 
   /**
@@ -273,8 +273,8 @@ class Cache {
    * @param {*} key the key to remove
    */
   remove(key) {
-    delete this._cache[key];
-    this._remove(key);
+      delete this._cache[key];
+      this._remove(key);
   }
 }
 

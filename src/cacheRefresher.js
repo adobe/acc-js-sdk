@@ -108,13 +108,13 @@ governing permissions and limitations under the License.
             const soapCall = this._client._prepareSoapCall("xtk:session", "GetModifiedEntities", true, this._connectionParameters._options.extraHttpHeaders);
 
             if (this._lastTime === undefined) {
-                let storedTime = this._refresherStateCache.get("time");
+                const storedTime = this._refresherStateCache.get("time");
                 if (storedTime != undefined) {
                     this._lastTime = storedTime;
                 }
             }
             if (this._buildNumber === undefined) {
-                let storedBuildNumber = this._refresherStateCache.get("buildNumber");
+                const storedBuildNumber = this._refresherStateCache.get("buildNumber");
                 if (storedBuildNumber != undefined) {
                     this._buildNumber = storedBuildNumber;
                 }
@@ -122,7 +122,7 @@ governing permissions and limitations under the License.
 
             // Use Json because xtk:schema does not work directly in DomUtil.parse(`<cache buildNumber="9469" lastModified="2022-06-30T00:00:00.000"><xtk:schema></xtk:schema></cache>`);
             // due to the colon character
-            var jsonCache;
+            let jsonCache;
             if (this._lastTime === undefined || this._buildNumber === undefined) {
                 jsonCache = {
                     [this._cacheSchema]: {}
@@ -135,14 +135,14 @@ governing permissions and limitations under the License.
                 }
             }
 
-            var xmlDoc = DomUtil.fromJSON("cache", jsonCache, 'SimpleJson');
+            const xmlDoc = DomUtil.fromJSON("cache", jsonCache, 'SimpleJson');
             soapCall.writeDocument("script", xmlDoc);
 
             // Do a soap call GetModifiedEntities instead of xtksession.GetModifiedEnties because we don't want to go through methodCache 
             // which might not contain the method GetModifiedEntities just after a build updgrade from a old version of acc 
             return this._client._makeSoapCall(soapCall)
                 .then(() => {
-                    var doc = soapCall.getNextDocument();
+                    let doc = soapCall.getNextDocument();
                     soapCall.checkNoMoreArgs();
                     doc = that._client._toRepresentation(doc, 'xml');
                     that._lastTime = DomUtil.getAttributeAsString(doc, "time"); // save time to be able to send it as an attribute in the next soap call
@@ -170,8 +170,8 @@ governing permissions and limitations under the License.
             } else {
                 var child = DomUtil.getFirstChildElement(xmlDoc, "entityCache");
                 while (child) {
-                    let pkSchemaId = DomUtil.getAttributeAsString(child, "pk");
-                    let schemaType = DomUtil.getAttributeAsString(child, "schema");
+                    const pkSchemaId = DomUtil.getAttributeAsString(child, "pk");
+                    const schemaType = DomUtil.getAttributeAsString(child, "schema");
                     if (schemaType === this._cacheSchema) {
                         this._cache.remove(pkSchemaId);
                         if (schemaType === "xtk:schema") {
