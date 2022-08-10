@@ -227,7 +227,7 @@ describe("CacheRefresher cache", function () {
         client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
 
 
-        class Refresher {
+        class Listener {
             constructor() {
                 this._schemas = {};
             }
@@ -243,8 +243,8 @@ describe("CacheRefresher cache", function () {
             }
         }
 
-        refresher = new Refresher();
-        client.registerRefresher(refresher);
+        listener = new Listener();
+        client.registerCacheChangeListener(listener);
 
         await client.NLWS.xtkSession.logon();
         const cache = new Cache();
@@ -255,15 +255,15 @@ describe("CacheRefresher cache", function () {
         cache.put("xtk:schema|nms:replicationStrategy", "<content xtk:schema|nms:replicationStrategy>");
         cache.put("xtk:schema|nms:operation", "<content xtk:schema|nms:operation>");
 
-        refresher.add("nms:recipient");
+        listener.add("nms:recipient");
 
         client._transport.mockReturnValueOnce(Mock.GETMODIFIEDENTITIES_SCHEMA_RESPONSE);
         await cacheRefresher.callAndRefresh();
 
-        expect(refresher.getSchema("nms:recipient")).toBeUndefined();
+        expect(listener.getSchema("nms:recipient")).toBeUndefined();
 
         client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
         await client.NLWS.xtkSession.logoff();
-        client.unregisterRefresher(refresher);
+        client.unregisterCacheChangeListener(listener);
     });
 });

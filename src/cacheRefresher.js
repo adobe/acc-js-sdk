@@ -176,7 +176,7 @@ governing permissions and limitations under the License.
                         this._cache.remove(pkSchemaId);
                         if (schemaType === "xtk:schema") {
                             const schemaIds = pkSchemaId.split("|");
-                            this._client._notifyRefresher(schemaIds[1]);
+                            this._client._notifyCacheChangeListeners(schemaIds[1]);
                         }
                     }
                     child = DomUtil.getNextSiblingElement(child);

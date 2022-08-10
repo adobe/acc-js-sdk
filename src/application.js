@@ -1241,12 +1241,12 @@ class Application {
         }
     }
 
-    registerRefresher() {
-        this.client.registerRefresher(this._schemaCache);
+    registerCacheChangeListener() {
+        this.client.registerCacheChangeListener(this._schemaCache);
     }
 
-    unregisterRefresher() {
-        this.client.unregisterRefresher(this._schemaCache);
+    unregisterCacheChangeListener() {
+        this.client.unregisterCacheChangeListener(this._schemaCache);
     }
     /**
      * Get a schema by id. This function returns an XtkSchema object or null if the schema is not found.

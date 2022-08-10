@@ -2966,12 +2966,12 @@ describe('ACC Client', function () {
         });
     });
     describe("Schema cache refresh", () => {
-        it("Should unregister refresher", async () => {
+        it("Should unregister listener", async () => {
             const client = await Mock.makeClient();
             client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
 
-            class Refresher {
+            class Listener {
                 constructor() {
                     this._schemas = {};
                 }
@@ -2981,22 +2981,22 @@ describe('ACC Client', function () {
                 }
             }
 
-            client.unregisterAllRefreshers();
-            expect(client._refreshers.length).toBe(0);
-            refresher = new Refresher();
+            client.unregisterAllCacheChangeListeners();
+            expect(client._cacheChangeListeners.length).toBe(0);
+            listener = new Listener();
 
-            client.registerRefresher(refresher);
-            expect(client._refreshers.length).toBe(1);
-            client.unregisterRefresher(refresher);
-            expect(client._refreshers.length).toBe(0);
+            client.registerCacheChangeListener(listener);
+            expect(client._cacheChangeListeners.length).toBe(1);
+            client.unregisterCacheChangeListener(listener);
+            expect(client._cacheChangeListeners.length).toBe(0);
         });
 
-        it("Should not unregister unknown refresher", async () => {
+        it("Should not unregister unknown listener", async () => {
             const client = await Mock.makeClient();
             client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
 
-            class Refresher {
+            class Listener {
                 constructor() {
                     this._schemas = {};
                 }
@@ -3006,18 +3006,18 @@ describe('ACC Client', function () {
                 }
             }
 
-            client.unregisterAllRefreshers();
-            expect(client._refreshers.length).toBe(0);
-            refresher = new Refresher();
+            client.unregisterAllCacheChangeListeners();
+            expect(client._cacheChangeListeners.length).toBe(0);
+            listener = new Listener();
 
-            client.registerRefresher(refresher);
-            expect(client._refreshers.length).toBe(1);
+            client.registerCacheChangeListener(listener);
+            expect(client._cacheChangeListeners.length).toBe(1);
 
-            refresher2 = new Refresher();
+            listener2 = new Listener();
 
-            client.unregisterRefresher(refresher2);
-            expect(client._refreshers.length).toBe(1);
-            client.unregisterAllRefreshers();
+            client.unregisterCacheChangeListener(listener2);
+            expect(client._cacheChangeListeners.length).toBe(1);
+            client.unregisterAllCacheChangeListeners();
         });
 
         it("Should be notify when register", async () => {
@@ -3025,7 +3025,7 @@ describe('ACC Client', function () {
             client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
 
-            class Refresher {
+            class Listener {
                 constructor() {
                     this._schemas = {};
                 }
@@ -3041,18 +3041,18 @@ describe('ACC Client', function () {
                 }
             }
 
-            client.unregisterAllRefreshers();
+            client.unregisterAllCacheChangeListeners();
             
-            refresher = new Refresher();
-            refresher.add("nms:recipient");
-            refresher.add("xtk:operator");
+            listener = new Listener();
+            listener.add("nms:recipient");
+            listener.add("xtk:operator");
 
-            client.registerRefresher(refresher);
-            client._notifyRefresher("nms:recipient");
-            expect(refresher.getSchema("nms:recipient")).toBeUndefined();
-            expect(refresher.getSchema("xtk:operator")).toBe("1");
+            client.registerCacheChangeListener(listener);
+            client._notifyCacheChangeListeners("nms:recipient");
+            expect(listener.getSchema("nms:recipient")).toBeUndefined();
+            expect(listener.getSchema("xtk:operator")).toBe("1");
 
-            client.unregisterRefresher(refresher);
+            client.unregisterCacheChangeListener(listener);
         });
     });
 });
