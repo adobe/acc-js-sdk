@@ -2417,6 +2417,20 @@ describe('ACC Client', function () {
             expect(client._entityCacheRefresher._intervalId).toBeNull();
 
         });
+
+        it("Should stop refresh when logoff", async () => {
+            const client = await Mock.makeClient();
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+
+            client.startRefreshCaches();
+            expect(client._optionCacheRefresher._intervalId).not.toBeNull();
+            expect(client._entityCacheRefresher._intervalId).not.toBeNull();
+            client.logoff();
+            expect(client._optionCacheRefresher._intervalId).toBeNull();
+            expect(client._entityCacheRefresher._intervalId).toBeNull();
+
+        });
     });
 
     describe("Calling SOAP method with parameters as a function", () => {

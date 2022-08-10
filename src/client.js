@@ -941,6 +941,7 @@ class Client {
         var that = this;
         if (!that.isLogged()) return;
         that.application.unregisterRefresher();
+        this.stopRefreshCaches();
         const credentials = this._connectionParameters._credentials;
         if (credentials._type != "SessionToken" && credentials._type != "AnonymousUser") {
             var soapCall = that._prepareSoapCall("xtk:session", "Logoff", false, this._connectionParameters._options.extraHttpHeaders);
