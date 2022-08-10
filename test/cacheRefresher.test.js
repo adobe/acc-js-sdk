@@ -66,13 +66,15 @@ describe("CacheRefresher cache", function () {
 
         expect(cacheRefresher._refresherStateCache.get("buildNumber")).toBeUndefined();
         expect(cacheRefresher._refresherStateCache.get("time")).toBeUndefined();
-
-        cacheRefresher.startAutoRefresh(500); // autorefresh every 500 ms
-
-        client._transport.mockReturnValueOnce(Mock.GETMODIFIEDENTITIES_CLEAR_RESPONSE);
+        client._transport.mockReturnValue(Promise.resolve(Mock.GETMODIFIEDENTITIES_CLEAR_RESPONSE));
+        jest.useFakeTimers();
+        cacheRefresher.startAutoRefresh(5000); // autorefresh every 500 ms
+        jest.advanceTimersByTime(6000);
+        jest.useRealTimers();
+        
         // to cover call of setInterval
-        await delay(1000);
-        console.log("Waited 1s");
+        await delay(10);
+        console.log("Waited 10ms");
 
         expect(cacheRefresher._refresherStateCache.get("buildNumber")).toBe("9469");
         expect(cacheRefresher._refresherStateCache.get("time")).toBe("2022-07-28T14:38:55.766Z");
@@ -202,17 +204,22 @@ describe("CacheRefresher cache", function () {
         const connectionParameters = sdk.ConnectionParameters.ofUserAndPassword("http://acc-sdk:8080", "admin", "admin");
         const cacheRefresher = new CacheRefresher(cache, client, connectionParameters, "xtk:schema", "rootkey");
 
+        jest.useFakeTimers();
         cacheRefresher.startAutoRefresh(100000);
         expect(cacheRefresher._intervalId).not.toBeNull();
         const firstIntervalId = cacheRefresher._intervalId;
-        cacheRefresher.startAutoRefresh(500);
+        cacheRefresher.startAutoRefresh(5000);
         expect(cacheRefresher._intervalId).not.toBeNull();
         expect(cacheRefresher._intervalId != firstIntervalId);
 
         client._transport.mockReturnValueOnce(Mock.GETMODIFIEDENTITIES_CLEAR_RESPONSE);
+        
+        jest.advanceTimersByTime(6000);
+        jest.useRealTimers();
+
         // to cover call of setInterval
-        await delay(1000);
-        console.log("Waited 1s");
+        await delay(10);
+        console.log("Waited 10ms");
 
         expect(cacheRefresher._refresherStateCache.get("buildNumber")).toBe("9469");
         expect(cacheRefresher._refresherStateCache.get("time")).toBe("2022-07-28T14:38:55.766Z");

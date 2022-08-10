@@ -24,7 +24,6 @@ const Mock = require('./mock.js').Mock;
 const { HttpError } = require('../src/transport.js');
 const { Cipher } = require('../src/crypto.js');
 const { EntityAccessor } = require('../src/entityAccessor.js');
-const delay = ms => new Promise(res => setTimeout(res, ms));
 
 describe('ACC Client', function () {
 
@@ -2369,9 +2368,10 @@ describe('ACC Client', function () {
 
             client._transport.mockReturnValue(Promise.resolve(Mock.GETMODIFIEDENTITIES_RESPONSE));
 
-            client.startRefreshCaches(500);
-            await delay(800);
-            console.log("Waited 800 ms");
+            jest.useFakeTimers();
+            client.startRefreshCaches(5000); // autorefresh every 5000 ms
+            jest.advanceTimersByTime(6000);
+            jest.useRealTimers();
 
             var schema = await client.getSchema("nms:extAccount");
             expect(schema["namespace"]).toBe("nms");
@@ -2394,9 +2394,10 @@ describe('ACC Client', function () {
             client._transport.mockReturnValueOnce(Promise.resolve(Mock.GETMODIFIEDENTITIES_SCHEMA_RESPONSE));
 
             client._transport.mockReturnValue(Promise.resolve(Mock.GET_NMS_EXTACCOUNT_SCHEMA_RESPONSE));
-            client.startRefreshCaches(500);
-            await delay(800);
-            console.log("Waited 800ms");
+            jest.useFakeTimers();
+            client.startRefreshCaches(5000); // autorefresh every 5000 ms
+            jest.advanceTimersByTime(6000);
+            jest.useRealTimers();
 
             var schema = await client.getSchema("nms:extAccount");
             expect(schema["namespace"]).toBe("nms");
