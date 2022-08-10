@@ -1082,7 +1082,20 @@ describe('Application', () => {
                 const link = await recipient.root.findNode("countryLink");
                 expect(link.joins).toMatchObject([ { src:"@countryCode", dst:"@notFound" }]);
 
-                client._transport.mockReturnValueOnce(Mock.GET_MISSING_SCHEMA_RESPONSE);
+                client._transport.mockReturnValueOnce(Promise.resolve(`<?xml version='1.0'?>
+                <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:wpp:default' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
+                <SOAP-ENV:Body>
+                    <GetEntityIfMoreRecentResponse xmlns='urn:wpp:default' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
+                        <pdomDoc xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
+                            <schema namespace='nms' name='country'>
+                                <element name='country'>
+                                    <attribute name="isoA2"/>
+                                </element>
+                            </schema>
+                        </pdomDoc>
+                    </GetEntityIfMoreRecentResponse>
+                </SOAP-ENV:Body>
+                </SOAP-ENV:Envelope>`));
                 const nodes = await link.joinNodes();
                 expect(nodes).toMatchObject([]);
                 const reverseLink = await link.reverseLink();
