@@ -22,8 +22,6 @@ const sdk = require('../src/index.js');
 const { Cache } = require('../src/cache.js');
 const Mock = require('./mock.js').Mock;
 const CacheRefresher = require('../src/cacheRefresher.js').CacheRefresher;
-const delay = ms => new Promise(res => setTimeout(res, ms));
-
 
 
 describe("CacheRefresher cache", function () {
@@ -73,8 +71,7 @@ describe("CacheRefresher cache", function () {
         jest.useRealTimers();
         
         // to allow soap call to finish
-        await delay(10);
-        console.log("Waited 10ms");
+        await new Promise(process.nextTick);
 
         expect(cacheRefresher._refresherStateCache.get("buildNumber")).toBe("9469");
         expect(cacheRefresher._refresherStateCache.get("time")).toBe("2022-07-28T14:38:55.766Z");
@@ -218,8 +215,7 @@ describe("CacheRefresher cache", function () {
         jest.useRealTimers();
 
         // to allow soap call to finish
-        await delay(10);
-        console.log("Waited 10ms");
+        await new Promise(process.nextTick);
 
         expect(cacheRefresher._refresherStateCache.get("buildNumber")).toBe("9469");
         expect(cacheRefresher._refresherStateCache.get("time")).toBe("2022-07-28T14:38:55.766Z");
