@@ -68,11 +68,11 @@ describe("CacheRefresher cache", function () {
         expect(cacheRefresher._refresherStateCache.get("time")).toBeUndefined();
         client._transport.mockReturnValue(Promise.resolve(Mock.GETMODIFIEDENTITIES_CLEAR_RESPONSE));
         jest.useFakeTimers();
-        cacheRefresher.startAutoRefresh(5000); // autorefresh every 500 ms
+        cacheRefresher.startAutoRefresh(5000);
         jest.advanceTimersByTime(6000);
         jest.useRealTimers();
         
-        // to cover call of setInterval
+        // to allow soap call to finish
         await delay(10);
         console.log("Waited 10ms");
 
@@ -217,7 +217,7 @@ describe("CacheRefresher cache", function () {
         jest.advanceTimersByTime(6000);
         jest.useRealTimers();
 
-        // to cover call of setInterval
+        // to allow soap call to finish
         await delay(10);
         console.log("Waited 10ms");
 
