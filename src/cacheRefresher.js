@@ -25,7 +25,7 @@ governing permissions and limitations under the License.
     class RefresherStateCache extends Cache {
 
         /**
-         * A in-memory cache to store state of the refresher. Not intended to be used directly,
+         * A cache to store state of the refresher. Not intended to be used directly,
          * but an internal cache for the Campaign.Client object
          * 
          * Cached object are made of
@@ -120,7 +120,7 @@ governing permissions and limitations under the License.
                 }
             }
 
-            // Use Json because xtk:schema does not work directly in DomUtil.parse(`<cache buildNumber="9469" lastModified="2022-06-30T00:00:00.000"><xtk:schema></xtk:schema></cache>`);
+            // Use Json because xtk:schema does not work directly in DomUtil.parse(`<cache buildNumber="9469" time="2022-06-30T00:00:00.000"><xtk:schema></xtk:schema></cache>`);
             // due to the colon character
             let jsonCache;
             if (this._lastTime === undefined || this._buildNumber === undefined) {
@@ -174,6 +174,7 @@ governing permissions and limitations under the License.
                     const schemaType = DomUtil.getAttributeAsString(child, "schema");
                     if (schemaType === this._cacheSchema) {
                         this._cache.remove(pkSchemaId);
+                        // Notify listeners to refresh in SchemaCache
                         if (schemaType === "xtk:schema") {
                             const schemaIds = pkSchemaId.split("|");
                             this._client._notifyCacheChangeListeners(schemaIds[1]);
