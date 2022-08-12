@@ -1259,7 +1259,7 @@ class Application {
         return this._schemaCache.getSchema(schemaId);
     }
 
-    // Private function: get a schema without using the cache
+    // Private function: get a schema without using the SchemaCache
     async _getSchema(schemaId) {
         const xml = await this.client.getSchema(schemaId, "xml");
         if (!xml)

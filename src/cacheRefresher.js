@@ -12,7 +12,7 @@ governing permissions and limitations under the License.
 (function () {
     "use strict";
 
-    const { DomUtil } = require("./domUtil");
+    const { DomUtil } = require("./domUtil.js");
     const XtkCaster = require('./xtkCaster.js').XtkCaster;
     const { Cache } = require('./cache.js');
 
