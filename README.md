@@ -693,6 +693,18 @@ It's possible to disable persistent caches using the `noStorage` connection opti
 It is also possible to setup one's own persistent cache, by passing a `storage` object as a connection option. This object should implement 3 methods: `getItem`, `setItem`, and `removeItem` (synchronous)
 
 
+## Auto-refresh caches
+
+The SDK includes a mechnism to maintain the schemas and options caches up-to-date by polling the Campaign server on a regular basis (10 seconds by default). The server returns the list of entities (schemas or options) which have changed since they were cached, and the client removes them from the cache.
+
+This mechanism is not activate by default but can be activated or deactivated by the following functions
+
+```js
+client.startRefreshCaches(30000);   // activate cache auto-refresh mechanism every 30s
+client.stopRefreshCaches();         // de-activate cache auto-refresh
+```
+
+
 ## Passwords
 
 External account passwords can be decrypted using a Cipher. This function is deprecated since version 1.0.0 since it's not guaranteed to work in future versions of Campaign (V8 and above)

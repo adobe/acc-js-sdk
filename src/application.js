@@ -1241,12 +1241,12 @@ class Application {
         }
     }
 
-    registerCacheChangeListener() {
-        this.client.registerCacheChangeListener(this._schemaCache);
+    _registerCacheChangeListener() {
+        this.client._registerCacheChangeListener(this._schemaCache);
     }
 
-    unregisterCacheChangeListener() {
-        this.client.unregisterCacheChangeListener(this._schemaCache);
+    _unregisterCacheChangeListener() {
+        this.client._unregisterCacheChangeListener(this._schemaCache);
     }
     /**
      * Get a schema by id. This function returns an XtkSchema object or null if the schema is not found.
