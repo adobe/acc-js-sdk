@@ -270,7 +270,7 @@ class Cache {
 
   /**
    * Remove a key from the cache
-   * @param {*} key the key to remove
+   * @param {string} key the key to remove
    */
   remove(key) {
       delete this._cache[key];

@@ -65,11 +65,28 @@ function propagateImplicitValues(xtkDesc, labelOnly) {
 // ========================================================================================
 // Schema Cache
 // ========================================================================================
+
+/**
+ * A cache of schemas of type `XtkSchema` instead of plain XML or JSON objects
+ * 
+ * @private
+ * @class
+ * @constructor
+ * @memberof Campaign
+ */
+
 class SchemaCache {
     constructor(client) {
         this._client = client;
         this._schemas = {};
     }
+
+    /**
+      * Get a schema by id from schema cache of type `XtkSchema` 
+     * 
+     * @param {string} schemaId 
+     * @returns {Campaign.XtkSchema} the schema, or null if the schema was not found
+     */
     async getSchema(schemaId) {
         let schema = this._schemas[schemaId];
         if (schema === undefined) {
@@ -80,7 +97,12 @@ class SchemaCache {
         return schema;
     }
 
-    refreshCache(schemaId) {
+    /**
+      * Remove a schema from schema cache. The callback function when refreshing cache in cacheRefresher 
+     * 
+     * @param {string} schemaId 
+     */
+    invalidCacheItem(schemaId) {
         this._schemas[schemaId] = undefined;
     }
 }

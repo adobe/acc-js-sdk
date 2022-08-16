@@ -238,7 +238,7 @@ describe("CacheRefresher cache", function () {
                 this._schemas[schemaId] = "1";
             }
 
-            refreshCache(schemaId) {
+            invalidCacheItem(schemaId) {
                 this._schemas[schemaId] = undefined;
             }
             getSchema(schemaId) {

@@ -1076,7 +1076,7 @@ class Client {
 
 
     _notifyCacheChangeListeners(schemaId) {
-        this._cacheChangeListeners.map((listener) => listener.refreshCache(schemaId));
+        this._cacheChangeListeners.map((listener) => listener.invalidCacheItem(schemaId));
     }
 
     /**

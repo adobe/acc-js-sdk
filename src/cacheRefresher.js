@@ -94,6 +94,9 @@ governing permissions and limitations under the License.
          * @param {any} refreshFrequency frequency of the refresh in ms ( default velue is 10 000 ms)
          */
         startAutoRefresh(refreshFrequency) {
+            if (!this._client.isLogged())
+              throw CampaignException.NOT_LOGGED_IN(undefined, `Cannot call startAutoRefresh: session not connected`);
+
             if (this._intervalId != null) {
                 clearInterval(this._intervalId);
             }
