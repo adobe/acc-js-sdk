@@ -2977,7 +2977,7 @@ describe('ACC Client', function () {
                     this._schemas = {};
                 }
 
-                invalidCacheItem(schemaId) {
+                invalidateCacheItem(schemaId) {
                     this._schemas[schemaId] = undefined;
                 }
             }
@@ -3002,7 +3002,7 @@ describe('ACC Client', function () {
                     this._schemas = {};
                 }
 
-                invalidCacheItem(schemaId) {
+                invalidateCacheItem(schemaId) {
                     this._schemas[schemaId] = undefined;
                 }
             }
@@ -3034,7 +3034,7 @@ describe('ACC Client', function () {
                     this._schemas[schemaId] = "1";
                 }
 
-                invalidCacheItem(schemaId) {
+                invalidateCacheItem(schemaId) {
                     this._schemas[schemaId] = undefined;
                 }
                 getSchema(schemaId) {

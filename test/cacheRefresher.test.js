@@ -238,7 +238,7 @@ describe("CacheRefresher cache", function () {
                 this._schemas[schemaId] = "1";
             }
 
-            invalidCacheItem(schemaId) {
+            invalidateCacheItem(schemaId) {
                 this._schemas[schemaId] = undefined;
             }
             getSchema(schemaId) {
@@ -268,5 +268,24 @@ describe("CacheRefresher cache", function () {
         client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
         await client.NLWS.xtkSession.logoff();
         client.unregisterCacheChangeListener(listener);
+    });
+
+    it('Should not call refresh without logon', async () => {
+        const client = await Mock.makeClient();
+        client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+
+        //await client.NLWS.xtkSession.logon();
+        const cache = new Cache();
+        const connectionParameters = sdk.ConnectionParameters.ofUserAndPassword("http://acc-sdk:8080", "admin", "admin");
+        const cacheRefresher = new CacheRefresher(cache, client, connectionParameters, "xtk:schema", "rootkey");
+
+        client._transport.mockReturnValueOnce(Mock.GETMODIFIEDENTITIES_CLEAR_RESPONSE);
+        try {
+            await cacheRefresher.callAndRefresh();
+            fail('exception is expected');
+        } catch (e) {
+            expect(e.name).toBe("CampaignException");
+            expect(e.errorCode).toBe("SDK-000010");
+        }
     });
 });

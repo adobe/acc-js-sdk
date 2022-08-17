@@ -15,6 +15,7 @@ governing permissions and limitations under the License.
     const { DomUtil } = require("./domUtil.js");
     const XtkCaster = require('./xtkCaster.js').XtkCaster;
     const { Cache } = require('./cache.js');
+    const { CampaignException, makeCampaignException } = require('./campaign.js');
 
     /**
      * @private
@@ -94,9 +95,6 @@ governing permissions and limitations under the License.
          * @param {any} refreshFrequency frequency of the refresh in ms ( default velue is 10 000 ms)
          */
         startAutoRefresh(refreshFrequency) {
-            if (!this._client.isLogged())
-              throw CampaignException.NOT_LOGGED_IN(undefined, `Cannot call startAutoRefresh: session not connected`);
-
             if (this._intervalId != null) {
                 clearInterval(this._intervalId);
             }
@@ -139,7 +137,11 @@ governing permissions and limitations under the License.
             }
 
             const xmlDoc = DomUtil.fromJSON("cache", jsonCache, 'SimpleJson');
-            soapCall.writeDocument("script", xmlDoc);
+            soapCall.writeDocument("document", xmlDoc);
+
+            // Client is not logged: do not attempt to refresh caches at all
+            if (!this._client.isLogged())
+              throw CampaignException.NOT_LOGGED_IN(soapCall, `Cannot call GetModifiedEntities: session not connected`);
 
             // Do a soap call GetModifiedEntities instead of xtksession.GetModifiedEnties because we don't want to go through methodCache 
             // which might not contain the method GetModifiedEntities just after a build updgrade from a old version of acc 

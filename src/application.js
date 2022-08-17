@@ -102,7 +102,7 @@ class SchemaCache {
      * 
      * @param {string} schemaId 
      */
-    invalidCacheItem(schemaId) {
+    invalidateCacheItem(schemaId) {
         this._schemas[schemaId] = undefined;
     }
 }
