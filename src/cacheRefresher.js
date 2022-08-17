@@ -70,15 +70,15 @@ governing permissions and limitations under the License.
         *
         * @param {Cache} cache is the cache to refresh
         * @param {Client} client is the ACC API Client.
-        * @param {string} cacheSchema is the id of the schema present in the cache to be refreshed every 10 seconds
+        * @param {string} cacheSchemaId is the id of the schema present in the cache to be refreshed every 10 seconds
         * @param {string} rootKey is used as the root key of cache items in the refresher state cache
         */
-        constructor(cache, client, cacheSchema, rootKey) {
+        constructor(cache, client, cacheSchemaId, rootKey) {
             const connectionParameters = client._connectionParameters;
             this._cache = cache;
             this._client = client;
             this._connectionParameters = connectionParameters;
-            this._cacheSchema = cacheSchema;
+            this._cacheSchemaId = cacheSchemaId;
 
             this._storage = connectionParameters._options._storage;
             this._refresherStateCache  = new RefresherStateCache(this._storage, `${rootKey}.RefresherStateCache`, 1000*3600);
@@ -125,13 +125,13 @@ governing permissions and limitations under the License.
             let jsonCache;
             if (this._lastTime === undefined || this._buildNumber === undefined) {
                 jsonCache = {
-                    [this._cacheSchema]: {}
+                    [this._cacheSchemaId]: {}
                 };
             } else {
                 jsonCache = {
                     buildNumber: this._buildNumber,
                     lastModified: this._lastTime,
-                    [this._cacheSchema]: {}
+                    [this._cacheSchemaId]: {}
                 };
             }
 
@@ -171,11 +171,11 @@ governing permissions and limitations under the License.
                 var child = DomUtil.getFirstChildElement(xmlDoc, "entityCache");
                 while (child) {
                     const pkSchemaId = DomUtil.getAttributeAsString(child, "pk");
-                    const schemaType = DomUtil.getAttributeAsString(child, "schema");
-                    if (schemaType === this._cacheSchema) {
+                    const schemaId = DomUtil.getAttributeAsString(child, "schema");
+                    if (schemaId === this._cacheSchemaId) {
                         this._cache.remove(pkSchemaId);
                         // Notify listeners to refresh in SchemaCache
-                        if (schemaType === "xtk:schema") {
+                        if (schemaId === "xtk:schema") {
                             const schemaIds = pkSchemaId.split("|");
                             this._client._notifyCacheChangeListeners(schemaIds[1]);
                         }
