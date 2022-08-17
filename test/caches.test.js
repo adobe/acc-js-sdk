@@ -64,6 +64,10 @@ describe('Caches', function() {
             cache.remove("Hello");
             expect(cache.get("Hello")).toBeUndefined();
             expect(cache.get("Hi")).toBe("A");
+            // should support removing a key which has already been removed
+            cache.remove("Hello");
+            expect(cache.get("Hello")).toBeUndefined();
+            expect(cache.get("Hi")).toBe("A");
         })
     });
 

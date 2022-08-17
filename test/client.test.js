@@ -53,8 +53,6 @@ describe('ACC Client', function () {
         it('Should logon and logoff', async () => {
             const client = await Mock.makeClient();
             client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
-            client._transport.mockReturnValueOnce(Mock.GETMODIFIEDENTITIES_RESPONSE);
-            client._transport.mockReturnValueOnce(Mock.GETMODIFIEDENTITIES_RESPONSE);
             client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
             await client.NLWS.xtkSession.logon();
             expect(client.isLogged()).toBe(true);
@@ -66,10 +64,10 @@ describe('ACC Client', function () {
 
         it('Should logon and logoff with traces', async () => {
             const client = await Mock.makeClient();
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
             const logs = await Mock.withMockConsole(async () => {
                 client.traceAPICalls(true);
-                client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
-                client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
                 await client.NLWS.xtkSession.logon();
                 expect(client.isLogged()).toBe(true);
                 var sessionInfoXml = client.getSessionInfo("xml");
@@ -2373,7 +2371,7 @@ describe('ACC Client', function () {
             jest.advanceTimersByTime(6000);
             jest.useRealTimers();
 
-            var schema = await client.getSchema("nms:extAccount");
+            schema = await client.getSchema("nms:extAccount");
             expect(schema["namespace"]).toBe("nms");
             expect(schema["name"]).toBe("extAccount");
 
@@ -2399,7 +2397,7 @@ describe('ACC Client', function () {
             jest.advanceTimersByTime(6000);
             jest.useRealTimers();
 
-            var schema = await client.getSchema("nms:extAccount");
+            schema = await client.getSchema("nms:extAccount");
             expect(schema["namespace"]).toBe("nms");
             expect(schema["name"]).toBe("extAccount");
             client.stopRefreshCaches();
@@ -2409,25 +2407,23 @@ describe('ACC Client', function () {
             const client = await Mock.makeClient();
             client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
-
             client.startRefreshCaches();
             expect(client._optionCacheRefresher._intervalId).not.toBeNull();
             expect(client._entityCacheRefresher._intervalId).not.toBeNull();
             client.stopRefreshCaches();
             expect(client._optionCacheRefresher._intervalId).toBeNull();
             expect(client._entityCacheRefresher._intervalId).toBeNull();
-
         });
 
         it("Should stop refresh when logoff", async () => {
             const client = await Mock.makeClient();
             client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
-
             client.startRefreshCaches();
             expect(client._optionCacheRefresher._intervalId).not.toBeNull();
             expect(client._entityCacheRefresher._intervalId).not.toBeNull();
-            client.logoff();
+            client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
+            await client.logoff();
             expect(client._optionCacheRefresher._intervalId).toBeNull();
             expect(client._entityCacheRefresher._intervalId).toBeNull();
 
@@ -2982,13 +2978,13 @@ describe('ACC Client', function () {
                 }
             }
 
-            client.unregisterAllCacheChangeListeners();
+            client._unregisterAllCacheChangeListeners();
             expect(client._cacheChangeListeners.length).toBe(0);
-            listener = new Listener();
+            const listener = new Listener();
 
-            client.registerCacheChangeListener(listener);
+            client._registerCacheChangeListener(listener);
             expect(client._cacheChangeListeners.length).toBe(1);
-            client.unregisterCacheChangeListener(listener);
+            client._unregisterCacheChangeListener(listener);
             expect(client._cacheChangeListeners.length).toBe(0);
         });
 
@@ -3007,18 +3003,18 @@ describe('ACC Client', function () {
                 }
             }
 
-            client.unregisterAllCacheChangeListeners();
+            client._unregisterAllCacheChangeListeners();
             expect(client._cacheChangeListeners.length).toBe(0);
-            listener = new Listener();
+            const listener = new Listener();
 
-            client.registerCacheChangeListener(listener);
+            client._registerCacheChangeListener(listener);
             expect(client._cacheChangeListeners.length).toBe(1);
 
-            listener2 = new Listener();
+            const listener2 = new Listener();
 
-            client.unregisterCacheChangeListener(listener2);
+            client._unregisterCacheChangeListener(listener2);
             expect(client._cacheChangeListeners.length).toBe(1);
-            client.unregisterAllCacheChangeListeners();
+            client._unregisterAllCacheChangeListeners();
         });
 
         it("Should be notify when register", async () => {
@@ -3042,18 +3038,18 @@ describe('ACC Client', function () {
                 }
             }
 
-            client.unregisterAllCacheChangeListeners();
+            client._unregisterAllCacheChangeListeners();
             
-            listener = new Listener();
+            const listener = new Listener();
             listener.add("nms:recipient");
             listener.add("xtk:operator");
 
-            client.registerCacheChangeListener(listener);
+            client._registerCacheChangeListener(listener);
             client._notifyCacheChangeListeners("nms:recipient");
             expect(listener.getSchema("nms:recipient")).toBeUndefined();
             expect(listener.getSchema("xtk:operator")).toBe("1");
 
-            client.unregisterCacheChangeListener(listener);
+            client._unregisterCacheChangeListener(listener);
         });
     });
 });

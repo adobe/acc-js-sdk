@@ -27,21 +27,20 @@ const CacheRefresher = require('../src/cacheRefresher.js').CacheRefresher;
 describe("CacheRefresher cache", function () {
 
     it('Should call refresh', async () => {
-        const client = await Mock.makeClient();
+        const client =  await Mock.makeClient();
         client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
 
         await client.NLWS.xtkSession.logon();
         const cache = new Cache();
-        const connectionParameters = sdk.ConnectionParameters.ofUserAndPassword("http://acc-sdk:8080", "admin", "admin");
-        const cacheRefresher = new CacheRefresher(cache, client, connectionParameters, "xtk:schema", "rootkey");
+        const cacheRefresher = new CacheRefresher(cache, client, "xtk:schema", "rootkey");
 
         client._transport.mockReturnValueOnce(Mock.GETMODIFIEDENTITIES_CLEAR_RESPONSE);
-        await cacheRefresher.callAndRefresh();
+        await cacheRefresher._callAndRefresh();
         expect(cacheRefresher._refresherStateCache.get("buildNumber")).toBe("9469");
         expect(cacheRefresher._refresherStateCache.get("time")).toBe("2022-07-28T14:38:55.766Z");
 
         client._transport.mockReturnValueOnce(Mock.GETMODIFIEDENTITIES_CLEAR_RESPONSE);
-        await cacheRefresher.callAndRefresh();
+        await cacheRefresher._callAndRefresh();
         expect(cacheRefresher._refresherStateCache.get("buildNumber")).toBe("9469");
         expect(cacheRefresher._refresherStateCache.get("time")).toBe("2022-07-28T14:38:55.766Z");
 
@@ -60,7 +59,7 @@ describe("CacheRefresher cache", function () {
         expect(client.isLogged()).toBeTruthy();
         const cache = new Cache();
 
-        const cacheRefresher = new CacheRefresher(cache, client, connectionParameters, "xtk:schema", "rootkey");
+        const cacheRefresher = new CacheRefresher(cache, client, "xtk:schema", "rootkey");
 
         expect(cacheRefresher._refresherStateCache.get("buildNumber")).toBeUndefined();
         expect(cacheRefresher._refresherStateCache.get("time")).toBeUndefined();
@@ -91,13 +90,12 @@ describe("CacheRefresher cache", function () {
 
             const cache = new Cache();
 
-            const connectionParameters = sdk.ConnectionParameters.ofUserAndPassword("http://acc-sdk:8080", "admin", "admin");
-            const cacheRefresher = new CacheRefresher(cache, client, connectionParameters, "xtk:schema", "rootkey");
+            const cacheRefresher = new CacheRefresher(cache, client, "xtk:schema", "rootkey");
             cacheRefresher._refresherStateCache.put("buildNumber", "9469");
             cacheRefresher._refresherStateCache.put("time", "2022-07-28T14:38:55.766Z");
 
             client._transport.mockReturnValueOnce(Mock.GETMODIFIEDENTITIES_CLEAR_RESPONSE);
-            await cacheRefresher.callAndRefresh();
+            await cacheRefresher._callAndRefresh();
             expect(cacheRefresher._refresherStateCache.get("buildNumber")).toBe("9469");
             expect(cacheRefresher._refresherStateCache.get("time")).toBe("2022-07-28T14:38:55.766Z");
 
@@ -122,8 +120,7 @@ describe("CacheRefresher cache", function () {
 
         await client.NLWS.xtkSession.logon();
         const cache = new Cache();
-        const connectionParameters = sdk.ConnectionParameters.ofUserAndPassword("http://acc-sdk:8080", "admin", "admin");
-        const cacheRefresher = new CacheRefresher(cache, client, connectionParameters, "xtk:schema", "rootkey");
+        const cacheRefresher = new CacheRefresher(cache, client, "xtk:schema", "rootkey");
 
         cache.put("xtk:schema|nms:recipient", "<content recipient>");
         cache.put("xtk:schema|nms:replicationStrategy", "<content xtk:schema|nms:replicationStrategy>");
@@ -133,7 +130,7 @@ describe("CacheRefresher cache", function () {
         expect(cache.get("xtk:schema|nms:operation")).toBe("<content xtk:schema|nms:operation>");
 
         client._transport.mockReturnValueOnce(Mock.GETMODIFIEDENTITIES_SCHEMA_RESPONSE);
-        await cacheRefresher.callAndRefresh();
+        await cacheRefresher._callAndRefresh();
         expect(cacheRefresher._refresherStateCache.get("buildNumber")).toBe("9469");
         expect(cacheRefresher._refresherStateCache.get("time")).toBe("2022-07-28T15:32:00.785Z");
         expect(cache.get("xtk:schema|nms:recipient")).toBeUndefined();
@@ -150,13 +147,12 @@ describe("CacheRefresher cache", function () {
 
         await client.NLWS.xtkSession.logon();
         const cache = new Cache();
-        const connectionParameters = sdk.ConnectionParameters.ofUserAndPassword("http://acc-sdk:8080", "admin", "admin");
-        const cacheRefresher = new CacheRefresher(cache, client, connectionParameters, "xtk:schema", "rootkey");
+        const cacheRefresher = new CacheRefresher(cache, client, "xtk:schema", "rootkey");
 
         cacheRefresher.startAutoRefresh();
 
         client._transport.mockReturnValueOnce(Mock.GETMODIFIEDENTITIES_UNDEFINED_RESPONSE);
-        await cacheRefresher.callAndRefresh();
+        await cacheRefresher._callAndRefresh();
         expect(cacheRefresher._refresherStateCache.get("buildNumber")).toBeUndefined();
         expect(cacheRefresher._refresherStateCache.get("time")).toBeUndefined();
         expect(cacheRefresher._intervalId).toBeNull();
@@ -171,14 +167,13 @@ describe("CacheRefresher cache", function () {
 
         await client.NLWS.xtkSession.logon();
         const cache = new Cache();
-        const connectionParameters = sdk.ConnectionParameters.ofUserAndPassword("http://acc-sdk:8080", "admin", "admin");
-        const cacheRefresher = new CacheRefresher(cache, client, connectionParameters, "xtk:schema", "rootkey");
+        const cacheRefresher = new CacheRefresher(cache, client, "xtk:schema", "rootkey");
 
         cacheRefresher.startAutoRefresh();
 
         client._transport.mockReturnValueOnce(Mock.GETMODIFIEDENTITIES_ERROR_RESPONSE);
         try {
-            await cacheRefresher.callAndRefresh();
+            await cacheRefresher._callAndRefresh();
             fail('exception is expected');
         } catch (e) {
             expect(e).not.toBeNull();
@@ -198,8 +193,7 @@ describe("CacheRefresher cache", function () {
 
         await client.NLWS.xtkSession.logon();
         const cache = new Cache();
-        const connectionParameters = sdk.ConnectionParameters.ofUserAndPassword("http://acc-sdk:8080", "admin", "admin");
-        const cacheRefresher = new CacheRefresher(cache, client, connectionParameters, "xtk:schema", "rootkey");
+        const cacheRefresher = new CacheRefresher(cache, client, "xtk:schema", "rootkey");
 
         jest.useFakeTimers();
         cacheRefresher.startAutoRefresh(100000);
@@ -246,13 +240,12 @@ describe("CacheRefresher cache", function () {
             }
         }
 
-        listener = new Listener();
-        client.registerCacheChangeListener(listener);
+        let listener = new Listener();
+        client._registerCacheChangeListener(listener);
 
         await client.NLWS.xtkSession.logon();
         const cache = new Cache();
-        const connectionParameters = sdk.ConnectionParameters.ofUserAndPassword("http://acc-sdk:8080", "admin", "admin");
-        const cacheRefresher = new CacheRefresher(cache, client, connectionParameters, "xtk:schema", "rootkey");
+        const cacheRefresher = new CacheRefresher(cache, client, "xtk:schema", "rootkey");
 
         cache.put("xtk:schema|nms:recipient", "<content recipient>");
         cache.put("xtk:schema|nms:replicationStrategy", "<content xtk:schema|nms:replicationStrategy>");
@@ -261,13 +254,13 @@ describe("CacheRefresher cache", function () {
         listener.add("nms:recipient");
 
         client._transport.mockReturnValueOnce(Mock.GETMODIFIEDENTITIES_SCHEMA_RESPONSE);
-        await cacheRefresher.callAndRefresh();
+        await cacheRefresher._callAndRefresh();
 
         expect(listener.getSchema("nms:recipient")).toBeUndefined();
 
         client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
         await client.NLWS.xtkSession.logoff();
-        client.unregisterCacheChangeListener(listener);
+        client._unregisterCacheChangeListener(listener);
     });
 
     it('Should not call refresh without logon', async () => {
