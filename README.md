@@ -695,7 +695,7 @@ It is also possible to setup one's own persistent cache, by passing a `storage` 
 
 ## Auto-refresh caches
 
-The SDK includes a mechnism to maintain the schemas and options caches up-to-date by polling the Campaign server on a regular basis (10 seconds by default). The server returns the list of entities (schemas or options) which have changed since they were cached, and the client removes them from the cache.
+The SDK includes a mechnism to maintain the schemas and options caches up-to-date by polling the Campaign server on a regular basis (10 seconds by default). The server returns the list of entities (schemas or options) which have changed since they were cached, and the client removes them from the cache. When a schema changes, the corresponding methods are also removed from the method cache.
 
 This mechanism is not activate by default but can be activated or deactivated by the following functions
 
@@ -704,6 +704,12 @@ client.startRefreshCaches(30000);   // activate cache auto-refresh mechanism eve
 client.stopRefreshCaches();         // de-activate cache auto-refresh
 ```
 
+This mechanism is based on the `xtk:session#GetModifiedEntities` SOAP method which is only available in Campaign 8.4 and above only. For other builds of Campaign, the auto-refresh mechanism will not do anything. 
+
+The following changes are handled:
+* If the build number has changed, the whole cache is cleared
+* If more than 10 schemas or options have changed, the whole cache is cleared
+* if less than 10 schemas or options have changed, only those entities are removed from the cache
 
 ## Passwords
 
