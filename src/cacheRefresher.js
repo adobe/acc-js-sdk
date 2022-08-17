@@ -65,17 +65,16 @@ governing permissions and limitations under the License.
     class CacheRefresher {
 
         /**
-        * A class to refresh regulary a Cache every 10 seconds, by sending a query to get the last modified entities
-        * it hould be used in a client.
+        * A class to refresh regulary a Cache every 10 seconds, by sending a query to get the last modified entities.
+        * The refresh mechanism can be activated by calling client.startRefreshCaches()
         *
         * @param {Cache} cache is the cache to refresh
         * @param {Client} client is the ACC API Client.
-        * @param {ConnectionParameters} connectionParameters used to created the client provide as parameter
-        * @param {string} cacheSchema is the schema present in the cache to be refreshed every 10 seconds
-        * @param {string} rootKey is an optional root key to use for the storage object
+        * @param {string} cacheSchema is the id of the schema present in the cache to be refreshed every 10 seconds
+        * @param {string} rootKey is used as the root key of cache items in the refresher state cache
         */
-        constructor(cache, client, connectionParameters, cacheSchema, rootKey) {
-
+        constructor(cache, client, cacheSchema, rootKey) {
+            const connectionParameters = client._connectionParameters;
             this._cache = cache;
             this._client = client;
             this._connectionParameters = connectionParameters;
@@ -84,14 +83,14 @@ governing permissions and limitations under the License.
             this._storage = connectionParameters._options._storage;
             this._refresherStateCache  = new RefresherStateCache(this._storage, `${rootKey}.RefresherStateCache`, 1000*3600);
 
-            this._lastTime;
-            this._buildNumber;
+            this._lastTime = undefined;
+            this._buildNumber = undefined;
             this._intervalId = null;
         }
 
         /**
          * Start auto refresh
-         * @param {any} refreshFrequency frequency of the refresh in ms ( default velue is 10 000 ms)
+         * @param {integer} refreshFrequency frequency of the refresh in ms ( default velue is 10 000 ms)
          */
         startAutoRefresh(refreshFrequency) {
             if (!this._client.isLogged())
@@ -100,13 +99,11 @@ governing permissions and limitations under the License.
             if (this._intervalId != null) {
                 clearInterval(this._intervalId);
             }
-            this._intervalId = setInterval(() => this.callAndRefresh(), refreshFrequency || 10000); // every 10 seconds by default
+            this._intervalId = setInterval(() => this._callAndRefresh(), refreshFrequency || 10000); // every 10 seconds by default
         }
 
-        /**
-         * Get last modified entities and remove from cache last modified entities
-         */
-        callAndRefresh() {
+        // Get last modified entities for the Campaign server and remove from cache last modified entities
+        _callAndRefresh() {
             const that = this;
             const soapCall = this._client._prepareSoapCall("xtk:session", "GetModifiedEntities", true, this._connectionParameters._options.extraHttpHeaders);
 
@@ -129,13 +126,13 @@ governing permissions and limitations under the License.
             if (this._lastTime === undefined || this._buildNumber === undefined) {
                 jsonCache = {
                     [this._cacheSchema]: {}
-                }
+                };
             } else {
                 jsonCache = {
                     buildNumber: this._buildNumber,
                     lastModified: this._lastTime,
                     [this._cacheSchema]: {}
-                }
+                };
             }
 
             const xmlDoc = DomUtil.fromJSON("cache", jsonCache, 'SimpleJson');
@@ -150,7 +147,7 @@ governing permissions and limitations under the License.
                     doc = that._client._toRepresentation(doc, 'xml');
                     that._lastTime = DomUtil.getAttributeAsString(doc, "time"); // save time to be able to send it as an attribute in the next soap call
                     that._buildNumber = DomUtil.getAttributeAsString(doc, "buildNumber");
-                    that.refresh(doc);
+                    that._refresh(doc);
                     that._refresherStateCache.put("time", that._lastTime);
                     that._refresherStateCache.put("buildNumber", that._buildNumber);
                     Promise.resolve();
@@ -166,7 +163,7 @@ governing permissions and limitations under the License.
         }
 
         // Refresh Cache : remove entities modified recently listed in xmlDoc
-        refresh(xmlDoc) {
+        _refresh(xmlDoc) {
             const clearCache = XtkCaster.asBoolean(DomUtil.getAttributeAsString(xmlDoc, "emptyCache"));
             if (clearCache == true) {
                 this._cache.clear();
@@ -188,6 +185,9 @@ governing permissions and limitations under the License.
             }
         }
 
+        /**
+         * Stop auto refreshing the cache
+         */
         stopAutoRefresh() {
             clearInterval(this._intervalId);
             this._intervalId = null;

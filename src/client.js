@@ -533,10 +533,10 @@ class Client {
         const rootKey = `acc.js.sdk.${sdk.getSDKVersion().version}.${instanceKey}.cache`;
 
         this._entityCache = new XtkEntityCache(this._storage, `${rootKey}.XtkEntityCache`, connectionParameters._options.entityCacheTTL);
-        this._entityCacheRefresher = new CacheRefresher(this._entityCache, this, connectionParameters, "xtk:schema", `${rootKey}.XtkEntityCache`);
+        this._entityCacheRefresher = new CacheRefresher(this._entityCache, this, "xtk:schema", `${rootKey}.XtkEntityCache`);
         this._methodCache = new MethodCache(this._storage, `${rootKey}.MethodCache`, connectionParameters._options.methodCacheTTL);
         this._optionCache = new OptionCache(this._storage, `${rootKey}.OptionCache`, connectionParameters._options.optionCacheTTL);
-        this._optionCacheRefresher = new CacheRefresher(this._optionCache, this, connectionParameters, "xtk:option", `${rootKey}.OptionCache`);
+        this._optionCacheRefresher = new CacheRefresher(this._optionCache, this, "xtk:option", `${rootKey}.OptionCache`);
         this.NLWS = new Proxy(this, clientHandler());
 
         this._transport = connectionParameters._options.transport;
@@ -853,7 +853,7 @@ class Client {
             that._sessionToken = credentials._sessionToken;
             that._securityToken = "";
             that.application = new Application(that);
-            that.application.registerCacheChangeListener();
+            that.application._registerCacheChangeListener();
             return Promise.resolve();
         }
         else if (credentials._type == "SecurityToken") {
@@ -862,7 +862,7 @@ class Client {
             that._sessionToken = "";
             that._securityToken = credentials._securityToken;
             that.application = new Application(that);
-            that.application.registerCacheChangeListener();
+            that.application._registerCacheChangeListener();
             return Promise.resolve();
         }
         else if (credentials._type == "UserPassword" || credentials._type == "BearerToken") {
@@ -914,7 +914,7 @@ class Client {
                 that._securityToken = securityToken;
 
                 that.application = new Application(that);
-                that.application.registerCacheChangeListener();
+                that.application._registerCacheChangeListener();
             });
         }
         else {
@@ -940,12 +940,13 @@ class Client {
     logoff() {
         var that = this;
         if (!that.isLogged()) return;
-        that.application.unregisterCacheChangeListener();
+        that.application._unregisterCacheChangeListener();
+        that._unregisterAllCacheChangeListeners();
         this.stopRefreshCaches();
         const credentials = this._connectionParameters._credentials;
         if (credentials._type != "SessionToken" && credentials._type != "AnonymousUser") {
             var soapCall = that._prepareSoapCall("xtk:session", "Logoff", false, this._connectionParameters._options.extraHttpHeaders);
-                return this._makeSoapCall(soapCall).then(function() {
+            return this._makeSoapCall(soapCall).then(function() {
                 that._sessionToken = "";
                 that._securityToken = "";
                 that.application = null;
@@ -1057,11 +1058,14 @@ class Client {
         this._entityCacheRefresher.stopAutoRefresh();
     }
 
-    registerCacheChangeListener(listener) {
+    // Register a callback to be called when a schema has been modified and should be removed
+    // from the caches
+    _registerCacheChangeListener(listener) {
         this._cacheChangeListeners.push(listener);
     }
 
-    unregisterCacheChangeListener(listener) {
+    // Unregister a cache change listener
+    _unregisterCacheChangeListener(listener) {
         for (var i = 0; i < this._cacheChangeListeners.length; i++) {
             if (this._cacheChangeListeners[i] == listener) {
                 this._cacheChangeListeners.splice(i, 1);
@@ -1070,10 +1074,10 @@ class Client {
         }
     }
 
-    unregisterAllCacheChangeListeners() {
+    // Unregister all cache change listener
+    _unregisterAllCacheChangeListeners() {
         this._cacheChangeListeners = [];
     }
-
 
     _notifyCacheChangeListeners(schemaId) {
         this._cacheChangeListeners.map((listener) => listener.invalidCacheItem(schemaId));
