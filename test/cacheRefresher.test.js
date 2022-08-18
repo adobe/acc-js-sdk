@@ -269,12 +269,11 @@ describe("CacheRefresher cache", function () {
 
         //await client.NLWS.xtkSession.logon();
         const cache = new Cache();
-        const connectionParameters = sdk.ConnectionParameters.ofUserAndPassword("http://acc-sdk:8080", "admin", "admin");
-        const cacheRefresher = new CacheRefresher(cache, client, connectionParameters, "xtk:schema", "rootkey");
+        const cacheRefresher = new CacheRefresher(cache, client, "xtk:schema", "rootkey");
 
         client._transport.mockReturnValueOnce(Mock.GETMODIFIEDENTITIES_CLEAR_RESPONSE);
         try {
-            await cacheRefresher.callAndRefresh();
+            await cacheRefresher._callAndRefresh();
             fail('exception is expected');
         } catch (e) {
             expect(e.name).toBe("CampaignException");

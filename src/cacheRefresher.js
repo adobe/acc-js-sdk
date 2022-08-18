@@ -15,7 +15,7 @@ governing permissions and limitations under the License.
     const { DomUtil } = require("./domUtil.js");
     const XtkCaster = require('./xtkCaster.js').XtkCaster;
     const { Cache } = require('./cache.js');
-    const { CampaignException, makeCampaignException } = require('./campaign.js');
+    const { CampaignException } = require('./campaign.js');
 
     /**
      * @private
@@ -97,11 +97,13 @@ governing permissions and limitations under the License.
             if (this._intervalId != null) {
                 clearInterval(this._intervalId);
             }
-            this._intervalId = setInterval(() => this._callAndRefresh(), refreshFrequency || 10000); // every 10 seconds by default
+            this._intervalId = setInterval(() => {
+                this._callAndRefresh();
+            }, refreshFrequency || 10000); // every 10 seconds by default
         }
 
         // Get last modified entities for the Campaign server and remove from cache last modified entities
-        _callAndRefresh() {
+        async _callAndRefresh() {
             const that = this;
             const soapCall = this._client._prepareSoapCall("xtk:session", "GetModifiedEntities", true, this._connectionParameters._options.extraHttpHeaders);
 

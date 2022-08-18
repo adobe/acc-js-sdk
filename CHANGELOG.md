@@ -6,7 +6,7 @@ This is a node.js SDK for Campaign API. It exposes the Campaign API exactly like
 # Changelog 
 
 ## Version 1.1.6
-_2022_08_16_
+_2022_08_18_
 
 * New auto-refresh mechanism to keep schemas and option caches up-to-date. See `client.startRefreshCaches` and `client.stopRefreshCaches` functions.
 
