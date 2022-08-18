@@ -280,4 +280,25 @@ describe("CacheRefresher cache", function () {
             expect(e.errorCode).toBe("SDK-000010");
         }
     });
+
+    it('Should protect callAndRefresh from re-entrance', async () => {
+        const client = await Mock.makeClient();
+        client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+        await client.NLWS.xtkSession.logon();
+        const cache = new Cache();
+        const cacheRefresher = new CacheRefresher(cache, client, "xtk:schema", "rootkey");
+        let count = 0;
+        cacheRefresher._callAndRefresh = jest.fn(() => { count = count + 1 });
+        expect(cacheRefresher._running).toBe(false);
+        await cacheRefresher._callAndRefresh();
+        expect(count).toBe(1);
+        expect(cacheRefresher._running).toBe(false);
+        await cacheRefresher._safeCallAndRefresh();
+        expect(count).toBe(2);
+        expect(cacheRefresher._running).toBe(false);
+
+        cacheRefresher._running = true;
+        await cacheRefresher._safeCallAndRefresh();
+        expect(count).toBe(2); // should not have been called since already executing
+    })
 });

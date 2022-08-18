@@ -87,6 +87,7 @@ governing permissions and limitations under the License.
             this._lastTime = undefined;
             this._buildNumber = undefined;
             this._intervalId = null;
+            this._running = false;
         }
 
         /**
@@ -98,8 +99,23 @@ governing permissions and limitations under the License.
                 clearInterval(this._intervalId);
             }
             this._intervalId = setInterval(() => {
-                this._callAndRefresh();
+                this._safeCallAndRefresh();
             }, refreshFrequency || 10000); // every 10 seconds by default
+        }
+
+        // Protect _callAndRefresh from reentrance
+        async _safeCallAndRefresh() {
+            if (this._running) {
+                // This call is already running and maybe taking a long time to complete. Do not make things
+                // harder and just skip this run
+                return;
+            }
+            this._running = true;
+            try {
+                await this._callAndRefresh();
+            } finally {
+                this._running = false;
+            }
         }
 
         // Get last modified entities for the Campaign server and remove from cache last modified entities
