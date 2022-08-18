@@ -1044,11 +1044,14 @@ class Client {
 
     /**
      * Start auto refresh of all caches
-     * @param {integer} refreshFrequency refresh frequency in ms
+     * @param {integer} refreshFrequency refresh frequency in ms. 10000 ms by default.
      */
     startRefreshCaches(refreshFrequency) {
+        if (refreshFrequency === undefined || refreshFrequency === null)
+            refreshFrequency = 10000;
         this._optionCacheRefresher.startAutoRefresh(refreshFrequency);
-        this._entityCacheRefresher.startAutoRefresh(refreshFrequency);
+        // Start auto refresh for entityCache a little later
+        setTimeout(() => { this._entityCacheRefresher.startAutoRefresh(refreshFrequency) }, refreshFrequency/2);
     }
     /**
      * Stop auto refresh of all caches

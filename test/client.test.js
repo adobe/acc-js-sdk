@@ -2407,7 +2407,10 @@ describe('ACC Client', function () {
             const client = await Mock.makeClient();
             client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
+            jest.useFakeTimers();
             client.startRefreshCaches();
+            jest.advanceTimersByTime(6000); // autorefresh for xtk:schema should be started after 5000 ms
+            jest.useRealTimers();
             expect(client._optionCacheRefresher._intervalId).not.toBeNull();
             expect(client._entityCacheRefresher._intervalId).not.toBeNull();
             client.stopRefreshCaches();
@@ -2419,7 +2422,10 @@ describe('ACC Client', function () {
             const client = await Mock.makeClient();
             client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
+            jest.useFakeTimers();
             client.startRefreshCaches();
+            jest.advanceTimersByTime(6000); // autorefresh for xtk:schema should be started after 5000 ms
+            jest.useRealTimers();
             expect(client._optionCacheRefresher._intervalId).not.toBeNull();
             expect(client._entityCacheRefresher._intervalId).not.toBeNull();
             client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);

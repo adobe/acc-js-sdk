@@ -263,24 +263,6 @@ describe("CacheRefresher cache", function () {
         client._unregisterCacheChangeListener(listener);
     });
 
-    it('Should not call refresh without logon', async () => {
-        const client = await Mock.makeClient();
-        client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
-
-        //await client.NLWS.xtkSession.logon();
-        const cache = new Cache();
-        const cacheRefresher = new CacheRefresher(cache, client, "xtk:schema", "rootkey");
-
-        client._transport.mockReturnValueOnce(Mock.GETMODIFIEDENTITIES_CLEAR_RESPONSE);
-        try {
-            await cacheRefresher._callAndRefresh();
-            fail('exception is expected');
-        } catch (e) {
-            expect(e.name).toBe("CampaignException");
-            expect(e.errorCode).toBe("SDK-000010");
-        }
-    });
-
     it('Should protect callAndRefresh from re-entrance', async () => {
         const client = await Mock.makeClient();
         client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
@@ -301,4 +283,56 @@ describe("CacheRefresher cache", function () {
         await cacheRefresher._safeCallAndRefresh();
         expect(count).toBe(2); // should not have been called since already executing
     })
+
+    it('Throw CampaignException when calling _callAndRefresh without logon', async () => {
+        const client = await Mock.makeClient();
+        const cache = new Cache();
+        const cacheRefresher = new CacheRefresher(cache, client, "xtk:schema", "rootkey");
+
+        try {
+            await cacheRefresher._callAndRefresh();
+             fail('exception is expected');
+         } catch (e) {
+             expect(e.name).toBe("CampaignException");
+             expect(e.errorCode).toBe("SDK-000010");
+         }
+    });
+
+    it('Ignore error when calling _safeCallAndRefresh without logon', async () => {
+        const client = await Mock.makeClient();
+        const cache = new Cache();
+        const cacheRefresher = new CacheRefresher(cache, client, "xtk:schema", "rootkey");
+
+        try {
+            await cacheRefresher._safeCallAndRefresh();
+        } catch (e) {
+            fail('exception is not expected');
+         }
+    });
+
+    it('Catch error in soap call GetModifiedEntities and display a warning', async () => {
+        const client = await Mock.makeClient();
+        client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+
+        await client.NLWS.xtkSession.logon();
+        const cache = new Cache();
+        const cacheRefresher = new CacheRefresher(cache, client, "xtk:schema", "rootkey");
+
+        client._transport.mockReturnValueOnce(Mock.GETMODIFIEDENTITIES_ERROR_RESPONSE);
+        try {
+          jest.useFakeTimers();
+          cacheRefresher.startAutoRefresh(5000);
+          jest.advanceTimersByTime(6000);
+          jest.useRealTimers();
+
+          // to allow soap call to finish
+          await new Promise(process.nextTick);
+        } catch (e) {
+            fail('exception is not expected');
+        }
+
+        cacheRefresher.stopAutoRefresh();
+        client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
+        await client.NLWS.xtkSession.logoff();
+    });
 });

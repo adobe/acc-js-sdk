@@ -113,7 +113,14 @@ governing permissions and limitations under the License.
             this._running = true;
             try {
                 await this._callAndRefresh();
-            } finally {
+            } catch(ex) {
+                if (ex.errorCode === "SDK-000010") {
+                    // client is not logged, this is not an error.
+                    return;
+                }
+                console.warn(`Failed to refresh cache for ${this._cacheSchemaId}`);
+            }
+              finally {
                 this._running = false;
             }
         }
@@ -152,7 +159,7 @@ governing permissions and limitations under the License.
             }
 
             const xmlDoc = DomUtil.fromJSON("cache", jsonCache, 'SimpleJson');
-            soapCall.writeDocument("document", xmlDoc);
+            soapCall.writeDocument("cacheEntities", xmlDoc);
 
             // Client is not logged: do not attempt to refresh caches at all
             if (!this._client.isLogged())
