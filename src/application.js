@@ -65,19 +65,45 @@ function propagateImplicitValues(xtkDesc, labelOnly) {
 // ========================================================================================
 // Schema Cache
 // ========================================================================================
+
+/**
+ * A cache of schemas of type `XtkSchema` instead of plain XML or JSON objects
+ * 
+ * @private
+ * @class
+ * @constructor
+ * @memberof Campaign
+ */
+
 class SchemaCache {
     constructor(client) {
         this._client = client;
         this._schemas = {};
     }
+
+    /**
+      * Get a schema by id from schema cache of type `XtkSchema` 
+     * 
+     * @param {string} schemaId 
+     * @returns {Campaign.XtkSchema} the schema, or null if the schema was not found
+     */
     async getSchema(schemaId) {
         let schema = this._schemas[schemaId];
         if (schema === undefined) {
             schema = await this._client.application._getSchema(schemaId);
             if (!schema) schema = null; // null = not found
-        this._schemas[schemaId] = schema;
+            this._schemas[schemaId] = schema;
         }
         return schema;
+    }
+
+    /**
+      * Remove a schema from schema cache. The callback function when refreshing cache in cacheRefresher 
+     * 
+     * @param {string} schemaId 
+     */
+    invalidateCacheItem(schemaId) {
+        this._schemas[schemaId] = undefined;
     }
 }
 
@@ -1237,6 +1263,13 @@ class Application {
         }
     }
 
+    _registerCacheChangeListener() {
+        this.client._registerCacheChangeListener(this._schemaCache);
+    }
+
+    _unregisterCacheChangeListener() {
+        this.client._unregisterCacheChangeListener(this._schemaCache);
+    }
     /**
      * Get a schema by id. This function returns an XtkSchema object or null if the schema is not found.
      * Using the `XtkSchema` API makes it easier to navigate schemas than using a plain XML or JSON object
@@ -1248,7 +1281,7 @@ class Application {
         return this._schemaCache.getSchema(schemaId);
     }
 
-    // Private function: get a schema without using the cache
+    // Private function: get a schema without using the SchemaCache
     async _getSchema(schemaId) {
         const xml = await this.client.getSchema(schemaId, "xml");
         if (!xml)
