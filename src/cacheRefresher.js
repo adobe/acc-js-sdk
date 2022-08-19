@@ -66,8 +66,9 @@ governing permissions and limitations under the License.
     class CacheRefresher {
 
         /**
-        * A class to refresh regulary a Cache every 10 seconds, by sending a query to get the last modified entities.
-        * The refresh mechanism can be activated by calling client.startRefreshCaches()
+        * A class to refresh regulary a Cache every n seconds, by sending a query to get the last modified entities.
+        * The refresh mechanism can be activated by calling client.startRefreshCaches().
+        * This mechanism depends on the xtk:session:GetModifiedEntities API which is introduced in ACC 8.4 and above.
         *
         * @param {Cache} cache is the cache to refresh
         * @param {Client} client is the ACC API Client.
@@ -92,7 +93,7 @@ governing permissions and limitations under the License.
 
         /**
          * Start auto refresh
-         * @param {integer} refreshFrequency frequency of the refresh in ms ( default velue is 10 000 ms)
+         * @param {integer} refreshFrequency frequency of the refresh in ms (default value is 10,000 ms)
          */
         startAutoRefresh(refreshFrequency) {
             if (this._intervalId != null) {
@@ -118,7 +119,7 @@ governing permissions and limitations under the License.
                     // client is not logged, this is not an error.
                     return;
                 }
-                console.warn(`Failed to refresh cache for ${this._cacheSchemaId}`);
+                console.warn(`Failed to refresh cache for ${this._cacheSchemaId}`, ex);
             }
               finally {
                 this._running = false;
@@ -177,7 +178,6 @@ governing permissions and limitations under the License.
                     that._refresh(doc);
                     that._refresherStateCache.put("time", that._lastTime);
                     that._refresherStateCache.put("buildNumber", that._buildNumber);
-                    Promise.resolve();
                 })
                 .catch((ex) => {
                     // if the method GetModifiedEntities is not found in this acc version we disable the autoresfresh of the cache

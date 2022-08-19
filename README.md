@@ -711,6 +711,12 @@ The following changes are handled:
 * If more than 10 schemas or options have changed, the whole cache is cleared
 * if less than 10 schemas or options have changed, only those entities are removed from the cache
 
+
+The refresh mechanism includes the following guardrails
+* Both xtk:option and xtk:schema caches are refreshed every n seconds. To avoid issuing two API calls at the same time to the server, the schema cache refresh call is delayed by a few seconds. In the future this delay may change.
+* If the xtk:session#GetModifiedEntities API is not available, the auto refresh mechanism will silently stop automatically
+* If an error occurs while trying to refresh, a warning will be logged to the JavaScript console but the auto refresh will not be stopped. 
+
 ## Passwords
 
 External account passwords can be decrypted using a Cipher. This function is deprecated since version 1.0.0 since it's not guaranteed to work in future versions of Campaign (V8 and above)

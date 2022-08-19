@@ -2432,7 +2432,60 @@ describe('ACC Client', function () {
             await client.logoff();
             expect(client._optionCacheRefresher._intervalId).toBeNull();
             expect(client._entityCacheRefresher._intervalId).toBeNull();
+        });
 
+        it("Expired session and refresh cache", async () => {
+            let refreshClient = async () => {
+                const connectionParameters = sdk.ConnectionParameters.ofSecurityToken("http://acc-sdk:8080",
+                                                        "$security_token$", {refreshClient: refreshClient});
+                const newClient = await sdk.init(connectionParameters);
+                newClient._transport = jest.fn();
+                newClient._transport.mockReturnValueOnce(Mock.BEARER_LOGON_RESPONSE);
+                await newClient.logon();
+                return newClient;
+            }
+            const connectionParameters = sdk.ConnectionParameters.ofBearerToken("http://acc-sdk:8080", 
+                                                    "$token$", {refreshClient: refreshClient});
+            const client = await sdk.init(connectionParameters);
+            jest.useFakeTimers();
+            client.startRefreshCaches();
+            client._entityCacheRefresher._safeCallAndRefresh = jest.fn();
+            client._optionCacheRefresher._safeCallAndRefresh = jest.fn();
+            jest.advanceTimersByTime(18000);
+            expect(client._entityCacheRefresher._safeCallAndRefresh.mock.calls.length).toBe(1);
+            expect(client._optionCacheRefresher._safeCallAndRefresh.mock.calls.length).toBe(1);
+            client.traceAPICalls(true);
+            client._transport = jest.fn();
+            client._transport.mockReturnValueOnce(Mock.BEARER_LOGON_RESPONSE);
+            client._transport.mockReturnValueOnce(Promise.resolve(`XSV-350008 Session has expired or is invalid. Please reconnect.`));
+            client._transport.mockReturnValueOnce(Mock.GET_XTK_QUERY_SCHEMA_RESPONSE);
+            client._transport.mockReturnValueOnce(Promise.resolve(`<?xml version='1.0'?>
+                <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:xtk:queryDef' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
+                <SOAP-ENV:Body>
+                <ExecuteQueryResponse xmlns='urn:xtk:queryDef' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
+                    <pdomOutput xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
+                    <extAccount-collection/>
+                    </pdomOutput></ExecuteQueryResponse>
+                </SOAP-ENV:Body>
+                </SOAP-ENV:Envelope>`));
+            await client.logon();
+            var queryDef = {
+                "schema": "nms:extAccount",
+                "operation": "select",
+                "select": {
+                    "node": [
+                        { "expr": "@id" },
+                        { "expr": "@name" }
+                    ]
+                }
+            };
+            var query = client.NLWS.xtkQueryDef.create(queryDef);
+            var extAccount = await query.executeQuery();
+            expect(extAccount).toEqual({ extAccount: [] });
+            jest.advanceTimersByTime(10000);
+            expect(client._entityCacheRefresher._safeCallAndRefresh.mock.calls.length).toBe(2);
+            expect(client._optionCacheRefresher._safeCallAndRefresh.mock.calls.length).toBe(2);
+            jest.useRealTimers();
         });
     });
 

@@ -1051,7 +1051,7 @@ class Client {
             refreshFrequency = 10000;
         this._optionCacheRefresher.startAutoRefresh(refreshFrequency);
         // Start auto refresh for entityCache a little later
-        setTimeout(() => { this._entityCacheRefresher.startAutoRefresh(refreshFrequency) }, refreshFrequency/2);
+        setTimeout(() => { this._entityCacheRefresher.startAutoRefresh(refreshFrequency); }, refreshFrequency/2);
     }
     /**
      * Stop auto refresh of all caches
