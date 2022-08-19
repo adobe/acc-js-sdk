@@ -693,6 +693,30 @@ It's possible to disable persistent caches using the `noStorage` connection opti
 It is also possible to setup one's own persistent cache, by passing a `storage` object as a connection option. This object should implement 3 methods: `getItem`, `setItem`, and `removeItem` (synchronous)
 
 
+## Auto-refresh caches
+
+The SDK includes a mechnism to maintain the schemas and options caches up-to-date by polling the Campaign server on a regular basis (10 seconds by default). The server returns the list of entities (schemas or options) which have changed since they were cached, and the client removes them from the cache. When a schema changes, the corresponding methods are also removed from the method cache.
+
+This mechanism is not activate by default but can be activated or deactivated by the following functions
+
+```js
+client.startRefreshCaches(30000);   // activate cache auto-refresh mechanism every 30s
+client.stopRefreshCaches();         // de-activate cache auto-refresh
+```
+
+This mechanism is based on the `xtk:session#GetModifiedEntities` SOAP method which is only available in Campaign 8.4 and above only. For other builds of Campaign, the auto-refresh mechanism will not do anything. 
+
+The following changes are handled:
+* If the build number has changed, the whole cache is cleared
+* If more than 10 schemas or options have changed, the whole cache is cleared
+* if less than 10 schemas or options have changed, only those entities are removed from the cache
+
+
+The refresh mechanism includes the following guardrails
+* Both xtk:option and xtk:schema caches are refreshed every n seconds. To avoid issuing two API calls at the same time to the server, the schema cache refresh call is delayed by a few seconds. In the future this delay may change.
+* If the xtk:session#GetModifiedEntities API is not available, the auto refresh mechanism will silently stop automatically
+* If an error occurs while trying to refresh, a warning will be logged to the JavaScript console but the auto refresh will not be stopped. 
+
 ## Passwords
 
 External account passwords can be decrypted using a Cipher. This function is deprecated since version 1.0.0 since it's not guaranteed to work in future versions of Campaign (V8 and above)

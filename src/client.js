@@ -31,6 +31,7 @@ const Cipher = require('./crypto.js').Cipher;
 const DomUtil = require('./domUtil.js').DomUtil;
 const MethodCache = require('./methodCache.js').MethodCache;
 const OptionCache = require('./optionCache.js').OptionCache;
+const CacheRefresher = require('./cacheRefresher.js').CacheRefresher;
 const request = require('./transport.js').request;
 const Application = require('./application.js').Application;
 const EntityAccessor = require('./entityAccessor.js').EntityAccessor;
@@ -532,13 +533,16 @@ class Client {
         const rootKey = `acc.js.sdk.${sdk.getSDKVersion().version}.${instanceKey}.cache`;
 
         this._entityCache = new XtkEntityCache(this._storage, `${rootKey}.XtkEntityCache`, connectionParameters._options.entityCacheTTL);
+        this._entityCacheRefresher = new CacheRefresher(this._entityCache, this, "xtk:schema", `${rootKey}.XtkEntityCache`);
         this._methodCache = new MethodCache(this._storage, `${rootKey}.MethodCache`, connectionParameters._options.methodCacheTTL);
         this._optionCache = new OptionCache(this._storage, `${rootKey}.OptionCache`, connectionParameters._options.optionCacheTTL);
+        this._optionCacheRefresher = new CacheRefresher(this._optionCache, this, "xtk:option", `${rootKey}.OptionCache`);
         this.NLWS = new Proxy(this, clientHandler());
 
         this._transport = connectionParameters._options.transport;
         this._traceAPICalls = connectionParameters._options.traceAPICalls;
         this._observers = [];
+        this._cacheChangeListeners = [];
         this._refreshClient = connectionParameters._options.refreshClient;
 
         // expose utilities
@@ -849,6 +853,7 @@ class Client {
             that._sessionToken = credentials._sessionToken;
             that._securityToken = "";
             that.application = new Application(that);
+            that.application._registerCacheChangeListener();
             return Promise.resolve();
         }
         else if (credentials._type == "SecurityToken") {
@@ -857,6 +862,7 @@ class Client {
             that._sessionToken = "";
             that._securityToken = credentials._securityToken;
             that.application = new Application(that);
+            that.application._registerCacheChangeListener();
             return Promise.resolve();
         }
         else if (credentials._type == "UserPassword" || credentials._type == "BearerToken") {
@@ -908,6 +914,7 @@ class Client {
                 that._securityToken = securityToken;
 
                 that.application = new Application(that);
+                that.application._registerCacheChangeListener();
             });
         }
         else {
@@ -933,10 +940,13 @@ class Client {
     logoff() {
         var that = this;
         if (!that.isLogged()) return;
+        that.application._unregisterCacheChangeListener();
+        that._unregisterAllCacheChangeListeners();
+        this.stopRefreshCaches();
         const credentials = this._connectionParameters._credentials;
         if (credentials._type != "SessionToken" && credentials._type != "AnonymousUser") {
             var soapCall = that._prepareSoapCall("xtk:session", "Logoff", false, this._connectionParameters._options.extraHttpHeaders);
-                return this._makeSoapCall(soapCall).then(function() {
+            return this._makeSoapCall(soapCall).then(function() {
                 that._sessionToken = "";
                 that._securityToken = "";
                 that.application = null;
@@ -958,15 +968,15 @@ class Client {
      * @return the option value, casted in the expected data type. If the option does not exist, it will return null.
      */
     async getOption(name, useCache = true) {
-        var value;
-        if (useCache)
-            value = this._optionCache.get(name);
-        if (value === undefined) {
-            const option = await this.NLWS.xtkSession.getOption(name);
-            value = this._optionCache.put(name, option);
-            this._optionCache.put(name, option);
-        }
-        return value;
+      var value;
+      if (useCache) {
+        value = this._optionCache.get(name);
+      }
+      if (value === undefined) {
+        const option = await this.NLWS.xtkSession.getOption(name);
+        value = this._optionCache.put(name, option);
+      }
+      return value;
     }
 
     /**
@@ -1030,6 +1040,50 @@ class Client {
         this.clearEntityCache();
         this.clearMethodCache();
         this.clearOptionCache();
+    }
+
+    /**
+     * Start auto refresh of all caches
+     * @param {integer} refreshFrequency refresh frequency in ms. 10000 ms by default.
+     */
+    startRefreshCaches(refreshFrequency) {
+        if (refreshFrequency === undefined || refreshFrequency === null)
+            refreshFrequency = 10000;
+        this._optionCacheRefresher.startAutoRefresh(refreshFrequency);
+        // Start auto refresh for entityCache a little later
+        setTimeout(() => { this._entityCacheRefresher.startAutoRefresh(refreshFrequency); }, refreshFrequency/2);
+    }
+    /**
+     * Stop auto refresh of all caches
+     */
+    stopRefreshCaches() {
+        this._optionCacheRefresher.stopAutoRefresh();
+        this._entityCacheRefresher.stopAutoRefresh();
+    }
+
+    // Register a callback to be called when a schema has been modified and should be removed
+    // from the caches
+    _registerCacheChangeListener(listener) {
+        this._cacheChangeListeners.push(listener);
+    }
+
+    // Unregister a cache change listener
+    _unregisterCacheChangeListener(listener) {
+        for (var i = 0; i < this._cacheChangeListeners.length; i++) {
+            if (this._cacheChangeListeners[i] == listener) {
+                this._cacheChangeListeners.splice(i, 1);
+                break;
+            }
+        }
+    }
+
+    // Unregister all cache change listener
+    _unregisterAllCacheChangeListeners() {
+        this._cacheChangeListeners = [];
+    }
+
+    _notifyCacheChangeListeners(schemaId) {
+        this._cacheChangeListeners.map((listener) => listener.invalidateCacheItem(schemaId));
     }
 
     /**
@@ -1101,11 +1155,12 @@ class Client {
         var that = this;
         var entity = that._entityCache.get("xtk:schema", schemaId);
         if (!entity) {
-            entity = await that.getEntityIfMoreRecent("xtk:schema", schemaId, "xml", internal);
-        }
-        if (entity)
+          entity = await that.getEntityIfMoreRecent("xtk:schema", schemaId, "xml", internal);
+          if (entity) {
             that._entityCache.put("xtk:schema", schemaId, entity);
-
+            that._methodCache.put(entity);
+          }
+        }
         entity = that._toRepresentation(entity, representation);
         return entity;
     }

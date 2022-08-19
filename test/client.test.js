@@ -64,10 +64,10 @@ describe('ACC Client', function () {
 
         it('Should logon and logoff with traces', async () => {
             const client = await Mock.makeClient();
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
             const logs = await Mock.withMockConsole(async () => {
                 client.traceAPICalls(true);
-                client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
-                client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
                 await client.NLWS.xtkSession.logon();
                 expect(client.isLogged()).toBe(true);
                 var sessionInfoXml = client.getSessionInfo("xml");
@@ -2242,6 +2242,8 @@ describe('ACC Client', function () {
             }
             const client = await Mock.makeClient({ storage: storage });
             client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GETMODIFIEDENTITIES_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GETMODIFIEDENTITIES_RESPONSE);
             client._transport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
             await client.NLWS.xtkSession.logon();
             storage.getItem.mockReturnValueOnce(JSON.stringify({value: { value: "Hello", type: 6 }, cachedAt: 1633715996021 }));
@@ -2350,6 +2352,140 @@ describe('ACC Client', function () {
             var schema = await client.getSchema("nms:extAccount");
             expect(schema["namespace"]).toBe("nms");
             expect(schema["name"]).toBe("extAccount");
+        });
+
+        it("Should get schema from the cache", async () => {
+            const client = await Mock.makeClient();
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+
+            client._transport.mockReturnValueOnce(Mock.GET_NMS_EXTACCOUNT_SCHEMA_RESPONSE);
+            var schema = await client.getSchema("nms:extAccount");
+            expect(schema["namespace"]).toBe("nms");
+            expect(schema["name"]).toBe("extAccount");
+
+            client._transport.mockReturnValue(Promise.resolve(Mock.GETMODIFIEDENTITIES_RESPONSE));
+
+            jest.useFakeTimers();
+            client.startRefreshCaches(5000); // autorefresh every 5000 ms
+            jest.advanceTimersByTime(6000);
+            jest.useRealTimers();
+
+            schema = await client.getSchema("nms:extAccount");
+            expect(schema["namespace"]).toBe("nms");
+            expect(schema["name"]).toBe("extAccount");
+
+            client.stopRefreshCaches();
+        });
+
+        it("Should get schema from server when removed from cache", async () => {
+            const client = await Mock.makeClient();
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+
+            client._transport.mockReturnValueOnce(Mock.GET_NMS_EXTACCOUNT_SCHEMA_RESPONSE);
+            var schema = await client.getSchema("nms:extAccount");
+            expect(schema["namespace"]).toBe("nms");
+            expect(schema["name"]).toBe("extAccount");
+
+            client._transport.mockReturnValueOnce(Promise.resolve(Mock.GETMODIFIEDENTITIES_SCHEMA_RESPONSE));
+            client._transport.mockReturnValueOnce(Promise.resolve(Mock.GETMODIFIEDENTITIES_SCHEMA_RESPONSE));
+
+            client._transport.mockReturnValue(Promise.resolve(Mock.GET_NMS_EXTACCOUNT_SCHEMA_RESPONSE));
+            jest.useFakeTimers();
+            client.startRefreshCaches(5000); // autorefresh every 5000 ms
+            jest.advanceTimersByTime(6000);
+            jest.useRealTimers();
+
+            schema = await client.getSchema("nms:extAccount");
+            expect(schema["namespace"]).toBe("nms");
+            expect(schema["name"]).toBe("extAccount");
+            client.stopRefreshCaches();
+        });
+
+        it("Should stop refresh", async () => {
+            const client = await Mock.makeClient();
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+            jest.useFakeTimers();
+            client.startRefreshCaches();
+            jest.advanceTimersByTime(6000); // autorefresh for xtk:schema should be started after 5000 ms
+            jest.useRealTimers();
+            expect(client._optionCacheRefresher._intervalId).not.toBeNull();
+            expect(client._entityCacheRefresher._intervalId).not.toBeNull();
+            client.stopRefreshCaches();
+            expect(client._optionCacheRefresher._intervalId).toBeNull();
+            expect(client._entityCacheRefresher._intervalId).toBeNull();
+        });
+
+        it("Should stop refresh when logoff", async () => {
+            const client = await Mock.makeClient();
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+            jest.useFakeTimers();
+            client.startRefreshCaches();
+            jest.advanceTimersByTime(6000); // autorefresh for xtk:schema should be started after 5000 ms
+            jest.useRealTimers();
+            expect(client._optionCacheRefresher._intervalId).not.toBeNull();
+            expect(client._entityCacheRefresher._intervalId).not.toBeNull();
+            client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
+            await client.logoff();
+            expect(client._optionCacheRefresher._intervalId).toBeNull();
+            expect(client._entityCacheRefresher._intervalId).toBeNull();
+        });
+
+        it("Expired session and refresh cache", async () => {
+            let refreshClient = async () => {
+                const connectionParameters = sdk.ConnectionParameters.ofSecurityToken("http://acc-sdk:8080",
+                                                        "$security_token$", {refreshClient: refreshClient});
+                const newClient = await sdk.init(connectionParameters);
+                newClient._transport = jest.fn();
+                newClient._transport.mockReturnValueOnce(Mock.BEARER_LOGON_RESPONSE);
+                await newClient.logon();
+                return newClient;
+            }
+            const connectionParameters = sdk.ConnectionParameters.ofBearerToken("http://acc-sdk:8080", 
+                                                    "$token$", {refreshClient: refreshClient});
+            const client = await sdk.init(connectionParameters);
+            jest.useFakeTimers();
+            client.startRefreshCaches();
+            client._entityCacheRefresher._safeCallAndRefresh = jest.fn();
+            client._optionCacheRefresher._safeCallAndRefresh = jest.fn();
+            jest.advanceTimersByTime(18000);
+            expect(client._entityCacheRefresher._safeCallAndRefresh.mock.calls.length).toBe(1);
+            expect(client._optionCacheRefresher._safeCallAndRefresh.mock.calls.length).toBe(1);
+            client.traceAPICalls(true);
+            client._transport = jest.fn();
+            client._transport.mockReturnValueOnce(Mock.BEARER_LOGON_RESPONSE);
+            client._transport.mockReturnValueOnce(Promise.resolve(`XSV-350008 Session has expired or is invalid. Please reconnect.`));
+            client._transport.mockReturnValueOnce(Mock.GET_XTK_QUERY_SCHEMA_RESPONSE);
+            client._transport.mockReturnValueOnce(Promise.resolve(`<?xml version='1.0'?>
+                <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:xtk:queryDef' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
+                <SOAP-ENV:Body>
+                <ExecuteQueryResponse xmlns='urn:xtk:queryDef' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
+                    <pdomOutput xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
+                    <extAccount-collection/>
+                    </pdomOutput></ExecuteQueryResponse>
+                </SOAP-ENV:Body>
+                </SOAP-ENV:Envelope>`));
+            await client.logon();
+            var queryDef = {
+                "schema": "nms:extAccount",
+                "operation": "select",
+                "select": {
+                    "node": [
+                        { "expr": "@id" },
+                        { "expr": "@name" }
+                    ]
+                }
+            };
+            var query = client.NLWS.xtkQueryDef.create(queryDef);
+            var extAccount = await query.executeQuery();
+            expect(extAccount).toEqual({ extAccount: [] });
+            jest.advanceTimersByTime(10000);
+            expect(client._entityCacheRefresher._safeCallAndRefresh.mock.calls.length).toBe(2);
+            expect(client._optionCacheRefresher._safeCallAndRefresh.mock.calls.length).toBe(2);
+            jest.useRealTimers();
         });
     });
 
@@ -2883,6 +3019,96 @@ describe('ACC Client', function () {
             expect(lastCall[1].foo).toBe("fu");
             expect(lastCall[1].cnxDefault).toBe(3);
             expect(lastCall[1].x).toBe(2);
+        });
+    });
+    describe("Schema cache refresh", () => {
+        it("Should unregister listener", async () => {
+            const client = await Mock.makeClient();
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+
+            class Listener {
+                constructor() {
+                    this._schemas = {};
+                }
+
+                invalidateCacheItem(schemaId) {
+                    this._schemas[schemaId] = undefined;
+                }
+            }
+
+            client._unregisterAllCacheChangeListeners();
+            expect(client._cacheChangeListeners.length).toBe(0);
+            const listener = new Listener();
+
+            client._registerCacheChangeListener(listener);
+            expect(client._cacheChangeListeners.length).toBe(1);
+            client._unregisterCacheChangeListener(listener);
+            expect(client._cacheChangeListeners.length).toBe(0);
+        });
+
+        it("Should not unregister unknown listener", async () => {
+            const client = await Mock.makeClient();
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+
+            class Listener {
+                constructor() {
+                    this._schemas = {};
+                }
+
+                invalidateCacheItem(schemaId) {
+                    this._schemas[schemaId] = undefined;
+                }
+            }
+
+            client._unregisterAllCacheChangeListeners();
+            expect(client._cacheChangeListeners.length).toBe(0);
+            const listener = new Listener();
+
+            client._registerCacheChangeListener(listener);
+            expect(client._cacheChangeListeners.length).toBe(1);
+
+            const listener2 = new Listener();
+
+            client._unregisterCacheChangeListener(listener2);
+            expect(client._cacheChangeListeners.length).toBe(1);
+            client._unregisterAllCacheChangeListeners();
+        });
+
+        it("Should be notify when register", async () => {
+            const client = await Mock.makeClient();
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+
+            class Listener {
+                constructor() {
+                    this._schemas = {};
+                }
+                add(schemaId) {
+                    this._schemas[schemaId] = "1";
+                }
+
+                invalidateCacheItem(schemaId) {
+                    this._schemas[schemaId] = undefined;
+                }
+                getSchema(schemaId) {
+                    return this._schemas[schemaId];
+                }
+            }
+
+            client._unregisterAllCacheChangeListeners();
+            
+            const listener = new Listener();
+            listener.add("nms:recipient");
+            listener.add("xtk:operator");
+
+            client._registerCacheChangeListener(listener);
+            client._notifyCacheChangeListeners("nms:recipient");
+            expect(listener.getSchema("nms:recipient")).toBeUndefined();
+            expect(listener.getSchema("xtk:operator")).toBe("1");
+
+            client._unregisterCacheChangeListener(listener);
         });
     });
 });

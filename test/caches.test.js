@@ -54,7 +54,22 @@ describe('Caches', function() {
             cache.clear();
             expect(cache.get("Hello")).toBeUndefined();
         })
-    })
+
+        it("Should remove key in cache", () => {
+            const cache = new Cache();
+            cache.put("Hello", "World");
+            cache.put("Hi", "A");
+            expect(cache.get("Hello")).toBe("World");
+            expect(cache.get("Hi")).toBe("A");
+            cache.remove("Hello");
+            expect(cache.get("Hello")).toBeUndefined();
+            expect(cache.get("Hi")).toBe("A");
+            // should support removing a key which has already been removed
+            cache.remove("Hello");
+            expect(cache.get("Hello")).toBeUndefined();
+            expect(cache.get("Hi")).toBe("A");
+        })
+    });
 
     describe("Entity cache", function() {
         it("Should cache value", function() {

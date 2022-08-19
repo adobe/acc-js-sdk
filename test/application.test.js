@@ -1097,7 +1097,6 @@ describe('Application', () => {
                     </GetEntityIfMoreRecentResponse>
                 </SOAP-ENV:Body>
                 </SOAP-ENV:Envelope>`));
-
                 const nodes = await link.joinNodes();
                 expect(nodes).toMatchObject([]);
                 const reverseLink = await link.reverseLink();
@@ -2157,3 +2156,4 @@ describe('Application', () => {
         })
     })
 });
+
