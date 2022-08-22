@@ -1111,6 +1111,34 @@ The `soapCall` parameter is a `SoapMethodCall` object which describes the SOAP c
 * `response` is a string containing the XML result of the SOAP call if the call was successful. It may be undefined if the call was not executed yet or if the call failed
 
 
+In version 1.1.7, the observer interface is extended to listen for internal events of the SDK. The `event` function of the observer, if it exist will be call for each SDK event with 2 parameters: the event itself, and for some events, a parent event. For instance a SOAP response event will have the SOAP request for a parent event.
+```js
+client.registerObserver({
+    event: (event, parentEvent) => { ... },
+});
+```
+
+The following events are available
+
+| event name | comment / description |
+|----|----|
+| SDK//logon | A client logs on |
+| SDK//logoff | A client logs off |
+| CACHE//stats | Regularly sends stats about internal caches |
+| SOAP//request | The SDK executes a SOAP request |
+| SOAP//response | The SDK processes the successful response of a SOAP request |
+| SOAP//failure | A SOAP request failed |
+| HTTP//request | The SDK executes an HTTP request |
+| HTTP//response | The SDK processes the successful response of an HTTP request |
+| HTTP//failure | An HTTP request failed |
+| CACHE_REFRESHER//start | A cache auto-refresher starts |
+| CACHE_REFRESHER//stop | A cache auto-refresher stops |
+| CACHE_REFRESHER//tick | A cache auto-refresh occurs |
+| CACHE_REFRESHER//loggedOff | The cache auto-refresh was triggered whereas the client was logged off |
+| CACHE_REFRESHER//error | The cache auto-refresh failed. Auto-refresh will continue. |
+| CACHE_REFRESHER//abort | The cache auto-refresh failed because the server does not support it. Auto-refresh will stop. |
+| CACHE_REFRESHER//response | The server responded to an auto-refresh request |
+
 # Configuration
 
 ## Tracking all SOAP calls

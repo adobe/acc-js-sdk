@@ -562,6 +562,21 @@ class Client {
          * @type {Campaign.Application}
          */
         this.application = null;
+
+        // Context for observability. See logon() function which will fill this context
+        this._lastStatsReport = Date.now();
+        this._observabilityContext = {
+            eventId: 0,
+            client: {
+                sdkVersion: this.sdk.getSDKVersion().version,
+                endpoint: this._connectionParameters._endpoint,
+                createdAt: Date.now(),
+                clientApp: this._connectionParameters._options.clientApp,
+            }
+        };
+        if  (this._connectionParameters._credentials) {
+            this._observabilityContext.client.type = this._connectionParameters._credentials.type;
+        }
     }
 
     /**
@@ -692,6 +707,64 @@ class Client {
         this._observers.map((observer) => callback(observer));
     }
 
+    _trackEvent(eventName, parentEvent, payload) {
+        try {
+            if (payload && payload.name === 'CampaignException') {
+                payload = { 
+                    detail: payload.detail,
+                    errorCode: payload.errorCode,
+                    faultCode: payload.faultCode,
+                    faultString: payload.faultString,
+                    message: payload.message,
+                    statusCode: payload.statusCode,
+                };
+            }
+            this._observabilityContext.eventId = this._observabilityContext.eventId + 1;
+            const now = Date.now();
+            const event = {
+                client: this._observabilityContext.client,
+                session: this._observabilityContext.session,
+                eventId: this._observabilityContext.eventId,
+                eventName: eventName,
+                payload: payload,
+                timestamp: now,
+            };
+            if (parentEvent) event.parentEventId = parentEvent.eventId;
+            this._notifyObservers((observer) => observer.event && observer.event(event, parentEvent));
+
+            // Regularly report internal stats every 5 mins
+            if ((now - this._lastStatsReport) >= 300000) {
+                this._lastStatsReport = now;
+                this._trackInternalStats();
+            }
+        
+            return event;
+        } catch (error) {
+            console.info(`Failed to track observability event`, error);
+        }
+    }
+
+    _trackInternalStats() {
+        this._trackCacheStats('entityCache', this._entityCache);
+        this._trackCacheStats('optionCache', this._optionCache);
+        this._trackCacheStats('methodCache', this._methodCache);
+    }
+
+    _trackCacheStats(name, cache) {
+        if (!cache || !cache._stats) return;
+        this._trackEvent('CACHE//stats', undefined, {
+            name: name,
+            reads: cache._stats.reads,
+            writes: cache._stats.writes,
+            removals: cache._stats.removals,
+            clears: cache._stats.clears,
+            memoryHits: cache._stats.memoryHits,
+            storageHits: cache._stats.storageHits,
+            loads: cache._stats.loads,
+            saves: cache._stats.saves,
+        });
+    }
+
     /**
      * Is the client logged?
      * 
@@ -759,14 +832,28 @@ class Client {
         soapCall._retryCount = soapCall._retryCount + 1;
         var newClient = await this._refreshClient(this); 
         soapCall.finalize(newClient._soapEndPoint(), newClient);
+        const safeCallData = Util.trim(soapCall.request.data);
         if (this._traceAPICalls) {
-            const safeCallData = Util.trim(soapCall.request.data);
             console.log(`RETRY SOAP//request ${safeCallData}`);
         }
-        await soapCall.execute();
-        if (this._traceAPICalls) {
+        const event = this._trackEvent('SOAP//request', undefined, {
+            urn: soapCall.urn,
+            methodName: soapCall.methodName,
+            internal: soapCall.internal,
+            retry: true,
+            retryCount: soapCall._retryCount,
+            safeCallData: safeCallData,
+        });
+        try {
+            await soapCall.execute();
             const safeCallResponse = Util.trim(soapCall.response);
-            console.log(`SOAP//response ${safeCallResponse}`);
+            if (this._traceAPICalls) {
+                console.log(`SOAP//response ${safeCallResponse}`);
+            }
+            this._trackEvent('SOAP//response', event, { safeCallResponse: safeCallResponse });
+        } catch(error) {
+            this._trackEvent('SOAP//failure', event, error);
+            throw error;
         }
         return;
     }
@@ -798,18 +885,28 @@ class Client {
             console.log(`SOAP//request ${safeCallData}`);
         that._notifyObservers((observer) => observer.onSOAPCall && observer.onSOAPCall(soapCall, safeCallData) );
         
+        const event = this._trackEvent('SOAP//request', undefined, {
+            urn: soapCall.urn,
+            methodName: soapCall.methodName,
+            internal: soapCall.internal,
+            retry: false,
+            retryCount: soapCall._retryCount,
+            safeCallData: safeCallData,
+        });
         return soapCall.execute()
             .then(() => {
                 const safeCallResponse = Util.trim(soapCall.response);
                 if (that._traceAPICalls)
                     console.log(`SOAP//response ${safeCallResponse}`);
                 that._notifyObservers((observer) => observer.onSOAPCallSuccess && observer.onSOAPCallSuccess(soapCall, safeCallResponse) );
+                this._trackEvent('SOAP//response', event, { safeCallResponse: safeCallResponse });
                 return Promise.resolve();
             })
             .catch((ex) => {
                 if (that._traceAPICalls)
                     console.log(`SOAP//failure ${ex.toString()}`);
                 that._notifyObservers((observer) => observer.onSOAPCallFailure && observer.onSOAPCallFailure(soapCall, ex) );
+                this._trackEvent('SOAP//failure', event, ex);
                 // Call session expiration callback in case of 401
                 if (ex.statusCode == 401 && that._refreshClient && soapCall.retry) {
                     return this._retrySoapCall(soapCall);
@@ -819,6 +916,32 @@ class Client {
             });
     }
 
+    _onLogon() {
+        this.application = new Application(this);
+        this.application._registerCacheChangeListener();
+        this._observabilityContext.instance = {
+            buildNumber: this.application.buildNumber,
+            version: this.application.version,
+            instanceName: this.application.instanceName,
+        };
+        if (this.application.operator) {
+            this._observabilityContext.instance.operator = {
+                login: this.application.operator.login,
+                id: this.application.operator.id,
+                timezone: this.application.operator.timezone,
+                rights: this.application.operator.rights,
+                packages: this.application.operator.packages,
+            };
+        }
+        this._observabilityContext.session = {
+            logonAt: Date.now(),
+        };
+    }
+
+    _onLogoff() {
+        delete this._observabilityContext.instance;
+        delete this._observabilityContext.session;
+    }
 
     /**
      * Login to an instance
@@ -843,6 +966,8 @@ class Client {
         // See NEO-35259
         this._connectionParameters._options.extraHttpHeaders['X-Query-Source'] = `${version}${clientApp? "," + clientApp : ""}`;
 
+        this._trackEvent('SDK//logon', undefined, {});
+
         // Clear session token cookie to ensure we're not inheriting an expired cookie. See NEO-26589
         if (credentials._type != "SecurityToken" && typeof document != "undefined") {
             document.cookie = '__sessiontoken=;path=/;';
@@ -852,8 +977,7 @@ class Client {
             that._installedPackages = {};
             that._sessionToken = credentials._sessionToken;
             that._securityToken = "";
-            that.application = new Application(that);
-            that.application._registerCacheChangeListener();
+            that._onLogon();
             return Promise.resolve();
         }
         else if (credentials._type == "SecurityToken") {
@@ -861,8 +985,7 @@ class Client {
             that._installedPackages = {};
             that._sessionToken = "";
             that._securityToken = credentials._securityToken;
-            that.application = new Application(that);
-            that.application._registerCacheChangeListener();
+            that._onLogon();
             return Promise.resolve();
         }
         else if (credentials._type == "UserPassword" || credentials._type == "BearerToken") {
@@ -913,8 +1036,7 @@ class Client {
                 that._sessionToken = sessionToken;
                 that._securityToken = securityToken;
 
-                that.application = new Application(that);
-                that.application._registerCacheChangeListener();
+                that._onLogon();
             });
         }
         else {
@@ -939,24 +1061,29 @@ class Client {
      */
     logoff() {
         var that = this;
-        if (!that.isLogged()) return;
-        that.application._unregisterCacheChangeListener();
-        that._unregisterAllCacheChangeListeners();
-        this.stopRefreshCaches();
-        const credentials = this._connectionParameters._credentials;
-        if (credentials._type != "SessionToken" && credentials._type != "AnonymousUser") {
-            var soapCall = that._prepareSoapCall("xtk:session", "Logoff", false, this._connectionParameters._options.extraHttpHeaders);
-            return this._makeSoapCall(soapCall).then(function() {
+        try {
+            if (!that.isLogged()) return;
+            that.application._unregisterCacheChangeListener();
+            that._unregisterAllCacheChangeListeners();
+            this.stopRefreshCaches();
+            const credentials = this._connectionParameters._credentials;
+            if (credentials._type != "SessionToken" && credentials._type != "AnonymousUser") {
+                var soapCall = that._prepareSoapCall("xtk:session", "Logoff", false, this._connectionParameters._options.extraHttpHeaders);
+                return this._makeSoapCall(soapCall).then(function() {
+                    that._sessionToken = "";
+                    that._securityToken = "";
+                    that.application = null;
+                    soapCall.checkNoMoreArgs();
+                });
+            }
+            else {
                 that._sessionToken = "";
                 that._securityToken = "";
                 that.application = null;
-                soapCall.checkNoMoreArgs();
-            });
-        }
-        else {
-            that._sessionToken = "";
-            that._securityToken = "";
-            that.application = null;
+            }
+        } finally {
+            this._trackEvent('SDK//logoff', undefined, {});
+            this._onLogoff();
         }
     }
 
@@ -1414,23 +1541,33 @@ class Client {
         request.headers = request.headers || [];
         if (!request.headers['User-Agent'])
             request.headers['User-Agent'] = this._getUserAgentString();
+        let event;
         try {
             const safeCallData = Util.trim(request.data);
             if (this._traceAPICalls)
                 console.log(`HTTP//request ${request.method} ${request.url}${safeCallData ? " " + safeCallData : ""}`);
             this._notifyObservers((observer) => observer.onHTTPCall && observer.onHTTPCall(request, safeCallData) );
+            event = this._trackEvent('HTTP//request', undefined, {
+                url: request.url,
+                method: request.method,
+                headers: request.request,
+                safeCallData: safeCallData,
+            });
             const body = await this._transport(request);
 
             const safeCallResponse = Util.trim(body);
             if (this._traceAPICalls)
                 console.log(`HTTP//response${safeCallResponse ? " " + safeCallResponse : ""}`);
             this._notifyObservers((observer) => observer.onHTTPCallSuccess && observer.onHTTPCallSuccess(request, safeCallResponse) );
+            this._trackEvent('HTTP//response', event, { safeCallResponse: safeCallResponse });
             return body;
         } catch(err) {
             if (this._traceAPICalls)
                 console.log("HTTP//failure", err);
             this._notifyObservers((observer) => observer.onHTTPCallFailure && observer.onHTTPCallFailure(request, err) );
-            throw makeCampaignException({ request:request, reqponse:err.response }, err);
+            const ex = makeCampaignException({ request:request, reqponse:err.response }, err);
+            this._trackEvent('HTTP//failure', event, { }, ex);
+            throw ex;
         }
     }
 
