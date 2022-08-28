@@ -693,6 +693,30 @@ It's possible to disable persistent caches using the `noStorage` connection opti
 It is also possible to setup one's own persistent cache, by passing a `storage` object as a connection option. This object should implement 3 methods: `getItem`, `setItem`, and `removeItem` (synchronous)
 
 
+## Auto-refresh caches
+
+The SDK includes a mechnism to maintain the schemas and options caches up-to-date by polling the Campaign server on a regular basis (10 seconds by default). The server returns the list of entities (schemas or options) which have changed since they were cached, and the client removes them from the cache. When a schema changes, the corresponding methods are also removed from the method cache.
+
+This mechanism is not activate by default but can be activated or deactivated by the following functions
+
+```js
+client.startRefreshCaches(30000);   // activate cache auto-refresh mechanism every 30s
+client.stopRefreshCaches();         // de-activate cache auto-refresh
+```
+
+This mechanism is based on the `xtk:session#GetModifiedEntities` SOAP method which is only available in Campaign 8.4 and above only. For other builds of Campaign, the auto-refresh mechanism will not do anything. 
+
+The following changes are handled:
+* If the build number has changed, the whole cache is cleared
+* If more than 10 schemas or options have changed, the whole cache is cleared
+* if less than 10 schemas or options have changed, only those entities are removed from the cache
+
+
+The refresh mechanism includes the following guardrails
+* Both xtk:option and xtk:schema caches are refreshed every n seconds. To avoid issuing two API calls at the same time to the server, the schema cache refresh call is delayed by a few seconds. In the future this delay may change.
+* If the xtk:session#GetModifiedEntities API is not available, the auto refresh mechanism will silently stop automatically
+* If an error occurs while trying to refresh, a warning will be logged to the JavaScript console but the auto refresh will not be stopped. 
+
 ## Passwords
 
 External account passwords can be decrypted using a Cipher. This function is deprecated since version 1.0.0 since it's not guaranteed to work in future versions of Campaign (V8 and above)
@@ -1086,6 +1110,34 @@ The `soapCall` parameter is a `SoapMethodCall` object which describes the SOAP c
 * `request` is a literal corresponding to the HTTP request. It's compatible with the `transport` protocol. It may be undefined if the SOAP call has need been completely built
 * `response` is a string containing the XML result of the SOAP call if the call was successful. It may be undefined if the call was not executed yet or if the call failed
 
+
+In version 1.1.7, the observer interface is extended to listen for internal events of the SDK. The `event` function of the observer, if it exist will be call for each SDK event with 2 parameters: the event itself, and for some events, a parent event. For instance a SOAP response event will have the SOAP request for a parent event.
+```js
+client.registerObserver({
+    event: (event, parentEvent) => { ... },
+});
+```
+
+The following events are available
+
+| event name | comment / description |
+|----|----|
+| SDK//logon | A client logs on |
+| SDK//logoff | A client logs off |
+| CACHE//stats | Regularly sends stats about internal caches |
+| SOAP//request | The SDK executes a SOAP request |
+| SOAP//response | The SDK processes the successful response of a SOAP request |
+| SOAP//failure | A SOAP request failed |
+| HTTP//request | The SDK executes an HTTP request |
+| HTTP//response | The SDK processes the successful response of an HTTP request |
+| HTTP//failure | An HTTP request failed |
+| CACHE_REFRESHER//start | A cache auto-refresher starts |
+| CACHE_REFRESHER//stop | A cache auto-refresher stops |
+| CACHE_REFRESHER//tick | A cache auto-refresh occurs |
+| CACHE_REFRESHER//loggedOff | The cache auto-refresh was triggered whereas the client was logged off |
+| CACHE_REFRESHER//error | The cache auto-refresh failed. Auto-refresh will continue. |
+| CACHE_REFRESHER//abort | The cache auto-refresh failed because the server does not support it. Auto-refresh will stop. |
+| CACHE_REFRESHER//response | The server responded to an auto-refresh request |
 
 # Configuration
 

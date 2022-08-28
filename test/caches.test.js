@@ -30,13 +30,16 @@ describe('Caches', function() {
         it("Should cache with default TTL and default key function", () => {
             const cache = new Cache();
             cache.put("Hello", "World");
+            expect(cache._stats).toMatchObject({ reads: 0, writes: 1 });
             expect(cache.get("Hello")).toBe("World");
+            expect(cache._stats).toMatchObject({ reads: 1, writes: 1, memoryHits: 1, storageHits: 0 });
         })
 
         it("Should expires after TTL", () => {
             const cache = new Cache(undefined, undefined, -1);    // negative TTL => will immediately expire
             cache.put("Hello", "World");
             expect(cache.get("Hello")).toBeUndefined();
+            expect(cache._stats).toMatchObject({ reads: 1, writes: 1, memoryHits: 0, storageHits: 0 });
         })
 
         it("Should support custom key function", () => {
@@ -53,8 +56,26 @@ describe('Caches', function() {
             expect(cache.get("Hello")).toBe("World");
             cache.clear();
             expect(cache.get("Hello")).toBeUndefined();
+            expect(cache._stats).toMatchObject({ reads: 2, writes: 1, memoryHits: 1, storageHits: 0, clears: 1 });
         })
-    })
+
+        it("Should remove key in cache", () => {
+            const cache = new Cache();
+            cache.put("Hello", "World");
+            cache.put("Hi", "A");
+            expect(cache.get("Hello")).toBe("World");
+            expect(cache.get("Hi")).toBe("A");
+            expect(cache._stats).toMatchObject({ reads: 2, writes: 2, memoryHits: 2 });
+            cache.remove("Hello");
+            expect(cache.get("Hello")).toBeUndefined();
+            expect(cache.get("Hi")).toBe("A");
+            expect(cache._stats).toMatchObject({ reads: 4, writes: 2, memoryHits: 3, removals: 1 });
+            // should support removing a key which has already been removed
+            cache.remove("Hello");
+            expect(cache.get("Hello")).toBeUndefined();
+            expect(cache.get("Hi")).toBe("A");
+        })
+    });
 
     describe("Entity cache", function() {
         it("Should cache value", function() {

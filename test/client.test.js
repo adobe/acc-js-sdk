@@ -12,9 +12,9 @@ governing permissions and limitations under the License.
 
 
 /**********************************************************************************
- *
+ * 
  * Unit tests for the ACC client
- *
+ * 
  *********************************************************************************/
 
 const sdk = require('../src/index.js');
@@ -24,8 +24,6 @@ const Mock = require('./mock.js').Mock;
 const { HttpError } = require('../src/transport.js');
 const { Cipher } = require('../src/crypto.js');
 const { EntityAccessor } = require('../src/entityAccessor.js');
-const { JSDOM } = require('jsdom');
-const dom = new JSDOM()
 
 describe('ACC Client', function () {
 
@@ -66,16 +64,16 @@ describe('ACC Client', function () {
 
         it('Should logon and logoff with traces', async () => {
             const client = await Mock.makeClient();
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
             const logs = await Mock.withMockConsole(async () => {
                 client.traceAPICalls(true);
-                client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
-                client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
                 await client.NLWS.xtkSession.logon();
                 expect(client.isLogged()).toBe(true);
                 var sessionInfoXml = client.getSessionInfo("xml");
                 expect(DomUtil.findElement(sessionInfoXml, "serverInfo", true).getAttribute("buildNumber")).toBe("9219");
                 await client.NLWS.xtkSession.logoff();
-                expect(client.isLogged()).toBe(false);
+                expect(client.isLogged()).toBe(false);    
             })
             expect(logs.length).toBe(4);
             expect(logs[0]).toMatch(/SOAP.*request.*Logon/is)
@@ -287,7 +285,7 @@ describe('ACC Client', function () {
                 client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
                 client._transport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
                 await client.NLWS.xtkSession.logon();
-
+    
                 // Setting an option for the first time will
                 // - try to read the option from the database (as it's not in cache yet): xtk:session#GetOption
                 // - use a writer to write the result to the database
@@ -310,7 +308,7 @@ describe('ACC Client', function () {
                 client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
                 client._transport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
                 await client.NLWS.xtkSession.logon();
-
+    
                 // Setting an option for the first time will
                 // - try to read the option from the database (as it's not in cache yet): xtk:session#GetOption
                 // - use a writer to write the result to the database
@@ -333,7 +331,7 @@ describe('ACC Client', function () {
                 client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
                 client._transport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
                 await client.NLWS.xtkSession.logon();
-
+    
                 // Setting an option for the first time will
                 // - try to read the option from the database (as it's not in cache yet): xtk:session#GetOption. In this case, it will return a numeric option
                 // - use a writer to write the result to the database
@@ -418,7 +416,7 @@ describe('ACC Client', function () {
             expect(schema["@name"]).toBe("extAccount");
 
             // Ask with invalid representation
-            await expect(client.getSchema("nms:extAccount", "invalid")).rejects.toMatchObject({ errorCode: 'SDK-000004' });
+            await expect(client.getSchema("nms:extAccount", "invalid")).rejects.toMatchObject({ errorCode: 'SDK-000004' }); 
 
             // Get missing schema
             client.clearAllCaches();
@@ -476,7 +474,7 @@ describe('ACC Client', function () {
             await expect(client.getSysEnum("encryptionType", startSchema)).rejects.toMatchObject({ errorCode: "SDK-000006" });
             client._representation = "xml";
 
-            // Get non-cached XML representation
+            // Get non-cached XML representation 
             client.clearAllCaches();
             client._transport.mockReturnValueOnce(Mock.GET_NMS_EXTACCOUNT_SCHEMA_RESPONSE);
             sysEnum = await client.getSysEnum("nms:extAccount:encryptionType");
@@ -692,7 +690,7 @@ describe('ACC Client', function () {
             client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
             const key = Mock.makeKey();
-
+            
             client._transport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
             client._transport.mockReturnValueOnce(Mock.GET_SECRET_KEY_OPTION_RESPONSE(key));
             var cipher = await client._getSecretKeyCipher();
@@ -1010,13 +1008,13 @@ describe('ACC Client', function () {
         });
 
         it("Should support mutable calls", async () => {
-            // Some methods can mutate the object on which they apply. This is for instance the case of the xtk:queryDef#SelectAll method.
-            // You call it on a queryDef, and it internally returns a new query definition which contain select nodes for all the nodes of the schema.
+            // Some methods can mutate the object on which they apply. This is for instance the case of the xtk:queryDef#SelectAll method. 
+            // You call it on a queryDef, and it internally returns a new query definition which contain select nodes for all the nodes of the schema. 
             // When such a method is called, the SDK will know how to "mutate" the corresponding object.
             const client = await Mock.makeClient();
             client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
-
+            
             var queryDef = {
                 "schema": "xtk:option",
                 "operation": "getIfExists",
@@ -1052,7 +1050,7 @@ describe('ACC Client', function () {
                     </SOAP-ENV:Body>
                     </SOAP-ENV:Envelope>`));
             await query.selectAll(false);
-
+            
             // Check that query has new nodes
             const object = query.inspect();         // JSON query object
             expect(object.select.node.length).toBe(14);
@@ -1290,7 +1288,7 @@ describe('ACC Client', function () {
 
     describe("Logon with session token", () => {
         // With session token logon, the session token is passed by the caller, and therefore the will be no "Logon" call
-
+      
         it("Should create logged client", async() => {
             const connectionParameters = sdk.ConnectionParameters.ofSessionToken("http://acc-sdk:8080", "mc/");
             const client = await sdk.init(connectionParameters);
@@ -1306,7 +1304,7 @@ describe('ACC Client', function () {
 
     describe("Anonymous login", () => {
         // With anonymous login, one is always logged
-
+      
         it("Should create anonymous client", async() => {
             const connectionParameters = sdk.ConnectionParameters.ofAnonymousUser("http://acc-sdk:8080");
             const client = await sdk.init(connectionParameters);
@@ -1555,7 +1553,7 @@ describe('ACC Client', function () {
                 "xtk:session#GetOption", true,
             ];
             const observed = [];
-
+            
             client.registerObserver({
                 onSOAPCall: (soapCall) => {
                     const request = soapCall.request;
@@ -1600,7 +1598,7 @@ describe('ACC Client', function () {
                         </SOAP-ENV:Envelope>`));
             await expect(client.getOption("XtkDatabaseId")).rejects.toMatchObject({ errorCode: "XXX-000000" });
             expect(observedException).toMatchObject({ errorCode: "XXX-000000" });
-
+            
         });
 
         it("Should ignore unregistering non-existant observers", async () => {
@@ -1615,7 +1613,7 @@ describe('ACC Client', function () {
             const client = await Mock.makeClient();
             var countCalls = 0;
             var countSuccesses = 0;
-
+            
             const observer1 = {
                 onSOAPCall: () => { countCalls = countCalls + 1; },
                 onSOAPCallSuccess: () => { countSuccesses = countSuccesses + 1; }
@@ -1645,7 +1643,7 @@ describe('ACC Client', function () {
             const client = await Mock.makeClient();
             var countCalls = 0;
             var countSuccesses = 0;
-
+            
             const observer1 = {
                 onSOAPCall: () => { countCalls = countCalls + 1; },
                 onSOAPCallSuccess: () => { countSuccesses = countSuccesses + 1; }
@@ -1670,7 +1668,7 @@ describe('ACC Client', function () {
             expect(countCalls).toBe(1);
             expect(countSuccesses).toBe(2);
         });
-
+      
         it("Should observe internal SOAP calls", async () => {
             const client = await Mock.makeClient();
             const expected = [
@@ -1680,7 +1678,7 @@ describe('ACC Client', function () {
                 "xtk:session#GetOption", false,
             ];
             const observed = [];
-
+            
             client.registerObserver({
                 onSOAPCall: (soapCall) => {
                     const request = soapCall.request;
@@ -1705,7 +1703,7 @@ describe('ACC Client', function () {
                 client.traceAPICalls(true);
                 client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
                 await client.NLWS.xtkSession.logon();
-
+    
                 client._transport.mockReturnValueOnce(Mock.PING);
                 const ping = await client.ping();
                 expect(ping.status).toBe("OK");
@@ -1729,7 +1727,7 @@ describe('ACC Client', function () {
             expect(logs[0]).toMatch(/HTTP.*request.*GET.*test.com/is)
             expect(logs[1]).toMatch(/HTTP.*response/is)
         })
-
+        
         it("Should trace HTTP call with data and no answer", async () => {
             const logs = await Mock.withMockConsole(async () => {
                 const client = await Mock.makeClient();
@@ -1784,7 +1782,7 @@ describe('ACC Client', function () {
                 url: "http://acc-sdk:8080/nl/jsp/ping.jsp"
             });
             expect(observer.onHTTPCall.mock.calls[0][1]).toBeUndefined();
-
+            
             expect(observer.onHTTPCallSuccess.mock.calls.length).toBe(1);
             expect(observer.onHTTPCallSuccess.mock.calls[0].length).toBe(2);    // 2 arguments
             expect(observer.onHTTPCallSuccess.mock.calls[0][0]).toMatchObject({
@@ -1905,7 +1903,7 @@ describe('ACC Client', function () {
             expect(client.isLogged()).toBeFalsy();
             // Ensure logoff has been called
             expect(logoff.mock.calls.length).toBe(1);
-        })
+        })   
      })
 
     describe("Bearer token authentication", () => {
@@ -1969,7 +1967,7 @@ describe('ACC Client', function () {
                 await newClient.logon();
                 return newClient;
             }
-            const connectionParameters = sdk.ConnectionParameters.ofBearerToken("http://acc-sdk:8080",
+            const connectionParameters = sdk.ConnectionParameters.ofBearerToken("http://acc-sdk:8080", 
                                                     "$token$", {refreshClient: refreshClient});
             const client = await sdk.init(connectionParameters);
             client.traceAPICalls(true);
@@ -2244,6 +2242,8 @@ describe('ACC Client', function () {
             }
             const client = await Mock.makeClient({ storage: storage });
             client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GETMODIFIEDENTITIES_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GETMODIFIEDENTITIES_RESPONSE);
             client._transport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
             await client.NLWS.xtkSession.logon();
             storage.getItem.mockReturnValueOnce(JSON.stringify({value: { value: "Hello", type: 6 }, cachedAt: 1633715996021 }));
@@ -2332,7 +2332,7 @@ describe('ACC Client', function () {
             expect(cached.value).toMatch("<schema");
 
             // Now simulate reusing the local storage. We need a new client to make sure we do not reuse
-            // the in-memory cache of the client.
+            // the in-memory cache of the client. 
             client = await Mock.makeClient({ storage: storage });
             client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
@@ -2352,6 +2352,140 @@ describe('ACC Client', function () {
             var schema = await client.getSchema("nms:extAccount");
             expect(schema["namespace"]).toBe("nms");
             expect(schema["name"]).toBe("extAccount");
+        });
+
+        it("Should get schema from the cache", async () => {
+            const client = await Mock.makeClient();
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+
+            client._transport.mockReturnValueOnce(Mock.GET_NMS_EXTACCOUNT_SCHEMA_RESPONSE);
+            var schema = await client.getSchema("nms:extAccount");
+            expect(schema["namespace"]).toBe("nms");
+            expect(schema["name"]).toBe("extAccount");
+
+            client._transport.mockReturnValue(Promise.resolve(Mock.GETMODIFIEDENTITIES_RESPONSE));
+
+            jest.useFakeTimers();
+            client.startRefreshCaches(5000); // autorefresh every 5000 ms
+            jest.advanceTimersByTime(6000);
+            jest.useRealTimers();
+
+            schema = await client.getSchema("nms:extAccount");
+            expect(schema["namespace"]).toBe("nms");
+            expect(schema["name"]).toBe("extAccount");
+
+            client.stopRefreshCaches();
+        });
+
+        it("Should get schema from server when removed from cache", async () => {
+            const client = await Mock.makeClient();
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+
+            client._transport.mockReturnValueOnce(Mock.GET_NMS_EXTACCOUNT_SCHEMA_RESPONSE);
+            var schema = await client.getSchema("nms:extAccount");
+            expect(schema["namespace"]).toBe("nms");
+            expect(schema["name"]).toBe("extAccount");
+
+            client._transport.mockReturnValueOnce(Promise.resolve(Mock.GETMODIFIEDENTITIES_SCHEMA_RESPONSE));
+            client._transport.mockReturnValueOnce(Promise.resolve(Mock.GETMODIFIEDENTITIES_SCHEMA_RESPONSE));
+
+            client._transport.mockReturnValue(Promise.resolve(Mock.GET_NMS_EXTACCOUNT_SCHEMA_RESPONSE));
+            jest.useFakeTimers();
+            client.startRefreshCaches(5000); // autorefresh every 5000 ms
+            jest.advanceTimersByTime(6000);
+            jest.useRealTimers();
+
+            schema = await client.getSchema("nms:extAccount");
+            expect(schema["namespace"]).toBe("nms");
+            expect(schema["name"]).toBe("extAccount");
+            client.stopRefreshCaches();
+        });
+
+        it("Should stop refresh", async () => {
+            const client = await Mock.makeClient();
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+            jest.useFakeTimers();
+            client.startRefreshCaches();
+            jest.advanceTimersByTime(6000); // autorefresh for xtk:schema should be started after 5000 ms
+            jest.useRealTimers();
+            expect(client._optionCacheRefresher._intervalId).not.toBeNull();
+            expect(client._entityCacheRefresher._intervalId).not.toBeNull();
+            client.stopRefreshCaches();
+            expect(client._optionCacheRefresher._intervalId).toBeNull();
+            expect(client._entityCacheRefresher._intervalId).toBeNull();
+        });
+
+        it("Should stop refresh when logoff", async () => {
+            const client = await Mock.makeClient();
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+            jest.useFakeTimers();
+            client.startRefreshCaches();
+            jest.advanceTimersByTime(6000); // autorefresh for xtk:schema should be started after 5000 ms
+            jest.useRealTimers();
+            expect(client._optionCacheRefresher._intervalId).not.toBeNull();
+            expect(client._entityCacheRefresher._intervalId).not.toBeNull();
+            client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
+            await client.logoff();
+            expect(client._optionCacheRefresher._intervalId).toBeNull();
+            expect(client._entityCacheRefresher._intervalId).toBeNull();
+        });
+
+        it("Expired session and refresh cache", async () => {
+            let refreshClient = async () => {
+                const connectionParameters = sdk.ConnectionParameters.ofSecurityToken("http://acc-sdk:8080",
+                                                        "$security_token$", {refreshClient: refreshClient});
+                const newClient = await sdk.init(connectionParameters);
+                newClient._transport = jest.fn();
+                newClient._transport.mockReturnValueOnce(Mock.BEARER_LOGON_RESPONSE);
+                await newClient.logon();
+                return newClient;
+            }
+            const connectionParameters = sdk.ConnectionParameters.ofBearerToken("http://acc-sdk:8080", 
+                                                    "$token$", {refreshClient: refreshClient});
+            const client = await sdk.init(connectionParameters);
+            jest.useFakeTimers();
+            client.startRefreshCaches();
+            client._entityCacheRefresher._safeCallAndRefresh = jest.fn();
+            client._optionCacheRefresher._safeCallAndRefresh = jest.fn();
+            jest.advanceTimersByTime(18000);
+            expect(client._entityCacheRefresher._safeCallAndRefresh.mock.calls.length).toBe(1);
+            expect(client._optionCacheRefresher._safeCallAndRefresh.mock.calls.length).toBe(1);
+            client.traceAPICalls(true);
+            client._transport = jest.fn();
+            client._transport.mockReturnValueOnce(Mock.BEARER_LOGON_RESPONSE);
+            client._transport.mockReturnValueOnce(Promise.resolve(`XSV-350008 Session has expired or is invalid. Please reconnect.`));
+            client._transport.mockReturnValueOnce(Mock.GET_XTK_QUERY_SCHEMA_RESPONSE);
+            client._transport.mockReturnValueOnce(Promise.resolve(`<?xml version='1.0'?>
+                <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:xtk:queryDef' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
+                <SOAP-ENV:Body>
+                <ExecuteQueryResponse xmlns='urn:xtk:queryDef' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
+                    <pdomOutput xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
+                    <extAccount-collection/>
+                    </pdomOutput></ExecuteQueryResponse>
+                </SOAP-ENV:Body>
+                </SOAP-ENV:Envelope>`));
+            await client.logon();
+            var queryDef = {
+                "schema": "nms:extAccount",
+                "operation": "select",
+                "select": {
+                    "node": [
+                        { "expr": "@id" },
+                        { "expr": "@name" }
+                    ]
+                }
+            };
+            var query = client.NLWS.xtkQueryDef.create(queryDef);
+            var extAccount = await query.executeQuery();
+            expect(extAccount).toEqual({ extAccount: [] });
+            jest.advanceTimersByTime(10000);
+            expect(client._entityCacheRefresher._safeCallAndRefresh.mock.calls.length).toBe(2);
+            expect(client._optionCacheRefresher._safeCallAndRefresh.mock.calls.length).toBe(2);
+            jest.useRealTimers();
         });
     });
 
@@ -2377,7 +2511,7 @@ describe('ACC Client', function () {
             const method = scope["staticP1"]; // SOAP method to call
             const paramsFn = jest.fn(); // function returning SOAP call parameters
             paramsFn.mockReturnValueOnce(["XtkDatabaseId"]);
-
+            
             client._transport.mockReturnValueOnce(Promise.resolve(`<?xml version='1.0'?>
                 <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:xtk:session' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
                 <SOAP-ENV:Body>
@@ -2405,7 +2539,7 @@ describe('ACC Client', function () {
             const method = scope["nonStaticP1"]; // SOAP method to call
             const paramsFn = jest.fn(); // function returning SOAP call parameters
             paramsFn.mockReturnValueOnce(["XtkDatabaseId"]);
-
+            
             client._transport.mockReturnValueOnce(Promise.resolve(`<?xml version='1.0'?>
                 <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:xtk:session' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
                 <SOAP-ENV:Body>
@@ -2887,241 +3021,94 @@ describe('ACC Client', function () {
             expect(lastCall[1].x).toBe(2);
         });
     });
-
-    describe('File uploader - on server', () => {
-        it('is not supported', async ()=> {
+    describe("Schema cache refresh", () => {
+        it("Should unregister listener", async () => {
             const client = await Mock.makeClient();
-            expect(client.fileUploader).toBeDefined()
-            await expect(client.fileUploader.upload()).rejects.toEqual('File uploading is only supported in browser based calls.')
-        })
-    })
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            await client.NLWS.xtkSession.logon();
 
-    describe('File uploader - on browser', () => {
-        beforeEach(() => {
-            global.document = dom.window.document
-            global.window = dom.window
-            global.FormData = function () {
-                this.append = jest.fn()
+            class Listener {
+                constructor() {
+                    this._schemas = {};
+                }
+
+                invalidateCacheItem(schemaId) {
+                    this._schemas[schemaId] = undefined;
+                }
             }
 
-            // Evaluates JavaScript code returned by the upload.jsp. Evaluation is done in the context
-            // of an iframe and will call the parent window document.controller uploadFileCallBack
-            // function
-            function evalJSReturnedByUploadJSP(js) {
-                const data = eval(`
-                (function () {
-                    var result = undefined;
-                    window = {
-                        parent: {
-                            document: {
-                                controller: {
-                                    uploadFileCallBack: (data) => {
-                                        result = data;
-                                    }
-                                }
-                            }
-                        }
-                    };
-                    ${js};
-                    return result;
-                }())
-            `);
-                // Call real callback
-                global.document.controller.uploadFileCallBack(data);
-            }
+            client._unregisterAllCacheChangeListeners();
+            expect(client._cacheChangeListeners.length).toBe(0);
+            const listener = new Listener();
 
-            // Dynamically mock the iframe.contentWindow.document.close(); function
-            const handler = {
-                get: function (target, prop) {
-                    if (prop === 'contentWindow') {
-                        target.contentWindow.document.close = () => {
-                            var scripts = target.contentWindow.document.getElementsByTagName('script');
-                            for (let i = 0; i < scripts.length; i++) {
-                                const script = scripts[i];
-                                const js = DomUtil.elementValue(script);
-                                evalJSReturnedByUploadJSP(js);
-                            }
-                        }
-                    }
-                    return Reflect.get(...arguments);
-                }
-            };
-
-
-            // Intercept creation of iframe. returns a proxy which will intercept the iframe.contentWindow.document.close(); function
-            const _origiinalCreateElement = document.createElement;
-            global.document.createElement = (tagName) => {
-                const r = _origiinalCreateElement.call(document, tagName);
-                if (tagName === 'iframe') {
-                    const p = new Proxy(r, handler);
-                    return p;
-                }
-                return r;
-            };
-
+            client._registerCacheChangeListener(listener);
+            expect(client._cacheChangeListeners.length).toBe(1);
+            client._unregisterCacheChangeListener(listener);
+            expect(client._cacheChangeListeners.length).toBe(0);
         });
 
-        it('works with successful post upload calls', async () => {
-            // Create a mock client and logon
+        it("Should not unregister unknown listener", async () => {
             const client = await Mock.makeClient();
             client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
 
-            // Mock the upload protocol
-            // - the upload.jsp (which returns the content of an iframe and JS to eval)
-            // - call to xtk:counter#IncreaseValue (first, retrieve the schema xtk:counter then call the function)
-            // - call to xtk:session#Write
-            // - call to xtk:fileRes#PublishIfNeeded
-            // - call to xtk:fileRes#GetURL
+            class Listener {
+                constructor() {
+                    this._schemas = {};
+                }
 
-            client._transport.mockReturnValueOnce(Promise.resolve(`Ok 
-        <html xmlns="http://www.w3.org/1999/xhtml">
-            <head>
-              <script type="text/javascript">if(window.parent&&window.parent.document.controller&&"function"==typeof window.parent.document.controller.uploadFileCallBack){var aFilesInfo=new Array;aFilesInfo.push({paramName:"file",fileName:"test.txt",newFileName:"d8e8fca2dc0f896fd7cb4cb0031ba249.txt",md5:"d8e8fca2dc0f896fd7cb4cb0031ba249"}),window.parent.document.controller.uploadFileCallBack(aFilesInfo)}</script>
-            </head>
-        <body></body>
-        </html>`)); // upload.jsp
+                invalidateCacheItem(schemaId) {
+                    this._schemas[schemaId] = undefined;
+                }
+            }
 
-            client._transport.mockReturnValueOnce(Promise.resolve(Mock.GET_XTK_COUNTER_RESPONSE)); // GetEntityIfMoreRecentResponse - counter
-            client._transport.mockReturnValueOnce(Mock.INCREASE_VALUE_RESPONSE); // xtk:counter#IncreaseValue
+            client._unregisterAllCacheChangeListeners();
+            expect(client._cacheChangeListeners.length).toBe(0);
+            const listener = new Listener();
 
-            client._transport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE); // GetEntityIfMoreRecentResponse - session
-            client._transport.mockReturnValueOnce(Mock.FILE_RES_WRITE_RESPONSE); // xtk:session#Write
+            client._registerCacheChangeListener(listener);
+            expect(client._cacheChangeListeners.length).toBe(1);
 
-            client._transport.mockReturnValueOnce(Promise.resolve(Mock.GET_FILERES_QUERY_SCHEMA_RESPONSE)); // GetEntityIfMoreRecentResponse - fileRes
-            client._transport.mockReturnValueOnce(Promise.resolve(Mock.PUBLISH_IF_NEEDED_RESPONSE)); // xtk:fileRes#PublishIfNeeded
+            const listener2 = new Listener();
 
-            client._transport.mockReturnValueOnce(Promise.resolve(Mock.GET_URL_RESPONSE)); // xtk:fileRes#GetURL
+            client._unregisterCacheChangeListener(listener2);
+            expect(client._cacheChangeListeners.length).toBe(1);
+            client._unregisterAllCacheChangeListeners();
+        });
 
-            // Call upload
-            const result = await client.fileUploader.upload({
-                type: 'text/html',
-                size: 12345
-            })
-            expect(result).toMatchObject({
-                md5: "d8e8fca2dc0f896fd7cb4cb0031ba249",
-                name: "test.txt",
-                size: 12345,
-                type: "text/html",
-                url: "http://hello.com"
-            });
-        })
-
-        it('throws error with dependant failures', async () => {
-            // Create a mock client and logon
+        it("Should be notify when register", async () => {
             const client = await Mock.makeClient();
             client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
 
-            // Mock the upload protocol
-            // - the upload.jsp (which returns the content of an iframe and JS to eval)
-            // - call to xtk:counter#IncreaseValue (first, retrieve the schema xtk:counter then call the function)
-            // - call to xtk:session#Write
-            // - call to xtk:fileRes#PublishIfNeeded
-            // - call to xtk:fileRes#GetURL
+            class Listener {
+                constructor() {
+                    this._schemas = {};
+                }
+                add(schemaId) {
+                    this._schemas[schemaId] = "1";
+                }
 
-            client._transport.mockReturnValueOnce(Promise.reject(`Some error occurred!!!`));  // upload.jsp
+                invalidateCacheItem(schemaId) {
+                    this._schemas[schemaId] = undefined;
+                }
+                getSchema(schemaId) {
+                    return this._schemas[schemaId];
+                }
+            }
 
-            client._transport.mockReturnValueOnce(Promise.resolve(Mock.GET_XTK_COUNTER_RESPONSE));  // GetEntityIfMoreRecentResponse - counter
-            client._transport.mockReturnValueOnce(Mock.INCREASE_VALUE_RESPONSE);
+            client._unregisterAllCacheChangeListeners();
+            
+            const listener = new Listener();
+            listener.add("nms:recipient");
+            listener.add("xtk:operator");
 
-            client._transport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);  // GetEntityIfMoreRecentResponse - session
-            client._transport.mockReturnValueOnce(Mock.FILE_RES_WRITE_RESPONSE);  // xtk:session#Write
+            client._registerCacheChangeListener(listener);
+            client._notifyCacheChangeListeners("nms:recipient");
+            expect(listener.getSchema("nms:recipient")).toBeUndefined();
+            expect(listener.getSchema("xtk:operator")).toBe("1");
 
-            client._transport.mockReturnValueOnce(Promise.resolve(Mock.GET_FILERES_QUERY_SCHEMA_RESPONSE));  // GetEntityIfMoreRecentResponse - fileRes
-            client._transport.mockReturnValueOnce(Promise.resolve(Mock.PUBLISH_IF_NEEDED_RESPONSE));  // xtk:fileRes#PublishIfNeeded
-
-            client._transport.mockReturnValueOnce(Promise.resolve(Mock.GET_URL_RESPONSE));  // xtk:fileRes#GetURL
-            // For async handling
-            expect.assertions(1)
-            // Call upload
-            await client.fileUploader.upload({
-                type: 'text/html',
-                size: 12345
-            }).catch((ex) => {
-                expect(ex.message).toMatch('500 - Error 16384: SDK-000013 "Unknown error while uploading file. 500 - Error calling method \'/nl/jsp/uploadFile.jsp\': Some error occurred!!!');
-            })
-
-        })
-
-        it('throws error with not okay response', async () => {
-            // Create a mock client and logon
-            const client = await Mock.makeClient();
-            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
-            await client.NLWS.xtkSession.logon();
-
-            // Mock the upload protocol
-            // - the upload.jsp (which returns the content of an iframe and JS to eval)
-            // - call to xtk:counter#IncreaseValue (first, retrieve the schema xtk:counter then call the function)
-            // - call to xtk:session#Write
-            // - call to xtk:fileRes#PublishIfNeeded
-            // - call to xtk:fileRes#GetURL
-
-            client._transport.mockReturnValueOnce(Promise.resolve(`Some error occurred!!!`));  // upload.jsp
-
-            client._transport.mockReturnValueOnce(Promise.resolve(Mock.GET_XTK_COUNTER_RESPONSE));  // GetEntityIfMoreRecentResponse - counter
-            client._transport.mockReturnValueOnce(Mock.INCREASE_VALUE_RESPONSE);
-
-            client._transport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);  // GetEntityIfMoreRecentResponse - session
-            client._transport.mockReturnValueOnce(Mock.FILE_RES_WRITE_RESPONSE);  // xtk:session#Write
-
-            client._transport.mockReturnValueOnce(Promise.resolve(Mock.GET_FILERES_QUERY_SCHEMA_RESPONSE));  // GetEntityIfMoreRecentResponse - fileRes
-            client._transport.mockReturnValueOnce(Promise.resolve(Mock.PUBLISH_IF_NEEDED_RESPONSE));  // xtk:fileRes#PublishIfNeeded
-
-            client._transport.mockReturnValueOnce(Promise.resolve(Mock.GET_URL_RESPONSE));  // xtk:fileRes#GetURL
-            // For async handling
-            expect.assertions(1)
-            // Call upload
-            await client.fileUploader.upload({
-                type: 'text/html',
-                size: 12345
-            }).catch((ex) => {
-                expect(ex.message).toMatch('500 - Error 16384: SDK-000013 "Unknown error while uploading file. Some error occurred!!!');
-            })
-
-        })
-
-        it('throws error with malformed response', async () => {
-            // Create a mock client and logon
-            const client = await Mock.makeClient();
-            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
-            await client.NLWS.xtkSession.logon();
-
-            // Mock the upload protocol
-            // - the upload.jsp (which returns the content of an iframe and JS to eval)
-            // - call to xtk:counter#IncreaseValue (first, retrieve the schema xtk:counter then call the function)
-            // - call to xtk:session#Write
-            // - call to xtk:fileRes#PublishIfNeeded
-            // - call to xtk:fileRes#GetURL
-
-            client._transport.mockReturnValueOnce(Promise.resolve(`Ok 
-        <html xmlns="http://www.w3.org/1999/xhtml">
-            <head>
-              <script type="text/javascript">if(window.parent&&window.parent.document.controller&&"function"==typeof window.parent.document.controller.uploadFileCallBack){window.parent.document.controller.uploadFileCallBack([])}</script>
-            </head>
-        <body></body>
-        </html>`)); // upload.jsp
-
-            client._transport.mockReturnValueOnce(Promise.resolve(Mock.GET_XTK_COUNTER_RESPONSE));  // GetEntityIfMoreRecentResponse - counter
-            client._transport.mockReturnValueOnce(Mock.INCREASE_VALUE_RESPONSE);
-
-            client._transport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);  // GetEntityIfMoreRecentResponse - session
-            client._transport.mockReturnValueOnce(Mock.FILE_RES_WRITE_RESPONSE);  // xtk:session#Write
-
-            client._transport.mockReturnValueOnce(Promise.resolve(Mock.GET_FILERES_QUERY_SCHEMA_RESPONSE));  // GetEntityIfMoreRecentResponse - fileRes
-            client._transport.mockReturnValueOnce(Promise.resolve(Mock.PUBLISH_IF_NEEDED_RESPONSE));  // xtk:fileRes#PublishIfNeeded
-
-            client._transport.mockReturnValueOnce(Promise.resolve(Mock.GET_URL_RESPONSE));  // xtk:fileRes#GetURL
-            // For async handling
-            expect.assertions(1)
-            // Call upload
-            await client.fileUploader.upload({
-                type: 'text/html',
-                size: 12345
-            }).catch((ex) => {
-                expect(ex.message).toMatch('500 - Error 16384: SDK-000013 "Unknown error while uploading file. MALFORMED DATA');
-            })
-
-        })
-    })
+            client._unregisterCacheChangeListener(listener);
+        });
+    });
 });
