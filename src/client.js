@@ -603,7 +603,7 @@ const fileUploader = (client) => {
                                 if (!data || data.length !== 1) {
                                     // Tried to replicate the logic for file upload functionality written here:
                                     // https://git.corp.adobe.com/Campaign/ac/blob/v6-master/wpp/xtk/web/dce/uploader.js
-                                    reject(CampaignException.FILE_UPLOAD_FAILED('MALFORMED DATA' + data.toString()));
+                                    reject(CampaignException.FILE_UPLOAD_FAILED(file.name, 'MALFORMED DATA' + data.toString()));
                                 }
                                 const counter = await _increaseValue(); // Step 1
                                 const fileRes = _createFileRes(counter, data)
@@ -625,10 +625,10 @@ const fileUploader = (client) => {
                         iframe.contentWindow.document.write(html);
                         iframe.contentWindow.document.close();
                     }).catch((ex) => {
-                        reject(CampaignException.FILE_UPLOAD_FAILED(ex));
+                        reject(CampaignException.FILE_UPLOAD_FAILED(file.name, ex));
                     })
                 } catch (ex) {
-                    reject(CampaignException.FILE_UPLOAD_FAILED(ex));
+                    reject(CampaignException.FILE_UPLOAD_FAILED(file.name, ex));
                 }
             })
         }

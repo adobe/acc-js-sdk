@@ -3262,9 +3262,10 @@ describe('ACC Client', function () {
             // Call upload
             await client.fileUploader.upload({
                 type: 'text/html',
-                size: 12345
+                size: 12345,
+                name: 'abcd.txt'
             }).catch((ex) => {
-                expect(ex.message).toMatch('500 - Error 16384: SDK-000013 "Unknown error while uploading file. 500 - Error calling method \'/nl/jsp/uploadFile.jsp\': Some error occurred!!!');
+                expect(ex.message).toMatch('500 - Error 16384: SDK-000013 "Failed to upload file abcd.txt. 500 - Error calling method \'/nl/jsp/uploadFile.jsp\': Some error occurred!!!');
             })
 
         })
@@ -3299,9 +3300,10 @@ describe('ACC Client', function () {
             // Call upload
             await client.fileUploader.upload({
                 type: 'text/html',
-                size: 12345
+                size: 12345,
+                name: 'abcd.txt'
             }).catch((ex) => {
-                expect(ex.message).toMatch('500 - Error 16384: SDK-000013 "Unknown error while uploading file. Some error occurred!!!');
+                expect(ex.message).toMatch('500 - Error 16384: SDK-000013 "Failed to upload file abcd.txt. Some error occurred!!!');
             })
 
         })
@@ -3342,9 +3344,10 @@ describe('ACC Client', function () {
             // Call upload
             await client.fileUploader.upload({
                 type: 'text/html',
-                size: 12345
+                size: 12345,
+                name: 'abcd.txt'
             }).catch((ex) => {
-                expect(ex.message).toMatch('500 - Error 16384: SDK-000013 "Unknown error while uploading file. MALFORMED DATA');
+                expect(ex.message).toMatch('500 - Error 16384: SDK-000013 "Failed to upload file abcd.txt. MALFORMED DATA');
             })
 
         })

@@ -38,7 +38,7 @@ const { Util } = require("./util.js");
   static NOT_LOGGED_IN(call, details)                     { return new CampaignException(     call, 400, 16384, `SDK-000010 Cannot call API because client is not logged in`, details); }
   static DECRYPT_ERROR(details)                           { return new CampaignException(undefined, 400, 16384, `SDK-000011 "Cannot decrypt password: password marker is missing`, details); }
   static SESSION_EXPIRED()                                { return new CampaignException(undefined, 401, 16384, `SDK-000012 "Session has expired or is invalid. Please reconnect.`); }
-  static FILE_UPLOAD_FAILED(details)                      { return new CampaignException(undefined, 500, 16384, `SDK-000013 "Unknown error while uploading file`, details); }
+  static FILE_UPLOAD_FAILED(name, details)                { return new CampaignException(undefined, 500, 16384, `SDK-000013 "Failed to upload file ${name}`, details); }
 
 
   /**
