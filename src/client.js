@@ -514,7 +514,7 @@ const fileUploader = (client) => {
         upload: (file) => {
             return new Promise((resolve, reject) => {
                 if (!Util.isBrowser()) {
-                    reject('File uploading is only supported in browser based calls.');
+                    reject(CampaignException.FILE_UPLOAD_FAILED(file.name, 'File uploading is only supported in browser based calls.'));
                 }
                 try {
                     const data = new FormData()
