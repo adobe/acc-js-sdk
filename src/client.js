@@ -505,67 +505,6 @@ class ConnectionParameters {
  */
 const fileUploader = (client) => {
 
-    /**
-     * Will call the SOAP method(IncreaseValue) to increase the counter
-     * The counter will be used to create the internalName(unique identifier) for the uploaded file.
-     * @returns {Promise<number>}
-     * @private
-     */
-    const _increaseValue = async () => {
-        const xtkCounter = await client.NLWS.xtkCounter.increaseValue({name: 'xtkResource'});
-        return xtkCounter
-    }
-
-    /**
-     * This will create and return fileRes object
-     * @param counter
-     * @param data
-     * @returns {{originalName: string, internalName: string, fileName: string, useMd5AsFilename: string, xtkschema: string, storageType: number, label: string, md5: string}}
-     * @private
-     */
-    const _createFileRes = (counter, data) => {
-        return {
-            internalName: 'RES' + counter,
-            md5: data[0].md5,
-            label: data[0].fileName,
-            fileName: data[0].fileName,
-            originalName: data[0].fileName,
-            useMd5AsFilename: '1',
-            storageType: 5,
-            xtkschema: 'xtk:fileRes'
-
-        }
-    }
-
-    /**
-     * This will write fileRes object in the system.
-     * @param fileRes
-     * @returns {Promise<void>}
-     * @private
-     */
-    const _write = async (fileRes) => {
-        await client.NLWS.xtkSession.write(fileRes);
-    }
-
-    /**
-     * This will call the SOAP method(PublishIfNeeded) to publish the fileRes object
-     * @param fileRes
-     * @returns {Promise<void>}
-     * @private
-     */
-    const _publishIfNeeded = async (fileRes) => {
-        await client.NLWS.xtkFileRes.create(fileRes).publishIfNeeded();
-    }
-
-    /**
-     * This Will call the SOAP method(GetURL) which returns the public URL of the uploaded file.
-     * @param fileRes
-     * @returns {Promise<string>}
-     * @private
-     */
-    const _getPublicUrl = async (fileRes) => {
-        return await client.NLWS.xtkFileRes.create(fileRes).getURL()
-    }
     return {
         /**
          * This is the exposed/public method for fileUploader instance which will do all the processing related to the upload process internally and returns the promise containing all the required data.
@@ -605,11 +544,21 @@ const fileUploader = (client) => {
                                     // https://git.corp.adobe.com/Campaign/ac/blob/v6-master/wpp/xtk/web/dce/uploader.js
                                     reject(CampaignException.FILE_UPLOAD_FAILED(file.name, 'MALFORMED DATA' + data.toString()));
                                 }
-                                const counter = await _increaseValue(); // Step 1
-                                const fileRes = _createFileRes(counter, data)
-                                await _write(fileRes); // Step 2
-                                await _publishIfNeeded(fileRes) // Step 3
-                                const url = await _getPublicUrl(fileRes) // Step 3
+                                const counter = await client.NLWS.xtkCounter.increaseValue({name: 'xtkResource'});
+                                const fileRes= {
+                                    internalName: 'RES' + counter,
+                                    md5: data[0].md5,
+                                    label: data[0].fileName,
+                                    fileName: data[0].fileName,
+                                    originalName: data[0].fileName,
+                                    useMd5AsFilename: '1',
+                                    storageType: 5,
+                                    xtkschema: 'xtk:fileRes'
+
+                                }
+                                await client.NLWS.xtkSession.write(fileRes);
+                                await client.NLWS.xtkFileRes.create(fileRes).publishIfNeeded();
+                                const url = await client.NLWS.xtkFileRes.create(fileRes).getURL()
                                 resolve({
                                     name: data[0].fileName,
                                     md5: data[0].md5,
