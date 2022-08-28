@@ -96,6 +96,10 @@ governing permissions and limitations under the License.
          * @param {integer} refreshFrequency frequency of the refresh in ms (default value is 10,000 ms)
          */
         startAutoRefresh(refreshFrequency) {
+            this._client._trackEvent('CACHE_REFRESHER//start', undefined, {
+                cacheSchemaId: this._cacheSchemaId,
+                refreshFrequency: refreshFrequency
+            });
             if (this._intervalId != null) {
                 clearInterval(this._intervalId);
             }
@@ -109,6 +113,9 @@ governing permissions and limitations under the License.
             if (this._running) {
                 // This call is already running and maybe taking a long time to complete. Do not make things
                 // harder and just skip this run
+                this._client._trackEvent('CACHE_REFRESHER//skip', undefined, {
+                    cacheSchemaId: this._cacheSchemaId,
+                });
                 return;
             }
             this._running = true;
@@ -117,9 +124,16 @@ governing permissions and limitations under the License.
             } catch(ex) {
                 if (ex.errorCode === "SDK-000010") {
                     // client is not logged, this is not an error.
+                    this._client._trackEvent('CACHE_REFRESHER//loggedOff', undefined, {
+                        cacheSchemaId: this._cacheSchemaId,
+                    });
                     return;
                 }
-                console.warn(`Failed to refresh cache for ${this._cacheSchemaId}`, ex);
+                this._client._trackEvent('CACHE_REFRESHER//error', undefined, {
+                    cacheSchemaId: this._cacheSchemaId,
+                    error: ex,
+                });
+            console.warn(`Failed to refresh cache for ${this._cacheSchemaId}`, ex);
             }
               finally {
                 this._running = false;
@@ -166,6 +180,12 @@ governing permissions and limitations under the License.
             if (!this._client.isLogged())
               throw CampaignException.NOT_LOGGED_IN(soapCall, `Cannot call GetModifiedEntities: session not connected`);
 
+            const event = this._client._trackEvent('CACHE_REFRESHER//tick', undefined, {
+                cacheSchemaId: this._cacheSchemaId,
+                lastTime: this._lastTime,
+                buildNumber: this._buildNumber
+            });
+
             // Do a soap call GetModifiedEntities instead of xtksession.GetModifiedEnties because we don't want to go through methodCache 
             // which might not contain the method GetModifiedEntities just after a build updgrade from a old version of acc 
             return this._client._makeSoapCall(soapCall)
@@ -175,13 +195,17 @@ governing permissions and limitations under the License.
                     doc = that._client._toRepresentation(doc, 'xml');
                     that._lastTime = DomUtil.getAttributeAsString(doc, "time"); // save time to be able to send it as an attribute in the next soap call
                     that._buildNumber = DomUtil.getAttributeAsString(doc, "buildNumber");
-                    that._refresh(doc);
+                    that._refresh(doc, event);
                     that._refresherStateCache.put("time", that._lastTime);
                     that._refresherStateCache.put("buildNumber", that._buildNumber);
                 })
                 .catch((ex) => {
                     // if the method GetModifiedEntities is not found in this acc version we disable the autoresfresh of the cache
                     if (soapCall.methodName == "GetModifiedEntities" && ex.errorCode == "SOP-330006") {
+                        this._client._trackEvent('CACHE_REFRESHER//abort', undefined, {
+                            cacheSchemaId: this._cacheSchemaId,
+                            error: ex,
+                        });
                         this.stopAutoRefresh();
                     } else {
                         throw ex;
@@ -190,8 +214,9 @@ governing permissions and limitations under the License.
         }
 
         // Refresh Cache : remove entities modified recently listed in xmlDoc
-        _refresh(xmlDoc) {
+        _refresh(xmlDoc, event) {
             const clearCache = XtkCaster.asBoolean(DomUtil.getAttributeAsString(xmlDoc, "emptyCache"));
+            const evicted = [];
             if (clearCache == true) {
                 this._cache.clear();
             } else {
@@ -200,6 +225,7 @@ governing permissions and limitations under the License.
                     const pkSchemaId = DomUtil.getAttributeAsString(child, "pk");
                     const schemaId = DomUtil.getAttributeAsString(child, "schema");
                     if (schemaId === this._cacheSchemaId) {
+                        evicted.push(schemaId);
                         this._cache.remove(pkSchemaId);
                         // Notify listeners to refresh in SchemaCache
                         if (schemaId === "xtk:schema") {
@@ -210,12 +236,23 @@ governing permissions and limitations under the License.
                     child = DomUtil.getNextSiblingElement(child);
                 }
             }
+
+            this._client._trackEvent('CACHE_REFRESHER//response', event, {
+                cacheSchemaId: this._cacheSchemaId,
+                clearCache: clearCache,
+                evicted: evicted
+            });
         }
 
         /**
          * Stop auto refreshing the cache
          */
         stopAutoRefresh() {
+            if (this._intervalId) {
+                this._client._trackEvent('CACHE_REFRESHER//stop', undefined, {
+                    cacheSchemaId: this._cacheSchemaId,
+                });
+            }
             clearInterval(this._intervalId);
             this._intervalId = null;
         }

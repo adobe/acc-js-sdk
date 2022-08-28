@@ -179,6 +179,16 @@ class Cache {
       this._cache = {};
       // timestamp at which the cache was last cleared
       this._lastCleared = this._loadLastCleared();
+      this._stats = {
+        reads: 0,
+        writes: 0,
+        removals: 0,
+        clears: 0,
+        memoryHits: 0,
+        storageHits: 0,
+        loads: 0,
+        saves: 0,
+      };
   }
 
   // Load timestamp at which the cache was last cleared
@@ -195,6 +205,7 @@ class Cache {
 
   // Load from local storage
   _load(key) {
+    this._stats.loads = this._stats.loads + 1;
     const json = this._storage.getItem(key);
     if (!json || !json.cachedAt || json.cachedAt <= this._lastCleared) {
       this._storage.removeItem(key);
@@ -205,6 +216,7 @@ class Cache {
 
   // Save to local storage
   _save(key, cached) {
+    this._stats.saves = this._stats.saves + 1;
     this._storage.setItem(key, cached);
   }
 
@@ -216,6 +228,7 @@ class Cache {
   _getIfActive(key) {
     // In memory cache?
     var cached = this._cache[key];
+    var memoryHit = !!cached;
     // Local storage ?
     if (!cached) {
       cached = this._load(key);
@@ -228,6 +241,8 @@ class Cache {
       this._remove(key);
       return undefined;
     }
+    this._stats.memoryHits = this._stats.memoryHits + 1;
+    if (!memoryHit) this._stats.storageHits = this._stats.storageHits + 1;
     return cached.value;
   }
 
@@ -237,6 +252,7 @@ class Cache {
    * @returns {*} the cached value, or undefined if not found
    */
   get() {
+      this._stats.reads = this._stats.reads + 1;
       const key = this._makeKeyFn.apply(this, arguments);
       const cached = this._getIfActive(key);
       return cached;
@@ -249,6 +265,7 @@ class Cache {
    * @returns {CachedObject} a cached object containing the cached value
    */
    put() {
+      this._stats.writes = this._stats.writes + 1;
       const value = arguments[arguments.length -1];
       const key = this._makeKeyFn.apply(this, arguments);
       const now = Date.now();
@@ -264,6 +281,7 @@ class Cache {
    * as cleared so that subsequent get operation will not actually return any data cached in persistent storage
    */
   clear() {
+      this._stats.clears = this._stats.clears + 1;
       this._cache = {};
       this._saveLastCleared();
   }
@@ -273,6 +291,7 @@ class Cache {
    * @param {string} key the key to remove
    */
   remove(key) {
+      this._stats.removals = this._stats.removals + 1;
       delete this._cache[key];
       this._remove(key);
   }
