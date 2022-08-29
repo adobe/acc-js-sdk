@@ -3117,7 +3117,7 @@ describe('ACC Client', function () {
         it('is not supported', async ()=> {
             const client = await Mock.makeClient();
             expect(client.fileUploader).toBeDefined()
-            await expect(client.fileUploader.upload()).rejects.toEqual('File uploading is only supported in browser based calls.')
+            await expect(client.fileUploader.upload({name: 'abcd.txt'})).rejects.toMatchObject({"cause": undefined, "detail": "File uploading is only supported in browser based calls.", "errorCode": "SDK-000013", "faultCode": 16384, "faultString": "\"Failed to upload file abcd.txt", "message": "500 - Error 16384: SDK-000013 \"Failed to upload file abcd.txt. File uploading is only supported in browser based calls.", "methodCall": undefined, "name": "CampaignException", "statusCode": 500})
         })
     })
 
@@ -3347,7 +3347,7 @@ describe('ACC Client', function () {
                 size: 12345,
                 name: 'abcd.txt'
             }).catch((ex) => {
-                expect(ex.message).toMatch('500 - Error 16384: SDK-000013 "Failed to upload file abcd.txt. MALFORMED DATA');
+                expect(ex.message).toMatch('500 - Error 16384: SDK-000013 "Failed to upload file abcd.txt. Malformed data:');
             })
 
         })
