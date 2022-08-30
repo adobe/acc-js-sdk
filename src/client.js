@@ -519,8 +519,8 @@ const fileUploader = (client) => {
                     if (!Util.isBrowser()) {
                         throw 'File uploading is only supported in browser based calls.';
                     }
-                    const data = new FormData()
-                    data.append('file_noMd5', file)
+                    const data = new FormData();
+                    data.append('file_noMd5', file);
                     //TODO: Needs to be refactored after cookie issue get resolved.
                     client._makeHttpCall({
                         url: `${client._connectionParameters._endpoint}/nl/jsp/uploadFile.jsp`,
@@ -557,19 +557,19 @@ const fileUploader = (client) => {
                                     storageType: 5,
                                     xtkschema: 'xtk:fileRes'
 
-                                }
+                                };
                                 await client.NLWS.xtkSession.write(fileRes);
                                 await client.NLWS.xtkFileRes.create(fileRes).publishIfNeeded();
-                                const url = await client.NLWS.xtkFileRes.create(fileRes).getURL()
+                                const url = await client.NLWS.xtkFileRes.create(fileRes).getURL();
                                 resolve({
                                     name: data[0].fileName,
                                     md5: data[0].md5,
                                     type: file.type,
                                     size: file.size,
                                     url: url
-                                })
+                                });
                             }
-                        }
+                        };
                         const html = `<body>${okay}</body>`;
                         document.body.appendChild(iframe);
                         iframe.contentWindow.document.open();
@@ -577,14 +577,14 @@ const fileUploader = (client) => {
                         iframe.contentWindow.document.close();
                     }).catch((ex) => {
                         reject(CampaignException.FILE_UPLOAD_FAILED(file.name, ex));
-                    })
+                    });
                 } catch (ex) {
                     reject(CampaignException.FILE_UPLOAD_FAILED(file.name, ex));
                 }
-            })
+            });
         }
-    }
-}
+    };
+};
 
 
 // ========================================================================================
