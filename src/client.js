@@ -513,10 +513,10 @@ const fileUploader = (client) => {
          */
         upload: (file) => {
             return new Promise((resolve, reject) => {
-                if (!Util.isBrowser()) {
-                    reject(CampaignException.FILE_UPLOAD_FAILED(file.name, 'File uploading is only supported in browser based calls.'));
-                }
                 try {
+                    if (!Util.isBrowser()) {
+                        throw 'File uploading is only supported in browser based calls.';
+                    }
                     const data = new FormData()
                     data.append('file_noMd5', file)
                     //TODO: Needs to be refactored after cookie issue get resolved.
