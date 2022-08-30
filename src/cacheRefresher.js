@@ -63,18 +63,21 @@ governing permissions and limitations under the License.
         }
     }
 
+    /**
+    * A class to refresh regulary a Cache every n seconds, by sending a query to get the last modified entities.
+    * The refresh mechanism can be activated by calling client.startRefreshCaches().
+    * This mechanism depends on the xtk:session:GetModifiedEntities API which is introduced in ACC 8.4 and above.
+    *
+    * @class
+    * @constructor
+    * @memberof Campaign
+    * @param {Cache} cache is the cache to refresh
+    * @param {Client} client is the ACC API Client.
+    * @param {string} cacheSchemaId is the id of the schema present in the cache to be refreshed every 10 seconds
+    * @param {string} rootKey is used as the root key of cache items in the refresher state cache
+    */
     class CacheRefresher {
 
-        /**
-        * A class to refresh regulary a Cache every n seconds, by sending a query to get the last modified entities.
-        * The refresh mechanism can be activated by calling client.startRefreshCaches().
-        * This mechanism depends on the xtk:session:GetModifiedEntities API which is introduced in ACC 8.4 and above.
-        *
-        * @param {Cache} cache is the cache to refresh
-        * @param {Client} client is the ACC API Client.
-        * @param {string} cacheSchemaId is the id of the schema present in the cache to be refreshed every 10 seconds
-        * @param {string} rootKey is used as the root key of cache items in the refresher state cache
-        */
         constructor(cache, client, cacheSchemaId, rootKey) {
             const connectionParameters = client._connectionParameters;
             this._cache = cache;

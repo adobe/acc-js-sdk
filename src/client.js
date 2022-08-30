@@ -501,7 +501,8 @@ class ConnectionParameters {
 /**
  * File Uploader API for JS SDK(Currently available only in browsers)
  * @private
- * @memberOf Campaign
+ * @ignore
+ * @memberof Campaign
  * @param client
  * @returns {{upload: (function(*=): Promise<{name: string, md5: string, type: string, size: string, url: string}>)}}
  */
@@ -510,6 +511,7 @@ const fileUploader = (client) => {
     return {
         /**
          * This is the exposed/public method for fileUploader instance which will do all the processing related to the upload process internally and returns the promise containing all the required data.
+         * @ignore
          * @param file, where file is an instance of [File](https://developer.mozilla.org/en-US/docs/Web/API/File)
          * @returns {Promise<{name: string, md5: string, type: string, size: string, url: string}>}
          */
