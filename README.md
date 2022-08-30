@@ -1556,22 +1556,6 @@ var event = await query.executeQuery();
 console.log(`>> Event: ${JSON.stringify(event)}`);
 ```
 
-# File Upload
-This API is used to upload a file and returns the metadata. Currently, this API is supported only in browsers. 
-```
-const metadata = await client.fileUploader.upload(file); 
-```
-where file is an instance of [File](https://developer.mozilla.org/en-US/docs/Web/API/File), will return
-```
-{
-  name: <name-referenced-by-file-object>, // file.name
-  md5: <md5-of-file-content>, 
-  type: <mime-type-referenced-by-file-object>, // file.type
-  size: <size-in-bytes-referenced-by-file-object>, // file.size
-  url: <public-url-of-uploaded-file>
-}
-```
-
 # Application
 
 The `application` object can be obtained from a client, and will mimmic the Campaing `application` object (https://docs.adobe.com/content/help/en/campaign-classic/technicalresources/api/c-Application.html)
