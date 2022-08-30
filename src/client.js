@@ -500,6 +500,8 @@ class ConnectionParameters {
 
 /**
  * File Uploader API for JS SDK(Currently available only in browsers)
+ * @private
+ * @memberOf Campaign
  * @param client
  * @returns {{upload: (function(*=): Promise<{name: string, md5: string, type: string, size: string, url: string}>)}}
  */
