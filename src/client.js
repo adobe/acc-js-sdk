@@ -10,14 +10,14 @@ OF ANY KIND, either express or implied. See the License for the specific languag
 governing permissions and limitations under the License.
 */
 (function() {
-"use strict";    
-    
+"use strict";
+
 
 /**********************************************************************************
- * 
+ *
  * ACC JavaScript SDK
  * See README.md for usage
- * 
+ *
  *********************************************************************************/
 
 /**
@@ -39,16 +39,16 @@ const { Util } = require('./util.js');
 
 /**
  * @namespace Campaign
- * 
+ *
  * @typedef {Object} SessionInfo
  * @memberOf Campaign
- * 
+ *
  * @typedef {Object} RedirStatus
  * @memberOf Campaign
- * 
+ *
  * @typedef {Object} PingStatus
  * @memberOf Campaign
- * 
+ *
  * @typedef {Object} McPingStatus
  * @memberOf Campaign
  *
@@ -59,14 +59,14 @@ const { Util } = require('./util.js');
 
 /**
  * Java Script Proxy handler for an XTK object. An XTK object is one constructed with the following syntax:
- * 
+ *
  * <code>
  * NLWS.xtkQueryDef.create(...)
  * </code>
- * 
+ *
  * Any Xtk methods can be called directly on such an object using this proxy handler which will lookup
  * the method definition and manage parameters marshalling and SOAP call
- * 
+ *
  * @private
  * @memberof Campaign
  */
@@ -84,20 +84,20 @@ const xtkObjectHandler = {
         return new Proxy(caller, {
             apply: function(target, thisArg, argumentsList) {
                 return target(thisArg, argumentsList);
-            }                
+            }
         });
 
     }
 };
 
 /**
- * Java Script Proxy handler for NLWS. 
+ * Java Script Proxy handler for NLWS.
  * The proxy resolves constructs such as
- * 
+ *
  * <code>
  * result = await client.NLWS.xtkSession.getServerTime();
  * </code>
- * 
+ *
  * To get a handler, call the `clientHandler` function and optionally pass a representation.
  * If no representation is passed (undefined), the representation set at the client level
  * will be used, which is the default behavior.
@@ -195,7 +195,7 @@ const clientHandler = (representation, headers, pushDownOptions) => {
                     return new Proxy(caller, {
                         apply: function(target, thisArg, argumentsList) {
                             return target(thisArg, argumentsList);
-                        }                
+                        }
                     });
                 }
             });
@@ -207,7 +207,7 @@ const clientHandler = (representation, headers, pushDownOptions) => {
 // Campaign credentials
 // ========================================================================================
 
-/** 
+/**
  * @class
  * @constructor
  * @private
@@ -223,7 +223,7 @@ class Credentials {
      * @param {string} securityToken the security token. Will use an empty token if not specified
      */
     constructor(type, sessionToken, securityToken) {
-        if (type != "UserPassword" && type != "ImsServiceToken" && type != "SessionToken" && 
+        if (type != "UserPassword" && type != "ImsServiceToken" && type != "SessionToken" &&
             type != "AnonymousUser" && type != "SecurityToken" && type != "BearerToken")
             throw CampaignException.INVALID_CREDENTIALS_TYPE(type);
         this._type = type;
@@ -237,7 +237,7 @@ class Credentials {
 
     /**
      * For "UserPassword" type credentials, return the user name
-     * 
+     *
      * @private
      * @returns {string} the user name
      */
@@ -251,7 +251,7 @@ class Credentials {
 
     /**
      * For "UserPassword" type credentials, return the user password
-     * 
+     *
      * @private
      * @returns {string} the user password
      */
@@ -289,7 +289,7 @@ class Credentials {
     * @property {number} timeout - Can be set to change the HTTP call timeout. Value is passed in ms.
     * @memberOf Campaign
  */
- 
+
 
 /**
  * @class
@@ -331,7 +331,7 @@ class ConnectionParameters {
 
         this._options.entityCacheTTL = options.entityCacheTTL || 1000*300; // 5 mins
         this._options.methodCacheTTL = options.methodCacheTTL || 1000*300; // 5 mins
-        this._options.optionCacheTTL = options.optionCacheTTL || 1000*300; // 5 mins 
+        this._options.optionCacheTTL = options.optionCacheTTL || 1000*300; // 5 mins
         this._options.traceAPICalls = options.traceAPICalls === null || options.traceAPICalls ? !!options.traceAPICalls : false;
         this._options.transport = options.transport || request;
 
@@ -343,10 +343,10 @@ class ConnectionParameters {
             storage = options.storage;
             try {
                 if (!storage)
-                    storage = localStorage;    
+                    storage = localStorage;
             } catch (ex) {
                 /* ignore error if localStorage not found */
-            }    
+            }
         }
         this._options._storage = storage;
         this._options.refreshClient = options.refreshClient;
@@ -362,7 +362,7 @@ class ConnectionParameters {
 
     /**
      * Creates connection parameters for a Campaign instance, using a user name and password
-     * 
+     *
      * @param {string} endpoint The campaign endpoint (URL)
      * @param {string} user The user name
      * @param {string} password The user password
@@ -376,7 +376,7 @@ class ConnectionParameters {
 
     /**
      * Creates connection parameters for a Campaign instance from bearer token
-     * 
+     *
      * @param {string} endpoint The campaign endpoint (URL)
      * @param {string} bearerToken IMS bearer token
      * @param {*} options connection options
@@ -388,7 +388,7 @@ class ConnectionParameters {
     }
     /**
      * Creates connection parameters for a Campaign instance, using an IMS service token and a user name (the user to impersonate)
-     * 
+     *
      * @param {string} endpoint The campaign endpoint (URL)
      * @param {string} user The user name
      * @param {string} serviceToken The IMS service token
@@ -402,7 +402,7 @@ class ConnectionParameters {
 
     /**
      * Creates connection parameters for a Campaign instance, using a session token
-     * 
+     *
      * @static
      * @param {string} endpoint The campaign endpoint (URL)
      * @param {string} sessionToken The session token
@@ -419,7 +419,7 @@ class ConnectionParameters {
      * Typically, called when embedding the SDK in Campaign: the session token will be
      * passed automatically as a cookie, so only the security token is actually needed
      * to logon
-     * 
+     *
      * @static
      * @param {string} endpoint The campaign endpoint (URL)
      * @param {string} securityToken The session token
@@ -433,7 +433,7 @@ class ConnectionParameters {
 
     /**
      * Creates connection parameters for a Campaign instance for an anonymous user
-     * 
+     *
      * @param {string} endpoint The campaign endpoint (URL)
      * @param {Campaign.ConnectionOptions} options connection options
      * @returns {ConnectionParameters} a ConnectionParameters object which can be used to create a Client
@@ -448,7 +448,7 @@ class ConnectionParameters {
      * Creates connection parameters for a Campaign instance, using an external account. This can be used to connect
      * to a mid-sourcing instance, or to a message center instance. This function will lookup the external account,
      * and use its credentials to get connection parameters to the corresponding Campaign instance
-     * 
+     *
      * @param {Client} client The Campaign Client from which to lookup the external account (normally, a connected client to the marketing instance)
      * @param {string} extAccountName The name of the external account. Only mid-sourcing accounts (type 3) are supported
      * @returns {ConnectionParameters} a ConnectionParameters object which can be used to create a Client
@@ -495,6 +495,100 @@ class ConnectionParameters {
 }
 
 // ========================================================================================
+// File Uploader
+// ========================================================================================
+
+/**
+ * File Uploader API for JS SDK(Currently available only in browsers)
+ * @private
+ * @memberOf Campaign
+ * @param client
+ * @returns {{upload: (function(*=): Promise<{name: string, md5: string, type: string, size: string, url: string}>)}}
+ */
+const fileUploader = (client) => {
+
+    return {
+        /**
+         * This is the exposed/public method for fileUploader instance which will do all the processing related to the upload process internally and returns the promise containing all the required data.
+         * @param file, where file is an instance of [File](https://developer.mozilla.org/en-US/docs/Web/API/File)
+         * @returns {Promise<{name: string, md5: string, type: string, size: string, url: string}>}
+         */
+        upload: (file) => {
+            console.log(`fileuploader.upload is an experimental feature and is not currently fully functional. It is work in progress and will change in the future.`);
+            return new Promise((resolve, reject) => {
+                try {
+                    if (!Util.isBrowser()) {
+                        throw 'File uploading is only supported in browser based calls.';
+                    }
+                    const data = new FormData();
+                    data.append('file_noMd5', file);
+                    //TODO: Needs to be refactored after cookie issue get resolved.
+                    client._makeHttpCall({
+                        url: `${client._connectionParameters._endpoint}/nl/jsp/uploadFile.jsp`,
+                        processData: false,
+                        credentials: 'include',
+                        method: 'POST',
+                        body: data,
+                        headers: {
+                            'x-security-token': client._securityToken,
+                            'Cookie': '__sessiontoken=' + client._sessionToken,
+                        }
+                    }).then((okay) => {
+                        if (!okay.startsWith('Ok')) {
+                            throw okay;
+                        }
+                        const iframe = document.createElement('iframe');
+                        iframe.style.height = 0;
+                        iframe.style.width = 0;
+                        document.controller = { // Written to  support https://git.corp.adobe.com/Campaign/ac/blob/v6-master/nl/datakit/nl/jsp/uploadFile.jsp
+                            uploadFileCallBack: async (data) => {
+                                if (!data || data.length !== 1) {
+                                    // Tried to replicate the logic for file upload functionality written here:
+                                    // https://git.corp.adobe.com/Campaign/ac/blob/v6-master/wpp/xtk/web/dce/uploader.js
+                                    return reject(CampaignException.FILE_UPLOAD_FAILED(file.name, 'Malformed data:' + data.toString()));
+                                }
+                                const counter = await client.NLWS.xtkCounter.increaseValue({name: 'xtkResource'});
+                                const fileRes= {
+                                    internalName: 'RES' + counter,
+                                    md5: data[0].md5,
+                                    label: data[0].fileName,
+                                    fileName: data[0].fileName,
+                                    originalName: data[0].fileName,
+                                    useMd5AsFilename: '1',
+                                    storageType: 5,
+                                    xtkschema: 'xtk:fileRes'
+
+                                };
+                                await client.NLWS.xtkSession.write(fileRes);
+                                await client.NLWS.xtkFileRes.create(fileRes).publishIfNeeded();
+                                const url = await client.NLWS.xtkFileRes.create(fileRes).getURL();
+                                resolve({
+                                    name: data[0].fileName,
+                                    md5: data[0].md5,
+                                    type: file.type,
+                                    size: file.size,
+                                    url: url
+                                });
+                            }
+                        };
+                        const html = `<body>${okay}</body>`;
+                        document.body.appendChild(iframe);
+                        iframe.contentWindow.document.open();
+                        iframe.contentWindow.document.write(html);
+                        iframe.contentWindow.document.close();
+                    }).catch((ex) => {
+                        reject(CampaignException.FILE_UPLOAD_FAILED(file.name, ex));
+                    });
+                } catch (ex) {
+                    reject(CampaignException.FILE_UPLOAD_FAILED(file.name, ex));
+                }
+            });
+        }
+    };
+};
+
+
+// ========================================================================================
 // ACC Client
 // ========================================================================================
 
@@ -509,7 +603,7 @@ class Client {
     /**
      * ACC API Client.
      * Do not create directly, use SDK.init instead
-     * 
+     *
      * @param {Campaign.SDK} sdk is the global sdk object used to create the client
      * @param {Campaign.ConnectionParameters} user user name, for instance admin
      */
@@ -522,9 +616,9 @@ class Client {
         this._sessionToken = undefined;
         this._securityToken = undefined;
         this._installedPackages = {};     // package set (key and value = package id, ex: "nms:amp")
-        
+
         this._secretKeyCipher = undefined;
-        
+
         this._storage = connectionParameters._options._storage;
         // TODO late cache initiallzation because need XtkDatabaseId / instance name
         var instanceKey = connectionParameters._endpoint || "";
@@ -546,13 +640,18 @@ class Client {
         this._refreshClient = connectionParameters._options.refreshClient;
 
         // expose utilities
+        /**
+         * File Uploader API
+         * @type {{upload: (function(*=): Promise<{name: string, md5: string, type: string, size: string, url: string}>)}}
+         */
+        this.fileUploader = fileUploader(this);
 
-        /** 
+        /**
          * Accessor to DOM helpers
          * @type {XML.DomUtil}
          */
         this.DomUtil = DomUtil;
-        /** 
+        /**
          * Accessor to a XtkCaster
          * @type {XtkCaster}
          */
@@ -582,7 +681,7 @@ class Client {
     /**
      * Override the transport. By default, we are using axios, but this can be customised.
      * See transport.js and documentation in the README for more details
-     * @param {*} transport 
+     * @param {*} transport
      */
     setTransport(transport) {
         this._transport = transport;
@@ -590,7 +689,7 @@ class Client {
 
     /**
      * Get the user agent string to use in all HTTP requests
-     * 
+     *
      * @returns {string} the user agent string
      */
     _getUserAgentString() {
@@ -600,7 +699,7 @@ class Client {
 
     /**
      * Convert an XML object into a representation
-     * 
+     *
      * @private
      * @param {DOMElement} xml the XML DOM element to convert
      * @param {string} representation the expected representation ('xml', 'BadgerFish', or 'SimpleJson'). If not set, will use the current representation
@@ -617,7 +716,7 @@ class Client {
 
     /**
      * Convert to an XML object from a representation
-     * 
+     *
      * @private
      * @param {string} rootName the name of the root XML element
      * @param {XML.XtkObject} entity the object to convert
@@ -637,7 +736,7 @@ class Client {
 
     /**
      * Convert between 2 representations
-     * 
+     *
      * @private
      * @param {XML.XtkObject} entity the object to convert
      * @param {string} fromRepresentation the source representation ('xml', 'BadgerFish', or 'SimpleJson').
@@ -655,7 +754,7 @@ class Client {
 
     /**
      * Compare two representations
-     * 
+     *
      * @private
      * @param {string} rep1 the first representation ('xml', 'BadgerFish', or 'SimpleJson')
      * @param {string} rep2 the second representation ('xml', 'BadgerFish', or 'SimpleJson')
@@ -671,7 +770,7 @@ class Client {
 
     /**
      * Activate / deactivate tracing of API calls
-     * 
+     *
      * @param {boolean} trace indicates whether to activate tracing or not
      */
     traceAPICalls(trace) {
@@ -710,7 +809,7 @@ class Client {
     _trackEvent(eventName, parentEvent, payload) {
         try {
             if (payload && payload.name === 'CampaignException') {
-                payload = { 
+                payload = {
                     detail: payload.detail,
                     errorCode: payload.errorCode,
                     faultCode: payload.faultCode,
@@ -737,7 +836,7 @@ class Client {
                 this._lastStatsReport = now;
                 this._trackInternalStats();
             }
-        
+
             return event;
         } catch (error) {
             console.info(`Failed to track observability event`, error);
@@ -767,7 +866,7 @@ class Client {
 
     /**
      * Is the client logged?
-     * 
+     *
      * @returns {boolean} a boolean indicating if the client is logged or not
      */
     isLogged() {
@@ -802,7 +901,7 @@ class Client {
 
     /**
      * Prepares a SOAP call, including authentication, headers...
-     * 
+     *
      * @private
      * @param {string} urn is the API name space, usually the schema. For instance xtk:session
      * @param {string} method is the method to call, for instance Logon
@@ -811,8 +910,8 @@ class Client {
      * parameters should be set
      */
     _prepareSoapCall(urn, method, internal, extraHttpHeaders, pushDownOptions) {
-        const soapCall = new SoapMethodCall(this._transport, urn, method, 
-                                            this._sessionToken, this._securityToken, 
+        const soapCall = new SoapMethodCall(this._transport, urn, method,
+                                            this._sessionToken, this._securityToken,
                                             this._getUserAgentString(),
                                             Object.assign({}, this._connectionParameters._options, pushDownOptions),
                                             extraHttpHeaders);
@@ -830,7 +929,7 @@ class Client {
     async _retrySoapCall(soapCall) {
         soapCall.retry = false;
         soapCall._retryCount = soapCall._retryCount + 1;
-        var newClient = await this._refreshClient(this); 
+        var newClient = await this._refreshClient(this);
         soapCall.finalize(newClient._soapEndPoint(), newClient);
         const safeCallData = Util.trim(soapCall.request.data);
         if (this._traceAPICalls) {
@@ -870,7 +969,7 @@ class Client {
     /**
      * After a SOAP method call has been prepared with '_prepareSoapCall', and parameters have been added,
      * this function actually executes the SOAP call
-     * 
+     *
      * @private
      * @param {SOAP.SoapMethodCall} soapCall the SOAP method to call
      */
@@ -879,12 +978,12 @@ class Client {
         if (soapCall.requiresLogon() && !that.isLogged())
             throw CampaignException.NOT_LOGGED_IN(soapCall, `Cannot execute SOAP call ${soapCall.urn}#${soapCall.methodName}: you are not logged in. Use the Logon function first`);
         soapCall.finalize(this._soapEndPoint());
-        
+
         const safeCallData = Util.trim(soapCall.request.data);
         if (that._traceAPICalls)
             console.log(`SOAP//request ${safeCallData}`);
         that._notifyObservers((observer) => observer.onSOAPCall && observer.onSOAPCall(soapCall, safeCallData) );
-        
+
         const event = this._trackEvent('SOAP//request', undefined, {
             urn: soapCall.urn,
             methodName: soapCall.methodName,
@@ -1009,10 +1108,10 @@ class Client {
             else {
                 const bearerToken = credentials._bearerToken;
                 soapCall.writeString("bearerToken", bearerToken);
-            } 
+            }
             return this._makeSoapCall(soapCall).then(function() {
                 const sessionToken = soapCall.getNextString();
-                
+
                 that._sessionInfo = soapCall.getNextDocument();
                 that._installedPackages = {};
                 const userInfo = DomUtil.findElement(that._sessionInfo, "userInfo");
@@ -1024,7 +1123,7 @@ class Client {
                     that._installedPackages[name] = name;
                     pack = DomUtil.getNextSiblingElement(pack);
                 }
-                
+
                 const securityToken = soapCall.getNextString();
                 soapCall.checkNoMoreArgs();
                 // Sanity check: we should have both a session token and a security token.
@@ -1047,7 +1146,7 @@ class Client {
 
     /**
      * Get details about the session (assumes client is logged)
-     * 
+     *
      * @param {string} representation the expected representation. If not set, will use the default client representation
      * @returns {Campaign.SessionInfo} details about the session
      */
@@ -1089,7 +1188,7 @@ class Client {
 
     /**
      * Get the value of an option
-     * 
+     *
      * @param {string} name is the option name, for instance XtkDatabaseId
      * @param {boolean} useCache indicates whether to use the cache or not. Default is true
      * @return the option value, casted in the expected data type. If the option does not exist, it will return null.
@@ -1109,7 +1208,7 @@ class Client {
     /**
      * Set an option value. Creates the option if it does not exists. Update the option
      * if it exists already
-     * 
+     *
      * @param {string} name the option name
      * @param {*} rawValue the value to set
      * @param {string} description the optional description of the option
@@ -1126,7 +1225,7 @@ class Client {
         var attName = XtkCaster._variantStorageAttribute(type);
         if (!attName) {
             // could not infer the storage type of the attribute to use to store the value (when option did not exist before) => assume string
-            type = 6; 
+            type = 6;
             attName = "stringValue";
         }
         var doc = { xtkschema: "xtk:option", _operation: "insertOrUpdate", _key: "@name", name: name, dataType: type };
@@ -1215,7 +1314,7 @@ class Client {
 
     /**
      * Tests if a package is installed
-     * 
+     *
      * @param {string} packageId the package identifier, for instance: "nms:amp"
      * @param {string} optionalName if set, the first parameter will be interpreted as the namespace (ex: "nms") and the second as the name, ex: "amp"
      * @returns {boolean} a boolean indicating if the package is installed or not
@@ -1230,8 +1329,8 @@ class Client {
 
     /**
      * Obtains a cipher that can be used to encrypt/decrypt passwords, using the database secret key.
-     * This is used for example for mid-sourcing account. 
-     * 
+     * This is used for example for mid-sourcing account.
+     *
      * @private
      * @deprecated since version 1.0.0
      */
@@ -1246,10 +1345,10 @@ class Client {
 
     /**
      * Gets an entity, such as a schema, a source schema, a form, a navtree, etc. Each Campaign entity has a MD5 which is used to determine
-     * if an entity has changed or not. The GetEntityIfMoreRecent SOAP call can use this MD5 to avoid returning entities that did not 
+     * if an entity has changed or not. The GetEntityIfMoreRecent SOAP call can use this MD5 to avoid returning entities that did not
      * actually changed. Currently, the SDK, however is not able to use the MD5 and will perform a SOAP call every time the function is
      * called and return the whole entity
-     * 
+     *
      * @param {string} entityType is the type of entity requested, such as "xtk:schema", "xtk:srcSchema", "xtk:navtree", "xtk:form", etc.
      * @param {string} fullName is the fully qualified name of the entity (i.e. <namespace>:<name>)
      * @param {string} representation the expected representation, or undefined to set the default
@@ -1272,7 +1371,7 @@ class Client {
 
     /**
      * Get a compiled schema (not a source schema) definition as a DOM or JSON object depending on hte current representation
-     * 
+     *
      * @param {string} schemaId the schema id, such as "xtk:session", or "nms:recipient"
      * @param {string} representation an optional representation of the schema: "BadgerFish", "SimpleJson" or "xml". If not set, we'll use the client default representation
      * @param {boolean} internal indicates an "internal" call, i.e. a call performed by the SDK itself rather than the user of the SDK. For instance, the SDK will dynamically load schemas to find method definitions
@@ -1294,7 +1393,7 @@ class Client {
 
     /**
      * Get the definition of a system enumeration (SysEnum). Will be returned as JSON or XML depending on the client 'representation' attribute
-     * 
+     *
      * @param {string} enumName
      * @param {string} optionalStartSchemaOrSchemaName
      * @returns {XML.XtkObject} the enumeration definition in the current representation
@@ -1320,13 +1419,13 @@ class Client {
             if (index == -1)
                 throw CampaignException.BAD_PARAMETER("optionalStartSchemaOrSchemaName", optionalStartSchemaOrSchemaName, `getEnum expects a valid schema name. '${optionalStartSchemaOrSchemaName}' is not a valid name.`);
             optionalStartSchemaOrSchemaName = await this.getSchema(optionalStartSchemaOrSchemaName, undefined, true);
-            if (!optionalStartSchemaOrSchemaName) 
+            if (!optionalStartSchemaOrSchemaName)
                 throw CampaignException.BAD_PARAMETER("optionalStartSchemaOrSchemaName", optionalStartSchemaOrSchemaName, `Schema '${optionalStartSchemaOrSchemaName}' not found.`);
         }
-        else 
+        else
             throw CampaignException.BAD_PARAMETER("optionalStartSchemaOrSchemaName", optionalStartSchemaOrSchemaName, `getEnum expects a valid schema name wich is a string. Given ${typeof optionalStartSchemaOrSchemaName} instead`);
 
-        const schema = optionalStartSchemaOrSchemaName; 
+        const schema = optionalStartSchemaOrSchemaName;
         for (const e of EntityAccessor.getChildElements(schema, "enumeration")) {
             const n = EntityAccessor.getAttributeAsString(e, "name");
             if (n == enumName)
@@ -1336,7 +1435,7 @@ class Client {
 
     /**
      * Call Campaign SOAP method
-     * 
+     *
      * @private
      * @param {string} methodName is the method to call. In order to be more JavaScript friendly, the first char can be lower-cased
      * @param {*} callContext the call context)
@@ -1347,7 +1446,7 @@ class Client {
         const that = this;
         const result = [];
         const schemaId = callContext.schemaId;
-        
+
         var schema = await that.getSchema(schemaId, "xml", true);
         if (!schema)
             throw CampaignException.SOAP_UNKNOWN_METHOD(schemaId, methodName, `Schema '${schemaId}' not found`);
@@ -1442,7 +1541,7 @@ class Client {
                 param = DomUtil.getNextSiblingElement(param, "param");
             }
         }
-        
+
         return that._makeSoapCall(soapCall).then(function() {
             if (!isStatic) {
                 // Non static methods, such as xtk:query#SelectAll return a element named "entity" which is the object itself on which
@@ -1574,7 +1673,7 @@ class Client {
     /**
      * Tests if the Campaign redirection server is up (/r/test).
      * Does not require a logged client
-     * 
+     *
      * @returns {Campaign.RedirStatus} an object describing the status of the redirection server
      */
     async test() {
@@ -1592,12 +1691,12 @@ class Client {
 
     /**
      * Ping the Campaign server (/nl/jsp/ping.jsp)
-     * 
+     *
      * @returns {Campaign.PingStatus} an object describing the server status
      */
     async ping() {
         const request = {
-            url: `${this._connectionParameters._endpoint}/nl/jsp/ping.jsp`, 
+            url: `${this._connectionParameters._endpoint}/nl/jsp/ping.jsp`,
             headers: {
                 'X-Security-Token': this._securityToken,
                 'Cookie': '__sessiontoken=' + this._sessionToken
@@ -1623,12 +1722,12 @@ class Client {
     /**
      * Ping a Message Center Campaign server (/nl/jsp/mcPing.jsp).
      * Assumes Message Center is installed
-     * 
+     *
      * @returns {Campaign.McPingStatus} an object describing Message Center server status
      */
     async mcPing() {
         const request = {
-            url: `${this._connectionParameters._endpoint}/nl/jsp/mcPing.jsp`, 
+            url: `${this._connectionParameters._endpoint}/nl/jsp/mcPing.jsp`,
             headers: {
                 'X-Security-Token': this._securityToken,
                 'Cookie': '__sessiontoken=' + this._sessionToken
@@ -1642,7 +1741,7 @@ class Client {
         const root = doc.documentElement;
         var status = lines[0].trim();
         if (status != "") root.setAttribute("status", status);
-        
+
         var rtCount;
         var threshold;
         if (status == "Error") {

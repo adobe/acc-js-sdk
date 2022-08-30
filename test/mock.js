@@ -12,37 +12,37 @@ governing permissions and limitations under the License.
 
 
 /**********************************************************************************
- * 
+ *
  * Mock functions for unit tests
- * 
+ *
  *********************************************************************************/
- const sdk = require('../src/index.js');
- const crypto = require("crypto");
+const sdk = require('../src/index.js');
+const crypto = require("crypto");
 
- const makeKey = () => {
-    const a = [];
-    for (let i=0; i<32; i++) {
-        a.push(Math.floor(crypto.randomInt(0, 256))); 
-    }
-    const buffer = Buffer.from(a);
-    const s = buffer.toString('base64');
-    return s;
- }
+const makeKey = () => {
+  const a = [];
+  for (let i=0; i<32; i++) {
+    a.push(Math.floor(crypto.randomInt(0, 256)));
+  }
+  const buffer = Buffer.from(a);
+  const s = buffer.toString('base64');
+  return s;
+}
 
- async function makeAnonymousClient(options) {
-    const connectionParameters = sdk.ConnectionParameters.ofAnonymousUser("http://acc-sdk:8080", options);
-    const client = await sdk.init(connectionParameters);
-    if (!options || !options.transport) // allow tests to explicitely set the transport
-        client._transport = jest.fn();
-    return client;
+async function makeAnonymousClient(options) {
+  const connectionParameters = sdk.ConnectionParameters.ofAnonymousUser("http://acc-sdk:8080", options);
+  const client = await sdk.init(connectionParameters);
+  if (!options || !options.transport) // allow tests to explicitely set the transport
+    client._transport = jest.fn();
+  return client;
 }
 
 async function makeClient(options) {
-    const connectionParameters = sdk.ConnectionParameters.ofUserAndPassword("http://acc-sdk:8080", "admin", "admin", options);
-    const client = await sdk.init(connectionParameters);
-    if (!options || !options.transport) // allow tests to explicitely set the transport
-        client._transport = jest.fn();
-    return client;
+  const connectionParameters = sdk.ConnectionParameters.ofUserAndPassword("http://acc-sdk:8080", "admin", "admin", options);
+  const client = await sdk.init(connectionParameters);
+  if (!options || !options.transport) // allow tests to explicitely set the transport
+    client._transport = jest.fn();
+  return client;
 }
 
 /**
@@ -51,16 +51,16 @@ async function makeClient(options) {
  * @returns an array of logged messages
  */
 async function withMockConsole(fn) {
-    const logs = [];
-    jest.spyOn(console, 'log').mockImplementation((message) => {
-        logs.push(message);
-    });
-    try {
-        await fn();
-        return logs;
-    } finally {
-        console.log.mockRestore();   
-    }
+  const logs = [];
+  jest.spyOn(console, 'log').mockImplementation((message) => {
+    logs.push(message);
+  });
+  try {
+    await fn();
+    return logs;
+  } finally {
+    console.log.mockRestore();
+  }
 }
 
 const R_TEST = Promise.resolve(`<redir status='OK' date='2021-08-27 08:02:07.963-07' build='9236' sha1='cc45440' instance='xxx_mkt_prod1' sourceIP='193.104.215.11' host='xxxol.campaign.adobe.com' localHost='xxxol-mkt-prod1-1'/>`);
@@ -91,7 +91,7 @@ const LOGON_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
     </SOAP-ENV:Body>
     </SOAP-ENV:Envelope>`);
 
-    const BEARER_LOGON_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
+const BEARER_LOGON_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
     <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:xtk:session' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
     <SOAP-ENV:Body>
         <BearerTokenLogonResponse xmlns='urn:xtk:session' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
@@ -302,7 +302,7 @@ const GET_XTK_QUERY_SCHEMA_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
     </SOAP-ENV:Envelope>`);
 
 const GET_MID_EXT_ACCOUNT_RESPONSE = (encryptedPassword) => {
-    return  Promise.resolve(`<?xml version='1.0'?>
+  return  Promise.resolve(`<?xml version='1.0'?>
     <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:xtk:queryDef' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
     <SOAP-ENV:Body>
         <ExecuteQueryResponse xmlns='urn:xtk:queryDef' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
@@ -315,7 +315,7 @@ const GET_MID_EXT_ACCOUNT_RESPONSE = (encryptedPassword) => {
 }
 
 const GET_BAD_EXT_ACCOUNT_RESPONSE = (encryptedPassword) => {
-    return Promise.resolve(`<?xml version='1.0'?>
+  return Promise.resolve(`<?xml version='1.0'?>
     <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:xtk:queryDef' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
     <SOAP-ENV:Body>
         <ExecuteQueryResponse xmlns='urn:xtk:queryDef' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
@@ -328,7 +328,7 @@ const GET_BAD_EXT_ACCOUNT_RESPONSE = (encryptedPassword) => {
 }
 
 const GET_SECRET_KEY_OPTION_RESPONSE = (key) => {
-    return Promise.resolve(`<?xml version='1.0'?>
+  return Promise.resolve(`<?xml version='1.0'?>
     <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:xtk:session' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
     <SOAP-ENV:Body>
         <GetOptionResponse xmlns='urn:xtk:session' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
@@ -354,7 +354,7 @@ const GET_LOGON_MID_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
         </LogonResponse>
     </SOAP-ENV:Body>
     </SOAP-ENV:Envelope>`);
-    
+
 const GET_TSTCNX_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
     <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:xtk:session' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
     <SOAP-ENV:Body>
@@ -432,7 +432,7 @@ const GET_XTK_ALL_SCHEMA_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
         </GetEntityIfMoreRecentResponse>
     </SOAP-ENV:Body>
     </SOAP-ENV:Envelope>`);
-    
+
 const GET_XTK_ALL_TYPES_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
     <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:wpp:default' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
     <SOAP-ENV:Body>
@@ -473,7 +473,7 @@ const GET_USER_INFO_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
         </pUserInfo>
     </GetUserInfoResponse>
     </SOAP-ENV:Body>
-    </SOAP-ENV:Envelope>`); 
+    </SOAP-ENV:Envelope>`);
 
 const GET_MISSING_SCHEMA_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
     <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:wpp:default' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
@@ -483,8 +483,8 @@ const GET_MISSING_SCHEMA_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
             </pdomDoc>
         </GetEntityIfMoreRecentResponse>
     </SOAP-ENV:Body>
-    </SOAP-ENV:Envelope>`); 
-   
+    </SOAP-ENV:Envelope>`);
+
 const GET_XTK_WORKFLOW_SCHEMA_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
     <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:wpp:default' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
     <SOAP-ENV:Body>
@@ -635,6 +635,114 @@ const GETMODIFIEDENTITIES_CLEAR_RESPONSE = Promise.resolve(`<?xml version='1.0'?
         </GetModifiedEntitiesResponse>
     </SOAP-ENV:Body>
     </SOAP-ENV:Envelope>`);
+const GET_XTK_COUNTER_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
+        <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:wpp:default' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
+        <SOAP-ENV:Body>
+            <GetEntityIfMoreRecentResponse xmlns='urn:wpp:default' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
+                <pdomDoc xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
+                    <schema name="counter" namespace="xtk" xtkschema="xtk:schema">
+                        <element name="counter"></element>
+                        <methods>
+                        <method name="IncreaseValue" static="true">
+                          <parameters>
+                            <param name="name" type="string" label="Name" desc="Counter name"/>
+                            <param name="value" type="long" inout="out" label="Value" desc="New value of counter"/>
+                          </parameters>
+                        </method>
+                      </methods>                   
+                       </schema>
+                </pdomDoc>
+            </GetEntityIfMoreRecentResponse>
+        </SOAP-ENV:Body>
+        </SOAP-ENV:Envelope>`);
+
+const GET_FILERES_QUERY_SCHEMA_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
+        <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:wpp:default' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
+        <SOAP-ENV:Body>
+            <GetEntityIfMoreRecentResponse xmlns='urn:wpp:default' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
+                <pdomDoc xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
+                    <schema name="fileRes" namespace="xtk" xtkschema="xtk:schema">
+                        <element name="fileRes"></element>
+                        <methods>
+                        <method name="PublishIfNeeded">
+                        </method>
+                        <method name="GetURL">
+                        <parameters>
+                          <param name="url" type="string" inout="out"/>
+                        </parameters>
+                          </method>
+                    </methods>                   
+                       </schema>
+                </pdomDoc>
+            </GetEntityIfMoreRecentResponse>
+        </SOAP-ENV:Body>
+        </SOAP-ENV:Envelope>`);
+
+const INCREASE_VALUE_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
+<SOAP-ENV:Envelope
+    xmlns:xsd='http://www.w3.org/2001/XMLSchema'
+    xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance'
+    xmlns:ns='urn:xtk:counter'
+    xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
+    <SOAP-ENV:Body>
+        <IncreaseValueResponse
+            xmlns='urn:xtk:counter' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
+            <plValue xsi:type='xsd:int'>1</plValue>
+        </IncreaseValueResponse>
+    </SOAP-ENV:Body>
+</SOAP-ENV:Envelope>
+
+`);
+
+const FILE_RES_WRITE_RESPONSE = Promise.resolve(`<?xml version='1.0'?><SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:wpp:default' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'><SOAP-ENV:Body><GetEntityIfMoreRecentResponse xmlns='urn:wpp:default' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'><pdomDoc xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'><schema _cs="Sessions to the application server (xtk)" created="2022-02-03 12:55:02.621Z" createdBy-id="0" dependingSchemas="" desc="Sessions to the application server" entitySchema="xtk:schema" img="" implements="xtk:persist" label="Sessions to the application server" labelSingular="Session" lastModified="2022-07-11 02:29:30.026Z" library="true" mappingType="xmlFile" md5="9D716FE59E174E87C5BA8A834DD4B11B" modifiedBy-id="0" name="session" namespace="xtk" xtkschema="xtk:schema">
+
+  <interface async="true" label="Persistence" name="persist">
+    <method name="Write" static="true">
+      <help>Update an entity</help>
+      <parameters>
+        <param desc="Document of difference" name="doc" type="DOMDocument"/>
+      </parameters>
+      <example><para>A simple recipient creation:</para>
+    \t  <programlisting>
+xtk.session.Write(
+    {recipient: {xtkschema: "nms:recipient", firstName: "Raul", lastName: "Endymion"}})
+      \t</programlisting>
+      </example>
+    </method>
+  </interface>
+
+</schema></pdomDoc></GetEntityIfMoreRecentResponse></SOAP-ENV:Body></SOAP-ENV:Envelope>
+
+`);
+
+const PUBLISH_IF_NEEDED_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
+<SOAP-ENV:Envelope
+    xmlns:xsd='http://www.w3.org/2001/XMLSchema'
+    xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance'
+    xmlns:ns='urn:xtk:fileRes'
+    xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
+    <SOAP-ENV:Body>
+        <PublishIfNeededResponse
+            xmlns='urn:xtk:fileRes' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
+        </PublishIfNeededResponse>
+    </SOAP-ENV:Body>
+</SOAP-ENV:Envelope>`);
+
+const GET_URL_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
+<SOAP-ENV:Envelope
+    xmlns:xsd='http://www.w3.org/2001/XMLSchema'
+    xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance'
+    xmlns:ns='urn:xtk:fileRes'
+    xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
+    <SOAP-ENV:Body>
+        <GetURLResponse
+            xmlns='urn:xtk:fileRes' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
+            <pUrl xsi:type='xsd:string'>http://hello.com</pUrl>
+        </GetURLResponse>
+    </SOAP-ENV:Body>
+</SOAP-ENV:Envelope>`);
+
+
 
 
 const GETMODIFIEDENTITIES_SCHEMA_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
@@ -721,5 +829,11 @@ exports.Mock = {
   GETMODIFIEDENTITIES_CLEAR_RESPONSE: GETMODIFIEDENTITIES_CLEAR_RESPONSE,
   GETMODIFIEDENTITIES_SCHEMA_RESPONSE: GETMODIFIEDENTITIES_SCHEMA_RESPONSE,
   GETMODIFIEDENTITIES_UNDEFINED_RESPONSE: GETMODIFIEDENTITIES_UNDEFINED_RESPONSE,
-  GETMODIFIEDENTITIES_ERROR_RESPONSE: GETMODIFIEDENTITIES_ERROR_RESPONSE
+  GETMODIFIEDENTITIES_ERROR_RESPONSE: GETMODIFIEDENTITIES_ERROR_RESPONSE,
+  GET_XTK_COUNTER_RESPONSE: GET_XTK_COUNTER_RESPONSE,
+  GET_FILERES_QUERY_SCHEMA_RESPONSE: GET_FILERES_QUERY_SCHEMA_RESPONSE,
+  INCREASE_VALUE_RESPONSE: INCREASE_VALUE_RESPONSE,
+  FILE_RES_WRITE_RESPONSE: FILE_RES_WRITE_RESPONSE,
+  PUBLISH_IF_NEEDED_RESPONSE: PUBLISH_IF_NEEDED_RESPONSE,
+  GET_URL_RESPONSE: GET_URL_RESPONSE
 }

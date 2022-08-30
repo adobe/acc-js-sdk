@@ -1556,8 +1556,6 @@ var event = await query.executeQuery();
 console.log(`>> Event: ${JSON.stringify(event)}`);
 ```
 
-
-
 # Application
 
 The `application` object can be obtained from a client, and will mimmic the Campaing `application` object (https://docs.adobe.com/content/help/en/campaign-classic/technicalresources/api/c-Application.html)
