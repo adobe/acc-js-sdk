@@ -422,6 +422,12 @@ class XtkSchemaNode {
          */
         this.nodePath = this._getNodePath(true)._path;
 
+        if (this.isRoot != undefined) {
+            this.labelid = "schema." + this.schema.id.replaceAll(":", "").replaceAll("/", ".") + this.nodePath.replaceAll("/",".") + ".label";
+            console.log(this.labelid);
+            this.descriptionid = "schema." + this.schema.id.replaceAll(":", "").replaceAll("/", ".") + this.nodePath.replaceAll("/", ".") + ".desc";
+        }
+
         /**
          * Element of type "link" has an array of XtkJoin
          * @type {XtkJoin[]}
@@ -903,7 +909,7 @@ class XtkSchemaNode {
  * @param {Campaign.XtkEnumerationType} baseType the enumeration type (often "string" or "byte")
  * @memberof Campaign
  */
-function XtkEnumerationValue(xml, baseType) {
+function XtkEnumerationValue(xml, baseType, parentlabelid) {
     /**
      * The value (unique) name
      * @type {string}
@@ -914,6 +920,7 @@ function XtkEnumerationValue(xml, baseType) {
      * @type {string}
      */
     this.label = EntityAccessor.getAttributeAsString(xml, "label");
+    this.labelid = parentlabelid + '.' + this.name + '.label';
     /**
      * A human friendly long description of the value
      * @type {string}
@@ -997,25 +1004,28 @@ class XtkEnumeration {
          */
          this.values = new ArrayMap();
 
-        var defaultValue = EntityAccessor.getAttributeAsString(xml, "default");
+         var defaultValue = EntityAccessor.getAttributeAsString(xml, "default");
+         this.labelid = `${schemaId}.${this.name}`.replaceAll(':','');
 
-        for (var child of EntityAccessor.getChildElements(xml, "value")) {
-            const e = new XtkEnumerationValue(child, this.baseType);
-            this.values._push(e.name, e);
-            if (e.image != "") this.hasImage = true;
-            const stringValue = EntityAccessor.getAttributeAsString(child, "value");
-            if (defaultValue == stringValue)
-                this.default = e;
-        }
+         for (var child of EntityAccessor.getChildElements(xml, "value")) {
+             const e = new XtkEnumerationValue(child, this.baseType, this.labelid);
+             this.values._push(e.name, e);
+             if (e.image != "") this.hasImage = true;
+             const stringValue = EntityAccessor.getAttributeAsString(child, "value");
+             if (defaultValue == stringValue)
+                 this.default = e;
+         }
 
-        propagateImplicitValues(this, true);
+         this.labelid = `${schemaId}.${this.name}.label`.replaceAll(':', '');
+         propagateImplicitValues(this, true);
 
         /**
          * The system enumeration name, without the schema id prefix
          * @type {string}
          */
          this.shortName = this.name;
-        this.name = `${schemaId}:${this.shortName}`;
+         this.name = `${schemaId}:${this.shortName}`;
+         
     }
 }
 
