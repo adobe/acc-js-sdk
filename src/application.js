@@ -423,9 +423,7 @@ class XtkSchemaNode {
         this.nodePath = this._getNodePath(true)._path;
 
         if (this.isRoot != undefined) {
-            this.labelid = "schema." + this.schema.id.replaceAll(":", "").replaceAll("/", ".") + this.nodePath.replaceAll("/",".") + ".label";
-            console.log(this.labelid);
-            this.descriptionid = "schema." + this.schema.id.replaceAll(":", "").replaceAll("/", ".") + this.nodePath.replaceAll("/", ".") + ".desc";
+          this._buildIds();
         }
 
         /**
@@ -638,6 +636,33 @@ class XtkSchemaNode {
         // Propagate implicit values
         // Name -> Label -> Desc -> HelpText
         propagateImplicitValues(this);
+    }
+
+    /* create two ids that are identifying in an unique way the node label and 
+     * the node description*/
+    _buildIds() {
+        var stack = [];
+        var node = this;
+        while (node && node.parent) {
+            stack.push(node);
+            node = node.parent;
+        }
+        if (node.isRoot != undefined)
+            stack.push(node);
+
+        var currentnode = stack.pop();
+        var labelpath = this.schema.id.replaceAll(":", "__");
+        while (currentnode) {
+            if (currentnode.isAttribute) {
+                labelpath = labelpath + "__" + currentnode.name.replaceAll('@', '');
+            } else {
+                labelpath = labelpath + "__e____" + currentnode.name;
+            }
+            currentnode = stack.pop();
+        }
+
+        this.labelid = labelpath + "__@label";
+        this.descriptionid = labelpath + "__@desc";
     }
 
     /**
@@ -920,7 +945,7 @@ function XtkEnumerationValue(xml, baseType, parentlabelid) {
      * @type {string}
      */
     this.label = EntityAccessor.getAttributeAsString(xml, "label");
-    this.labelid = parentlabelid + '.' + this.name + '.label';
+    this.labelid = parentlabelid + '__' + this.name + '__@label';
     /**
      * A human friendly long description of the value
      * @type {string}
@@ -1005,7 +1030,7 @@ class XtkEnumeration {
          this.values = new ArrayMap();
 
          var defaultValue = EntityAccessor.getAttributeAsString(xml, "default");
-         this.labelid = `${schemaId}.${this.name}`.replaceAll(':','');
+         this.labelid = `${schemaId}__${this.name}`.replaceAll(':','__');
 
          for (var child of EntityAccessor.getChildElements(xml, "value")) {
              const e = new XtkEnumerationValue(child, this.baseType, this.labelid);
@@ -1016,7 +1041,7 @@ class XtkEnumeration {
                  this.default = e;
          }
 
-         this.labelid = `${schemaId}.${this.name}.label`.replaceAll(':', '');
+         this.labelid = `${schemaId}__${this.name}__@label`.replaceAll(':', '');
          propagateImplicitValues(this, true);
 
         /**
