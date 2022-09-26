@@ -542,6 +542,17 @@ describe('ACC Client', function () {
             await expect(client.getSysEnum("xtk:all:encryptionType")).rejects.toMatchObject({ errorCode: "SDK-000004" });
         });
 
+        it('Should newInstance', async () => {
+            const client = await Mock.makeClient();
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_DELIVERY_NEW_INSTANCE_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+            const instance = await client.newInstance("xtk:persist|nms:delivery", { xtkschema: "nms:delivery", label: "test", messageType: "0" });
+            expect(instance).toHaveProperty("label");
+            expect(instance).toHaveProperty("id");
+        });
+
     });
 
     describe("Should return sys enum definition with the right representation", () => {
