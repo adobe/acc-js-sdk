@@ -1779,7 +1779,7 @@ class Client {
     }
 
     /**
-     *
+     * Creates and returns a new instance of the specified entity
      * @param entityType
      * @param entity
      * @returns {Promise<XML.XtkObject>}
