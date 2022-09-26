@@ -1786,7 +1786,8 @@ class Client {
      */
     async newInstance(entityType, entity) {
         const that = this;
-        const xml= this._fromRepresentation('delivery', entity, 'SimpleJson')
+        const root = entityType.split(":").pop();
+        const xml= this._fromRepresentation(root, entity, 'SimpleJson')
         const soapCall = this._prepareSoapCall(entityType, "NewInstance", false, this._connectionParameters._options.extraHttpHeaders);
         soapCall.writeDocument('entity', xml);
         return this._makeSoapCall(soapCall).then(function() {
