@@ -425,7 +425,7 @@ class XtkSchemaNode {
         if (this.isRoot != undefined) {
           this._buildLocalizationIds();
         } else {
-          this._translationId = this.schema.id.replaceAll(":", "__");
+          this._translationId = this.schema.id.replace(":", "__");
           this.labelTranslationId = this._translationId + "__@label";
           this.descriptionTranslationId = this._translationId + "__@desc";
         }
@@ -642,10 +642,20 @@ class XtkSchemaNode {
         propagateImplicitValues(this);
     }
 
+   /**
+    * Get the translation id of the label of the node
+    *
+    * @returns {string} the translation id of the label
+    */
     getLabelTranslationId() {
         return this.labelTranslationId;
     }
 
+   /**
+    * Get the translation id of the description of the label of the node
+    *
+    * @returns {string} the translation id of the description
+    */
     getDescriptionTranslationId() {
         return this.descriptionTranslationId;
     }
@@ -654,14 +664,14 @@ class XtkSchemaNode {
      * the node description */
     _buildLocalizationIds() {
         if (this.isRoot) {
-          this._translationId = this.schema.id.replaceAll(":", "__");
+          this._translationId = this.schema.id.replace(":", "__");
         } else {
           this._translationId = this.parent._translationId;
         }
 
         // Separate each element of the path with a double _
         if (this.isAttribute) {
-          this._translationId = this._translationId + "__" + this.name.replaceAll('@', '');
+          this._translationId = this._translationId + "__" + this.name.replace('@', '');
         } else {
           // node is not an attribute so it is an element add "e____"
           this._translationId = this._translationId + "__e____" + this.name;
@@ -959,7 +969,7 @@ function XtkEnumerationValue(xml, baseType, parentTranslationId) {
     /**
      * Unique identifier for the tran,slation of the description of the label
      * */
-    this.descriptionTranslationid = parentTranslationId + '__' + this.name + '__@desc';
+    this.descriptionTranslationId = parentTranslationId + '__' + this.name + '__@desc';
     /**
      * A human friendly long description of the value
      * @type {string}
@@ -1044,7 +1054,7 @@ class XtkEnumeration {
          this.values = new ArrayMap();
 
          var defaultValue = EntityAccessor.getAttributeAsString(xml, "default");
-         this._translationId = `${schemaId}__${this.name}`.replaceAll(':','__');
+         this._translationId = `${schemaId}__${this.name}`.replace(':','__');
 
          for (var child of EntityAccessor.getChildElements(xml, "value")) {
              const e = new XtkEnumerationValue(child, this.baseType, this._translationId);
@@ -1117,7 +1127,7 @@ class XtkSchema extends XtkSchemaNode {
          * The id for translation of the singular label
          * @type {string}
          */
-        this.labelSingularTranslationId = this.id.replaceAll(":", "__") + "__@labelSingular"
+        this.labelSingularTranslationId = this.id.replace(":", "__") + "__@labelSingular"
         /**
          * The schema mappgin type, following the xtk:srcSchema:mappingType enumeration
          * @type {Campaign.XtkSchemaMappingType}
