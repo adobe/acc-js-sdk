@@ -1753,7 +1753,9 @@ const root = await node.linkTarget();
 | **namespace** | The namespace of the schema. For instance "nms"
 | **name** | The name of the schema (internal name)
 | **label** | The label (i.e. human readable, localised) name of the node.
+| **labelTranslationId** | The translation id of the label of the node.
 | **labelSingular** | The singular label (i.e. human readable, localised) name of the schema. The label of a schema is typically a plural.
+| **labelSingularTranslationId** | The translation id of the label of the node of the singular label.
 | **isLibrary** | For schemas, indicates if the schema is a library
 | **mappingType** |Schema mapping type. Usually "sql"
 | **md5** | The MD5 code of the schema in the form of a hexadecimal string
@@ -1771,6 +1773,7 @@ A schema is also a `XtkSchemaNode` and the corresponding properties/methods are 
 | **children** | A array/map of children of the node. See note on the ArrayMap structure below
 | **dataPolicy** | Returns a string of characters which provides the data policy of the current node.
 | **description** | A long, human readable, description of the node
+| **descriptionTranslationId** | The translation id of the description of the node.
 | **editType** |Returns a string of characters which specifies the editing type of the current node.
 | **enum** | The name of the enumeration for the node, or an empty string if the node does node have an enumeration. See `enumeration()` method to get the corresponding `XtkSchemaNode`
 | **enumerationImage** | Returns the name of the image of the current node in the form of a string of characters.
@@ -1810,6 +1813,7 @@ A schema is also a `XtkSchemaNode` and the corresponding properties/methods are 
 | **unbound** | Returns a boolean which indicates whether the current node has an unlimited number of children of the same type.
 | **joins** | Element of type "link" has an array of XtkJoin. See `joinNodes` method.
 | **label** | The label (i.e. human readable, localised) name of the node.
+| **labelTranslationId** | The translation id of the label of the node.
 | **name** | The name of the node (internal name)
 | **nodePath**  | The xpath of the node
 | **parent** | The parent node (a `XtkSchemaNode` object). Will be null for schema nodes
@@ -1862,7 +1866,9 @@ A schema is also a `XtkSchemaNode` and the corresponding properties/methods are 
 |---|---|
 | **name** |  The name of the enumeration, fully qualified, i.e. prefixed with the schema id
 | **label** | The label (i.e. human readable, localised) name of the key
+| **labelTranslationId** | The translation id of the label of the key.
 | **description** | A long, human readable, description of the key
+| **descriptionTranslationId** | The translation id of the description of the key.
 | **baseType** | The base type of the enumeration, usually "string" or "byte"
 | **default** | The default value of the enumeration, casted to the enumeration type
 | **hasImage** | If the enumeration has an image
@@ -1874,7 +1880,9 @@ A schema is also a `XtkSchemaNode` and the corresponding properties/methods are 
 |---|---|
 | **name** |  The name of the key (internal name)
 | **label** | The label (i.e. human readable, localised) name of the key
+| **labelTranslationId** | The translation id of the label of the key.
 | **description** | A long, human readable, description of the key
+| **descriptionTranslationId** | The translation id of the description of the key.
 | **image** |
 | **enabledIf** |
 | **applicableIf** |
