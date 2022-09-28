@@ -422,13 +422,7 @@ class XtkSchemaNode {
          */
         this.nodePath = this._getNodePath(true)._path;
 
-        if (this.isRoot != undefined) {
-          this._buildLocalizationIds();
-        } else {
-          this._translationId = this.schema.id.replace(":", "__");
-          this.labelTranslationId = this._translationId + "__@label";
-          this.descriptionTranslationId = this._translationId + "__@desc";
-        }
+        this._buildLocalizationIds();
 
         /**
          * Element of type "link" has an array of XtkJoin
@@ -642,43 +636,26 @@ class XtkSchemaNode {
         propagateImplicitValues(this);
     }
 
-   /**
-    * Get the translation id of the label of the node
-    *
-    * @returns {string} the translation id of the label
-    */
-    getLabelTranslationId() {
-        return this.labelTranslationId;
-    }
-
-   /**
-    * Get the translation id of the description of the label of the node
-    *
-    * @returns {string} the translation id of the description
-    */
-    getDescriptionTranslationId() {
-        return this.descriptionTranslationId;
-    }
-
     /* create two ids that are identifying in an unique way the node label and 
      * the node description */
     _buildLocalizationIds() {
-        if (this.isRoot) {
-          this._translationId = this.schema.id.replace(":", "__");
+        if (this.isRoot == undefined || this.isRoot) {
+          this._localizationId = this.schema.id.replace(":", "__");
         } else {
-          this._translationId = this.parent._translationId;
+          this._localizationId = this.parent._localizationId;
         }
 
-        // Separate each element of the path with a double _
-        if (this.isAttribute) {
-          this._translationId = this._translationId + "__" + this.name.replace('@', '');
-        } else {
-          // node is not an attribute so it is an element add "e____"
-          this._translationId = this._translationId + "__e____" + this.name;
+        if (this.isRoot != undefined) {
+          // Separate each element of the path with a double _
+          if (this.isAttribute) {
+            this._localizationId = this._localizationId + "__" + this.name.replace('@', '');
+          } else {
+            // node is not an attribute so it is an element add "e____"
+            this._localizationId = this._localizationId + "__e____" + this.name;
+          }
         }
-
-        this.labelTranslationId = this._translationId + "__@label";
-        this.descriptionTranslationId = this._translationId + "__@desc";
+        this.labelLocalizationId = this._localizationId + "__@label";
+        this.descriptionLocalizationId = this._localizationId + "__@desc";
     }
 
     /**
@@ -965,11 +942,11 @@ function XtkEnumerationValue(xml, baseType, parentTranslationId) {
     /**
      * Unique identifier for the translation of the label
      * */
-    this.labelTranslationId = parentTranslationId + '__' + this.name + '__@label';
+    this.labelLocalizationId = parentTranslationId + '__' + this.name + '__@label';
     /**
      * Unique identifier for the tran,slation of the description of the label
      * */
-    this.descriptionTranslationId = parentTranslationId + '__' + this.name + '__@desc';
+    this.descriptionLocalizationId = parentTranslationId + '__' + this.name + '__@desc';
     /**
      * A human friendly long description of the value
      * @type {string}
@@ -1054,10 +1031,10 @@ class XtkEnumeration {
          this.values = new ArrayMap();
 
          var defaultValue = EntityAccessor.getAttributeAsString(xml, "default");
-         this._translationId = `${schemaId}__${this.name}`.replace(':','__');
+         this._localizationId = `${schemaId}__${this.name}`.replace(':','__');
 
          for (var child of EntityAccessor.getChildElements(xml, "value")) {
-             const e = new XtkEnumerationValue(child, this.baseType, this._translationId);
+             const e = new XtkEnumerationValue(child, this.baseType, this._localizationId);
              this.values._push(e.name, e);
              if (e.image != "") this.hasImage = true;
              const stringValue = EntityAccessor.getAttributeAsString(child, "value");
@@ -1065,8 +1042,8 @@ class XtkEnumeration {
                  this.default = e;
          }
 
-         this.labelTranslationId = this._translationId + "__@label";
-         this.descriptionTranslationId = this._translationId + "__@desc";
+         this.labelLocalizationId = this._localizationId + "__@label";
+         this.descriptionLocalizationId = this._localizationId + "__@desc";
          propagateImplicitValues(this, true);
 
         /**
