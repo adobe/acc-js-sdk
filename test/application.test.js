@@ -2030,6 +2030,12 @@ describe('Application', () => {
             expect(schema.descriptionLocalizationId).toBe('nms__recipient__@desc');
           });
 
+          it("schema should have a correct singular label localization id", () => {
+            const xml = DomUtil.parse("<schema namespace='nms' name='recipient'><element name='recipient' label='Recipients'/></schema>");
+            const schema = newSchema(xml);
+            expect(schema.labelSingularLocalizationId).toBe('nms__recipient__@labelSingular');
+          });
+
           it("root node should have a correct label localization id", () => {
             const xml = DomUtil.parse("<schema namespace='nms' name='recipient'><element name='recipient' label='Recipients'/></schema>");
             const schema = newSchema(xml);
