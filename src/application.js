@@ -1104,7 +1104,7 @@ class XtkSchema extends XtkSchemaNode {
          * The id for translation of the singular label
          * @type {string}
          */
-        this.labelSingularTranslationId = this.id.replace(":", "__") + "__@labelSingular"
+        this.labelSingularLocalizationId = this.id.replace(":", "__") + "__@labelSingular"
         /**
          * The schema mappgin type, following the xtk:srcSchema:mappingType enumeration
          * @type {Campaign.XtkSchemaMappingType}
