@@ -1796,6 +1796,8 @@ class Client {
                 soapCall.checkNoMoreArgs();
                 doc = that._toRepresentation(doc);
                 return doc;
+            }).catch((ex)=>{
+                throw CampaignException.NEW_INSTANCE_FAILED(entityType, ex)
             });
         }catch (ex){
             throw CampaignException.NEW_INSTANCE_FAILED(entityType, ex)

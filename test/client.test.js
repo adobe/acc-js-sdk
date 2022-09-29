@@ -553,6 +553,18 @@ describe('ACC Client', function () {
             expect(instance).toHaveProperty("id");
         });
 
+        it('Should newInstance fails', async () => {
+            const client = await Mock.makeClient();
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            client._transport.mockReturnValueOnce(Promise.reject());
+            client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+            await expect(() => {
+                return client.newInstance("xtk:persist|nms:delivery", { xtkschema: "nms:delivery", label: "test", messageType: "0" })
+            }).rejects.toMatchObject({ errorCode: "SDK-000014" });
+
+        });
+
     });
 
     describe("Should return sys enum definition with the right representation", () => {
