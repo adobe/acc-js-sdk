@@ -637,7 +637,11 @@ class XtkSchemaNode {
     }
 
     /* create two ids that are identifying in an unique way the node label and 
-     * the node description */
+     * the node description 
+     * examples:
+     * nms__recipient__e____recipient__emailFormat__@desc
+     * nms__recipient__e____recipient__mobilePhone__@label 
+     * */
     _buildLocalizationIds() {
         if (this.isRoot == undefined || this.isRoot) {
           this._localizationId = this.schema.id.replace(":", "__");
