@@ -1785,17 +1785,22 @@ class Client {
      * @returns {Promise<XML.XtkObject>}
      */
     async newInstance(entityType, entity) {
-        const that = this;
-        const root = entityType.split(":").pop();
-        const xml= this._fromRepresentation(root, entity, 'SimpleJson')
-        const soapCall = this._prepareSoapCall(entityType, "NewInstance", false, this._connectionParameters._options.extraHttpHeaders);
-        soapCall.writeDocument('entity', xml);
-        return this._makeSoapCall(soapCall).then(function() {
-            var doc = soapCall.getNextDocument();
-            soapCall.checkNoMoreArgs();
-            doc = that._toRepresentation(doc);
-            return doc;
-        });
+        try{
+            const that = this;
+            const root = entityType.split(":").pop();
+            const xml= this._fromRepresentation(root, entity, 'SimpleJson')
+            const soapCall = this._prepareSoapCall(entityType, "NewInstance", false, this._connectionParameters._options.extraHttpHeaders);
+            soapCall.writeDocument('entity', xml);
+            return this._makeSoapCall(soapCall).then(function() {
+                var doc = soapCall.getNextDocument();
+                soapCall.checkNoMoreArgs();
+                doc = that._toRepresentation(doc);
+                return doc;
+            });
+        }catch (ex){
+            throw CampaignException.NEW_INSTANCE_FAILED(entityType, ex)
+        }
+
     }
 
 }
