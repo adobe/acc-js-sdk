@@ -226,6 +226,14 @@ await client.logon();
 await client.logoff();
 ```
 
+## Creating new instances
+Creates and returns a new instance of the specified entity
+
+```js
+const template = await client.newInstance('xtk:persist|nms:delivery', { xtkschema: 'nms:delivery', {label: 'Test', messageType: '0', isModel: '1' } });
+```
+
+
 ## refreshClient callback
 The refreshClient is an async callback function with the SDK client as parameter, it is called when the ACC session is expired.
 The callback must refresh the client session and return it. if a SOAP query fails with session expiration error then it will be retried when the callback is defined.
