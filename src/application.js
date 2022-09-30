@@ -661,7 +661,7 @@ class XtkSchemaNode {
         this.labelLocalizationId = this._localizationId + "__@label";
         this.descriptionLocalizationId = this._localizationId + "__@desc";
         if (!this.parent) {
-            this.labelSingularLocalizationId = this._localizationId + "__@labelSingular"
+            this.labelSingularLocalizationId = this._localizationId + "__@labelSingular";
         }
     }
 

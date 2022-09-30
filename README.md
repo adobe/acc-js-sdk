@@ -1882,7 +1882,7 @@ A schema is also a `XtkSchemaNode` and the corresponding properties/methods are 
 | **label** | The label (i.e. human readable, localised) name of the key
 | **labelLocalizationId** | The translation id of the label of the key.
 | **description** | A long, human readable, description of the key
-| **descriptionLocalizationIddescriptionLocalizationId** | The translation id of the description of the key.
+| **descriptionLocalizationId** | The translation id of the description of the key.
 | **image** |
 | **enabledIf** |
 | **applicableIf** |
