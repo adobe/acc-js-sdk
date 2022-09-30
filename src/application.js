@@ -643,13 +643,13 @@ class XtkSchemaNode {
      * nms__recipient__e____recipient__mobilePhone__@label 
      * */
     _buildLocalizationIds() {
-        if (this.isRoot == undefined || this.isRoot) {
+        if (!this.parent) {
           this._localizationId = this.schema.id.replace(":", "__");
         } else {
           this._localizationId = this.parent._localizationId;
         }
 
-        if (this.isRoot != undefined) {
+        if (this.parent) {
           // Separate each element of the path with a double _
           if (this.isAttribute) {
             this._localizationId = this._localizationId + "__" + this.name.replace('@', '');
@@ -660,6 +660,9 @@ class XtkSchemaNode {
         }
         this.labelLocalizationId = this._localizationId + "__@label";
         this.descriptionLocalizationId = this._localizationId + "__@desc";
+        if (!this.parent) {
+            this.labelSingularLocalizationId = this._localizationId + "__@labelSingular"
+        }
     }
 
     /**
@@ -1104,11 +1107,6 @@ class XtkSchema extends XtkSchemaNode {
          * @type {string}
          */
         this.labelSingular = EntityAccessor.getAttributeAsString(xml, "labelSingular");
-        /**
-         * The id for translation of the singular label
-         * @type {string}
-         */
-        this.labelSingularLocalizationId = this.id.replace(":", "__") + "__@labelSingular"
         /**
          * The schema mappgin type, following the xtk:srcSchema:mappingType enumeration
          * @type {Campaign.XtkSchemaMappingType}
