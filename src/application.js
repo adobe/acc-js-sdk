@@ -422,6 +422,8 @@ class XtkSchemaNode {
          */
         this.nodePath = this._getNodePath(true)._path;
 
+        this._buildLocalizationIds();
+
         /**
          * Element of type "link" has an array of XtkJoin
          * @type {XtkJoin[]}
@@ -632,6 +634,35 @@ class XtkSchemaNode {
         // Propagate implicit values
         // Name -> Label -> Desc -> HelpText
         propagateImplicitValues(this);
+    }
+
+    /* create two ids that are identifying in an unique way the node label and 
+     * the node description 
+     * examples:
+     * nms__recipient__e____recipient__emailFormat__@desc
+     * nms__recipient__e____recipient__mobilePhone__@label 
+     * */
+    _buildLocalizationIds() {
+        if (!this.parent) {
+          this._localizationId = this.schema.id.replace(":", "__");
+        } else {
+          this._localizationId = this.parent._localizationId;
+        }
+
+        if (this.parent) {
+          // Separate each element of the path with a double _
+          if (this.isAttribute) {
+            this._localizationId = this._localizationId + "__" + this.name.replace('@', '');
+          } else {
+            // node is not an attribute so it is an element add "e____"
+            this._localizationId = this._localizationId + "__e____" + this.name;
+          }
+        }
+        this.labelLocalizationId = this._localizationId + "__@label";
+        this.descriptionLocalizationId = this._localizationId + "__@desc";
+        if (!this.parent) {
+            this.labelSingularLocalizationId = this._localizationId + "__@labelSingular";
+        }
     }
 
     /**
@@ -901,9 +932,10 @@ class XtkSchemaNode {
  * @constructor
  * @param {XML.XtkObject} The enumeration value definition
  * @param {Campaign.XtkEnumerationType} baseType the enumeration type (often "string" or "byte")
+ * @param {string} parentTranslationId the translation id of the parent node
  * @memberof Campaign
  */
-function XtkEnumerationValue(xml, baseType) {
+function XtkEnumerationValue(xml, baseType, parentTranslationId) {
     /**
      * The value (unique) name
      * @type {string}
@@ -914,6 +946,14 @@ function XtkEnumerationValue(xml, baseType) {
      * @type {string}
      */
     this.label = EntityAccessor.getAttributeAsString(xml, "label");
+    /**
+     * Unique identifier for the translation of the label
+     * */
+    this.labelLocalizationId = parentTranslationId + '__' + this.name + '__@label';
+    /**
+     * Unique identifier for the tran,slation of the description of the label
+     * */
+    this.descriptionLocalizationId = parentTranslationId + '__' + this.name + '__@desc';
     /**
      * A human friendly long description of the value
      * @type {string}
@@ -997,25 +1037,29 @@ class XtkEnumeration {
          */
          this.values = new ArrayMap();
 
-        var defaultValue = EntityAccessor.getAttributeAsString(xml, "default");
+         var defaultValue = EntityAccessor.getAttributeAsString(xml, "default");
+         this._localizationId = `${schemaId}__${this.name}`.replace(':','__');
 
-        for (var child of EntityAccessor.getChildElements(xml, "value")) {
-            const e = new XtkEnumerationValue(child, this.baseType);
-            this.values._push(e.name, e);
-            if (e.image != "") this.hasImage = true;
-            const stringValue = EntityAccessor.getAttributeAsString(child, "value");
-            if (defaultValue == stringValue)
-                this.default = e;
-        }
+         for (var child of EntityAccessor.getChildElements(xml, "value")) {
+             const e = new XtkEnumerationValue(child, this.baseType, this._localizationId);
+             this.values._push(e.name, e);
+             if (e.image != "") this.hasImage = true;
+             const stringValue = EntityAccessor.getAttributeAsString(child, "value");
+             if (defaultValue == stringValue)
+                 this.default = e;
+         }
 
-        propagateImplicitValues(this, true);
+         this.labelLocalizationId = this._localizationId + "__@label";
+         this.descriptionLocalizationId = this._localizationId + "__@desc";
+         propagateImplicitValues(this, true);
 
         /**
          * The system enumeration name, without the schema id prefix
          * @type {string}
          */
          this.shortName = this.name;
-        this.name = `${schemaId}:${this.shortName}`;
+         this.name = `${schemaId}:${this.shortName}`;
+         
     }
 }
 
@@ -1063,7 +1107,6 @@ class XtkSchema extends XtkSchemaNode {
          * @type {string}
          */
         this.labelSingular = EntityAccessor.getAttributeAsString(xml, "labelSingular");
-
         /**
          * The schema mappgin type, following the xtk:srcSchema:mappingType enumeration
          * @type {Campaign.XtkSchemaMappingType}

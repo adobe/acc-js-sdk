@@ -5,12 +5,16 @@ This is a node.js SDK for Campaign API. It exposes the Campaign API exactly like
 
 # Changelog 
 
+## Version 1.1.8
+_2022_09_26_
+
+* added translation ids (`labelLocalizationId`,`descriptionLocalizationId`, `labelSingularLocalizationId`) for `XtkSchema`, `XtkSchemaNode`, `XtkEnumerationValue` and `XtkEnumeration`
+
 ## Version 1.1.7
 _2022_08_30_
 
 * New listener interface to be notified of internal events from the SDK. Can be used to integrate with observability frameworks. See the "Observers" section of the README file.
 * Experimental file upload feature. Will require server-side changes to work, and is currently limited to be used with browsers only.
-
 
 ## Version 1.1.6
 _2022_08_19_

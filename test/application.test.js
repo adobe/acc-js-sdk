@@ -2021,6 +2021,77 @@ describe('Application', () => {
                 expect(schema.userDescription).toBe("recipient");
             });
         });
+
+        describe("Translation ids", () => {
+          it("schema should have a correct label localization id", () => {
+            const xml = DomUtil.parse("<schema namespace='nms' name='recipient'><element name='recipient' label='Recipients'/></schema>");
+            const schema = newSchema(xml);
+            expect(schema.labelLocalizationId).toBe('nms__recipient__@label');
+            expect(schema.descriptionLocalizationId).toBe('nms__recipient__@desc');
+          });
+
+          it("schema should have a correct singular label localization id", () => {
+            const xml = DomUtil.parse("<schema namespace='nms' name='recipient'><element name='recipient' label='Recipients'/></schema>");
+            const schema = newSchema(xml);
+            expect(schema.labelSingularLocalizationId).toBe('nms__recipient__@labelSingular');
+          });
+
+          it("root node should have a correct label localization id", () => {
+            const xml = DomUtil.parse("<schema namespace='nms' name='recipient'><element name='recipient' label='Recipients'/></schema>");
+            const schema = newSchema(xml);
+            const root = schema.root;
+            expect(root.labelLocalizationId).toBe('nms__recipient__e____recipient__@label');
+            expect(root.descriptionLocalizationId).toBe('nms__recipient__e____recipient__@desc');
+          });
+
+          it("child node should have a correct label localization id", () => {
+            const xml = DomUtil.parse("<schema namespace='nms' name='recipient'><element name='lib' label='library'/><element name='recipient' label='Recipients'/></schema>");
+            const schema = newSchema(xml);
+            const lib = schema.children["lib"];
+            expect(lib.labelLocalizationId).toBe('nms__recipient__e____lib__@label');
+            expect(lib.descriptionLocalizationId).toBe('nms__recipient__e____lib__@desc');
+          });
+
+          it("attribute should have a correct label localization id", () => {
+            const xml = DomUtil.parse(`<schema namespace='nms' name='recipient'>
+                                            <element name='recipient' label='Recipients'>
+                                                <attribute name='email' type='string' label='email' length='3'/>
+                                            </element>
+                                        </schema>`);
+            const schema = newSchema(xml);
+            const root = schema.root;
+            expect(root.children.get("@email").labelLocalizationId).toBe('nms__recipient__e____recipient__email__@label');
+            expect(root.children.get("@email").descriptionLocalizationId).toBe('nms__recipient__e____recipient__email__@desc');
+          });
+
+          it("Enumeration should have a correct label localization id", () => {
+            const xml = DomUtil.parse(`<schema namespace='nms' name='recipient'>
+                                            <enumeration name="gender" basetype="byte"/>
+                                            <element name='recipient' label='Recipients'></element>
+                                        </schema>`);
+            const schema = newSchema(xml);
+            const enumerations = schema.enumerations;
+            expect(enumerations.gender.labelLocalizationId).toBe('nms__recipient__gender__@label');
+            expect(enumerations.gender.descriptionLocalizationId).toBe('nms__recipient__gender__@desc');
+          });
+
+          it("Enumeration value should have a correct label localization id", () => {
+            const xml = DomUtil.parse(`<schema namespace='nms' name='recipient'>
+                                            <enumeration name="gender" basetype="byte">
+                                                <value name="male" value="0"/>
+                                                <value name="female" value="1"/>                                    
+                                            </enumeration>
+                                            <element name='recipient' label='Recipients'>
+                                            <attribute advanced="true" desc="Recipient sex" enum="nms:recipient:gender"
+                                                label="Gender" name="gender" sqlname="iGender" type="byte"/>
+                                            </element>
+                                        </schema>`);
+            const schema = newSchema(xml);
+            const enumerations = schema.enumerations;
+            expect(enumerations.gender.values.male.labelLocalizationId).toBe('nms__recipient__gender__male__@label');
+            expect(enumerations.gender.values.male.descriptionLocalizationId).toBe('nms__recipient__gender__male__@desc');
+          })
+        });
     });
 
     describe("CurrentLogin", () => {
