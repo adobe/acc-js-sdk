@@ -72,7 +72,10 @@ const { Util } = require('./util.js');
  */
 const xtkObjectHandler = {
     get: function(callContext, methodName) {
-        if (methodName == ".") return callContext;
+        if (methodName == ".") 
+            return callContext;
+        if (methodName === "__xtkProxy")
+            return true;
 
         const caller = function(thisArg, argumentsList) {
             const callContext = thisArg["."];
@@ -149,7 +152,8 @@ const clientHandler = (representation, headers, pushDownOptions) => {
                         for (let h in pushDownOptions) callContext.pushDownOptions[h] = pushDownOptions[h];
                     }
 
-                    if (methodName == ".") return callContext;
+                    if (methodName == ".") 
+                        return callContext;
 
                     // get Schema id from namespace (find first upper case letter)
                     var schemaId = "";
@@ -1380,16 +1384,20 @@ class Client {
      * @returns {XML.XtkObject}  the schema definition, as either a DOM document or a JSON object
      */
     async getSchema(schemaId, representation, internal) {
-        var that = this;
-        var entity = that._entityCache.get("xtk:schema", schemaId);
+        var entity = this._entityCache.get("xtk:schema", schemaId);
         if (!entity) {
-          entity = await that.getEntityIfMoreRecent("xtk:schema", schemaId, "xml", internal);
+          entity = await this.getEntityIfMoreRecent("xtk:schema", schemaId, "xml", internal);
           if (entity) {
-            that._entityCache.put("xtk:schema", schemaId, entity);
-            that._methodCache.put(entity);
+            const impls = DomUtil.getAttributeAsString(entity, "implements");
+            if (impls === "xtk:persist" && schemaId !== "xtk:session" && schemaId !== "xtk:persist") {
+                // Ensure xtk:persist is present by loading the xtk:session schema
+                await this.getSchema("xtk:session", "xml", true);
+            }
+            this._entityCache.put("xtk:schema", schemaId, entity);
+            this._methodCache.put(entity);
           }
         }
-        entity = that._toRepresentation(entity, representation);
+        entity = this._toRepresentation(entity, representation);
         return entity;
     }
 
@@ -1481,9 +1489,13 @@ class Client {
 
             const rootName = schemaId.substr(schemaId.indexOf(':') + 1);
             object = that._fromRepresentation(rootName, object, callContext.representation);
+            // The xtk:persist#NewInstance requires a xtkschema attribute which we can compute here
+            // Actually, we're always adding it, for all non-static methods
+            const xmlRoot = object.nodeType === 9 ? object.documentElement : object;
+            if (!xmlRoot.hasAttribute("xtkschema"))
+                xmlRoot.setAttribute("xtkschema", schemaId);
             soapCall.writeDocument("document", object);
         }
-
         const parametersIsArray = (typeof parameters == "object") && parameters.length;
         const params = DomUtil.getFirstChildElement(method, "parameters");
         if (params) {
@@ -1494,7 +1506,7 @@ class Client {
                 if (!inout || inout=="in") {
                     const type = DomUtil.getAttributeAsString(param, "type");
                     const paramName = DomUtil.getAttributeAsString(param, "name");
-                    const paramValue = parametersIsArray ? parameters[paramIndex] : parameters;
+                    let paramValue = parametersIsArray ? parameters[paramIndex] : parameters;
                     paramIndex = paramIndex + 1;
                     if (type == "string")
                         soapCall.writeString(paramName, XtkCaster.asString(paramValue));
@@ -1516,22 +1528,32 @@ class Client {
                         soapCall.writeDate(paramName, XtkCaster.asDate(paramValue));
                     else if (type == "DOMDocument" || type == "DOMElement") {
                         var docName = undefined;
+                        let representation = callContext.representation;
+                        let xtkschema = schemaId;
+                        if (paramValue.__xtkProxy) {
+                            const paramValueContext = paramValue["."];
+                            paramValue = paramValueContext.object;
+                            xtkschema = paramValueContext.schemaId;
+                            representation = paramValueContext.representation;
+                        }
                         // Hack for workflow API. The C++ code checks that the name of the XML element is <variables>. When
                         // using xml representation at the SDK level, it's ok since the SDK caller will set that. But this does
                         // not work when using "BadgerFish" representation where we do not know the root element name.
-                        if (schemaId == "xtk:workflow" && methodName == "StartWithParameters" && paramName == "parameters")
+                        if (xtkschema == "xtk:workflow" && methodName == "StartWithParameters" && paramName == "parameters")
                             docName = "variables";
-                        if (schemaId == "nms:rtEvent" && methodName == "PushEvent")
+                        if (xtkschema == "nms:rtEvent" && methodName == "PushEvent")
                             docName = "rtEvent";
                         // Try to guess the document name. This is usually available in the xtkschema attribute
-                        var xtkschema = EntityAccessor.getAttributeAsString(paramValue, "xtkschema");
-                        if (!xtkschema) xtkschema = paramValue["@xtkschema"];
-                        if (xtkschema) {
-                            const index = xtkschema.indexOf(":");
-                            docName = xtkschema.substr(index+1);
+                        if (!docName) {
+                            if (!xtkschema) xtkschema = EntityAccessor.getAttributeAsString(paramValue, "xtkschema");
+                            if (!xtkschema) xtkschema = paramValue["@xtkschema"];
+                            if (xtkschema) {
+                                const index = xtkschema.indexOf(":");
+                                docName = xtkschema.substr(index+1);
+                            }
                         }
                         if (!docName) docName = paramName; // Use te parameter name as the XML root element
-                        var xmlValue = that._fromRepresentation(docName, paramValue, callContext.representation);
+                        var xmlValue = that._fromRepresentation(docName, paramValue, representation);
                         if (type == "DOMDocument")
                             soapCall.writeDocument(paramName, xmlValue);
                         else

@@ -184,6 +184,8 @@ const GET_XTK_SESSION_SCHEMA_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
             <pdomDoc xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
             <schema namespace="xtk" name="session" implements="xtk:persist">
                 <interface name="persist">
+                    <method name="NewInstance">
+                    </method>
                     <method name="Write" static="true">
                         <parameters>
                             <param name="doc" type="DOMDocument"/>
@@ -300,6 +302,35 @@ const GET_XTK_QUERY_SCHEMA_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
         </GetEntityIfMoreRecentResponse>
     </SOAP-ENV:Body>
     </SOAP-ENV:Envelope>`);
+
+const GET_NMS_DELIVERY_SCHEMA_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
+<SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:wpp:default' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
+<SOAP-ENV:Body>
+    <GetEntityIfMoreRecentResponse xmlns='urn:wpp:default' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
+        <pdomDoc xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
+            <schema name="delivery" namespace="nms" implements="xtk:persist">
+                <element name="delivery"></element>
+                <methods>
+                    <method name="Test">
+                    </method>
+                </methods>
+            </schema>
+        </pdomDoc>
+    </GetEntityIfMoreRecentResponse>
+</SOAP-ENV:Body>
+</SOAP-ENV:Envelope>`);
+
+const GET_DELIVERY_TEST_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
+<SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:nms:delivery' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
+<SOAP-ENV:Body>
+    <TestResponse xmlns='urn:nms:delivery' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
+        <entity xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
+            <delivery>
+            </delivery>
+        </entity>
+    </TestResponse>
+</SOAP-ENV:Body>
+</SOAP-ENV:Envelope>`);
 
 const GET_MID_EXT_ACCOUNT_RESPONSE = (encryptedPassword) => {
   return  Promise.resolve(`<?xml version='1.0'?>
@@ -804,6 +835,8 @@ exports.Mock = {
   GET_OPTION_NOTFOUND_RESPONSE: GET_OPTION_NOTFOUND_RESPONSE,
   GET_OPTION_MISSING_DATA_RESPONSE: GET_OPTION_MISSING_DATA_RESPONSE,
   GET_XTK_QUERY_SCHEMA_RESPONSE: GET_XTK_QUERY_SCHEMA_RESPONSE,
+  GET_NMS_DELIVERY_SCHEMA_RESPONSE: GET_NMS_DELIVERY_SCHEMA_RESPONSE,
+  GET_DELIVERY_TEST_RESPONSE: GET_DELIVERY_TEST_RESPONSE,
   GET_MID_EXT_ACCOUNT_RESPONSE: GET_MID_EXT_ACCOUNT_RESPONSE,
   GET_BAD_EXT_ACCOUNT_RESPONSE: GET_BAD_EXT_ACCOUNT_RESPONSE,
   GET_SECRET_KEY_OPTION_RESPONSE: GET_SECRET_KEY_OPTION_RESPONSE,

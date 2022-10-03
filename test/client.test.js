@@ -3352,4 +3352,39 @@ describe('ACC Client', function () {
 
         })
     })
+
+    describe("Create xtk objects and call newInstance", () => {
+
+        it("Should create a new delivery instance", async () => {
+            const client = await Mock.makeClient();
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+
+            // Create the proxy object
+            const delivery = client.NLWS.nmsDelivery.create({ label: "Hello" });
+
+            // Calling NewInstance will load the nms:delivery schema. As this schema
+            // implements the xtk:persist interface, it will first load xtk:session
+            client._transport.mockReturnValueOnce(Mock.GET_NMS_DELIVERY_SCHEMA_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_DELIVERY_NEW_INSTANCE_RESPONSE);
+            await delivery.newInstance();
+
+            expect(client._transport).toHaveBeenCalledTimes(4);
+            expect(client._transport.mock.calls[1][0].data).toMatch("xtk:schema|nms:delivery"); // first we fetched the delivery schema
+            expect(client._transport.mock.calls[2][0].data).toMatch("xtk:schema|xtk:session"); // this triggered a fetch of the session schema
+            expect(client._transport.mock.calls[3][0].data).toMatch("urn:xtk:persist|nms:delivery"); // now we're calling the interface method
+            expect(client._transport.mock.calls[3][0].data).toMatch("xtkschema=\"nms:delivery\""); // and which should have the xtkschema set
+            const result = await client._transport.mock.results[3].value;
+            expect(result).toMatch("<folder _cs=\"Delivery templates\"/>");
+
+            // Calling another non-static method on the delivery
+            client._transport.mockReturnValueOnce(Mock.GET_DELIVERY_TEST_RESPONSE);
+            await delivery.test();
+            expect(client._transport).toHaveBeenCalledTimes(5);
+            expect(client._transport.mock.calls[4][0].data).toMatch("<folder _cs=\"Delivery templates\"/>"); // Call should have the result of new instance as first parameter
+            expect(client._transport.mock.calls[4][0].data).toMatch("xtkschema=\"nms:delivery\""); // and also have the xtkschema attribute set
+        });
+    });
+
 });
