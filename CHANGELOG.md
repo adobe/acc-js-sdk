@@ -6,9 +6,9 @@ This is a node.js SDK for Campaign API. It exposes the Campaign API exactly like
 # Changelog 
 
 ## Version 1.1.8
-_2022_09_26_
+_2022_10_03_
 
-* added translation ids (`labelLocalizationId`,`descriptionLocalizationId`, `labelSingularLocalizationId`) for `XtkSchema`, `XtkSchemaNode`, `XtkEnumerationValue` and `XtkEnumeration`
+* Added translation ids (`labelLocalizationId`,`descriptionLocalizationId`, `labelSingularLocalizationId`) for `XtkSchema`, `XtkSchemaNode`, `XtkEnumerationValue` and `XtkEnumeration`
 
 ## Version 1.1.7
 _2022_08_30_
