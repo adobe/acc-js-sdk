@@ -191,7 +191,7 @@ const clientHandler = (representation, headers, pushDownOptions) => {
 
                     if (methodName == "create") {
                         return function(body) {
-                            callContext.object = body;
+                            callContext.object = body || {}; // supports empty bodies
                             return new Proxy(callContext, xtkObjectHandler);
                         };
                     }
@@ -1510,6 +1510,8 @@ class Client {
                     paramIndex = paramIndex + 1;
                     if (type == "string")
                         soapCall.writeString(paramName, XtkCaster.asString(paramValue));
+                    else if (type == "primarykey")
+                        soapCall.writeString(paramName, XtkCaster.asString(paramValue));
                     else if (type == "boolean")
                         soapCall.writeBoolean(paramName, XtkCaster.asBoolean(paramValue));
                     else if (type == "byte")
@@ -1529,30 +1531,33 @@ class Client {
                     else if (type == "DOMDocument" || type == "DOMElement") {
                         var docName = undefined;
                         let representation = callContext.representation;
-                        let xtkschema = schemaId;
                         if (paramValue.__xtkProxy) {
+                            // A xtk proxy object is passed as a parameter. The call context contains the schema so we
+                            // can use it to determine the XML document root (docName)
                             const paramValueContext = paramValue["."];
                             paramValue = paramValueContext.object;
-                            xtkschema = paramValueContext.schemaId;
-                            representation = paramValueContext.representation;
+                            const xtkschema = paramValueContext.schemaId;
+                            const index = xtkschema.indexOf(":");
+                            docName = xtkschema.substring(index+1);
+                            representation = paramValueContext.representation; // xtk proxy may have it's own representation
                         }
-                        // Hack for workflow API. The C++ code checks that the name of the XML element is <variables>. When
-                        // using xml representation at the SDK level, it's ok since the SDK caller will set that. But this does
-                        // not work when using "BadgerFish" representation where we do not know the root element name.
-                        if (xtkschema == "xtk:workflow" && methodName == "StartWithParameters" && paramName == "parameters")
-                            docName = "variables";
-                        if (xtkschema == "nms:rtEvent" && methodName == "PushEvent")
-                            docName = "rtEvent";
-                        // Try to guess the document name. This is usually available in the xtkschema attribute
-                        if (!docName) {
-                            if (!xtkschema) xtkschema = EntityAccessor.getAttributeAsString(paramValue, "xtkschema");
+                        else {
+                            // Hack for workflow API. The C++ code checks that the name of the XML element is <variables>. When
+                            // using xml representation at the SDK level, it's ok since the SDK caller will set that. But this does
+                            // not work when using "BadgerFish" representation where we do not know the root element name.
+                            if (schemaId == "xtk:workflow" && methodName == "StartWithParameters" && paramName == "parameters")
+                                docName = "variables";
+                            if (schemaId == "nms:rtEvent" && methodName == "PushEvent")
+                                docName = "rtEvent";
+                            // Try to guess the document name. This is usually available in the xtkschema attribute
+                            var xtkschema = EntityAccessor.getAttributeAsString(paramValue, "xtkschema");
                             if (!xtkschema) xtkschema = paramValue["@xtkschema"];
                             if (xtkschema) {
                                 const index = xtkschema.indexOf(":");
-                                docName = xtkschema.substr(index+1);
+                                docName = xtkschema.substring(index+1);
                             }
+                            if (!docName) docName = paramName; // Use te parameter name as the XML root element
                         }
-                        if (!docName) docName = paramName; // Use te parameter name as the XML root element
                         var xmlValue = that._fromRepresentation(docName, paramValue, representation);
                         if (type == "DOMDocument")
                             soapCall.writeDocument(paramName, xmlValue);
@@ -1586,6 +1591,8 @@ class Client {
                         var returnValue;
                         if (type == "string")
                             returnValue = soapCall.getNextString();
+                        else if (type == "primarykey")
+                            returnValue = soapCall.getNextPrimaryKey();
                         else if (type == "boolean")
                             returnValue = soapCall.getNextBoolean();
                         else if (type == "byte")

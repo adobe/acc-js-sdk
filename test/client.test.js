@@ -727,9 +727,9 @@ describe('ACC Client', function () {
             const element = { "@type": "element", "@xtkschema": "nms:recipient" };          // @xtkschema needed to determine root name
             const document = { "@type": "document", "@xtkschema": "nms:recipient" };
 
-            const result = await client.NLWS.xtkAll.allTypes("Hello World", true, 1, 1000, 100000, "100000", "2020-12-31T12:34:56.789Z", "2020-12-31", element, document);
+            const result = await client.NLWS.xtkAll.allTypes("Hello World", true, 1, 1000, 100000, "100000", "2020-12-31T12:34:56.789Z", "2020-12-31", element, document, "xtk:operator|abc");
             // Note: should match responses in GET_XTK_ALL_TYPES_RESPONSE
-            expect(result.length).toBe(10);
+            expect(result.length).toBe(11);
             expect(result[0]).toBe("Hello World");
             expect(result[1]).toBe(true);
             expect(result[2]).toBe(1);
@@ -742,6 +742,7 @@ describe('ACC Client', function () {
             expect(result[8]["@result"]).toBe("true");
             expect(result[9]["@type"]).toBe("document");
             expect(result[9]["@result"]).toBe("true");
+            expect(result[10]).toBe("xtk:operator|123");
 
             client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
             await client.NLWS.xtkSession.logoff();
@@ -3351,39 +3352,118 @@ describe('ACC Client', function () {
             })
 
         })
-    })
+    });
 
-    describe("Create xtk objects and call newInstance", () => {
+    describe("Setting the xtkschema attribute", () => {
+        it("Should support setting explicitely setting the xtkschema", async() => {
+            const client = await Mock.makeClient();
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+            
+            client._transport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.FILE_RES_WRITE_RESPONSE);
+            await client.NLWS.xtkSession.write({ xtkschema: "nms:test" });
+            expect(client._transport).toHaveBeenCalledTimes(3);
+            expect(client._transport.mock.calls[2][0].data).toMatch("xtkschema=\"nms:test\"");
+        });
 
-        it("Should create a new delivery instance", async () => {
+        it("Should default to soap parameter name", async() => {
+            const client = await Mock.makeClient();
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+            
+            client._transport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.FILE_RES_WRITE_RESPONSE);
+            await client.NLWS.xtkSession.write({ });
+            expect(client._transport).toHaveBeenCalledTimes(3);
+            expect(client._transport.mock.calls[2][0].data).toMatch("<doc xsi:type="); // parameter of xtk:session#Write is named "doc" in the schema
+        });
+
+        it("Should have a hardcoded value for nms:rtEvent#PushEvent", async() => {
+            const client = await Mock.makeClient();
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+            
+            client._transport.mockReturnValueOnce(Mock.GET_NMS_RTEVENT_SCHEMA_RESPONSE);
+            client._transport.mockReturnValueOnce(Promise.resolve(`<?xml version='1.0'?>
+                <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:nms:rtEvent' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
+                <SOAP-ENV:Body>
+                <PushEventResponse xmlns='urn:nms:rtEvent' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
+                <plId xsi:type='xsd:long'>72057594039155998</plId>
+                </PushEventResponse>
+                </SOAP-ENV:Body>
+                </SOAP-ENV:Envelope>`));
+            await client.NLWS.nmsRtEvent.pushEvent({ });
+            expect(client._transport).toHaveBeenCalledTimes(3);
+            expect(client._transport.mock.calls[2][0].data).toMatch("<rtEvent/>"); // document name for nms:rtEvent#PushEvent is named "rtEvent"
+        });
+
+        it("Should be set automatically for non-static methods when object is a proxy", async () => {
             const client = await Mock.makeClient();
             client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
 
-            // Create the proxy object
-            const delivery = client.NLWS.nmsDelivery.create({ label: "Hello" });
+            client._transport.mockReturnValueOnce(Mock.GET_XTK_QUERY_SCHEMA_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_QUERY_EXECUTE_RESPONSE);
+            var query = client.NLWS.xtkQueryDef.create({ schema: "nms:extAccount" });
+            await query.executeQuery();
 
-            // Calling NewInstance will load the nms:delivery schema. As this schema
-            // implements the xtk:persist interface, it will first load xtk:session
+            expect(client._transport).toHaveBeenCalledTimes(3);
+            expect(client._transport.mock.calls[2][0].data).toMatch("xtkschema=\"xtk:queryDef\"");
+        });
+
+        it("Should be set automatically for non-static methods when object is a JSON object", async () => {
+            const client = await Mock.makeClient();
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+
             client._transport.mockReturnValueOnce(Mock.GET_NMS_DELIVERY_SCHEMA_RESPONSE);
             client._transport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
             client._transport.mockReturnValueOnce(Mock.GET_DELIVERY_NEW_INSTANCE_RESPONSE);
-            await delivery.newInstance();
-
+            await client._callMethod("NewInstance", {
+                schemaId: 'nms:delivery',
+                object: { },
+            }, []);
             expect(client._transport).toHaveBeenCalledTimes(4);
-            expect(client._transport.mock.calls[1][0].data).toMatch("xtk:schema|nms:delivery"); // first we fetched the delivery schema
-            expect(client._transport.mock.calls[2][0].data).toMatch("xtk:schema|xtk:session"); // this triggered a fetch of the session schema
-            expect(client._transport.mock.calls[3][0].data).toMatch("urn:xtk:persist|nms:delivery"); // now we're calling the interface method
-            expect(client._transport.mock.calls[3][0].data).toMatch("xtkschema=\"nms:delivery\""); // and which should have the xtkschema set
-            const result = await client._transport.mock.results[3].value;
-            expect(result).toMatch("<folder _cs=\"Delivery templates\"/>");
+            expect(client._transport.mock.calls[3][0].data).toMatch("<delivery xtkschema=\"nms:delivery\"/>");
+        });
 
-            // Calling another non-static method on the delivery
-            client._transport.mockReturnValueOnce(Mock.GET_DELIVERY_TEST_RESPONSE);
-            await delivery.test();
-            expect(client._transport).toHaveBeenCalledTimes(5);
-            expect(client._transport.mock.calls[4][0].data).toMatch("<folder _cs=\"Delivery templates\"/>"); // Call should have the result of new instance as first parameter
-            expect(client._transport.mock.calls[4][0].data).toMatch("xtkschema=\"nms:delivery\""); // and also have the xtkschema attribute set
+        it("Should be set automatically for non-static methods when object is a XML document", async () => {
+            const client = await Mock.makeClient();
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+
+            client._transport.mockReturnValueOnce(Mock.GET_NMS_DELIVERY_SCHEMA_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_DELIVERY_NEW_INSTANCE_RESPONSE);
+            const doc = DomUtil.parse("<delivery label=\"hello\"/>");
+            expect(doc.nodeType).toBe(9);
+            await client._callMethod("NewInstance", {
+                schemaId: 'nms:delivery',
+                representation: 'xml',
+                object: doc,
+            }, []);
+            expect(client._transport).toHaveBeenCalledTimes(4);
+            expect(client._transport.mock.calls[3][0].data).toMatch("<delivery label=\"hello\" xtkschema=\"nms:delivery\"/>");
+        });
+
+        it("Should be set automatically for non-static methods when object is a XML element", async () => {
+            const client = await Mock.makeClient();
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+
+            client._transport.mockReturnValueOnce(Mock.GET_NMS_DELIVERY_SCHEMA_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_DELIVERY_NEW_INSTANCE_RESPONSE);
+            const doc = DomUtil.parse("<delivery label=\"hello\"/>");
+            expect(doc.nodeType).toBe(9);
+            await client._callMethod("NewInstance", {
+                schemaId: 'nms:delivery',
+                representation: 'xml',
+                object: doc.documentElement,
+            }, []);
+            expect(client._transport).toHaveBeenCalledTimes(4);
+            expect(client._transport.mock.calls[3][0].data).toMatch("<delivery label=\"hello\" xtkschema=\"nms:delivery\"/>");
         });
     });
 

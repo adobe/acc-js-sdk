@@ -356,8 +356,20 @@ class SoapMethodCall {
      * 
      * @returns {string} the string result value
      */
-    getNextString() {
+     getNextString() {
         this._checkTypeMatch("xsd:string");
+        var value = DomUtil.elementValue(this.elemCurrent);
+        this.elemCurrent = DomUtil.getNextSiblingElement(this.elemCurrent);
+        return value;
+    }
+
+    /**
+     * Extracts the next result value as a primary key string
+     * 
+     * @returns {string} the primary key string result value
+     */
+     getNextPrimaryKey() {
+        this._checkTypeMatch("xsd:primarykey");
         var value = DomUtil.elementValue(this.elemCurrent);
         this.elemCurrent = DomUtil.getNextSiblingElement(this.elemCurrent);
         return value;
