@@ -71,11 +71,24 @@ const { Util } = require('./util.js');
  * @memberof Campaign
  */
 const xtkObjectHandler = {
+    set: function(callContext, prop, value) {
+        const object = callContext.object;
+        object[prop] = value;
+    },
+
     get: function(callContext, methodName) {
         if (methodName == ".") 
             return callContext;
         if (methodName === "__xtkProxy")
             return true;
+        if (methodName === "save") {
+            return async () => {
+                return callContext.client.NLWS.xtkSession.write(callContext.object);
+            };
+        }
+        if (methodName === "entity") {
+            return callContext.object;
+        }
 
         const caller = function(thisArg, argumentsList) {
             const callContext = thisArg["."];
