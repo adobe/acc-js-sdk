@@ -90,7 +90,7 @@ class MethodCache extends Cache {
         var impls = DomUtil.getAttributeAsString(schema, "implements");
         var root = DomUtil.getFirstChildElement(schema);
         while (root) {
-            let schemaId = undefined;
+            let schemaId;
             if (root.nodeName == "interface") {
                 const nodeName = DomUtil.getAttributeAsString(root, "name");
                 schemaId = `${namespace}:${nodeName}`;
