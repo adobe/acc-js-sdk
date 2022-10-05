@@ -426,11 +426,30 @@ const  queryDef = {
     operation: "get",
     where: { condition: [ { expr:`@name='XtkDatabaseId'` } ] }
   };
+const query = client.NLWS.xtkQueryDef.create(queryDef);
 await query.selectAll(false);
 var result = await query.executeQuery();
 ```
 
 In the previous example, a queryDef is created without any select nodes. Then the selectAll method is called. After the call, the JavaScript queryDef object will contain a select elements with all the nodes corresponding to attributes of the xtk:option schema.
+
+
+## XTK interfaces
+
+Campaign schemas are following an object model. An interface is a set of methods. For instance, the "xtk:persist" interface, defined in the "xtk:session" schema, has a NewInstance method.
+Schemas can implement interface, which means they inherit and implement the methods of the interface. Such methods are internally called using a particular SOAP call URN, which is formed of the interface name, followed by a pipe character, followed by the implementation schema id. For instance "xtk:persist|nms:delivery" is used to indicate that we're calling a method of the xtk:persist on a nms:delivery object which implements the xtk:persist interface.
+
+The version 1.1.9 of the SDK properly implement this type of calls and will deal with this complexity for you. For instance, you can simply call the NewInstance method as follows:
+
+```js
+// Create a proxy delivery object
+const delivery = client.NLWS.nmsDelivery.create({ label: "Hello" });
+// Call the xtk:persist|nms:delivery#NewInstance method to retreive the default
+// values of a delivery object before actually saving the delivery
+await delivery.newInstance();
+```
+There are 2 common interfaces: xtk:persist and xtk:jobInterface which are documented below.
+
 
 ## Campaign data types
 
@@ -458,6 +477,7 @@ Campaign uses a typed system with some specificities:
 |         date | 10 |    Date | UTC timestamp with day precision. Can be null |
 |      boolean | 15 | boolean | boolean value, defaultint to false. Cannot be null |
 |     timespan |    |         | |
+|   primarykey |    |  string | A primary key is serialized with format <schemaId>|<keyField>[|<keyField>[...]]
 
 
 The SDK user does not have to handle this, but outside of the Campaign ecosystem, those rules may not apply and you probably do not want to use a number for a string, etc. The `XtkCaster` class is here to help.
@@ -968,6 +988,195 @@ or
 var hasAmp = client.hasPackage("nms", "amp");
 ```
 
+## Creating and updating entities in Campaign
+
+There are several possibillities to create objects in Campaign.
+
+### Create from scratch
+
+This first method is to create an object from scratch. It's a multi-step operation which contains the following steps
+
+* Create an object with the "create" function. This function takes an optional parameter with the attributes you know you're going to set
+* Call the xtk:persist#NewInstance API which will generate a unique id, and complete your object with default values (such as default folder, etc.) depending on your role
+* Optionally set more attributes to override any defaults
+* Call save() or xtk:session#Write to create the object in the database 
+
+```js
+    const delivery = client.NLWS.nmsDelivery.create({ label: "Test #1", messageType: "0" });
+    await delivery.newInstance();
+    delivery.$desc = "My description";
+    await client.NLWS.xtkSession.write(delivery); // or await delivery.save();
+```
+
+You'll notice that this method does not return anything. You may have expected this method to return the created object or some id of this object,
+but Campaign does not. Campaign works the other way round. You first get call NewInstance which will give the id before the object is actually saved
+in the database.
+
+```js
+    const delivery = client.NLWS.nmsDelivery.create({ label: "Test #1", messageType: "0" });
+    await delivery.newInstance();
+    // delivery.entity.id is the future id of the object in the database
+```
+
+If you need to modify the object again after it's been created, you can use xtk:session#Write or save again, but you must tell Campaign to perform an update operation instead of an insert, or the call will probably fail or create a duplicate in the database.
+Make sure to read the section about the "xtk:session#Write" method below to understand how exactly objects are updated
+
+```js
+    delivery._operation = "update";
+    delivery.$desc = "My updated description";
+    await delivery.save();
+```
+
+Finally, to delete the object, use xtk:session#Write or save again, this time passing it the "_operation=delete" attribute
+```js
+    delivery._operation = "delete";
+    await delivery.save();
+```
+
+### Create by duplicating an existing object
+
+Sometimes, you do not want to create objects from scratch. Instead you can copy an existing object. Campaign has a sophisticated mechanism to duplicate object and ensures that only the relevant attributes are actually set. For instance, when you dupliate a delivery which is finished, you probably want the new delivery to be in the edition state rather than in the finished state. Schema attributes having the "defOnDuplicate" property will be reset to their defaults in the duplicated object.
+
+Just like the "NewInstance" API, the "xtk:persist#Duplicate" will automatically set the primary key for you. And again, it is a multi-step process.
+
+* Create an object with the "create" function. This time, do no pass any parameters
+* Call the duplicate method, passing it the primary key of the entity you want to duplicate
+* Optionally set more attributes to override any defaults
+* Call save() or xtk:session#Write to create the object in the database 
+
+```js
+    const operator = client.NLWS.xtkOperator.create();
+    await operator.duplicate("xtk:operator|1610");
+    operator.name = "Alex";
+    await operator.save();
+```
+
+The primary key format is described in the data types section of this document.
+
+
+### Updating entities
+
+Entities can be updated using the `xtk:session#Write` API. This API is very flexible and also can be used to create or delete entities or to modify multiple entites at once.
+
+This method takes an unique argument which is a patch to apply. A patch has the same structure as an entity, but only contains the attributes or elements that need to be modified, created, or deleted. In addition to the value, the patch can also use the _operation property to indicate if a particular set of data needs to be inserted, updated or deleted.
+The patch object also must have the `xtkschema` property set to the schema id of the entity to modify.
+
+For instance, one can update the email of a recipient with the following code which clearly shows the xtkschema property, the id and _operation properties to indicate that it is an update and which entity to update, and finally, the email attribute which is the only modified attribute.
+
+```js
+    client.NLWS.xtkSession.write({ xtkschema: "nms:recipient", 
+                                   id: "1234", _operation:"update", 
+                                   email: "amorin@adobe.com"
+                                });
+```
+
+It's of course possible to pass the whole entity to an update, but this is strongly discouraged as it can have unwanted side effects in complex scenario when passed nested documents with linked objects. It's also less performant, and may overwrite data. 
+Passing a patch (sometimes called a diff) containing only the actually modified attributes is the best practice. It also has the benefit to allow some sort of concurrent modifications as each update will onlly update the attributes actually changed.
+
+
+### Setting foreign keys
+
+It's pretty common to have to set foreign keys. For instance one want to set the folder in which a recipient is stored. The first possibility is to set the folder-id attribute directly. It's also the most efficient, but it assumes you know the foreign key in the first place.
+
+```js
+    client.NLWS.xtkSession.write({ xtkschema: "nms:recipient", 
+                                    xtkschema:"nms:recipient", 
+                                    id: 2020, _operation:"update", 
+                                    "folder-id": 6040
+                                });
+```
+
+If you do not know the primary key of the folder but know its name, you can use the following syntax. It works for all collections, where items can be identified with their keys (as defined in the schemas).
+```js
+    client.NLWS.xtkSession.write({ xtkschema: "nms:recipient", 
+                                    xtkschema:"nms:recipient", 
+                                    id: 1990, _operation:"update", 
+                                    folder: {
+                                        _operation: "none",
+                                        name: "test"
+                                    }
+                                });
+```
+
+Note the `operation="none"` attribute on the folder element which tells Campaign that we should not actually update the folder object itself, but to set the recipient folder instead. If you omit the _operation: "none" property, Campaign will modify both the recipient, but also the folder. It is useful in some cases, but does not make sense in this scenario.
+
+
+### Identifying entities
+
+We've had a glimpse of it but the xtk:session#Write API has several strategies to identify entities, both the top level entity but also linked entities as we've seen with the recipient folder example above.
+
+* If the entity is an "autopk" entity, i.e. has autopk=true set defined in its schema, then it will have an internal primary key using the @id attribute. If the corresponding id is set in the patch document, it will be used to identify the object. 
+* Otherwise, it will use the entity keys, as defined in the schema.
+
+For instance, folders are an autopk entity and have the id attribute. They also have 2 keys: name and fullName. All 3 can be used as identifiers to update a folder label as the 3 examples below show
+
+
+```js
+    // Update folder by id
+    await client.NLWS.xtkSession.write({ 
+        xtkschema: "xtk:folder", 
+          _operation: "update", id: 1234,
+          label: "Hello World",
+        });
+    });
+
+    // Update folder by name
+    await client.NLWS.xtkSession.write({ 
+        xtkschema: "xtk:folder", 
+          _operation: "update", name: "test",
+          label: "Hello World",
+        });
+    });
+
+    // Update folder by full name
+    // This is just for example, do not use this method as the folder full name is the concatenation
+    // of the folder label and it's parent folders labels. Changing the label will create an
+    // inconsistency between the folder full name and its label. You can update other attributes though.
+    await client.NLWS.xtkSession.write({ 
+        xtkschema: "xtk:folder", 
+          _operation: "update", fullName: "/Profiles and Targets/Recipients/Hello/",
+          label: "Hello World",
+        });
+    });
+```
+
+
+### Deleting data
+
+The `xtkSession#write` API can also be used to delete data using the "_operation=delete" attribute. For a delete operation, the patch should contain the xtkschema attribute, the _operation=delete attribute and an identifier of the entity.
+
+For insance, a folder can be delete with
+
+```js
+    await client.NLWS.xtkSession.write({ 
+        xtkschema: "xtk:folder", 
+          _operation: "delete", name: "test",
+        });
+    });
+```
+
+Owned entities which are also autopk will also be deleted
+
+
+### Setting ids
+
+In the previous examples we showed how to create or update object and let Campaign generate the ids. In some cases, you'll want to explictiely set the ids upfront. To ensure uniqueness of the ids, Campaign provides an API to "reserve" ids in advane that you can use afterwards: xtk:session#GetNewIdsEx.
+
+In this example, we're getting an id and creating a recipient. The id can be re-used in subsequent calls as a foreign key
+```js
+    const idList = XtkCaster.asArray(await client.NLWS.xtkSession.GetNewIdsEx(1, "XtkNewId"));
+    await client.NLWS.xtkSession.write({ xtkschema:"nms:recipient", id: idList[0], email: 'amorin@adobe.com' });
+```
+
+Note that:
+* Calling GetNewIdsEx for individual ids is not efficient. It's usually better to reserve a large range of ids and insert multiple rows using those ids
+* Inserting data in unitary fashion with API calls is not efficient. Use data management workflows for large imports
+* Make sure that the NLWS.xtkSession.GetNewIdsEx returns an array by using XtkCaster.asArray(...)
+
+
+
+
+## The xtk:jobInterface interface
 
 ## Connect to mid-sourcing
 From a marketing client connection, one can get a client to a mid server

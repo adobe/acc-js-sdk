@@ -205,6 +205,7 @@ const clientHandler = (representation, headers, pushDownOptions) => {
                     if (methodName == "create") {
                         return function(body) {
                             callContext.object = body || {}; // supports empty bodies
+                            if (!callContext.object.xtkschema) callContext.object.xtkschema = callContext.schemaId;
                             return new Proxy(callContext, xtkObjectHandler);
                         };
                     }

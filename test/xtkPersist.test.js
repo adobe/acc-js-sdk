@@ -90,7 +90,7 @@ describe('xtk:persist interface', function () {
                 </SOAP-ENV:Envelope>`));
             await client.NLWS.xtkSession.write(delivery);
             expect(client._transport).toHaveBeenCalledTimes(3);
-            expect(client._transport.mock.calls[2][0].data).toMatch("<delivery label=\"Hello\"/>"); // entity proxy has been correctly serialized
+            expect(client._transport.mock.calls[2][0].data).toMatch("label=\"Hello\""); // entity proxy has been correctly serialized
         })
     });
 
