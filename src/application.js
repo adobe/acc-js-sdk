@@ -374,6 +374,12 @@ class XtkSchemaNode {
         this.unbound = EntityAccessor.getAttributeAsBoolean(xml, "unbound");
 
         /**
+         * The expression controlling the visibility of the current node
+         * @type {string}
+         */
+        this.visibleIf = EntityAccessor.getAttributeAsString(xml, "visibleIf");
+
+        /**
          * Has an unlimited number of children of the same type
          * @type {boolean}
          */

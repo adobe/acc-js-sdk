@@ -1255,6 +1255,21 @@ describe('Application', () => {
             });
         });
 
+        describe("visibleIf", () => {
+            
+            it("Should extract visibleIf", async () => {
+                var xml = DomUtil.parse(`<schema namespace='nms' name='recipient'>
+                    <element name='recipient' label='Recipients'>
+                        <element name="myAddress" visibleIf="HasPackage('pkg')"/>
+                    </element>
+                </schema>`);
+                var schema = newSchema(xml);
+                // Pointing to the node with ref itself => return it
+                var node = await schema.root.findNode("myAddress");
+                expect(node).toMatchObject({ name:"myAddress", visibleIf:"HasPackage('pkg')", childrenCount:0 });
+            });
+        });
+
         describe("Links", () => {
             it("Should find link node", async () => {
                 var xml = DomUtil.parse(`<schema namespace='nms' name='recipient'>
