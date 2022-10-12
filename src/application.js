@@ -608,6 +608,11 @@ class XtkSchemaNode {
          */
         this.packageStatus = PACKAGE_STATUS[this.packageStatusString];
 
+        /**
+         * Returns a string which indicates the custom/extended entity, attribute belongs to.
+         */
+        this.belongsTo = EntityAccessor.getAttributeAsString(xml, "belongsTo");
+
          // Children (elements and attributes)
         const childNodes = [];
         for (const child of EntityAccessor.getChildElements(xml)) {
