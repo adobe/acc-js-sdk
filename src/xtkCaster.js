@@ -58,6 +58,7 @@ const { Util } = require('./util.js');
 |     timespan | 14 |  number | A timespan, in seconds
 |      boolean | 15 | boolean | boolean value, defaultint to false. Cannot be null |
 |        array |    |   Array | a array or a collection
+|   primarykey |    |  string | A primary key is serialized with format <schemaId>|<keyField>[|<keyField>[...]]
 
  * @typedef {(0|''|6|'string'|'int64'|12|13|'memo'|'CDATA'|1|'byte'|2|'short'|3|'long'|15|'boolean'|4|5|'float'|'double'|7|'datetime'|'datetimetz'|'datetimenotz'|10|'date'|14|'timespan'|'array')} XtkType
  * @memberof Campaign
@@ -94,6 +95,7 @@ class XtkCaster {
             case "string":
             case "uuid":
             case "int64":
+            case "primarykey":
                 return "stringValue";
             case 12:            // FIELD_MEMO
             case 13:            // FIELD_MEMOSHORT
@@ -198,6 +200,9 @@ class XtkCaster {
             case "timespan": {
                 return this.asTimespan(value);
             }
+            case "primarykey": {
+                return this.asPrimaryKey(value);
+            }
             default: {
                 throw CampaignException.BAD_PARAMETER("type", type, `Cannot convert value type='${type}', value='${value}'`);
             }
@@ -218,7 +223,21 @@ class XtkCaster {
                 return "";  // Invalid JavaScript date
             return value.toISOString();
         }
-        if ((typeof value) == "object") return "";
+        if ((typeof value) == "object") {
+            if (XtkCaster.isPrimaryKey(value)) {
+                let result = value.schemaId;
+                for (let i=0; i<value.values.length; i++) {
+                    result = result + "|";
+                    let item = value.values[i];
+                    if (item === null || item === undefined) continue;
+                    if (typeof item !== "string") item = XtkCaster.asString(item);
+                    const escaped = item.replace(/\|/g, "\\|").replace(/\"/g, "\\\""); // escape | and " chars
+                    result = result + escaped;
+                }
+                return result;
+            }
+            return "";
+        }
         return value.toString();
     }
 
@@ -430,6 +449,35 @@ class XtkCaster {
         var timespan = XtkCaster.asLong(value);
         return timespan;
     }
+    
+    /**
+     * Convert a raw value into an primary key object. A  primary key is serialized with format <schemaId>|<keyField>[|<keyField>[...]]
+     *
+     * @param {*} value is the raw value to convert
+     * @return {PrimaryKey} a primary key
+     */
+     static asPrimaryKey(value) {
+        if (value === null || value === undefined) return undefined;
+        if (this.isPrimaryKey(value)) return value;
+        value = value.toString();
+        let index = value.indexOf('|');
+        if (index <= 0) return undefined; // no schema id or empty schema id
+        const primaryKey = {
+            schemaId: value.substring(0, index),
+            values: []
+        };
+        value = value.substring(index+1) + "|";
+        let start = 0;
+        for(var i=0; i<value.length; i++) {
+            const c = value[i];
+            if (c === '\\') { i = i + 1; continue; } // escaped char
+            if (c === '|') {
+                primaryKey.values.push(value.substring(start, i).replace(/\\/g, ""));
+                start = i + 1;
+            }
+        }
+        return primaryKey;
+    }
 
     /**
      * Tests if a given type is a date or time type
@@ -445,7 +493,7 @@ class XtkCaster {
      * @param {string|number} type the type name
      * @returns {boolean} true if the type is a string type
      */
-     static isStringType(type) {
+    static isStringType(type) {
         return type === "string" || type === "memo" || type === 6 || type === 12 || type === 13 || type === "blob" || type === "html" || type === "CDATA";
     }
 
@@ -454,8 +502,18 @@ class XtkCaster {
      * @param {string|number} type the type name
      * @returns {boolean} true if the type is a numeric type
      */
-     static isNumericType(type) {
+    static isNumericType(type) {
         return type === "byte" || type === 1 || type === "short" || type === 2 || type === "int" || type === "long" || type === 3 || type === "float" || type === 4 || type === "double" || type === 5 || type === "timespan" || type === 14;
+    }
+
+    /**
+     * Tests if an object is a primary key, i.e. has a schemaId and a array of values
+     * @param {*} value the object to test
+     * @returns true or false depending on whether the object is a primary key or not
+     */
+    static isPrimaryKey(value) {
+        if (!value) return false;
+        return !!(value.schemaId && value.values && Util.isArray(value.values));
     }
 }
 

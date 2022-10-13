@@ -697,6 +697,7 @@ describe('XtkCaster', function() {
         expect(XtkCaster._variantStorageAttribute("")).toBe(null);
         expect(XtkCaster._variantStorageAttribute(6)).toBe("stringValue");
         expect(XtkCaster._variantStorageAttribute("string")).toBe("stringValue");
+        expect(XtkCaster._variantStorageAttribute("primarykey")).toBe("stringValue");
         expect(XtkCaster._variantStorageAttribute("int64")).toBe("stringValue");
         expect(XtkCaster._variantStorageAttribute("uuid")).toBe("stringValue");
         expect(XtkCaster._variantStorageAttribute(12)).toBe("memoValue");
@@ -814,6 +815,67 @@ describe('XtkCaster', function() {
             expect(XtkCaster.as("0", "int")).toStrictEqual(0);
         });
     })
+
+    describe("Primarykey type", () => {
+        it("Should parse empty primary keys", () => {
+            expect(XtkCaster.asPrimaryKey(null)).toBeUndefined();
+            expect(XtkCaster.asPrimaryKey(undefined)).toBeUndefined();
+            expect(XtkCaster.asPrimaryKey("")).toBeUndefined();
+            // no schema
+            expect(XtkCaster.asPrimaryKey("|")).toBeUndefined();
+            expect(XtkCaster.asPrimaryKey("|xyz")).toBeUndefined();
+        });
+
+        it("Should parse simple keys", () => {
+            expect(XtkCaster.asPrimaryKey("xtk:operator|123")).toMatchObject({ schemaId: "xtk:operator", values: [ "123" ] });
+            expect(XtkCaster.asPrimaryKey("xtk:operator|")).toMatchObject({ schemaId: "xtk:operator", values: [ "" ] });
+        });
+
+        it("Should parse composite keys", () => {
+            expect(XtkCaster.asPrimaryKey("xtk:operator|123|xyz")).toMatchObject({ schemaId: "xtk:operator", values: [ "123", "xyz" ] });
+            expect(XtkCaster.asPrimaryKey("xtk:operator||xyz")).toMatchObject({ schemaId: "xtk:operator", values: [ "", "xyz" ] });
+            expect(XtkCaster.asPrimaryKey("xtk:operator||xyz|")).toMatchObject({ schemaId: "xtk:operator", values: [ "", "xyz", "" ] });
+        });
+
+        it("Should handle escaping", () => {
+            expect(XtkCaster.asPrimaryKey("xtk:operator|a\\|b")).toMatchObject({ schemaId: "xtk:operator", values: [ "a|b" ] });
+            expect(XtkCaster.asPrimaryKey("xtk:operator|a\\|b\\|c")).toMatchObject({ schemaId: "xtk:operator", values: [ "a|b|c" ] });
+            expect(XtkCaster.asPrimaryKey("xtk:operator|a\\\"b")).toMatchObject({ schemaId: "xtk:operator", values: [ "a\"b" ] });
+            expect(XtkCaster.asPrimaryKey("xtk:operator|a\\|b\\\"c")).toMatchObject({ schemaId: "xtk:operator", values: [ "a|b\"c" ] });
+        });
+
+        it("Should convert to string", () => {
+            expect(XtkCaster.asString({})).toBe("");
+            expect(XtkCaster.asString({ schemaId: "xtk:operator", values: [ "123" ] })).toBe("xtk:operator|123");
+            expect(XtkCaster.asString({ schemaId: "xtk:operator", values: [ "123", "xyz" ] })).toBe("xtk:operator|123|xyz");
+            expect(XtkCaster.asString({ schemaId: "xtk:operator", values: [ "123", "" ] })).toBe("xtk:operator|123|");
+            expect(XtkCaster.asString({ schemaId: "xtk:operator", values: [ "123", null ] })).toBe("xtk:operator|123|");
+            expect(XtkCaster.asString({ schemaId: "xtk:operator", values: [ "123", undefined ] })).toBe("xtk:operator|123|");
+            expect(XtkCaster.asString({ schemaId: "xtk:operator", values: [ "123", 123 ] })).toBe("xtk:operator|123|123");
+            expect(XtkCaster.asString({ schemaId: "xtk:operator", values: [ "123", 0 ] })).toBe("xtk:operator|123|0");
+            expect(XtkCaster.asString({ schemaId: "xtk:operator", values: [ "123", true ] })).toBe("xtk:operator|123|true");
+            expect(XtkCaster.asString({ schemaId: "xtk:operator", values: [ "123", false ] })).toBe("xtk:operator|123|false");
+        });
+
+        it("Should support as()", () => {
+            expect(XtkCaster.as({ schemaId: "xtk:operator", values: [ "123" ] }, "string")).toBe("xtk:operator|123");
+            expect(XtkCaster.as({ schemaId: "xtk:operator", values: [ "123" ] }, "primarykey")).toMatchObject({ schemaId: "xtk:operator", values: [ "123" ] });
+            expect(XtkCaster.as("xtk:operator|123", "primarykey")).toMatchObject({ schemaId: "xtk:operator", values: [ "123" ] });
+        });
+
+        it("Should test primary key type", () => {
+            expect(XtkCaster.isPrimaryKey(undefined)).toBe(false);
+            expect(XtkCaster.isPrimaryKey(null)).toBe(false);
+            expect(XtkCaster.isPrimaryKey("")).toBe(false);
+            expect(XtkCaster.isPrimaryKey(0)).toBe(false);
+            expect(XtkCaster.isPrimaryKey(123)).toBe(false);
+            expect(XtkCaster.isPrimaryKey({ schemaId: "nms:recipient" })).toBe(false);
+            expect(XtkCaster.isPrimaryKey({ schemaId: "nms:recipient", values:null })).toBe(false);
+            expect(XtkCaster.isPrimaryKey({ schemaId: "nms:recipient", values:"123" })).toBe(false);
+            expect(XtkCaster.isPrimaryKey({ schemaId: "nms:recipient", values:[ "123" ]})).toBe(true);
+            expect(XtkCaster.isPrimaryKey({ schemaId: "nms:recipient", values:[ ]})).toBe(true);
+        });
+    });
 
     it("Should check time type", () => {
         expect(XtkCaster.isTimeType(null)).toBe(false);

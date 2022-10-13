@@ -267,7 +267,7 @@ describe('Caches', function() {
             assert.ok(found !== null && found !== undefined);
             assert.strictEqual(found.nodeName, "method");
             assert.strictEqual(found.getAttribute("name"), "Write");
-            assert.strictEqual(urn, "xtk:persist");
+            assert.strictEqual(urn, "xtk:persist|xtk:session");
 
             // For compatibility reasons (SDK versions earlier than 0.1.23), keep the Write method on the interface too
             found = cache.get("xtk:persist", "Write");

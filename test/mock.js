@@ -184,6 +184,8 @@ const GET_XTK_SESSION_SCHEMA_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
             <pdomDoc xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
             <schema namespace="xtk" name="session" implements="xtk:persist">
                 <interface name="persist">
+                    <method name="NewInstance">
+                    </method>
                     <method name="Write" static="true">
                         <parameters>
                             <param name="doc" type="DOMDocument"/>
@@ -301,6 +303,35 @@ const GET_XTK_QUERY_SCHEMA_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
     </SOAP-ENV:Body>
     </SOAP-ENV:Envelope>`);
 
+const GET_NMS_DELIVERY_SCHEMA_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
+<SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:wpp:default' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
+<SOAP-ENV:Body>
+    <GetEntityIfMoreRecentResponse xmlns='urn:wpp:default' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
+        <pdomDoc xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
+            <schema name="delivery" namespace="nms" implements="xtk:persist">
+                <element name="delivery"></element>
+                <methods>
+                    <method name="Test">
+                    </method>
+                </methods>
+            </schema>
+        </pdomDoc>
+    </GetEntityIfMoreRecentResponse>
+</SOAP-ENV:Body>
+</SOAP-ENV:Envelope>`);
+
+const GET_DELIVERY_TEST_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
+<SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:nms:delivery' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
+<SOAP-ENV:Body>
+    <TestResponse xmlns='urn:nms:delivery' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
+        <entity xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
+            <delivery>
+            </delivery>
+        </entity>
+    </TestResponse>
+</SOAP-ENV:Body>
+</SOAP-ENV:Envelope>`);
+
 const GET_MID_EXT_ACCOUNT_RESPONSE = (encryptedPassword) => {
   return  Promise.resolve(`<?xml version='1.0'?>
     <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:xtk:queryDef' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
@@ -414,6 +445,8 @@ const GET_XTK_ALL_SCHEMA_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
                             <param inout="out" name="element" type="DOMElement"/>
                             <param inout="in" name="element" type="DOMDocument"/>
                             <param inout="out" name="element" type="DOMDocument"/>
+                            <param inout="in" name="primarykey" type="primarykey"/>
+                            <param inout="out" name="string" type="primarykey"/>
                             </parameters> 
                         </method>
                         <method name="Unsupported" static="true">
@@ -447,6 +480,7 @@ const GET_XTK_ALL_TYPES_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
             <dummy xsi:type='xsd:date'>2020-12-31</dummy>
             <dummy xsi:type='ns:Element'><root type='element' result='true'/></dummy>
             <dummy xsi:type=''><root type='document' result='true'/></dummy>
+            <dummy xsi:type='xsd:primarykey'>xtk:operator|123</dummy>
         </AllTypesResponse>
     </SOAP-ENV:Body>
     </SOAP-ENV:Envelope>`);
@@ -742,9 +776,6 @@ const GET_URL_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
     </SOAP-ENV:Body>
 </SOAP-ENV:Envelope>`);
 
-
-
-
 const GETMODIFIEDENTITIES_SCHEMA_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
     <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:xtk:session' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
     <SOAP-ENV:Body>
@@ -784,6 +815,9 @@ const GETMODIFIEDENTITIES_ERROR_RESPONSE = Promise.resolve(`<?xml version='1.0'?
     </SOAP-ENV:Body>
     </SOAP-ENV:Envelope>`);
 
+
+const GET_DELIVERY_NEW_INSTANCE_RESPONSE = Promise.resolve(`<?xml version='1.0'?><SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:nms:delivery' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'><SOAP-ENV:Body><NewInstanceResponse xmlns='urn:nms:delivery' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'><entity xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'><delivery _operation="insert" analysisStep="0" budgetStatus="0" builtIn="false" contentStatus="0" created="2022-09-26 03:13:36.480Z" createdBy-id="6043" deleteStatus="0" deliveryMode="0" deliveryProvider-id="1855" extractionStatus="0" folder-id="1186" folderProcess-id="1206" id="9790" internalName="DM554" isModel="1" jobType="delivery" keepResult="false" label="Email" lastModified="2022-09-26 03:13:36.480Z" launchFCP="0" mapping-id="1775" maxPropositionCount="1" messageType="0" modifiedBy-id="6043" outOfProcess="false" priority="10" sandboxStatus="0" state="0" status="0" targetStatus="0" typology-id="1852" useTargetOffers="false" xtkschema="nms:delivery"><folder _cs="Delivery templates"/><folderProcess _cs="Deliveries"/><createdBy _cs="Gaurav Makkar (gmakkar@adobe.com)"/><modifiedBy _cs="Gaurav Makkar (gmakkar@adobe.com)"/><properties deliveryState="0" warning="false"/><deliveryProvider EMailFunction="0" NChar="0" _cs="Internal email delivery" account="" activationMode="2" active="1" activity="signal" awsKey="" awsRegion="" awsSecret="" azureTenant="" callbackServer="" clientId="" clientSecret="" created="2022-09-16 07:39:50.796Z" createdBy-id="0" dbName="" deliveryMode="1" deployed="0" encryptionType="0" fdaExtAccount-id="0" fileMethod="uploadFile" folder-id="1035" folderSetOfServices-id="0" httpRelayTarget="false" id="1855" imsOrgId="" imsRightsMask="" imsServer="" label="Internal email delivery" lastModified="2022-09-16 07:42:37.469Z" lastMultiUsed="" messageType="0" mirrorURL="" mobileConnector="127" modifiedBy-id="1062" multiMidMode="0" multiMidProvider="0" name="defaultEmailBulk" oAuth="0" onEveryRun="0" packageAutoExport="0" partner="1" password="" port="" productContext="" provider="Snowflake" redirectUrl="" server="" tenant="" timezone="_server_" timezoneName="Europe/Paris" type="3" unicodeData="0" useServerSideEncryption="0" userScope=""><analyticsConfig integrationName="defaultEmailBulk" persistence="7" purge="180" status="3"></analyticsConfig><webAnalyticsParams partner="1" persistence="7" purge="180"><integrationDetails integrationName="defaultEmailBulk" integrationValue="7281015239823888aa73636c74217b84"></integrationDetails></webAnalyticsParams><params allowTranslit="false" bindTimeout="60" dataInOptionalField="false" dataInTextField="false" defaultMoCharset="X-Gsm7Bit" defaultMtCharset="X-Gsm7Bit" deliverIdEncode="default" deliverIdEncode2="0" enableTLS="false" enquireLinkPeriod="30" errorExtractionRegex="\\b[eE][rR][rR]:([a-zA-Z0-9]{3})\\b" errorStatusRegex="^(?:EXPIRED|DELETED|UNDELIV|UNKNOWN|REJECT)" idExtractionRegex="\\b[iI][dD]:([a-fA-F0-9]{1,10})\\b" invalidIdAckLimit="0" maxBinds="1" maxWindow="10" messagePayload="false" messageTimeout="30" rateLimit="0" reconnectPeriod="10" sendFullPhoneNumber="false" skipTLSCertCheck="0" smscName="Generic" statusExtractionRegex="\\b[sS][tT][aA][tT]:([a-zA-Z0-9]{5,15})\\b" submitRespIdEncode="default" submitRespIdEncode2="0" successStatusRegex="^DELIV"><wapPush oAuth="0"/><mms oAuth="0"/><oauthParams thirdPartyApplication="true"/><facebookParams marketingURL="http://www.adobe.com" realtimeSubStatus="0"/><mscrm crmApiVersion="'auto'" crmDeploymentType="webapi" crmGrantType="0"/><salesforce apiVersion="'21.0'"/></params><ffda isFFDA="0" replicationWarehouse="" xxlSchemaSuffix=""/></deliveryProvider><forecast simuResponseType="0" weight="5" weightType="0"><weightFormula>$(deliveryWeight)</weightFormula></forecast><volume duration="1" rate="100"/><scheduling delayExtraction="0" validationMode="manual" webResPurged="false"><waves mode="0" splitDelay="86400" splitSize="20%"/><messagePreparation priority="0"/></scheduling><validation sandboxMode="0" sandboxModeEnforced="0" useBudgetValidation="true" useContentValidation="true" useExtractionValidation="true" useFCPValidation="true" useTargetValidation="true" validationMode="0"><target><validation delay="259200" type="0"/></target><content><validation delay="259200" type="0"/></content><budget><validation delay="259200" type="0"/></budget><extraction><validation delay="259200" type="0"/></extraction><forecast><validation delay="259200" type="0"/></forecast><starting><validation delay="259200" type="0"/></starting><edition><validation delay="259200" type="0"/></edition><external><validation delay="259200" type="0"/></external></validation><execution maxPersoTime="5" maxRetry="5" retryPeriod="3600"><controlGroup type="3"/></execution><typology _cs="Default typology"/><mapping _cs="Recipients (nms:recipient)" blackListAgency="@blackList" blackListEmail="Iif(@blackList!=0, 1, @blackListEmail)" blackListFax="Iif(@blackList!=0, 1,@blackListFax)" blackListPaper="Iif(@blackList!=0, 1,@blackListPostalMail)" blackListPhone="Iif(@blackList!=0, 1,@blackListPhone)" blackListSms="Iif(@blackList!=0, 1,@blackListMobile)" builtIn="1" countryCode="[location/@countryCode]" created="2022-09-16 07:39:50.496Z" createdBy-id="0" defaultOrigin-id="1861" email="Lower(@email)" facebook="" fax="@fax" folder-id="1171" format="@emailFormat" id="1775" isFfda="0" label="Recipients" lastModified="2022-09-16 07:39:52.859Z" modifiedBy-id="0" name="mapRecipient" paper="postalAddress" phone="@phone" recipientLink="" schema="nms:recipient" sms="@mobilePhone" targetSchema="nms:recipient" twitter=""><storage broadLogExclSchema="nms:excludeLogRcp" broadLogFilterKeys="" broadLogRcpKeys="" broadLogSchema="nms:broadLogRcp" broadLogTable="" exclusionType="2" trackingHasDeviceIP="0" trackingLogFilterKeys="" trackingLogRcpKeys="" trackingLogSchema="nms:trackingLogRcp" trackingLogTable=""></storage><social birthDate="@birthDate" email="@email" firstName="@firstName" gender="@gender" lastName="@lastName" locale="@language"/></mapping><scenario validityDuration="432000" webValidityDuration="5184000"/><fcpParameters addFormatInPrefix="true" fcpMailFormat="normal" fcpMode="specificTarget" ignoreBlacklist="true" ignoreDeduplicate="true" ignoreQuarantaine="false" keepDeliveryCode="false" labelPrefix="Proof" useSpecificOutputFile="false"/><mailParameters mirrorPagePolicy="default" needMirrorPage="0" useDefaultErrorAddress="true"><senderName><![CDATA[Automation Inc.]]></senderName><senderAddress><![CDATA[no-reply@Customer.rd.campaign.adobe.com]]></senderAddress><replyAddress><![CDATA[no-reply@Customer.rd.campaign.adobe.com]]></replyAddress><replyName><![CDATA[Automation Inc.]]></replyName></mailParameters><smsParameters mobileMsgType="0" smsAppType="2" smsMode="1" smsPriority="0"/><paperParameters addressPos="ownPage" colorSupport="bw" envelope="C6SW" priceCategory="letterPrio" rectoVerso="recto"/><targets addressField="__db__" allowUnchecked="true" blackListField="__db__" deduplicate="true" excludeOnMissingOffer="0" externalIdField="__db__" formatField="__db__" fromExternalSource="false" maxErrorCount="3" noRcpIdDedup="false" noReconciliation="false" qualityRequired="3" segmentCodeField="__db__" targetMode="0" useBlackList="true" useQuality="1" useQuarantine="1"><deliveryTarget nonEmpty="false"/><proofTarget nonEmpty="false"/><deliveryFile autoDelete="false" upload="true"/><proofFile autoDelete="false" upload="true"/><postalAddress addrDefinedField="__none__" addrErrorCountField="__none__" addrLastCheckField="__none__" addrQualityField="__none__" line1Field="__db__" line2Field="__db__" line3Field="__db__" line4Field="__db__" line5Field="__db__" line6Field="__db__" line7Field="__db__"/></targets><remoteContent remoteValidation="false"/><content IsImagePublished="false" embedImages="false" fcbContentType="0" formatSelection="preferences" htmlCompression="false" ignoreScripts="false" pdfCompression="true" pdfType="simple"><lineContentType><source>text</source></lineContentType><lineVersion><source>line</source></lineVersion><lineDeliveryType><source>pushMsg</source></lineDeliveryType><lineImageType><source>manual</source></lineImageType><lineMultiRegionLayoutType><source>1</source></lineMultiRegionLayoutType></content><output enableLinkDelivery="true" feedbackMode="none"><seedList insertMode="0"/><extraction><source batchSize="200" format="text" rejectsFromTextConnector="false" startPath="/" upload="true"><dataSourceConfig codepage="1252" colType="0" ignoreConfigCheck="false" textQualifier="none" timezone="_inherit_" useCR="false" useLF="false"/><dataSourceConfigDest codepage="1252" colType="0" ignoreConfigCheck="false" textQualifier="none" timezone="_inherit_" useCR="false" useLF="false"/></source><destination downloadDestFile="true" endRecord="0" progressLines="20" putUnmappedCols="true" splitOverOrigin="false" startPath="/" startRecord="0" transactionLines="200"><exportFormat allAsString="false" analyze="false" codepage="1252" delEscaping="duplicateDel" delimitor="delNone" format="text" lineEnd="0" saveTitle="true" separator="sepTab" timezone="_inherit_"><dataFormat decimalCount="-1" hideTime="false" orderDate="ymd" sepDate="/" sepDateTime=" " sepNumber="." sepThousand="false" sepTime=":" showMs="false" showSec="true" yearShort="false"/></exportFormat></destination></extraction></output><tracking enabled="true" openEnabled="true"><clickFormula><![CDATA[<%@ include option='NmsTracking_ClickFormula' %>]]></clickFormula><openFormula><![CDATA[<%@ include option='NmsTracking_OpenFormula' %>]]></openFormula></tracking><advancedParameters DBPreparationMode="0" codepage="65001" emailArchiving="false" emailBCCEmta="false" forceCodepage="false" outOfProcessMode="false" showSQL="false" useDBPreparation="false" useDataManagement="false" verifyMode="false"/><budgetParameters commitmentLevel="0" computationState="0"/></delivery></entity></NewInstanceResponse></SOAP-ENV:Body></SOAP-ENV:Envelope>`);
+
 // Public exports
 exports.Mock = {
   makeClient: makeClient,
@@ -804,6 +838,8 @@ exports.Mock = {
   GET_OPTION_NOTFOUND_RESPONSE: GET_OPTION_NOTFOUND_RESPONSE,
   GET_OPTION_MISSING_DATA_RESPONSE: GET_OPTION_MISSING_DATA_RESPONSE,
   GET_XTK_QUERY_SCHEMA_RESPONSE: GET_XTK_QUERY_SCHEMA_RESPONSE,
+  GET_NMS_DELIVERY_SCHEMA_RESPONSE: GET_NMS_DELIVERY_SCHEMA_RESPONSE,
+  GET_DELIVERY_TEST_RESPONSE: GET_DELIVERY_TEST_RESPONSE,
   GET_MID_EXT_ACCOUNT_RESPONSE: GET_MID_EXT_ACCOUNT_RESPONSE,
   GET_BAD_EXT_ACCOUNT_RESPONSE: GET_BAD_EXT_ACCOUNT_RESPONSE,
   GET_SECRET_KEY_OPTION_RESPONSE: GET_SECRET_KEY_OPTION_RESPONSE,
@@ -835,5 +871,6 @@ exports.Mock = {
   INCREASE_VALUE_RESPONSE: INCREASE_VALUE_RESPONSE,
   FILE_RES_WRITE_RESPONSE: FILE_RES_WRITE_RESPONSE,
   PUBLISH_IF_NEEDED_RESPONSE: PUBLISH_IF_NEEDED_RESPONSE,
-  GET_URL_RESPONSE: GET_URL_RESPONSE
+  GET_URL_RESPONSE: GET_URL_RESPONSE,
+  GET_DELIVERY_NEW_INSTANCE_RESPONSE: GET_DELIVERY_NEW_INSTANCE_RESPONSE
 }
