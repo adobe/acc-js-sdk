@@ -231,7 +231,7 @@ class XtkCaster {
                     let item = value.values[i];
                     if (item === null || item === undefined) continue;
                     if (typeof item !== "string") item = XtkCaster.asString(item);
-                    const escaped = item.replaceAll("|", "\\|").replaceAll("\"", "\\\""); // escape | and " chars
+                    const escaped = item.replace(/\|/g, "\\|").replace(/\"/g, "\\\""); // escape | and " chars
                     result = result + escaped;
                 }
                 return result;
@@ -472,7 +472,7 @@ class XtkCaster {
             const c = value[i];
             if (c === '\\') { i = i + 1; continue; } // escaped char
             if (c === '|') {
-                primaryKey.values.push(value.substring(start, i).replaceAll("\\", ""));
+                primaryKey.values.push(value.substring(start, i).replace(/\\/g, ""));
                 start = i + 1;
             }
         }
