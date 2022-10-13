@@ -5,29 +5,34 @@ This is a node.js SDK for Campaign API. It exposes the Campaign API exactly like
 
 # Changelog 
 
+## Version 1.1.9
+_2022/10/11_
+
+* Added support for schema visibleIf attribute
+
 ## Version 1.1.8
-_2022_10_03_
+_2022/10/03_
 
 * Added translation ids (`labelLocalizationId`,`descriptionLocalizationId`, `labelSingularLocalizationId`) for `XtkSchema`, `XtkSchemaNode`, `XtkEnumerationValue` and `XtkEnumeration`
 
 ## Version 1.1.7
-_2022_08_30_
+_2022/08/30_
 
 * New listener interface to be notified of internal events from the SDK. Can be used to integrate with observability frameworks. See the "Observers" section of the README file.
 * Experimental file upload feature. Will require server-side changes to work, and is currently limited to be used with browsers only.
 
 ## Version 1.1.6
-_2022_08_19_
+_2022/08/19_
 
 * New auto-refresh mechanism to keep schemas and option caches up-to-date. See `client.startRefreshCaches` and `client.stopRefreshCaches` functions.
 
 ## Version 1.1.5
-_2022/07/07__
+_2022/07/07_
 
 * The SOAP method name was not showing up properly in the Chrome console
 
 ## Version 1.1.4
-_2022/07/07__
+_2022/07/07_
 
 * Added `application.version` which returns the server version in the format major.minor.servicePack (ex: 8.2.10)
 * Added the ability to push down parameters to the SOAP and transport layers. See the pushDown section of the readme file.
