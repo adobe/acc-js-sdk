@@ -609,7 +609,7 @@ class XtkSchemaNode {
         this.packageStatus = PACKAGE_STATUS[this.packageStatusString];
 
         /**
-         * Returns a string which indicates the custom/extended entity, attribute belongs to.
+         * Returns a string (a schema id) which indicates the custom/extended entity, attribute belongs to.
          */
         this.belongsTo = EntityAccessor.getAttributeAsString(xml, "belongsTo");
 

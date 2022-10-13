@@ -2040,6 +2040,7 @@ A schema is also a `XtkSchemaNode` and the corresponding properties/methods are 
 | **ref** | Some nodes are only references to other nodes. There are 2 kind of references. Local references are simply a xpath in the current schema (starting from the schema itself, and not the schema root). Fully qualified references are prefixed with a schema id. The target node can be accessed with the `refTarget` funtion.
 | **isMappedAsXml** | Is the field mapped as XML?
 | **visibleIf** | The visibility expression of the node (if any) since version 1.1.9 of the SDK
+| **belongsTo** | For attribute and elements, indicates the schema id in which they were defined. Since version 1.1.10 of the SDK
 
 
 | Method | Description |

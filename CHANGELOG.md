@@ -10,6 +10,7 @@ _2022/10/13_
 
 * Added support for `primaryKey` type
 * Added support for the `xtk:persist` interface
+* Added support for schema belongsTo attribute
 
 ## Version 1.1.9
 _2022/10/11_

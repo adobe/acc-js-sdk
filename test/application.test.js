@@ -1270,6 +1270,29 @@ describe('Application', () => {
             });
         });
 
+        describe("belongsTo", () => {
+            
+            it("Should extract belongsTo", async () => {
+                var xml = DomUtil.parse(`<schema namespace='nms' name='delivery'>
+                    <element name='delivery' label='Delivery'>
+                        <attribute belongsTo="nms:deliveryOperation" defOnDuplicate="true" enum="sandboxStatus" label="Status of inclusion in the provisional calendar" name="sandboxStatus" sqlname="iSandboxStatus" type="byte"/>
+                        <attribute belongsTo="cus:delivery" label="" length="255" name="hello" sqlname="sHello" type="string"/>
+                        <element advanced="true" desc="Memo field containing data stored as XML" label="XML memo" name="data" sqlname="mData" type="memo"/>
+                    </element>
+                </schema>`);
+                var schema = newSchema(xml);
+
+                var node = await schema.root.findNode("@sandboxStatus");
+                expect(node).toMatchObject({ name:"@sandboxStatus", belongsTo:"nms:deliveryOperation", childrenCount:0 });
+
+                var node = await schema.root.findNode("@hello");
+                expect(node).toMatchObject({ name:"@hello", belongsTo:"cus:delivery", childrenCount:0 });
+
+                var node = await schema.root.findNode("data");
+                expect(node).toMatchObject({ name:"data", belongsTo:"", childrenCount:0 });
+            });
+        });
+
         describe("Links", () => {
             it("Should find link node", async () => {
                 var xml = DomUtil.parse(`<schema namespace='nms' name='recipient'>
