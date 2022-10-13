@@ -5,6 +5,12 @@ This is a node.js SDK for Campaign API. It exposes the Campaign API exactly like
 
 # Changelog 
 
+## Version 1.1.10
+_2022/10/13_
+
+* Added support for `primaryKey` type
+* Added support for the `xtk:persist` interface
+
 ## Version 1.1.9
 _2022/10/11_
 
