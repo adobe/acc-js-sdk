@@ -1,0 +1,109 @@
+---
+layout: page
+title: Connection Parameters
+---
+
+<p>Connection parameters can also be passed an option object when creating a <b>client</b></p>
+
+<pre class="code">
+const connectionParameters = sdk.ConnectionParameters.ofUserAndPassword(
+    "https://myInstance.campaign.adobe.com", 
+    "admin", "admin",
+    { representation: "xml", rememberMe: true });
+</pre>
+
+
+<p>This table shows the various available properties and their values</p>
+
+<table>
+    <thead>
+        <tr>
+            <th>Property</th>
+            <th>Default</th>
+            <th>Description</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>representation</td>
+            <td>"SimpleJson"</td>
+            <td> See below. Will determine if the SDK works with xml of json object. Default is JSON</td>
+        </tr>
+        <tr>
+            <td>rememberMe</td>
+            <td>false</td>
+            <td> The Campaign `rememberMe` attribute which can be used to extend the lifetime of session tokens</td>
+        </tr>
+        <tr>
+            <td>entityCacheTTL</td>
+            <td>300000</td>
+            <td> The TTL (in milliseconds) for the xtk entity cache</td>
+        </tr>
+        <tr>
+            <td>methodCacheTTL</td>
+            <td>300000</td>
+            <td> The TTL (in milliseconds) for the xtk method cache</td>
+        </tr>
+        <tr>
+            <td>optionCacheTTL</td>
+            <td>300000</td>
+            <td> The TTL (in milliseconds) for the xtk option cache</td>
+        </tr>
+        <tr>
+            <td>traceAPICalls</td>
+            <td>false</td>
+            <td> Activates tracing of API calls or not</td>
+        </tr>
+        <tr>
+            <td>transport</td>
+            <td>axios</td>
+            <td>Overrides the transport layer</td>
+        </tr>
+        <tr>
+            <td>noStorage</td>
+            <td>false</td>
+            <td>De-activate using of local storage</td>
+        </tr>
+        <tr>
+            <td>storage</td>
+            <td>localStorage</td>
+            <td>Overrides the local storage for caches</td>
+        </tr>
+        <tr>
+            <td>refreshClient</td>
+            <td>undefined</td>
+            <td>Async callback to run when the session token is expired</td>
+        </tr>
+        <tr>
+            <td>charset</td>
+            <td>UTF-8</td>
+            <td>The charset encoding used for http requests. In version 1.1.1 and above, the default will be UTF-8. It's possible to override (including setting an empty character set) with this option.</td>
+        </tr>
+        <tr>
+            <td>extraHttpHeaders</td>
+            <td>[string]:string</td>
+            <td>An optional dictionary (key/value pairs) of extra HTTP headers to pass to all API calls.</td>
+        </tr>
+        <tr>
+            <td>clientApp</td>
+            <td>string</td>
+            <td>An optional string describing the name and version of the SDK client application. It will be passed to the server in the ACC-SDK-Client-App HTTP header</td>
+        </tr>
+        <tr>
+            <td>noSDKHeaders</td>
+            <td>boolean</td>
+            <td>Can be set to disable passing ACC-SDK-* HTTP headers to the server</td>
+        </tr>
+        <tr>
+            <td>noMethodInURL</td>
+            <td>boolean</td>
+            <td>Can be set to true to remove the method name from the URL</td>
+        </tr>
+        <tr>
+            <td>timeout</td>
+            <td>number</td>
+            <td>Can be used to set the APIs call timeout (in ms)</td>
+        </tr>
+    </tbody>
+</table>
+

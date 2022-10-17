@@ -1,0 +1,124 @@
+---
+layout: page
+title: Data Types
+---
+
+<p>Campaign uses a typed system with some specificities:</p>
+<ul>
+<li>for strings, "", null, or undefined are equivalent</li>
+<li>numerical values cannot be null or undefined (0 is used instead)</li>
+<li>boolean values cannot be null or undefined (false is used instead)</li>
+<li>conversion between types is automatic based on their ISO representation</li>
+</ul>
+
+<p></p>
+<table>
+  <thead>
+      <tr>
+          <th>XTK type</th>
+          <th></th>
+          <th>JS type</th>
+          <th>Comment / Description</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>string</td>
+          <td>6</td>
+          <td>string</td>
+          <td>never null, defaults to ""</td>
+      </tr>
+      <tr>
+        <td>memo</td>
+        <td>12</td>
+        <td>string</td>
+        <td></td>
+      </tr>
+      <tr>
+        <td>CDATA</td>
+        <td>13</td>
+        <td>string</td>
+        <td></td>
+      </tr>
+      <tr>
+        <td>byte</td>
+        <td>1</td>
+        <td>number</td>
+        <td>signed integer in the [-128, 128[ range. Never null, defaults to 0</td>
+      </tr>
+      <tr>
+        <td>short</td>
+        <td>2</td>
+        <td>number</td>
+        <td>signed 16 bits integer in the [-32768, 32768[ range. Never null, defaults to 0</td>
+      </tr>
+      <tr>
+        <td>long</td>
+        <td>3</td>
+        <td>number</td>
+        <td>signed 32 bits integer. Never null, defaults to 0</td>
+      </tr>
+      <tr>
+        <td>int64</td>
+        <td></td>
+        <td>string</td>
+        <td>signed 64 bits integer. As JavaScript handles all numbers as doubles, it's not possible to properly represent an int64 as a number, and it's therefore represented as a string.</td>
+      </tr>
+      <tr>
+        <td>float</td>
+        <td>4</td>
+        <td>number</td>
+        <td>single-percision numeric value. Never null, defaults to 0</td>
+      </tr>
+      <tr>
+        <td>double</td>
+        <td>5</td>
+        <td>number</td>
+        <td>double-percision numeric value. Never null, defaults to 0</td>
+      </tr>
+      <tr>
+        <td>datetime</td>
+        <td>7</td>
+        <td>Date</td>
+        <td>UTC timestamp with second precision. Can be null</td>
+      </tr>
+      <tr>
+        <td>datetimetz</td>
+        <td></td>
+        <td></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td>datetimenotz</td>
+        <td></td>
+        <td></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td>date</td>
+        <td>10</td>
+        <td>Date</td>
+        <td>UTC timestamp with day precision. Can be null</td>
+      </tr>
+      <tr>
+        <td>boolean</td>
+        <td>15</td>
+        <td>boolean</td>
+        <td>boolean value, defaultint to false. Cannot be null</td>
+      </tr>
+      <tr>
+        <td>timespan</td>
+        <td></td>
+        <td></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td>primarykey</td>
+        <td></td>
+        <td>string</td>
+        <td>A primary key is serialized with format <schemaId>|<keyField>[|<keyField>[...]]</td>
+      </tr>
+  </tbody>
+</table>
+
+

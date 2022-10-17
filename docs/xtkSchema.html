@@ -1,0 +1,39 @@
+---
+layout: page
+title: The Schema API
+---
+
+
+
+<p>Reading schemas is a common operation in Campaign. The SDK provides a convenient functions as well as caching for efficient use of schemas.</p>
+<p>In addition, have a look at the <a href="application/html">Application</a> object which contains an object model for accessing and traversing schemas</p>
+
+<pre class="code">
+const schema = await client.getSchema("nms:recipient");
+console.log(JSON.stringify(schema));
+</pre>
+
+<p>A given representation can be forced</p>
+<pre class="code">
+const xmlSchema = await client.getSchema("nms:recipient", "xml");
+const jsonSchema = await client.getSchema("nms:recipient", "SimpleJson");
+</pre>
+
+<p>System enumerations can also be retreived with the fully qualified enumeration name</p>
+<pre class="code">
+const sysEnum = await client.getSysEnum("nms:extAccount:encryptionType");
+</pre>
+
+<p>or from a schema</p>
+<pre class="code">
+const schema = await client.getSchema("nms:extAccount");
+const sysEnum = await client.getSysEnum("encryptionType", schema);
+</pre>
+
+<p>Get a source schema</p>
+<pre class="code">
+var srcSchema = await NLWS.xtkPersist.getEntityIfMoreRecent("xtk:srcSchema|nms:recipient", "", false);
+console.log(JSON.stringify(srcSchema));
+</pre>
+
+

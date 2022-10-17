@@ -1,0 +1,80 @@
+---
+layout: page
+title: Message Center
+---
+
+
+<p>The Message Center API (<b>nms:rtEvent#PushEvent</b>) can be used to send transactional messages. It should be called on the Message Center execution instances, not on the marketing instances.</p>
+
+<h1>Authentication</h1>
+<p>Two authentication mechanism are possible for Message Center. It is possible to use a user/password authentication and call the Logon method to get a session and security token, as all other APIs. When using this authentication mechanism, the caller is responsible to handle token expiration and must explicitely handle the case when the Message Center API call fails because of an expired token.</p>
+
+<p>Another common authentication strategy is to define a trusted Security Zone for message center clients and setup this security zone to use the "user/password" as a session token.</p>
+
+<p>Here's an example of authentication with this method</p>
+<pre class="code">
+const connectionParameters = sdk.ConnectionParameters.ofSessionToken(url, "mc/mc");
+const client = await sdk.init(connectionParameters);
+</pre>
+
+
+
+
+
+
+<h1>Pushing events</h1>
+
+<p>Events can be pushed using the <b>nms:rtEvent#PushEvent</b> API call. For instance</p>
+<pre class="code">
+var result = await NLWS.nmsRtEvent.pushEvent({
+    wishedChannel: 0,
+    type: "welcome",
+    email: "aggmorin@gmail.com",
+    ctx: {
+      $title: "Alex"
+    }
+});
+console.log(`>> Result: ${result}`);
+</pre>
+
+<p>There are a couple of noteworthy things to say about this API when using SimpleJson serialization.</p>
+<ul>
+    <li>The payload passed to the pushEvent API call is actuall a nms:rtEvent entity. Hence the wishedChannel, etc. are actually XML attributes. The default SimpleJson conversion works fine here, no need to prefix the attributes with the "@" sign.</li>
+    <li>However, the <b>ctx</b> section is not structured. We do not have a schema to validate or guide the conversion. It is common to use XML elements instead of attributes in the ctx context. In the message center template, you'll find things like <b>&lt;%= rtEvent.ctx.title %></b>. The fact that "title" is used (in stead of "@title") implied that the ctx node will contain a title element, not a title attribute. For the SimpleJson conversion to work, it's therefore important to indicate "$title" as the JSON attribute name. This will guide the SimpleJson converted to use an XML element instead of an XML attribute</li>
+</ul>
+
+<h1>Getting event status</h1>
+
+<p class="warning">There's no scalable API to get the status of a message center event. One can use the QueryDef API to query the nms:rtEvent table for testing purpose though.</p>
+
+<p>To do so, the first step is to decode the event id returned by PushEvent. It is a 64 bit number, whose high byte is the message center cell (instance) id which handled the event. It's a number between 0 and 255. The lower bytes represent the primary key of the event. Note that this is subject to change in future versions of Campaign and should not be considered stable.</p>
+
+<p>Clear high byte</p>
+<pre class="code">
+eventId = Number(BigInt(eventId) & BigInt("0xFFFFFFFFFFFFFF"));
+</pre>
+
+<p>Get event status</p>
+<pre class="code">
+var queryDef = {
+schema: "nms:rtEvent",
+operation: "get",
+select: {
+    node: [
+        { expr: "@id" },
+        { expr: "@status" },
+        { expr: "@created" },
+        { expr: "@processing" },
+        { expr: "@processed" }
+    ]
+},
+where: {
+    condition: [
+        { expr:`@id=${eventId}` }
+    ]
+}
+}
+query = NLWS.xtkQueryDef.create(queryDef);
+var event = await query.executeQuery();
+console.log(`>> Event: ${JSON.stringify(event)}`);
+</pre>

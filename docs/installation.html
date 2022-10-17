@@ -1,0 +1,34 @@
+---
+layout: page
+title: Installation
+---
+
+<p>Install
+</p>
+<pre class="code">
+npm install --save @adobe/acc-js-sdk
+</pre>
+
+<p>The SDK entrypoint is the <b>sdk</b> object from which everything else can be created.
+</p>
+
+<pre class="code">
+const sdk = require('@adobe/acc-js-sdk');
+</pre>
+
+<p>You can get version information about the SDK
+</p>
+
+<pre class="code">
+console.log(sdk.getSDKVersion());
+</pre>
+
+<p>which will return the SDK name and version (the actual name and version number will depend on the version you have installed)
+    </p>
+<pre class="code">
+{
+  version: "1.0.0",
+  name: "@adobe/acc-js-sdk",
+  description: "ACC Javascript SDK",
+}
+</pre>

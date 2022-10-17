@@ -1,0 +1,14 @@
+---
+layout: page
+title: BadgerFish format
+---
+
+<p>
+  To distinguish between BadgerFish and SimpleJson format, all BadgerFish objects will have the BadgerFishObject class, that includes the top-level object, but also all children objects. A badgerfish object can be created as follows. It will automatically convert all the object literals into BadgerFishObjet class.
+</p>
+
+<p class="warning">BadgerFish representation is deprecated and only available for backwards compatibility reasons.</p>
+
+<pre class="code">
+const obj = new DomuUtil.BadgerFishObject({ "@att":"value });
+</pre>

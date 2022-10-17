@@ -1,0 +1,82 @@
+---
+layout: page
+title: Sample Code
+---
+
+<p>The <b>samples</b> folder contains several samples illustrating how to use the various Campaing APIs.</p>
+
+<p>A sample file looks like this</p>
+
+<ul>
+<li>It includes the <b>utils</b> library which contains a few helper functions.s</li>
+<li>It starts with an asynchronous auto-execute function that is used to run the sample from the command line</li>
+<li>This function contains one or more calls to the <b>utils.sample</b> function. Each such call describes and execute a sample.</li>
+<li>A sample file should not do anything else or have any side effect: all the actual sample code should be inside calls to <b>utils.sample</b></li>
+</ul>
+
+<p class="info"> Note the use of <b>await</b> when calling <b>utils.sample</b></p>
+
+<pre class="code">
+const utils = require("./utils.js");
+( async () => {
+  await utils.sample({
+    title: "The Sample title",
+    labels: [ "xtk:queryDef", "Basics", "Query", "QueryDef", "Get" ],
+    description: `A description of the sample`,
+    code: async() => {
+      //... Sample code goes there
+    }
+  });
+
+  await utils.sample({
+    title: "A Second sample",
+    labels: [ "xtk:queryDef", "Basics", "Query", "QueryDef", "Get" ],
+    description: `A description of the sample`,
+    code: async() => {
+      //... Sample code goes there
+    }
+  });
+})();
+</pre>
+
+<p>The <b>utils.sample</b> function takes 1 parameters describing the sample:</p>
+<ul>
+<li><b>title</b> is the sample title, a short, human friendly name for the sample</li>
+<li><b>labels</b> is a list of keywords that can be used to retreive the samples in a large list</li>
+<li><b>description</b> is a longer, multi-line description of the sample</li>
+<li><b>code</b> is an async function, the code of the sample</li>
+</ul>
+
+<p>Most of the samples - actually all of them except some specific samples needing specific logon - will also use the `utils.logon` function. This is a helper function which will perform the Campaign Logon and Logoff for you, and call your callback function with pre-initialized `client` and `NLWS` objects</p>
+
+<p class="info"> Note the use of <b>await</b> when calling <b>utils.logon</b></p>
+
+<pre class="code">
+  await utils.sample({
+    title: "The Sample title",
+    labels: [ "xtk:queryDef", "Basics", "Query", "QueryDef", "Get" ],
+    description: `A description of the sample`,
+    code: async() => {
+      return await utils.logon(async (client, NLWS) => {
+          //... Sample code goes there
+      });
+    }
+  });
+</pre>
+
+
+<h1>Running samples</h1>
+<p>Samples can be run from the command line. First, set 3 environment variables with your instance credentials:</p>
+
+<pre class="code">
+export ACC_URL=https://myInstance.campaign.adobe.com
+export ACC_USERadmin
+export ACC_PASSWORD=...
+</pre>
+
+<p>and then run the samples</p>
+<pre class="code">
+node samples/000\ -\ basics\ -\ logon.js
+</pre>`
+
+

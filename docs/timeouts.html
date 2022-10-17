@@ -1,0 +1,23 @@
+---
+layout: page
+title: Handling timeouts
+---
+
+<p>By default, the SDK has a timeout of 5s when running in a node.js environment, and uses the browser defaults when run inside a browser (using the fetch API).</p>
+
+<p>It is possible to overwrite the transport layer (see <b>The Transport Protocol</b> and use your own code to make and configure HTTP requests) to tune the timeout value. It is a bit cumbersome though.</p>
+
+<p>Instead, you can use the <b>timeout</b> parameter, and set it either globally, as a connection parameter, or even at the API call level but using the <b>PushDown</b> mechanism described below.</p>
+
+<p>Sets a timeout of 10s gloally</p>
+<pre class="code">
+const connectionParameters = sdk.ConnectionParameters.ofUserAndPassword(
+                                    "https://myInstance.campaign.adobe.com", 
+                                    "admin", "admin",
+                                    { timeout: 10000 });
+</pre>
+
+<p>Override the timeout to 1 min for a particular API call</p>
+<pre class="code">
+NLWS.xml.pushDown({ timeout: 60000 }).xtkBuilder.installPackage(dom);
+</pre>

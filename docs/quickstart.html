@@ -1,56 +1,25 @@
-# Adobe Campaign Classic (ACC) SDK in JavaScript
+---
+layout: page
+title: Quick Start
+---
 
-The ACC JavaScript SDK is a JavaScript SDK which allows you to call Campaign APIs in a simple, expressive and JavaScript idiomatic way. It hides away the Campaign complexities associated with having to make SOAP calls, XML to JSON conversion, type formatting, etc.
-
-The API is fully asynchronous using promises and works as well on the server side than on the client side in the browser.
-
-
-
-> **Extensive documentation is available**: https://opensource.adobe.com/acc-js-sdk/
-
-
-# QuickStart
-
-
-To install the SDK, use your favorite node command
-```js
-npm install --save @adobe/acc-js-sdk
-```
-
-
-The SDK entrypoint is the `sdk` object from which everything else can be created.
-
-```js
-const sdk = require('@adobe/acc-js-sdk');
-```
-
-You can get version information about the SDK
-```js
-console.log(sdk.getSDKVersion());
-```
-
-which will return the SDK name and version (the actual name and version number will depend on the version you have installed)
-```
-{
-  version: "1.0.0",
-  name: "@adobe/acc-js-sdk",
-  description: "ACC Javascript SDK",
-}
-```
-
-
-# An example
 Here's a small node.js application which displays all the target mappings in Campaign.
 
-Create a new node.js application
-```sh
+
+<p>Create a new node.js application</p>
+<pre class="code">
 mkdir acc-js-sdk-qstart
 cd acc-js-sdk-qstart
-npm i --save @adobe/acc-js-sdk
-```
+</pre>
 
-Now create a simple `index.js` flle. Replace the endppoint and credentials with your own
-```js
+<p>Install the SDK</p>
+<pre class="code">
+npm i --save @adobe/acc-js-sdk
+</pre>
+
+<p>Now create a simple <b>index.js</b> flle. Replace the endppoint and credentials with your own</p>
+
+<pre class="code">
 const sdk = require('@adobe/acc-js-sdk');
 
 (async () => {
@@ -85,26 +54,16 @@ const sdk = require('@adobe/acc-js-sdk');
 })().catch((error) => {
     console.log(error);
 });
-```
-
-Run it
-```sh
+</pre>
+    
+<p>Run it</p>
+<pre class="code">
 node index.js
-```
+</pre>
 
-It will display something like this
-```
-ACC Javascript SDK version 1.0.0
+<p>It will display something like this</p>
+<pre class="code">
+ACC Javascript SDK version 1.1.9
 Target mappings: {"deliveryMapping":[{"id":"1747","label":"Recipients","name":"mapRecipient","schema":"nms:recipient"},{"id":"1826","label":"Subscriptions","name":"mapSubscribe","schema":"nms:subscription"},{"id":"1827","label":"Operators","name":"mapOperator","schema":"xtk:operator"},{"id":"1828","label":"External file","name":"mapAny","schema":""},{"id":"1830","label":"Visitors","name":"mapVisitor","schema":"nms:visitor"},{"id":"2035","label":"Real time event","name":"mapRtEvent","schema":"nms:rtEvent"},{"id":"2036","label":"Batch event","name":"mapBatchEvent","schema":"nms:batchEvent"},{"id":"2070","label":"Subscriber applications","name":"mapAppSubscriptionRcp","schema":"nms:appSubscriptionRcp"}]}
-````
+</pre>
 
-
-
-
-# Contributing
-
-Contributions are welcomed! Read the [Contributing Guide](./.github/CONTRIBUTING.md) for more information.
-
-# Licensing
-
-This project is licensed under the Apache V2 License. See [LICENSE](LICENSE) for more information.

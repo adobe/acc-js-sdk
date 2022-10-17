@@ -1,0 +1,20 @@
+---
+layout: page
+title: XTK interfaces
+---
+
+<p>Campaign schemas are following an object model. An interface is a set of methods. For instance, the "xtk:persist" interface, defined in the "xtk:session" schema, has a NewInstance method.
+Schemas can implement interface, which means they inherit and implement the methods of the interface. Such methods are internally called using a particular SOAP call URN, which is formed of the interface name, followed by a pipe character, followed by the implementation schema id. For instance "xtk:persist|nms:delivery" is used to indicate that we're calling a method of the xtk:persist on a nms:delivery object which implements the xtk:persist interface.</p>
+
+<p>The version 1.1.9 of the SDK properly implement this type of calls and will deal with this complexity for you. For instance, you can simply call the NewInstance method as follows:</p>
+
+<pre class="code">
+// Create a proxy delivery object
+const delivery = client.NLWS.nmsDelivery.create({ label: "Hello" });
+
+// Call the xtk:persist|nms:delivery#NewInstance method to retreive the default
+// values of a delivery object before actually saving the delivery
+await delivery.newInstance();
+</pre>
+
+<p>There are 2 common interfaces: <a href="xtkPersist.html">xtk:persist</a> and <a href="">xtk:jobInterface</a> which are documented below.</p>

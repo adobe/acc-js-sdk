@@ -1,0 +1,103 @@
+---
+layout: page
+title: Profiles &amp; Subscriptions
+---
+
+
+<p>Create a recipient</p>
+<pre class="code">
+var recipient = {
+    xtkschema: "nms:recipient",
+    _operation: "insert",
+    firstName: "Thomas",
+    lastName: "Jordy",
+    email: "jordy@adobe.com"
+};
+await NLWS.xtkSession.write(recipient);
+</pre>
+
+<p>Create multiple recipients</p>
+<pre class="code">
+var recipients = {
+    xtkschema: "nms:recipient",
+    recipient: [
+        {
+            _operation: "insert",
+            firstName: "Christophe",
+            lastName: "Protat",
+            email: "protat@adobe.com"
+        },
+        {
+            _operation: "insert",
+            firstName: "Eric",
+            lastName: "Perrin",
+            email: "perrin@adobe.com"
+        }
+    ]
+};
+await NLWS.xtkSession.writeCollection(recipients);
+</pre>
+
+<p>List all recipients in Adobe</p>
+<pre class="code">
+var queryDef = {
+    schema: "nms:recipient",
+    operation: "select",
+    select: {
+        node: [
+            { expr: "@id" },
+            { expr: "@firstName" },
+            { expr: "@lastName" },
+            { expr: "@email" }
+        ]
+    },
+    where: {
+        condition: [
+            { expr: "GetEmailDomain(@email)='adobe.com'" }
+        ]
+    }
+}
+const query = NLWS.xtkQueryDef.create(queryDef);
+var recipients = await query.executeQuery();
+console.log(JSON.stringify(recipients));
+</pre>
+
+<p>Count total number of profiles</p>
+<pre class="code">
+var queryDef = {
+    schema: "nms:recipient",
+    operation: "count"
+}
+var query = NLWS.xtkQueryDef.create(queryDef);
+var count = await query.executeQuery();
+count = XtkCaster.asLong(count.count);
+console.log(count);
+</pre>
+
+<p>Update a profile. In this case, use the "@email" attribute as a key. If the `@_key` attribute is not specified, the primary key will be used.</p>
+<pre class="code">
+var recipient = {
+    xtkschema: "nms:recipient",
+    _key: "@email",
+    _operation: "update",
+    firstName: "Alexandre",
+    email: "amorin@adobe.com"
+};
+await NLWS.xtkSession.write(recipient);
+</pre>
+
+<p>Delete a profile</p>
+<pre class="code">
+var recipient = {
+    xtkschema: "nms:recipient",
+    _key: "@email",
+    _operation: "delete",
+    email: "amorin@adobe.com"
+};
+await NLWS.xtkSession.write(recipient);
+</pre>
+
+<p>Delete a set of profiles, based on condition. For instance delete everyone having an email address in adobe.com domain</p>
+<pre class="code">
+await NLWS.xtkSession.deleteCollection("nms:recipient", { condition: { expr: "GetEmailDomain(@email)='adobe.com'"} });
+</pre>

@@ -1,0 +1,119 @@
+- name: Home
+  link: index.html
+- name: Quick Start
+  link: quickstart.html
+- name: Installation
+  link: installation.html
+- name: Sample Code
+  link: samples.html
+- name: Best Practices
+  link: bestPractices.html
+- name: Troubleshooting
+  link: troubleshooting.html
+- name: --
+- name: Blog (latest posts)
+  link: blog.html
+- name: --
+- name: Documentation
+  link: documentation.html
+  children:
+    - name: Connecting to Campaign
+      link: connecting.html
+    - name: Concepts
+      link: concepts.html
+    - name: SOAP APIs
+      link: soapAPIs.html
+    - name: Data Types
+      link: dataTypes.html
+    - name: Type conversion (XtkCaster)
+      link: xtkCaster.html
+    - name: Escaping
+      link: escaping.html
+    - name: Handling Errors
+      link: errors.html
+    - name: Architecture
+      link: architecture.html
+- name: --
+- name: Campaign API
+  children:
+    - name: xtk:session API
+      link: xtkSession.html
+    - name: xtk:queryDef API
+      link: xtkQueryDef.html
+    - name: Profiles &amp; Subscriptions
+      link: profiles.html
+    - name: Writer API
+      link: xtkWrite.html
+    - name: xtk:option API
+      link: xtkOption.html
+    - name: Packages
+      link: xtkPackage.html
+    - name: xtk:persist (CRUD operations)
+      link: xtkPersist.html
+    - name: The Schema API
+      link: xtkSchema.html
+    - name: The Application object
+      link: application.html
+    - name: Workflow API
+      link: xtkWorkflow.html
+    - name: Health Check
+      link: healthCheck.html
+    - name: Mid-sourcing
+      link: midSourcing.html
+    - name: Message Center
+      link: messageCenter.html
+- name: --
+- name: Advanced Topics
+  children:
+    - name: Working with XML, DOM Helper
+      link: domHelper.html
+    - name: Connection Parameters
+      link: connectionParameters
+    - name: XML <-> JSON conversion
+      link: xml2json
+    - name: SimpleJson format
+      link: simpleJson.html
+    - name: BadgerFish format
+      link: badgerFish.html
+    - name: Caches
+      link: caches.html
+    - name: Method-level representation
+      link: methodLevelRepresentation.html
+    - name: XTK Interfaces
+      link: xtkInterface.html
+    - name: Handling timeouts
+      link: timeouts.html
+    - name: HTTP Headers
+      link: httpHeaders.html
+    - name: The Transport Protocol
+      link: transport.html
+    - name: Observability
+      link: observability.html
+    - name: Dynamic Invocation
+      link: dynamicInvoke.html
+    - name: Push down mechanism
+      link: pushDown.html
+    - name: The Entity Accessor
+      link: entityAccessor.html
+    - name: Passwords
+      link: passwords.html
+    - name: Differences between the SDK and Campaign
+      link: differences.html
+- name: --
+- name: Contributing
+  children:
+    - name: Contributing
+      link: contribute.html
+    - name: Build &amp; Run
+      link: buildAndRun.html
+    - name: Writing documentation
+      link: writeDoc.html
+    - name: Commit Checklist
+      link: checklist.html
+    - name: Releasing a new version
+      link: release.html
+- name: --
+- name: License
+  link: license.html
+- name: Change log
+  link: changeLog.html

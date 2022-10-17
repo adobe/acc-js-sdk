@@ -1,0 +1,96 @@
+---
+layout: page
+title: Build &amp Run
+---
+
+<p>To build this project, you need node and npm</p>
+
+<pre class="code">
+npm install
+</pre>
+
+
+<p>Run tests</p>
+<pre class="code">
+npm run unit-tests
+</pre>
+
+<h1>Client Side SDK</h1>
+
+<p>The SDK can also be used client side. </p>
+
+<p>To Compile the client-side SDK, go to the root folder of the SDK and compile the SDK</p>
+<pre class="code">
+node ./compile.js
+</pre>
+
+<p>It generates a file named <b>dist/bundle.js</b></p>
+<pre class="code">
+ACC client-side SDK compiler version 0.1.0
+Bundling ../package.json
+Bundling ./web/jsdom.js
+Bundling ./web/crypto.js
+Bundling ./web/request.js
+Bundling ./xtkCaster.js
+Bundling ./domUtil.js
+Bundling ./xtkEntityCache.js
+Bundling ./methodCache.js
+Bundling ./optionCache.js
+Bundling ./soap.js
+Bundling ./crypto.js
+Bundling ./client.js
+Bundling ./index.js
+Client-side SDK generated in ./dist/bundle.js
+</pre>
+
+
+<h2>Use a proxy</h2>
+<p>Using the client side SDK cannot be done directly because the Campaign server has CORS configured to reject HTTP requests from resources not served by Campaign. 
+    Therefore a server-side proxy is need to relay the calls to Campaign, or you need to serve the SDK and corresponding web pages from Campaign itself</p>
+
+<h2>Deploy the SDK to a Campaign server</h2>
+
+<p>Once compiled, copy it to the Campaign server (here on a dev environment).</p>
+<pre class="code">
+cd /c/cygwin64/home/neolane/ac
+cp "Z:\amorin On My Mac\Documents\dev\git\ac7\acc-js-sdk\dist/bundle.js" nl/web/accSDK.js
+</pre>
+
+<p>This makes them available on the following endpoint</p>
+<pre class="code">
+/nl/accSDK.js
+</pre>
+
+
+
+
+<h2>Usage</h2>
+
+Include the SDK
+<pre class="code">
+&lt;script src="accSDK.js">&lt;/script>
+</pre>
+
+Use the SDK. Note that the SDK variable is now called `document.accSDK` to avoid potential name collision with the common name "sdk".
+<pre class="code">
+&lt;script>
+
+    (async () => {
+        const sdk = document.accSDK;
+
+        const connectionParameters = sdk.ConnectionParameters.ofUserAndPassword(
+                "http://ffdamid:8080", "admin", "admin");
+        const client = await sdk.init(connectionParameters);
+  
+        console.log(sdk.getSDKVersion());
+        await client.logon();
+
+        var databaseId = await client.getOption("XtkDatabaseId");
+        console.log(databaseId);
+        document.getElementById("hello").textContent = databaseId;
+
+        await client.logoff();    
+    })();
+
+    &lt;/script>
+</pre>

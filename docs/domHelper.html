@@ -1,0 +1,88 @@
+---
+layout: page
+title: Working with XML, DOM Helper
+---
+
+<p>DOM manipulation is sometimes a bit painful. The &lt;b>DomUtil&lt;/b> helper provides a few convenience functions</p>
+
+<pre class="code">
+const DomUtil = sdk.DomUtil;
+</pre>
+
+<p>or</p>
+
+<pre class="code">
+const DomUtil = client.DomUtil;
+</pre>
+
+
+<p>Create DOM from XML string:</p>
+<pre class="code">
+const doc = DomUtil.parse(`&lt;root>
+                             &lt;one/>
+                           &lt;/root>`);
+</pre>
+
+<p>Writes a DOM document or element as a string:</p>
+<pre class="code">
+const s = DomUtil.toXMLString(docOrElement);
+</pre>
+
+<p>Creates a new document</p>
+<pre class="code">
+const queryDoc = DomUtil.newDocument("queryDef");
+</pre>
+
+<p>Escape text value</p>
+<pre class="code">
+const escaped = DomUtil.escapeXmlString(value);
+</pre>
+
+<p>Find element by name (finds the first element with given tag). This is a very common operation when manipulating Campaign XML documents</p>
+<pre class="code">
+const el = DomUtil.findElement(parentElement, elementName, shouldThrow);
+</pre>
+
+<p>Get the text value of an elemennt. This will accomodate text elements, cdata elements, as well has having multiple text child element (which is ususally not the case in Campaign)</p>
+<pre class="code">
+const text = DomUtil.elementValue(element);
+</pre>
+
+<p>Iterates over child elements</p>
+<pre class="code">
+var child = DomUtil.getFirstChildElement(parentElement);
+while (child) {
+    ...
+    child = DomUtil.getNextSiblingElement(child);
+}
+</pre>
+
+<p>Iterates over child elements of a given type</p>
+<pre class="code">
+var methodChild = DomUtil.getFirstChildElement(parentElement, "method");
+while (methodChild) {
+    ...
+    methodChild = DomUtil.getNextSiblingElement(methodChild, "method");
+}
+</pre>
+
+<p>Get typed attribute values, with automatic conversion to the corresponding xtk type, and handling default values</p>
+<pre class="code">
+const stringValue = DomUtil.getAttributeAsString(element, attributeName)
+const byteValue = DomUtil.getAttributeAsByte(element, attributeName)
+const booleanValue = DomUtil.getAttributeAsBoolean(element, attributeName)
+const shortValue = DomUtil.getAttributeAsShort(element, attributeName)
+const longValue = DomUtil.getAttributeAsLong(element, attributeName)
+</pre>
+
+<p>JSON to XML conversion (SimpleJson by default)</p>
+<pre class="code">
+const document = DomUtil.fromJSON(json);
+const json = DomUtil.toJSON(documentOrElement);
+</pre>
+
+<p>BadgerFish can be forced as well</p>
+<pre class="code">
+const document = DomUtil.fromJSON(json, "BadgerFish");
+const json = DomUtil.toJSON(documentOrElement, "BadgerFish");
+</pre>

@@ -1,0 +1,17 @@
+---
+layout: page
+title: Troubleshooting
+---
+<p>In the version 1.1.5 of the SDK, we are automatically adding the SOAP method name in the URL in order to simplify troubleshooting. Normally, all SOAP method calls are make to the soaprouter.jsp endpoint, which makes it difficult to understand which actual API call is being made.
+In fact the SOAP call name is available via the SOAPAction HTTP header, but it's usually not immediatelly visible.</p>
+
+<p>The SOAP calls URLs are now formed like this: <b>http://acc-sdk:8080/nl/jsp/soaprouter.jsp?xtk:queryDef:ExecuteQuery</b> where the SOAP method name is added as a query parameter. Campaign server ignores this parameter.</p>
+
+<p>This can be disabled using the <b>noMethodInURL</b> connection parameter</p>
+
+<pre class="code">
+const connectionParameters = sdk.ConnectionParameters.ofUserAndPassword(
+                                    "https://myInstance.campaign.adobe.com", 
+                                    "admin", "admin",
+                                    { noMethodInURL: true });
+</pre>
