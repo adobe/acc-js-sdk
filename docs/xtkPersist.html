@@ -87,7 +87,7 @@ title: CRUD operations (xkt:persist)
 
 <p>Entities can be updated using the <b>xtk:session#Write</b> API. This API is very flexible and also can be used to create or delete entities or to modify multiple entites at once.</p>
 
-<p>More examples of the <b>xtk:session#Write</b> API <a href="xtkPersist.html">here</a>.</p>
+<p>More examples of the <b>xtk:session#Write</b> API <a href="{{ site.baseurl }}xtkPersist.html">here</a>.</p>
 
 <p>This method takes an unique argument which is a patch to apply. A patch has the same structure as an entity, but only contains the attributes or elements that need to be modified, created, or deleted. In addition to the value, the patch can also use the _operation property to indicate if a particular set of data needs to be inserted, updated or deleted.
   The patch object also must have the <b>xtkschema</b> property set to the schema id of the entity to modify.

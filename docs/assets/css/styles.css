@@ -7,7 +7,7 @@
 }
 
 html { 
-  font-family: 'Adobe Clean UX', sans-serif;
+  font-family: Helvetica, Sans-Serif;
   -ms-text-size-adjust: 100%;
   -webkit-text-size-adjust: 100%;
   font-weight: 300;
@@ -88,7 +88,7 @@ nav {
   height: 100%;
   padding-top: 92px;
   font-size: 16px;
-  line-height: 18px;
+  line-height: 20px;
 }
 
 nav a, nav a:visited, nav a:active {
@@ -112,7 +112,6 @@ a, a:visited, a:active {
   cursor: pointer;
 }
 a:hover {
-  /*color: rgba(178, 34, 34, 0.456);*/
   text-decoration:underline;
 }
 
@@ -121,7 +120,6 @@ h1 {
   font-size: 34px;
   font-weight: 300;
   padding-bottom: 4px;
-  /*border-bottom: 1px solid #4f966a;*/
 }
 
 h1:not(:first-child) {
@@ -134,7 +132,6 @@ h2 {
   font-size: 24px;
   font-weight: 300;
   padding-bottom: 0px;
-  /*border-bottom: 1px solid #4f966a;*/
 }
 
 p {
@@ -309,7 +306,7 @@ p.ref {
 }
 
 p.ref:before {
-  content: url(../images/ref.svg);
+  content: url({{ site.baseurl }}/assets/images/ref.svg);
   margin-right: 8px;
 }
   
