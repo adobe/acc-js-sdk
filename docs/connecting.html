@@ -13,7 +13,7 @@ const connectionParameters = sdk.ConnectionParameters.ofUserAndPassword(
 const client = await sdk.init(connectionParameters);
 </pre>
 
-<p>Additional parameters can be passed when creating a connection. The connection parameters are described <a href="{{ site.baseurl }}connectionParameters.html">here.</a></p>
+<p>Additional parameters can be passed when creating a connection. The connection parameters are described <a href="{{ site.baseurl }}/connectionParameters.html">here.</a></p>
 <pre class="code">
 const connectionParameters = sdk.ConnectionParameters.ofUserAndPassword(
     "https://myInstance.campaign.adobe.com", 
@@ -52,7 +52,7 @@ await client.logoff();
 </ul>
 
 <p>T
-    he most convenient way to access this information is by using the <a href="{{ site.baseurl }}application.html">Application object</a>, but you can
+    he most convenient way to access this information is by using the <a href="{{ site.baseurl }}/application.html">Application object</a>, but you can
     also use the <b>client.getSessionInfo().serverInfo</b> and <b>client.getSessionInfo().sessionInfo</b> calls.
 </p>
 
@@ -85,7 +85,7 @@ const connectionParameters = sdk.ConnectionParameters.ofBearerToken(
 
 <h2>Login with Session token</h2>
 <p>
-Campaign supports authenticating with a session token in some contexts. This is usually used for Message Center API calls (see the <a href="{{ site.baseurl }}messageCenter.html">Message Center</a> section).
+Campaign supports authenticating with a session token in some contexts. This is usually used for Message Center API calls (see the <a href="{{ site.baseurl }}/messageCenter.html">Message Center</a> section).
 
 In the following example, the session token is a string composed of the user name, a slash sign, and the password (often empty)
 
