@@ -24,7 +24,7 @@ description: >- # this means to ignore newlines until "baseurl:"
   The ACC JS SDK is an isomorphic Javascript SDK to access the Adobe Campaign
   API from a node.js or a browser environment, with a syntax which is as
   close as possible as Campaign internal JavaScript SDK
-baseurl: "" # the subpath of your site, e.g. /blog
+baseurl: "/acc-js-sdk" # the subpath of your site, e.g. /blog
 url: "" # the base hostname & protocol for your site, e.g. http://example.com
 #twitter_username: jekyllrb
 github_username:  mkiki
