@@ -1,0 +1,149 @@
+---
+layout: post
+title:  "Welcome to the ACC JS SDK"
+date:   2022-10-14 09:06:57 +0200
+author: Alexandre Morin
+categories: "SDK Update"
+excerpt: Some ideas about how to use the SDK and a short example illustrating how to build a REST proxy lambda function
+---
+
+
+<p>
+  Welcome to the ACC JS SDK. This post introduces a series of posts around Campaign API and the SDK.
+</p>
+
+<p>
+  Here are a couple of ideas about how you can use the SDK
+</p>
+
+<ul>
+  <li>You can write you own node.js application which interracts with Campaign</li>
+  <li>You can build custom UIs for Campaign, using modern technologies such a React</li>
+  <li>You can create lambda functions (including Adobe IO Runtime) using the SDK to easily extend Campaign</li>
+  <li>You can build a node/express server which exposes a REST API to Campaign, internally using the SDK to perform JSON &lt;=> conversion</li>
+  <li>You can build a command line tool (REPL) to play around with Campaign APIs</li>
+  <li>You can build a GraphQL API on top of Campaign, etc.</li>
+</ul>
+
+<p></p>
+<p class="ref">Start with the <a href="{{ site.baseurl }}/concepts.html">concepts</a> behind Campaign and the SDK.</p>
+
+
+
+<h1>Building a REST Proxy for ACC</h1>
+
+<p>
+  Here's an advanced example which illustrates how to create a REST API for Campaign using the SDK. This code is expected to run inside
+  an express server, or even inside a lambda function.
+</p>
+
+<p></p>
+<p class="ref">See the advanced topic of <a href="{{ site.baseurl }}/dynamicInvoke.html">Dynamic Invocation</a> to understand how SOAP calls can be dynamically 
+  constructed from HTTP requests</p>
+
+  <p></p>
+<pre class="code">
+const sdk = require('@adobe/acc-js-sdk');
+
+// ... perform authentication and get connection parameters here
+const client = await sdk.init(connectionParameters);
+
+// It is useful to log the IP address of the server where the SDK
+// runs so that it can be whitelisted in the Campaign configuration
+const ip = await sdk.ip();
+console.log(`Outbound IP address is '${JSON.stringify(ip)}'`);
+
+// Log on to Campaign
+await client.logon();
+
+// Decode path which must be &lt;namespace>/&lt;schema-id>/&lt;method>.
+// Here we consider we're running inside an Adobe Runtime function
+// which exposes the URL path as &lt;args.__ow_path>
+var path = args.__ow_path;
+if (path[0] == '/')
+  path = path.substring(1);
+const pathElements = path.split("/");
+
+// Support for /ping endpoint
+if (pathElements.length >= 1 && pathElements[0] === "ping") {
+  return sdk.getSDKVersion();
+}
+
+const namespace = pathElements[0].trim();
+const schemaId = pathElements[1].trim();
+const methodName = pathElements[2].trim();
+
+// The scopeName is the name of the property of the NLWS object which corresponds
+// to the schema being called. For instance xtk:session => NLWS.xtkSession
+const scopeName = `${namespace}${schemaId[0].toUpperCase()}${schemaId.substring(1)}`;
+const scope = NLWS[scopeName];
+const method = scope[methodName];
+    
+// Dynamically call SOAP method
+console.log(`About to call method '${methodName}' of scope '${scopeName}'`);
+
+
+  // Call the method with a hook to decode parameters. The hook will extract the method
+  // parameters values from the action arguments and pass them as an array, as expected
+  // by the SDK. It will also set the "this" object for non static methods and fill the 
+  // "outName" array will be filled with the names of the output parameters of the method
+  const outNames = [];
+
+  const result = await method.call(scope, (method, callContext) => {
+
+    // Non-static methods require a "this" parameter. This parameter can be passed as
+    // a "this" property of the action parameters, or, if this propery is not set, as
+    // the action parameters directly (this is just to simplify the REST API callls by
+    // allowing to omit the "this" property if the call is non-static with no arguments)
+    const isStatic = DomUtil.getAttributeAsBoolean(method, "static");
+    if (!isStatic) {
+      const object = args["this"] || args;
+      callContext.object = object;
+    }
+
+    // Compute parameters array by extracting each parameter by name 
+    // from the action arguments
+    const parameters = [];
+    const params = DomUtil.getFirstChildElement(method, "parameters");
+    if (params) {
+      var param = DomUtil.getFirstChildElement(params, "param");
+      while (param) {
+        const inout = DomUtil.getAttributeAsString(param, "inout");
+        const paramName = DomUtil.getAttributeAsString(param, "name");
+        if (!inout || inout=="in") {
+            parameters.push(args[paramName]);
+        }
+        else {
+          outNames.push(paramName);
+        }
+        param = DomUtil.getNextSiblingElement(param, "param");
+      }
+    }
+
+    return parameters;
+  });
+
+  // Process result. Again this is to simplify the API and return a valid JSON
+  var returnedValue = {};
+  if (outNames.length == 0) {
+    returnedValue = undefined;
+  }
+  // If the API returns one parameter which is an object, the return it directly.
+  // If not (return value is a litteral), then use a JSON with the return parameter name
+  else if (outNames.length == 1) {
+    if (result && typeof result == "object")
+      returnedValue = result;
+    else 
+      returnedValue[outNames[0]] = result;
+  }
+  // If the API returns multiple values, then build a JSON which each return value
+  else {
+    for (var i=0; i&lt;outNames.length; i++) {
+      const name = outNames[i];
+      returnedValue[name] = result[i];
+    }
+  }
+
+  return returnedValue;
+
+</pre>

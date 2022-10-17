@@ -1,0 +1,88 @@
+---
+layout: page
+title: SimpleJson format
+---
+
+<p>The <b>SimpleJson</b> format is the format used by default by the SDK to conver between Campaign XML and JSON</p>
+
+
+<ul>
+  <li>XML attributes are JSON properties (without the “@” sign)</li>
+  <li>XML elements are JSON objects</li>
+  <li>XML collections are JSON arrays</li>
+  <li>XML text use “$” sign</li>
+</ul>
+
+<p></p>
+<pre class="code">
+&lt;book title="A confederacy of dunces">          {
+  &lt;author>John Kennedy Toole&lt;/author>             "$author": "John Kennedy Toole",
+                                                  "chapter": [
+  &lt;chapter name="Chapter I" pages="20">             { "name": "Chapter I", 
+  &lt;/chapter>                                          "pages": 20 },
+  &lt;chapter name="Chapter II" pages="34">            { "name": "Chapter II", 
+  &lt;/chapter>                                          "pages": 3 },
+                                                  ]
+&lt;/book>                                         }
+</pre>
+
+
+<p>The XML root element tag is automatically determined by the SDK as it's generating the XML, usually from the current schema name.</p>
+
+<pre class="code">
+XML:     &lt;root/>
+JSON:    {}
+</pre>
+
+<p>XML attributes are mapped to JSON attributes with the same name, whose litteral value can be a string, number, or boolean. There's no "@" sign in the JSON attribute name.
+Values in JSON attributes can be indifferently typed (ex: number, boolean), or strings (ex: "3" instead of just 3) depending if the conversion could determine the attribute type or not. 
+API users should expect and handle both value and use the `XtkCaster` object to ensure proper conversion when using.</p>
+
+<pre class="code">
+XML     &lt;root hello="world" count="3" ok="true"/>
+JSON:   { hello:"world", count:"3", ok:"true" }
+</pre>
+
+<p>XML elements are mapped to JSON objects</p>
+
+<pre class="code">
+XML:    &lt;root>&lt;item id="1"/>&lt;/root>
+JSON:   { item: { id:"1" } }
+</pre>
+
+<p>If the parent element tag ends with <b>-collection</b> children are always an array, even if there are no children, or if there is just one child. The rationale is that XML/JSON conversion is ambigous : XML can have multiple elements with the same tag and when there's only one such element, it's not possible to determine if it should be represented as a JSON object or JSON array unless we have additional metadata. </p>
+
+<pre class="code">
+XML:    &lt;root-collection>&lt;item id=1/>&lt;/root>
+JSON:   { item: [ { id:"1" } ] }
+</pre>
+
+<p>When an XML element is repeated, an JSON array is used</p>
+
+<pre class="code">
+XML:    &lt;root>&lt;item id=1/>&lt;item id=2/>&lt;/root>
+JSON:   { item: [ { id:"1" }, { id:"2" } ] }
+</pre>
+
+<p>Text of XML element is handle with the <b>$</b> sign in the JSON attribute name, or with a child JSON object name <b>$</b></p>
+
+<p>Text of the root element</p>
+<pre class="code">
+XML:    &lt;root>Hello&lt;/root>
+JSON:   { $: "Hello" }
+</pre>
+
+<p>Text of a child element</p>
+<pre class="code">
+XML:    &lt;root>&lt;item>Hello&lt;/item>&lt;/root>`
+JSON:   { $item: "Hello" }
+Alternative JSON: { item: { $: "Hello" } }
+</pre>
+
+<p>If an element contains both text, and children, you need to use the alternative <b>$</b> syntax</p>
+<pre class="code">
+XML:    &lt;root>&lt;item>Hello&lt;child id="1"/>
+          &lt;/item>
+        &lt;/root>
+JSON:   { item: { $: "Hello", child: { id:"1" } }
+</pre>

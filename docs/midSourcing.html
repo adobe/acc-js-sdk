@@ -1,0 +1,19 @@
+---
+layout: page
+title: Connect to mid-sourcing
+---
+
+<p>From a marketing client connection, one can get a client to a mid server</p>
+
+<pre class="code">
+console.log("Connecting to mid server...");
+const credentials = await sdk.Credentials.ofExternalAccount(client, "defaultEmailMid");
+const midClient = await sdk.init(credentials);
+
+await midClient.client.logon();
+const datbaseId = await midClient.getOption("XtkDatabaseId");
+console.log("Mid datbaseId: " + datbaseId);
+await midClient.NLWS.xtkSession.testCnx();
+console.log("Disconnecting from mid");
+await midClient.client.logoff();
+</pre>

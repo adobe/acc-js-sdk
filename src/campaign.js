@@ -204,7 +204,7 @@ const { Util } = require("./util.js");
  * @private
  * @param {SoapMethodCall} call the SOAP call
  * @param {*} err the exception causing the SOAP call.
- * @returns {CampaignException} a CampaingException object wrapping the error
+ * @returns {CampaignException} a CampaignException object wrapping the error
  * @memberof Campaign
  */
 function makeCampaignException(call, err) {

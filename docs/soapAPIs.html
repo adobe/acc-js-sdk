@@ -1,0 +1,234 @@
+---
+layout: page
+title: SOAP APIs
+---
+
+<p>The NLWS object allows to dynamically perform SOAP calls on the targetted Campaign instance.
+</p>
+<pre class="code">
+const NLWS = client.NLWS;
+</pre>
+
+<p>
+    Technically, NLWS is a JavaScript proxy whose properties are dynamically constructed. It has properties
+    for each schema, for instance <b>NLWS.xtkSession</b> corresponds to the APIs of the <b>xtk:session</b> schema.
+</p>
+
+<p>
+    Methods can then be called as <b>asynchronous</b> JavaScript functions. Note that in Campaign, method names
+    usually start with a capital letter (ex: xtk:session#GetServerTime where "G" is a capital letter). 
+    JavaScript convention is to use a lower case first character for function names, and the SDK will follow
+    JS conventions.
+</p>
+
+<pre class="code">
+const result = await NLWS.xtkSession.getServerTime();
+</pre>
+
+
+
+
+
+
+
+
+<h1>Passing parameters</h1>
+
+<p>
+    In order to know which parameters to pass to a method and which parameters are returned, look at the method definition in the schema. 
+    You can also capture SOAP requests and responses from a real session. The method definition in the schema will have a list of 
+    parameters. Parameters can be qualified as <b>in</b>, <b>out</b>, or <b>inout</b>. Unqualified parameters are considered to be <b>in</b>
+    (input) parameters. 
+</p>
+
+<p>
+    The parameters marked as <b>in</b>, <b>inout</b> or without an inout attribubte are input parameters of the API and must be passed 
+    in JavaScript to the method call. Refer to the <a href="{{ site.baseurl }}/dataTypes.hml">Data Types</a> page for a comprehensive view of all the data
+    types supported by the SDK. Parameters are passed positionally and not by name, i.e. you must pass each input parameter in the right
+    order, skipping output parameters.
+</p>
+
+<pre class="code">
+&lt;method name="GetFilesToDownload" static="true">
+    &lt;parameters>
+        &lt;param name="deliveryId" type="long" inout="in"/>
+        &lt;param name="filesToDownload" type="DOMDocument" inout="out"/>
+        &lt;param name="filesNotToDownload" type="DOMDocument" inout="out"/>
+    &lt;/parameters>
+&lt;/method>  
+</pre>
+<p class="caption">An example of a method definition with in and out parameters</p>
+
+<p>
+    Another important attribute is the <b>static</b> attribute of each method. Static methods can be called directly. Non-static methods
+    need an object instance. In the example above, the method takes one input parameter, a numeric delivery id, and returns 2 DOM
+    documents containing a list of files to downoad and a list of files not to download.
+</p>
+
+
+<pre class="code">
+const deliveryId = 1234;
+const [filesToDownload, filesNotToDownload] = client.NLWS.nmsDelivery.getFilesToDownload(deliveryId);
+</pre>
+
+
+<h1>XML &amp; JSON</h1>
+<p>
+In Campaign, many method attributes are XML elements or documents, as well as many return types. It's not very easy to use in JavaScript, so the SDK supports automatic XML<=> JSON conversion. Of yourse, you can still use XML if you want.
+</p>
+
+<p>We're supporting several flavors of JSON in addition to XML.</p>
+<ul>
+<li><b>SimpleJson</b> which is the recommeded and default representation</li>
+<li><b>BadgerFish</b> which was the only and default before 1.0.0, and is now a legacy flavor of JSON. It's a little bit complex and was deprecated in favor of `SimpleJson` (http://www.sklar.com/badgerfish/) </li>
+<li><b>xml</b> which can be use to perform no transformation: Campaign XML is returned directly without any transformations.</li>
+</ul>
+
+<p>The representation can set when creating a client. It's recommended to keep it to <b>SimpleJson</b>.</p>
+<pre class="code">
+const client = await sdk.init("https://myInstance.campaign.adobe.com", "admin", "admin", { representation: "SimpleJson" });
+</pre>
+
+<p>Here's an example of a queryDef in SimpleJson. This query will return an array containing one item for each external account in the Campaign database. Each item will contain the account id and name.</p>
+
+<pre class="code">
+const queryDef = {
+    schema: "nms:extAccount",
+    operation: "select",
+    select: {
+        node: [
+            { expr: "@id" },
+            { expr: "@name" }
+        ]
+    }
+};
+</pre>
+
+
+
+
+<h1>Calling static methods</h1>
+<p>
+Static SOAP methods are the easiest to call. Once you have a <b>NLWS</b> object and have logged on to the server, call a static mathod as followed. This example will use the <b>xtk:session#GetServerTime</b> method to displayt the current timestamp on the server.
+</p>
+
+<pre class="code">
+const NLWS = client.NLWS;
+result = await NLWS.xtkSession.getServerTime();
+console.log(result);
+</pre>
+
+<p></p>
+<ul>
+<li><b>xtkSession</b> is made of the namespace and entity to which the API applies. For instance <b>xtk:session</b> -> <b>xtkSession</b></li>
+<li><b>getServerTime</b> is the method name. In ACC, method names start with an upper case letter, but in JS SDK you can put it in lower case too (which is preferred for JavaScript code).</li>
+</ul>
+
+
+
+
+<h1>Returning multiple values</h1>
+<p>Campaign APIs can return one or multiple values. The SDK uses the following convention:</p>
+<ul>
+<li>no return value -> returns "null"</li>
+<li>one return value -> returns the value directly</li>
+<li>more that one return value -> returns an array of values</li>
+</ul>
+
+
+
+<h1>Calling non-static APIs</h1>
+
+<p>To call a non-static API, you need an object to call the API on. You create an object with the <b>create</b> method.
+    For instance, here's how one creates a QueryDef object.</p>
+
+<pre class="code">
+const queryDef = {
+    schema: "nms:extAccount",
+    operation: "select",
+    select: {
+        node: [
+            { expr: "@id" },
+            { expr: "@name" }
+        ]
+    }
+};
+const query = NLWS.xtkQueryDef.create(queryDef);
+</pre>
+
+<p>Note: the returned object is opaque and private, it should not be directly manipulated.</p>
+
+<p>The method can then be called directly on the object</p>
+<pre class="code">
+const extAccounts = await query.executeQuery();
+</pre>
+
+<p>In this example, the result is as follows</p>
+
+<pre class="code">
+{ extAccount:[
+    { id: "2523379", name: "cda_snowflake_extaccount" },
+    { id: "1782",    name: "defaultPopAccount" },
+    { id: "3643548", name: "v8" }
+]}
+</pre>
+
+<p>Some methods can mutate the object on which they apply. This is for instance the case of the xtk:queryDef#SelectAll method. You call it on a queryDef, and it internally returns a new query definition which contain select nodes for all the nodes of the schema. When such a method is called, the SDK will know how to "mutate" the corresponding object.</p>
+
+<pre class="code">
+const  queryDef = {
+    schema: "xtk:option",
+    operation: "get",
+    where: { condition: [ { expr:`@name='XtkDatabaseId'` } ] }
+  };
+const query = client.NLWS.xtkQueryDef.create(queryDef);
+await query.selectAll(false);
+var result = await query.executeQuery();
+</pre>
+
+<p>In the previous example, a queryDef is created without any select nodes. Then the selectAll method is called. After the call, the JavaScript queryDef object will contain a select elements with all the nodes corresponding to attributes of the xtk:option schema.</p>
+
+
+
+<h1>Passing XML parameters</h1>
+<p>Many Campaign APIs take arguments which are DOM documents or DOM elements. For example, the nms:delivery#DeployTriggerMessages first argument is a DOMElement which is supposed to be a <b>&lt;where></b> clause used as a condition to select Message Center deliveries to publish.</p>
+
+<pre class="code">
+&lt;method name="DeployTriggerMessages" static="true">
+    &lt;parameters>
+        &lt;param inout="in" name="deliveries" type="DOMElement"/>
+        &lt;param inout="in" name="localPublish" type="boolean"/>
+    &lt;/parameters>
+&lt;/method>
+</pre>
+
+<p>For example, one would want to use the following condition to republish a particular delivery</p>
+
+<pre class="code">
+await client.NLWS.nmsDelivery.DeployTriggerMessages({
+    condition: [ {
+    expr: "@internalName='DM23'"
+    }]
+}, false);
+</pre>
+
+<p>The JSON object corresponds to the following XML</p>
+<pre class="code">
+&lt;where>
+    &lt;condition expr="@internalName='DM23'"/>
+&lt;/where>
+</pre>
+
+<p>Note that in XML, unlike JSON, the root element <b>&lt;where></b> is explicitely named "where". When converting JSON to XML, there is no way for the SDK to know which tag name to used for the root XML element. The SDK contains some code to set it for the most common situation, but will rely on the user to specify, when necessary, the name of the root elment. This can be done using the <b>xtkschema</b> (all case insensitive) attribute as follows:</p>
+<pre class="code">
+await client.NLWS.nmsDelivery.DeployTriggerMessages({
+    xtkschema: 'xtk:where',
+    condition: [ {
+    expr: "@internalName='DM23'"
+    }]
+}, false);
+</pre>
+
+<p>When the <b>xtkschema</b> attribute is set, the part after the colon (i.e. "where" in this example) will be used as the root element, effectively generating the right XML.</p>
+
+<p>In our example, the `DeployTriggerMessages` will work properly regardless of the XML root of its `deliveries` parameter, so it's not needed to actually set the `xtkschema` attribute, but it's a best practice to do so, because some APIs will actually depend on receiving the right tag name.</p>

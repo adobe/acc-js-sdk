@@ -1,0 +1,78 @@
+---
+layout: page
+title: HTTP Headers
+---
+
+<h1>Out-of-the-box headers</h1>
+<p>In version 1.1.3 and above, the SDK will pass additional HTTP headers automatically</p>
+
+
+<table>
+  <thead>
+      <tr>
+          <th>Header</th>
+          <th>Comment / Description</th>
+      </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>SOAPAction</td>
+      <td>name of the schema and SOAP method (ex: xtk:query#ExecuteQuery)</td>
+    </tr>
+    <tr>
+      <td>ACC-SDK-Version</td>
+      <td>Version of the SDK making the scores</td>
+    </tr>
+    <tr>
+      <td>ACC-SDK-Auth</td>
+      <td>Authentification type and ACC user</td>
+    </tr>
+    <tr>
+      <td>ACC-SDK-Client-App</td>
+      <td>Name of the application calling the client SDK</td>
+    </tr>
+    <tr>
+      <td>ACC-SDK-Call-RetryCount</td>
+      <td>In case an API call is retried, indicates the number of retries</td>
+    </tr>
+    <tr>
+      <td>ACC-SDK-Call-Internal</td>
+      <td>Indicates that an API call is performed byt the SDK for its own purpose</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>The <b>ACC-SDK</b> headers can be removed using the connection parameter <b>noSDKHeaders</b>.</p>
+
+
+
+
+<h1>Custom HTTP headers</h1>
+<p>In version 1.1.3 and above, it is possible to pass additional HTTP headers or override HTTP headers set by the SDK. This can be done globally (i.e. for all API calls), or locally, i.e. just for a particular call, or both.</p>
+
+<p>Http headers are passed through an object whose keys represent the header name and values the corresponding header value. Nothing particular is done in term of case sensitivity, headers will be passed as passed.</p>
+
+<p>To set global HTTP headers for all API calls of a client, pass an http headers array in the connection parameters</p>
+
+<pre class="code">
+const connectionParameters = sdk.ConnectionParameters.ofUserAndPassword(
+                                    "https://myInstance.campaign.adobe.com", 
+                                    "admin", "admin",
+                                    { extraHttpHeaders: {
+                                        "X-ACC-JS-SDK-LBSAFE": "1",
+                                        "X-ACC-WEBUI-VERSION: "1.2"
+                                    } });
+</pre>
+
+
+<p>Subsequent API calls will have the corresponding headers set.</p>
+
+<p>To set more HTTP headers for a particular API call, use the "headers" method of the NLWS object.</p>
+
+<pre class="code">
+const query = client.NLWS
+    .headers({'X-Test': 'hello'})
+    .xtkQueryDef.create(queryDef);
+await query.executeQuery();
+</pre>
+

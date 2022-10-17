@@ -1,0 +1,64 @@
+---
+layout: home
+title: ACC JS SDK Home
+---
+
+<p>The <b>ACC JavaScript SDK</b> is a JavaScript SDK which allows you to call Campaign APIs in a simple, expressive and JavaScript idiomatic way. It hides away the Campaign complexities associated with having to make SOAP calls, XML to JSON conversion, type formatting, etc.</p>
+
+<p>The API is fully asynchronous using promises and works as well on the server side than on the client side in the browser.</p>
+
+<button class="cta" onclick="location.href='./connecting.html'">View the docs</button>
+
+<!--
+<div class="card-row">
+  <div class="card">
+    <h1>Simple</h1>
+  </div>
+  <div class="card">
+    <h1>Light</h1>
+  </div>
+</div>
+-->
+
+<div class="marquee">Get up and running in seconds</div>
+
+<p>Install</p>
+
+<pre class="code">
+npm install --save @adobe/acc-js-sdk
+</pre>
+
+<p></p>
+<p>Use</p>
+<pre class="code">
+const sdk = require('@adobe/acc-js-sdk');
+
+(async () => {
+    // Logon to a Campaign instance with user and password
+    const connectionParameters = sdk.ConnectionParameters.ofUserAndPassword(
+                                        "https://myInstance.campaign.adobe.com", 
+                                        "admin", "admin");
+    const client = await sdk.init(connectionParameters);
+    await client.logon();
+
+    // Get recipients
+    const queryDef = {
+        schema: "nms:recipient",
+        operation: "select",
+        lineCount: 10,
+        select: {
+            node: [
+                { expr: "@id" },
+                { expr: "@firstName" },
+                { expr: "@lastName" },
+                { expr: "@email" }
+            ]
+        }
+    };
+    const query = client.NLWS.xtkQueryDef.create(queryDef);
+    const recipients = await query.executeQuery();
+    console.log(`Recipients: ${JSON.stringify(recipients)}`);
+})().catch((error) => {
+    console.log(error);
+});
+</pre>

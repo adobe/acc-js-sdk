@@ -1,0 +1,66 @@
+---
+layout: page
+title: Health Check
+---
+
+<p>Campaign proposes several APIs for health check. Just like all APIs in the SDK, it's been wrapped into a function and will return a XML or JSON object depending on the current representation</p>
+
+<h1>/r/test</h1>
+<p>This API is anonymous and run directly on the Apache front server. Note that this API will failed if called on a tomcat endpoint (port 8080)</p>
+<pre class="code">
+const test = await client.test();
+</pre>
+
+<p>will return</p>
+<pre class="code">
+{
+    "status":"OK",
+    "date":"2021-08-27 03:06:02.941-07",
+    "build":"9236",
+    "sha1":"cc45440",
+    "instance":"xxx_mkt_prod1",
+    "sourceIP":"193.104.215.11",
+    "host":"xxx.campaign.adobe.com",
+    "localHost":"xxx-mkt-prod1-1"
+}
+</pre>
+
+<p class="info">Note: as this API is anonymous, one does not need to actually log on to Campaign to call it. Here's a full example. See the authentication section for more details about anonymous logon.
+</p>
+<pre class="code">
+const connectionParameters = sdk.ConnectionParameters.ofAnonymousUser("https://...");
+const client = await sdk.init(connectionParameters);
+const test = await client.test();
+</pre>
+
+
+<h1>ping</h1>
+<p>The ping API is authenticated and will return a simple status code indicating the the Campaign server is running. It will also return the current database timestamp. The API itself will return plain text, but for convenience this has been wrapped into JSON / XML in the SDK</p>
+<pre class="code">
+const ping = await client.ping();
+</pre>
+
+<p>will return</p>
+<pre class="code">
+{
+    "status":"Ok",
+    "timestamp":"2021-08-27 12:51:56.088Z"
+}
+</pre>
+
+
+<h1>mcPing</h1>
+<p>Message Center instances have a dedicated ping API which also returns the Message Center queue size and the maximum expected size (threshold). The API itself will return plain text, but for convenience this has been wrapped into JSON / XML in the SDK</p>
+<pre class="code">
+const ping = await client.mcPing();
+</pre>
+
+<p>will return</p>
+<pre class="code">
+{
+    "status":"Ok",
+    "timestamp":"2021-08-27 12:51:56.088Z",
+    "eventQueueSize":"7",
+    "eventQueueMaxSize":"400"
+}
+</pre>

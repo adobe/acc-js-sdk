@@ -1,0 +1,13 @@
+---
+layout: page
+title: Push down mechanism
+---
+
+<p>The Pushdown mechanism can be used to push down variables to the transport layer. A common use case it to pass a custom timeout value down to the transport layer.</p>
+
+<p>The pushed down parameters are passed as a second parameter to the transport function. This parameter will contain all the connection parameters as well as any parameter that you can push down at the API call level. API call pushdowns can override default pushdowns.</p>
+
+<p>Any key/value pairs can be pushed down. This example pushes down the timeout and foo variables to the transport layer.</p>
+<pre class="code">
+NLWS.xml.pushDown({ timeout: 60000, foo: 'bar' }).xtkBuilder.installPackage(dom);
+</pre>

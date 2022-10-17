@@ -1,0 +1,22 @@
+---
+layout: page
+title: The Entity Accessor
+---
+
+
+<p>An <b>EntityAccessor</b> provides a simple interface to access entity objects regardless of their representation. For instance, a query result may be a DOM Element, or a object literal, or a BadgerFish objet. Accessing attribute values and sub elements requires to know which representation is used and which representation specific API to call. For instance, to get the "name" attribute of an entity, you'll write:</p>
+
+<ul>
+  <li>for Simple Json representation, access as JavaScript properties: entity.name or entity["name"]</li>
+  <li>for the XML representation, use the DOM API: entity.DomUtil.getAttribute("name)"</li>
+  <li>for Badget fish, access as JavaScript properties, but do not forget the "@" sign; entity["@name"]</li>
+</ul>
+
+<p>Once done, you'll probably want to cast the value to an XTK type using the XtkCaster.</p>
+
+<p>If you need to access entity attributes (or child elements) in a generic way, you can use the <b>EntityAccessor</b>. It has the following static methods:</p>
+<ul>
+  <li><b>getAttributeAsString</b>, <b>getAttributeAsLong</b>, <b>getAttributeAsBoolean</b> to get typed attribute values</li>
+  <li><b>getChildElements</b> to get the child elements. The result can be iterated on with a <b>for...of...</b> loop</li>
+  <li><b>getElement</b> to get a child element whose attributes and child elements can also be accessed by the EntityAccessor API</li>
+</ul>

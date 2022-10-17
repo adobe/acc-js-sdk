@@ -1,0 +1,208 @@
+---
+layout: page
+title: Writing Documentation
+---
+
+<p>
+  The documentation of the SDK is written in HTML and uses <a href="https://jekyllrb.com/">Jekyll</a> 
+  and <a href="https://pages.github.com/">Github pages</a> to publish the web site.
+</p>
+
+<h1>Setting up the local environment (MacOS)</h1>
+
+<p>First, install <b>Ruby</b>. Do not use the default ruby install and setup a proper ruby env using <b>chruby</b> and <b>ruby-install</b></p>
+
+<pre class="code">
+brew install chruby ruby-install
+ruby-install ruby
+
+# You may have to start a new terminal for the following to work
+
+echo "source $(brew --prefix)/opt/chruby/share/chruby/chruby.sh" >> ~/.bash_profile
+echo "source $(brew --prefix)/opt/chruby/share/chruby/auto.sh" >> ~/.bash_profile
+echo "chruby ruby-3.1.2" >> ~/.bash_profile # run 'chruby' to see actual version
+
+ruby -v
+</pre>
+
+
+<p>Then install <b>bundler</b>, a dependency manager for Ruby.</p>
+
+<pre class="code">
+gem install bundler
+</pre>
+
+
+
+<p>Test the documentation site. Everything is available in the <b>docs</b> folder</p>
+
+<pre class="code">
+cd docs
+bundle install
+bundle exec jekyll serve 
+
+# visit it at http://127.0.0.1:4000
+</pre>
+
+
+
+
+<h1>Add a page</h1>
+
+<p>
+  To add a documentation page, you first need to add the page to the navigation menu. The menu is defined as a yaml
+  file in <b>docs/_data/navigation.yml</b>.
+</p>
+
+<p>
+  Edit this file and add your entry where you want. Make sure it is in the right section, the SDK documentation, 
+  or the Campaign documentation or advanced topics. Each entry has a name, which will be displayed in the navigation
+  menu, and the corresponding link to an html page containing the documentation.
+</p>
+
+
+<pre class="code">
+- name: Troubleshooting
+  link: troubleshooting.html
+- name: --
+- name: Documentation
+  link: documentation.html
+  children:
+    - name: Connecting to Campaign
+      link: connecting.html<span class="emphasis">
+    - name: My new page
+      link: myPage.html</span>
+    - name: Concepts
+      link: concepts.html
+</pre>
+<p class="caption">Adding page menu in the SDK documentation</p>
+
+
+<p>
+  Now you can create the HTML file for the page. Make sure you set the layout to <b>page</b> and give an appropriate
+  title in the file header (called the Jekyll front matter)
+</p>
+
+<pre class="code">
+  ---
+  <span class="emphasis">layout: page</span>
+  title: My new page
+  ---
+  &lt;p>Hello, I'm a new page&lt;/p>
+</pre>
+
+
+
+
+
+<h1>CSS reference</h1>
+
+<p>
+  A very simple CSS is used, defined in <b>assets/css/styles.css</b>
+</p>
+
+<h2>Headers</h2>
+<p>
+  Use the &lt;h1> and &lt;h2> elements for titles. Documentation pages should be short, and you should not use deeply nested headers
+</p>
+
+<pre class="code">
+&lt;h1>I'm a H1 header&lt;/h1>  
+&lt;h2>I'm a H2 header&lt;/h2>  
+</pre>
+
+<div class="doc-example">
+  <h1>I'm a H1 header</h1>  
+  <h2>I'm a H2 header</h2>  
+</div>
+
+
+<h2>Paragraphs</h2>
+<p></p>
+<ul>
+<li>Use the &lt;p> element for all text paragraph</li>
+<li>Use the <b>info</b> class to format a paragraph as an information notice</li>
+<li>Use the <b>warning</b> class to format a paragraph as an warning notice</li>
+<li>Use the <b>caption</b> class to format a paragraph as a caption to an image or a code block</li>
+<li>Use the <b>ref</b> class to format a paragraph as reference to another part of the documentation or an external site</li>
+</ul>
+<p></p>
+
+<pre class="code">
+&lt;p>I'm a simple paragraph with no additional CSS class&lt;/p>  
+&lt;p class="info">I'm an information notice&lt;/p>  
+&lt;p class="warning">I'm an warning notice&lt;/p>  
+&lt;p class="caption">I'm a caption notice&lt;/p>  
+&lt;p class="ref">I'm a reference to the &lt;a href="https://github.com/adobe/acc-js-sdk">ACC JS SDK&lt;/a>&lt;/p>
+</pre>
+  
+<div class="doc-example">
+  <p>I'm a simple paragraph with no additional CSS class</p>  
+  <p class="info">I'm an information notice</p>  
+  <p class="warning">I'm an warning notice</p>  
+  <p class="caption">I'm a caption notice</p>  
+  <p class="ref">I'm a reference to the <a href="https://github.com/adobe/acc-js-sdk">ACC JS SDK</a></p>
+</div>
+  
+
+
+<h2>Code snippets</h2>
+
+<p>
+  Use the &lt;pre class="code"> element to display code, scripts, etc.
+</p>
+
+<pre class="code">
+&lt;pre class="code">
+const greetings = "Hello, world";
+console.log(greetings);
+&lt;/pre>
+</pre>
+  
+<div class="doc-example">
+<pre class="code">
+const greetings = "Hello, world";
+console.log(greetings);
+</pre>
+</div>
+
+
+
+
+
+<h2>Emphasis</h2>
+<p></p>
+<ul>
+<li>Use the &lt;b> element to emphasis text in paragraphs</li>
+<li>Use the &lt;span class="emphasis"> element to highlight a particular section of code in a &lt;pre block</li>
+<li>Use the &lt;span class="comment"> element to darken a particular section of code in a &lt;pre block (like a comment)</li>
+</ul>
+<p></p>
+
+<pre class="code">
+&lt;p>I'm a simple paragraph with an &lt;b>important&lt;/b> word&lt;/p>  
+
+&lt;pre class="code">
+  const greetings = "I'm a code block with &lt;span class="emphasis">important&lt;/span> text";
+  console.log(greetings);
+&lt;/pre>
+&lt;pre class="code">
+  const greetings = "Hello, world"; &lt;span class="comment">// I'm a comment&lt;/span>
+  console.log(greetings);
+&lt;/pre>
+</pre>
+  
+<div class="doc-example">
+<p>I'm a simple paragraph with an <b>important</b> word</p>  
+
+<pre class="code">
+const greetings = "I'm a code block with <span class="emphasis">important</span> text";
+console.log(greetings);
+</pre>
+<p></p>
+<pre class="code">
+const greetings = "Hello, world"; <span class="comment">// I'm a comment</span>
+console.log(greetings);
+</pre>
+
+</div>

@@ -1,0 +1,28 @@
+---
+layout: page
+title: Workflow API
+---
+
+<p>Start and stop wotkflows, passing either an id or workflow internal name</p>
+
+<pre class="code">
+await NLWS.xtkWorkflow.stop(4900);
+await NLWS.xtkWorkflow.start(4900);
+</pre>
+
+<p>A workflow can be started with parameters. Variables, are passed as attributes of the parameters document.</p>
+<pre class="code">
+await NLWS.xtkWorkflow.startWithParameters(4900, { hello: "world" });
+</pre>
+
+<p>The variables can be used in the workflow as attributes of the <b>instance.vars</b> variable.</p>
+
+<pre class="code">
+logInfo(instance.vars.hello);
+</pre>
+
+<p class="warning">
+    Note that workflows are executed asynchronously by Campaign. When the promise returned by the start
+    function resolves, the workflow is not finished. The promise resolution indicates that the request
+    to start (or stop) the workflow has been accepted by the server.
+</p>

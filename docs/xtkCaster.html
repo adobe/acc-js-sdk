@@ -1,0 +1,67 @@
+---
+layout: page
+title: Type conversion (XtkCaster)
+---
+
+<p>
+  Campaign <a href="{{ site.baseurl }}/dataTypes.html">data types</a> have some specifities. For instance number can
+  never be null, and Campaign uses 0 instead. In addition, <a href="{{ site.baseurl }}/xml2json.html">XML to JSON</a> is not always accurate
+  and the conversion may return strings instead of booleans, objects instead of arrays, etc.
+</p>
+
+<p>
+  The <b>XtkCaster</b> class is here to help and can be used to coerce an value to any type. For instance
+  if <i>you know</i> that a value is a boolean, but are not sure if it was actually returned as a boolean,
+  you can use the <b>XtkCaster</b> to ensure this. The <b>XtkCaster.asBoolean(value)</b> will ensure this.
+</p>
+
+<p>You get a static <b>XtkCaster</b> object like this</p>
+<pre class="code">
+const XtkCaster = sdk.XtkCaster;
+</pre>
+
+<p>or directly from the client for convenience</p>
+<pre class="code">
+const XtkCaster = client.XtkCaster;
+</pre>
+
+<p>To convert a Campaign value into a given type, use one of the following.</p>
+<pre class="code">
+stringValue = XtkCaster.asString(anyValue);
+booleanValue = XtkCaster.asBoolean(anyValue);
+byteValue = XtkCaster.asByte(anyValue);
+shortValue = XtkCaster.asShort(anyValue);
+int32Value = XtkCaster.asLong(anyValue);
+numberValue = XtkCaster.asNumber(anyValue);
+timestampValue = XtkCaster.asTimestamp(anyValue);
+dateValue = XtkCaster.asDate(anyValue);
+</pre>
+
+<p>More dynamic conversions can be achieved using the <b>as</b> function. See the types table above for details.</p>
+
+<pre class="code">
+stringValue = XtkCaster.as(anyValue, 6);
+</pre>
+
+<p>In addition, the following helpers are available</p>
+<ul>
+<li><b>XtkCaster.isTimeType</b> to test if a data type is a date, time or timestamp</li>
+<li><b>XtkCaster.isStringType</b> to test if a data type is a string type (string, memo, etc.)</li>
+<li><b>XtkCaster.isNumericType</b> to test if a data type is a numeric type</li>
+</ul>
+
+
+
+<h1>Arrays</h1>
+
+<p>
+  Arrays can be tricky to handle when converted from XML: an empty array will be converted to a null or undefined
+  values, an array containing exactly one element may be converted into the element itself. The <b>XtkCaster.asArray</b>
+  will ensure that it's parameter will be converted to an array, possibly empty.
+</p>
+
+<pre class="code">
+expect(XtkCaster.asArray(null)).toStrictEqual(<span class="emphasis">[]</span>);
+expect(XtkCaster.asArray("Hello")).toStrictEqual(<span class="emphasis">["Hello"]</span>);
+expect(XtkCaster.asArray(["Hello", "World""])).toStrictEqual(<span class="emphasis">["Hello", "World""]</span>);
+</pre>

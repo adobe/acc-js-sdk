@@ -1,0 +1,245 @@
+---
+layout: page
+title: Query API
+---
+
+<p>
+    The <b>xtk:queryDef</b> schema contains generic methods to query the database and retrieve any kind of entites, both
+    out-of-the-box and custom.
+</p>
+
+<p class="warning">This API is not meant for high concurrency. It is fit for a reasonble usage without the limits of the capacity you purchased.</p>
+
+<p>List all accounts</p>
+
+<pre class="code">
+const queryDef = {
+    schema: "nms:extAccount",
+    operation: "select",
+    select: {
+        node: [
+            { expr: "@id" },
+            { expr: "@name" }
+        ]
+    }
+};
+const query = NLWS.xtkQueryDef.create(queryDef);
+
+console.log(query);
+const extAccounts = await query.executeQuery();
+console.log(JSON.stringify(extAccounts));
+</pre>
+
+<p>Get a single record</p>
+<pre class="code">
+const queryDef = {
+    schema: "nms:extAccount",
+    operation: "get",
+    select: {
+        node: [
+            { expr: "@id" },
+            { expr: "@name" },
+            { expr: "@label" },
+            { expr: "@type" },
+            { expr: "@account" },
+            { expr: "@password" },
+            { expr: "@server" },
+            { expr: "@provider" },
+        ]
+    },
+    where: {
+        condition: [
+            { expr: "@name='ffda'" }
+        ]
+    }
+}
+const query = NLWS.xtkQueryDef.create(queryDef);
+const extAccount = await query.executeQuery();
+</pre>
+
+
+
+<h1>Query operations</h1>
+
+<p>
+    The <b>operation</b> attribute of a query indicates what kind of query operation to perform amongst the following. It is defined
+    in the <b>xtk:queryDef:operation</b> enumeration.
+</p>
+<ul>
+    <li><b>get</b> is used to query one and exactly one record. If the record does not exist, it is considered to be an error. If this happens, the SDK will actually throw a JavaScript error</li>
+    <li><b>getIfExist</b> is used to query one record which may not exist</li>
+    <li><b>select</b> is used to query multiple records. The result is an array of 0, 1, or more entities</li>
+    <li><b>count</b> is used to count records</li>
+</ul>
+
+
+<h1>Escaping</h1>
+<p>It's common to use variables in query conditions. For instance, in the above example, you'll want to query an account by name instead of using the hardcoded <b>ffda</b> name. The <b>expr</b> attribute takes an XTK expression as a parameter, and <b>ffda</b> is a string litteral in an xtk expression.</p>
+
+<p>To prevent xtk ingestions vulnerabilities, you should not concatenate strings and write code such as expr: "@name = '" + name + "'": if the value of the name 
+  parameter contains single quotes, your code will not work, but could also cause vulnerabilities.
+</p>
+
+<p></p>
+<p class="ref">Find more details about escaping <a href="{{ site.baseurl }}/escaping.html">here</a>.</p>
+
+
+
+
+<h1>Pagination</h1>
+<p>Results can be retrieved in different pages, using the <b>lineCount</b> and <b>startLine</b> attributes. For instance, retrieves profiles 3 and 4 (skip 1 and 2)</p>
+
+<pre class="code">
+const queryDef = {
+    schema: "nms:recipient",
+    operation: "select",
+    <span class="emphasis">lineCount: 2</span>,
+    <span class="emphasis">startLine: 2</span>,
+    select: {
+        node: [
+            { expr: "@id" },
+            { expr: "@email" }
+        ]
+    }
+}
+const query = NLWS.xtkQueryDef.create(queryDef);
+const recipients = await query.executeQuery();
+console.log(JSON.stringify(recipients));
+</pre>
+
+<p class="warning">
+    Campaign will automatically limit the number of row returned by a query to <b>200</b>. The reason for this limit is that
+    all the data returned by a query is stored in memory in the application server, but is also sent over the network to
+    the SDK or API client, which also stores the data in memory. Storing more than a few hundred rows is generally not a 
+    good idea. Using the <b>QueryDef</b> API to handle large amounts of data is not a good idea either, it's better to 
+    use workflow instead. Worfklows are made to process large amounts of data, up to hundreds of millions of rows, whereas
+    queries are not meant to handle more than a few hundred rows.
+</p>
+
+<p>
+    More advanced pagination also need a <b>orderBy</b> clause to ensure that results are consistent. If not using an orderBy
+    clause, the query does not quarantee the ordering of the results, and subsequent calls are not quaranteed to 
+    return consistent pages. This example uses the name attribute to sort delivery mappings and returns the first 2
+    records.
+</p>
+
+<pre class="code">
+const queryDef = {
+    schema: "nms:deliveryMapping",
+    operation: "select",
+    <span class="emphasis">lineCount: 2</span>,
+    select: {
+        node: [
+            { expr: "@id" },
+            { expr: "@name" }
+        ]
+    },
+    <span class="emphasis">
+    orderBy: { node: [
+        {expr: "@name"}
+    ]}</span>
+    };
+</pre>
+
+
+<h1>Conditionnal queries</h1>
+
+<p>
+    Some Campaign attributes depend on the installed packages. For instance, the mobile package will add attributes to
+    various schemas so that Campaign can handle push notifications. I you need to write generic code that can adapt
+    whether the mobile package is installed or not, you can use the <b>hasPackage</b> function to 
+    conditionally add nodes to the query.
+</p>
+
+<pre class="code">
+if (client.application.hasPackage("nms:mobileApp")) {
+    queryDef.select.node.push({ expr: "@blackListAndroid" });
+}  
+</pre>
+
+
+
+
+<h1>Select all fields</h1>
+
+<p>
+    For some objects, such as deliveries and workflows, it can be painful to have to list all the attributes that we want
+    to retreive, as there could be hundreds. The query provides a mechanism to select all attributes, a bit like
+    a SELECT * would do in SQL. However, it involves an extra API call <b>xtk:queryDef#SelectAll</b> which means an
+    additional round-trip to the server
+</p>
+
+<pre class="code">
+const queryDef = {
+    schema: "xtk:option",
+    operation: "get",
+    where: {
+        condition: [
+            { expr:`@name='XtkDatabaseId'` }
+        ]
+    }
+    }
+    const query = NLWS.xtkQueryDef.create(queryDef);
+    await query.selectAll(false);
+    const databaseId = await query.executeQuery();
+</pre>
+<p class="caption">Querying all attributes of the xtk:option schema</p>
+
+
+
+
+<h1>Generating the SQL of a query</h1>
+
+<p>
+    The queryDef API also lets you generate the SQL for a query, using the <b>BuildQuery</b>.
+</p>
+
+
+<pre class="code">
+const sql = await query.buildQuery();
+console.log(">> SQL query: " + sql);
+</pre>
+
+
+<p>
+    The <b>BuildQueryEx</b> methods will also return the SQL and also metadata (data type) about each select field.
+</p>
+
+<pre class="code">
+const sql = await query.buildQueryEx();
+console.log(`>> SQL queryEx: "${sql[0]}"`);
+console.log(`>> Format string: "${sql[1]}"`);
+</pre>
+
+
+
+<h1>The analyze option</h1>
+
+<p>
+    The query uses the <b>analyze</b> option to return user friendly names for enumerations. 
+    In this example, we use the exclusionType attribute of the target mappings schema. Without the analyze flag, the query will
+    return the numeric value of the attribute (for example 2). With the flag, the query will still return the numeric value,
+    but will also return the string value of the attribute and its label. It will use addition JSON attributes named
+    "exclusionTypeName" and "exclusionTypeLabel", using the "Name" and "Label" suffixes.`,
+</p>
+
+<pre class="code">
+const queryDef = {
+    schema: "nms:deliveryMapping",
+    operation: "get",
+    select: {
+        node: [
+            { expr: "@id" },
+            { expr: "[storage/@exclusionType]", <span class="emphasis">analyze: true</span> },
+        ]
+    },
+    where: {
+        condition: [
+            { expr:`@name='mapRecipient'` }
+        ]
+    }
+}
+query = NLWS.xtkQueryDef.create(queryDef);
+mapping = await query.executeQuery();
+</pre>
+

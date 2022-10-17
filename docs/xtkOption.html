@@ -1,0 +1,54 @@
+---
+layout: page
+title: Managing options
+---
+
+
+<h1>Reading options</h1>
+
+<p>A convenience function is provided, which returns a typed option value.</p>
+<pre class="code">
+var value = await client.getOption("XtkDatabaseId");
+</pre>
+
+Options are cached because they are often used. It's possible to force the reload of an option:
+<pre class="code">
+var value = await client.getOption("XtkDatabaseId", false);
+</pre>
+
+<p>It's also possible to call the API directly.</p>
+<p>Use the <b>xtk:session:GetOption</b> method to return an option value and it's type. This call will not use the option cache for returning the option value, but will still cache the result.</p>
+
+<pre class="code">
+const optionValueAndType = await NLWS.xtkSession.getOption("XtkDatabaseId");
+console.log("Marketing datbaseId: " + optionValueAndType);
+
+Marketing datbaseId: u7F00010100B52BDE,6
+</pre>
+
+<p>If the option does not exist, it will return [ "", 0 ]</p>
+
+<pre class="code">
+var datbaseId = await client.getOption("XtkDatabaseId");
+console.log(datbaseId);
+</pre>
+
+<p>The <a href="{{ site.baseurl }}/caches.html">cache</a> can be cleared.</p>
+<pre class="code">
+client.clearOptionCache();
+</pre>
+
+
+<h1>Setting options</h1>
+
+<p>It's also possible to set options with the <b>setOption</b> function.</p>
+<ul>
+<li>It will create the option if necessary</li>
+<li>If the option already exists, it will use the existing value to infer the data type of the option</li>
+</ul>
+
+<pre class="code">
+await client.setOption("MyOption", "My value");
+</pre>
+
+<p>This is really a convenience function. You can always force an option type by using a writer on the xtk:option table, and using getOption to read back and cache the result.</p>

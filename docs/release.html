@@ -1,0 +1,52 @@
+---
+layout: page
+title: Releasing a new version
+---
+<p></p>
+
+<ul>
+  <li>First, increase the version in <b>package.json</b></li>
+  <li>Run <b>npm install</b> to update dependencies</li>
+</ul>
+
+
+<p>Then, make sure that the <a href="{{ site.baseurl }}/checklist.html">Commit Checklist</a> is fullfiled.</p>
+
+<ul>
+  <li>Check that tests run with 100% coverage</li>
+  <li>Check and resolve any security issues</li>
+  <li>Check if there are any code warnings</li>
+  <li>Check that JavaScript documentation builds and is complete</li>
+  <li>Check that your new features or fixed are documented and appear in the changelog</li>
+  <li>Check that the client-side library builds and work</li>
+</ul>
+
+<p>In a nutshell</p>
+
+<pre class="code">
+npm i
+npm run unit-tests
+npm audit
+node_modules/jshint/bin/jshint src/
+npm run jsdoc
+open ./docs/jsdoc/index.html
+node ./compile.js
+</pre>
+
+
+<p>To release and deploy to npm</p>
+
+<p>Push a commit with message <b>Release 1.2.3</b> in master<p>
+  
+<pre class="code">
+git commit -m "Release 1.2.3"
+git push origin
+</pre>
+
+<p class="info">There's a publication action that will publish released automatically when there's a commit named "Release ..." in master AND the version matches the one in package.json
+Do not create a git tag for this version, the publication hook will take care of it. If you have created a tag with the release name, the publication will fail
+</p> 
+
+<p>You can follow the results of the actions <a href="https://github.com/adobe/acc-js-sdk/actions">here</a></p>
+
+<p class="info">It usually takes a few hours for the package to show up in the <a href="https://www.npmjs.com/package/@adobe/acc-js-sdk">NPM UI</a> but you can still use the package by using npm</p>

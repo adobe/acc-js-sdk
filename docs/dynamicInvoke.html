@@ -1,0 +1,36 @@
+---
+layout: page
+title: Dynamic Invocation of SOAP calls
+---
+
+<p>Soap calls can be invoked dynamically as follows</p>
+
+<pre class="code">
+const namespace = client.NLWS["xtkSession"];
+const method = namespace["getOption"];
+const result = await method.call(namespace, parameters);
+</pre>
+
+<p>where parameters is the list of parameters to the SOAP call.</p>
+<p>Parameters can be a function which can compute and return the list of parameters as the function is being called:</p>
+
+<pre class="code">
+const result = await method.call(namespace, (method, callContext) => {
+  return parameters;
+});
+</pre>
+<p>The <b>method</b> parameter is the XML definition of the SOAP method call. The <b>callContext</b> is an object which contains the following attributes:</p>
+
+<ul>
+<li><b>schemaId</b> is the id of the schema containing the SOAP method
+<li><b>namespace</b> is the call namespace
+<li><b>object</b> is only used for non-static call and contains the "this" of the call.
+
+</ul>
+
+
+<p>
+  In <a href="{{ site.baseurl }}/sdk/update/2022/10/14/welcome.html">this blog post</a>, you'll find an advanced example of how to use a 
+  dynamic SOAP invocation to implement a REST proxy to the ACC API using the SDK. The example shows how to pass query parameters or body
+  to the SOAP call, and how to collect the names of the return value parameters to format the result as a proper JSON object.
+</p>

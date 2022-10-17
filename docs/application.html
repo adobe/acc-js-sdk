@@ -1,0 +1,366 @@
+---
+layout: page
+title: The Application Object
+---
+
+
+<p>
+  The <b>application</b> object can be obtained from a client, and will mimmic the Campaign <a href="https://docs.adobe.com/content/help/en/campaign-classic/technicalresources/api/c-Application.html">Application object</a>
+</p>
+
+<table>
+  <thead>
+    <tr><th>Attribute/Method</th><th>Description</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><b>buildNumber</b></td><td>The server build number</td></tr>
+    <tr><td><b>version</b></td><td>In SDK version 1.1.4 and above, returns the server version formatted as major.minor.servicePack (ex: 8.2.10)</td></tr>
+    <tr><td><b>instanceName</b></td><td>The name of the Campaign instance</td></tr>
+    <tr><td><b>operator</b></td><td>Information about the current operator (i.e. logged user), of class <b>CurrentLogin</b></td></tr>
+    <tr><td><b>packages</b></td><td>List of installed packages, as an array of strings</td></tr>
+    <tr><td>async <b>getSchema</b>(schemaId)</td><td> a schema by id (see the Schemas section below)</td></tr>
+    <tr><td>async <b>getEnumeration</b>(enumerationName, schemaOrSchemaId)</td><td> an enumeration</td></tr>
+    <tr><td><b>hasPackage</b>(name)</td><td>Tests if a package is installed or not
+  </tbody>
+</table>
+
+
+
+
+<p>The <b>CurrentLogin</b> object has the following attributes / functions</p>
+
+<table>
+  <thead>
+    <tr><th>Attribute/Method</th><th>Description</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><b>id</b></td><td>the internal id (int32) of the operator</td></tr>
+    <tr><td><b>login</b></td><td>the login name of the operator</td></tr>
+    <tr><td><b>computeString</b></td><td>A human readable name for the operator</td></tr>
+    <tr><td><b>timezone</b></td><td>The timezone of the operator</td></tr>
+    <tr><td><b>rights</b></td><td>An array of strings describing the rights of the operators</td></tr>
+  </tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+<h1>Schema API (aka XtkNodeDef)</h1>
+<p>The Schema API is the Campaign API which allows to access schemas and the corresponding node hierarchy in a programmatic way. It's simpler to use this API than to manipulate XML or JSON. The name XtkNodeDef comes from "Xtk Node Definition", where an XtkNode is a generic node in a schema definition.</p>
+
+<p>The Schema API closely mimmics the <a href="https://docs.adobe.com/content/help/en/campaign-classic/technicalresources/api/c-Schema.html">Campaign server side API</a> with the following differences:</p>
+<ul>
+<li>The <b>XtkSchema</b> and associated classes (<b>XtkSchemaNode</b>, <b>XtkSchemaKey</b>, <b>XtkEnumeration</b> and <b>XtkEnumerationValue</b>) are all immutable. There are currently no API to create schemas dynamically</li>
+<li>Not all methods and functions are implemented</li>
+<li>Several methods are asynchronous because they may require a server round trip to fetch schemas, etc.</li>
+<li>There could be slight differences in usage due to Campaign server side JavaScript using some E4X specific constructs to iterate over collections (ex: for each(...)) which are not available in standard JavaScript environments</li>
+</ul>
+
+<p>The entry point is the application object. Obtain a schema from its id:</p>
+
+<pre class="code">
+const application = client.application;
+const schema = await application.getSchema("nms:recipient");
+</pre>
+
+<p>This return a schema object of class <b>XtkSchema</b></p>
+
+
+
+
+
+<h1>Iterating over collections</h1>
+<p>The metadata SDK closely mimmics the Campaign API, but provides convenience functions to access collections of objects, such as the children of a node, the values of an enumeration, etc. using an <b>ArrayMap</b> structure which allows access as both an array and a map.</p>
+
+<p>Access as a map. Child elements can be accessed with their names, as if it was a JavaScript map. For instance, accessing the gender of a recipient. This method is kept as a compatibility layer with the legacy API and older versions of the SDK but is deprecated / discouraged. The reason is that there are schemas which have attribut names such as "length", or element names such as "forEach" which collide with JavaScript objects.</p>
+<pre class="code">
+const schema = await client.application.getSchema("nms:recipient");
+const enumerations = schema.enumerations;
+// deprecated, discouraged
+expect(enumerations.gender.label).toBe("Gender");
+</pre>
+
+<p>Instead, prefer the <b>get</b> function which can retreive any enumeration value</p>
+<pre class="code">
+const schema = await client.application.getSchema("nms:recipient");
+const enumerations = schema.enumerations;
+expect(enumerations.get("gender").label).toBe("Gender");
+</pre>
+
+<p>Elements can also be accessed as an array. In this example, we are iterating over the enumerations of a schema</p>
+<pre class="code">
+const schema = await client.application.getSchema("nms:recipient");
+const enumerations = schema.enumerations;
+for (let i=0; i&lt;enumerations.length; i++) { 
+    const enumeration = enumerations[i];
+}
+</pre>
+
+<p>Note that this assumes that there is no enumeration called "length" which will override the "length" attribute. Schemas, schema elements, and sql schemas have attributes named "length", but they are attributes, and will therefore be named "@length" in the metadata API. There is no  element named "length" in out-of-the-box schemas.</p>
+<p>The ArrayMap also behaves like an iterator and works fine with the <b>for...of</b> syntax</p>
+<pre class="code">
+const schema = await client.application.getSchema("nms:recipient");
+const enumerations = schema.enumerations;
+for (const enumeration of enumerations) { 
+    ...
+}
+</pre>
+
+<p>For convenience, the <b>map</b> and <b>forEach</b>, <b>find</b>, <b>filter</b>, <b>get</b>, and <b>flatMap</b> methods are also available and behave as expected:</p>
+
+<pre class="code">
+const schema = await client.application.getSchema("nms:recipient");
+// comma separated list of enumerations
+const enumerations = schema.enumerations.map(e => e.name).join(',');
+</pre>
+
+<pre class="code">
+const schema = await client.application.getSchema("nms:recipient");
+schema.enumerations.forEach(e => { ... });
+</pre>
+
+<p>The <b>for...in</b> loop is also supported but deprecated/discouraged as it may return incorrect results for collections having items whose key collide with javaScript properties (such as length, map, forEach, etc.). Use a <b>for...of</b> construcr instead, or the <b>map</b> or <b>forEach</b> functions.</p>
+<pre class="code">
+const schema = await client.application.getSchema("nms:recipient");
+// deprecated, discouraged
+for (const key in schema.enumerations) {
+    ...
+}
+</pre>
+
+
+
+
+
+<h1>Traversing schemas</h1>
+<p>The schema API is useful to quickly traverse in the schema hierarchy. Here are a few examples</p>
+
+<p>Get the label of the email attribute of the nms:recipient schema</p>
+<pre class="code">
+const schema = await application.getSchema("nms:recipient");
+const email = await schema.root.findNode("@email");
+console.log(email.label);
+</pre>
+
+<p>The <b>findNode</b> function follows links and references</p>
+<ul>
+<li>The function now supports <b>ref</b> nodes. Ref nodes are schema nodes having a <b>ref</b> property which is a reference to another node, possibly in a different schema. </li>
+  <ul>
+    <li>If the xpath passed to the function ends with a ref node, the ref node itself will be returned. We're not following the reference. You can use the <b>refTarget</b> method to explicitely follow the reference</li>
+    <li>If the xpath traverse intermediate nodes which are ref nodes, the <b>findNode</b> method will follow the reference. For instance, the start activity in a workflow is a reference. Finding the xpath "start/@img" will follow the start reference and find the @img attribute from there</li>
+  </ul>
+<li>Support for links. If the xpath parameter contains links, <b>findNode</b> will follow the link 
+target with the same rules as for reference nodes. To get the target of a link, use the <b>linkTarget</b> method instead of <b>refTarget</b>.</li>
+</ul>
+
+<p>For insance, you can get the country of a recipient who clicked in an email. This call follows the link from nms:broadLogRcp to nms:recipient and then from nms:recipient to nms:country, returning the country isoA3 attribute.</p>
+<pre class="code">
+const schema = await application.getSchema("nms:broadLogRcp");
+const node = await schema.root.findNode("recipient/country/@isoA3");
+</pre>
+
+<p>The same syntax can be used for reference nodes. For instance, getting the attributes of the start activity of a workflow:</p>
+<pre class="code">
+const schema = await application.getSchema("xtk:workflow");
+const node = await schema.root.findNode("start/@name");
+</pre>
+
+<p>In order to actually iterate over the children, things are a little bit more complicated</p>
+<pre class="code">
+const schema = await application.getSchema("xtk:workflow");
+const start = await schema.root.findNode("start");
+// start is the ref node, not the target of the ref. One need to explicitely
+// follow the ref in order to get the list of children
+const target = await start.refTarget();
+target.children.forEach(child => ... );
+</pre>
+
+<p>To get the root node of the target of a link, use the <b>linkTarget</b> function</p>
+<pre class="code">
+const schema = await application.getSchema("nms:broadLogRcp");
+const node = await schema.root.findNode("recipient/country");
+// node is the country link, not the root node of the nms:country schema
+const root = await node.linkTarget();
+// root is the root node of the nms:country schema
+</pre>
+
+
+<h1>XtkSchema </h1>
+
+<table>
+  <thead>
+    <tr><th>Attribute/Method</th><th>Description</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><b>id</b></td><td>The id of the schema. For instance "nms:recipient"</td></tr>
+    <tr><td><b>namespace</b></td><td>The namespace of the schema. For instance "nms"</td></tr>
+    <tr><td><b>name</b></td><td>The name of the schema (internal name)</td></tr>
+    <tr><td><b>label</b></td><td>The label (i.e. human readable, localised) name of the node.</td></tr>
+    <tr><td><b>labelLocalizationId</b></td><td>The translation id of the label of the node.</td></tr>
+    <tr><td><b>labelSingular</b></td><td>The singular label (i.e. human readable, localised) name of the schema. The label of a schema is typically a plural.</td></tr>
+    <tr><td><b>labelSingularTranslationId</b></td><td>The translation id of the label of the node of the singular label.</td></tr>
+    <tr><td><b>isLibrary</b></td><td>For schemas, indicates if the schema is a library</td></tr>
+    <tr><td><b>mappingType</b></td><td>Schema mapping type. Usually "sql"</td></tr>
+    <tr><td><b>md5</b></td><td>The MD5 code of the schema in the form of a hexadecimal string</td></tr>
+    <tr><td><b>xml</b></td><td>The XML (DOM) corresponding to this schema.<br>Note: this attribute is not available in the JS SDK.</td></tr>
+    <tr><td><b>root</b></td><td>The schema root node, if there is one. A reference to a <b>XtkSchemaNode</b></td></tr>
+    <tr><td><b>enumerations</b></td><td>Map of enumerations in this schema, indexed by enumeration name. Values are of type <b>XtkEnumeration</b></td></tr>
+    <tr><td><b>userDescription</b></td><td>The description of the schema in the form of a string.</td></tr>
+  </tbody>
+</table>
+
+
+<p>A schema is also a <b>XtkSchemaNode</b> and the corresponding properties/methods are also availale.</p>
+
+<h1>XtkSchemaNode</h1>
+
+<table>
+  <thead>
+    <tr><th>Attribute/Method</th><th>Description</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><b>children</b></td><td>A array/map of children of the node. See note on the ArrayMap structure below</td></tr>
+    <tr><td><b>dataPolicy</b></td><td>Returns a string of characters which provides the data policy of the current node.</td></tr>
+    <tr><td><b>description</b></td><td>A long, human readable, description of the node</td></tr>
+    <tr><td><b>descriptionLocalizationId</b></td><td>The translation id of the description of the node.</td></tr>
+    <tr><td><b>editType</b></td><td>Returns a string of characters which specifies the editing type of the current node.
+    <tr><td><b>enum</b></td><td>The name of the enumeration for the node, or an empty string if the node does node have an enumeration. See <b>enumeration()</b> method to get the corresponding <b>XtkSchemaNode</b></td></tr>
+    <tr><td><b>enumerationImage</b></td><td>Returns the name of the image of the current node in the form of a string of characters.</td></tr>
+    <tr><td><b>folderModel</b></td><td>Only on the root node, returns a string which contains the folder template(s). On the other nodes, it returns undefined.
+    <tr><td><b>image** </td><td>Returns the name of the image in the form of a string of characters.
+    <tr><td><b>img</b></td><td>Returns the name of the image in the form of a string of characters. (alias to <b>image</b> property)</td></tr>
+    <tr><td><b>integrity</b></td><td>Returns the link integrity type.</td></tr>
+    <tr><td><b>keys</b></td><td>A array/map of keys in this node, indexed by key name. Map values are of type <b>XtkSchemaKey</b></td></tr>
+    <tr><td><b>hasEnumeration</b></td><td>Returns a boolean which indicates whether the value of the current node is linked to an enumeration.</td></tr>
+    <tr><td><b>childrenCount</b></td><td>Number of children nodes</td></tr>
+    <tr><td><b>hasSQLTable</b></td><td>Returns a boolean which indicates whether the current node is linked to an SQL table.</td></tr>
+    <tr><td><b>hasUserEnumeration</b></td><td>Returns a boolean which indicates whether the value of the current node is linked to a user enumeration.</td></tr>
+    <tr><td><b>schema</b></td><td>The schema (<b>XtkSchema</b>) to which this node belongs</td></tr>
+    <tr><td><b>isAdvanced</b></td><td>Returns a boolean which indicates whether the current node is advanced or not.</td></tr>
+    <tr><td><b>isAnyType</b></td><td>Returns a boolean which indicates whether the current node is ordinary.</td></tr>
+    <tr><td><b>isAttribute</b></td><td>Indicates if the node is an attribute (true) or an element (false)</td></tr>
+    <tr><td><b>isAutoIncrement</b></td><td>Returns a boolean which indicates whether the value of the current node is incremented automatically.</td></tr>
+    <tr><td><b>isAutoPK</b></td><td>Returns a boolean which indicates whether the current node is a primary key.</td></tr>
+    <tr><td><b>isAutoUUID</b></td><td>Returns a boolean which indicates whether the current node is an automatic UUID</td></tr>
+    <tr><td><b>isAutoStg</b></td><td>Returns a boolean which indicates whether the schema is a staging schema</td></tr>
+    <tr><td><b>isBlob</b></td><td>Returns a boolean which indicates whether the current node is a BLOB.</td></tr>
+    <tr><td><b>isCalculated</b></td><td>Returns a boolean which indicates whether the value of the current node is the result of a calculation. Note that compute strings are not considered as calculated attributes.</td></tr>
+    <tr><td><b>isCDATA</b></td><td>Returns a boolean which indicates whether the current node is mapped from CDATA type XML.</td></tr>
+    <tr><td><b>isCollection</b></td><td>Returns a boolean which indicates whether the current node is a collection of sub-elements and/or attributes. This is an alias to <b>unbound</b> and <b>isUnbound</b> properties.</td></tr>
+    <tr><td><b>isDefaultOnDuplicate</b></td><td>Returns a boolean. If the value added is vrai, during record deduplication, the default value (defined in defaultValue) is automatically reapplied during recording.</td></tr>
+    <tr><td><b>isElementOnly</b></td><td>Returns a boolean which indicates whether the current node is a logical sub-division of the schema.</td></tr>
+    <tr><td><b>isExternalJoin</b></td><td>True if the node is a link and if the join is external.</td></tr>
+    <tr><td><b>isLink</b></td><td>Returns a boolean which indicates whether the node is a link.</td></tr>
+    <tr><td><b>isMappedAsXML</b></td><td>Returns a boolean which indicates whether the node is an XML mapping.</td></tr>
+    <tr><td><b>isMemo</b></td><td>Returns a boolean which indicates whether the current node is mapped by a Memo.</td></tr>
+    <tr><td><b>isMemoData</b></td><td>Returns a boolean which indicates whether the current node is mapped by a MemoData.</td></tr>
+    <tr><td><b>isNotNull</b></td><td>Returns a boolean which indicates whether or not the current node can take the null value into account.</td></tr>
+    <tr><td><b>isRequired</b></td><td>Returns a boolean which indicates whether or not the value of the current node is mandatory.</td></tr>
+    <tr><td><b>isRoot</b></td><td>Indicates if the node is the root node of a schema, i.e. the first child of the schema node, whose name matches the schema name</td></tr>
+    <tr><td><b>isSQL</b></td><td>Returns a boolean which indicates whether the current node is mapped in SQL.</td></tr>
+    <tr><td><b>isTemporaryTable</b></td><td>Returns a boolean indicating whether the table is a temporary table. The table will not be created during database creation.</td></tr>
+    <tr><td><b>unbound</b></td><td>Returns a boolean which indicates whether the current node has an unlimited number of children of the same type.</td></tr>
+    <tr><td><b>joins</b></td><td>Element of type "link" has an array of XtkJoin. See <b>joinNodes</b> method.</td></tr>
+    <tr><td><b>label</b></td><td>The label (i.e. human readable, localised) name of the node.</td></tr>
+    <tr><td><b>labelLocalizationId</b></td><td>The translation id of the label of the node.</td></tr>
+    <tr><td><b>name</b></td><td>The name of the node (internal name)</td></tr>
+    <tr><td><b>nodePath** </td><td>The xpath of the node
+    <tr><td><b>parent</b></td><td>The parent node (a <b>XtkSchemaNode</b> object). Will be null for schema nodes</td></tr>
+    <tr><td><b>PKSequence</b></td><td>Returns a character string that provides the name of the sequence to use for the primary key.</td></tr>
+    <tr><td><b>packageStatus</b></td><td>Returns a number that gives the package status.</td></tr>
+    <tr><td><b>packageStatusString</b></td><td> Returns a string that gives the package status ("never", "always", "default", or "preCreate").</td></tr>
+    <tr><td><b>revLink</b></td><td>Returns the name of the reverse link in the link target schema. See <b>reverseLink</b> method to get the actual reverse link object</td></tr>
+    <tr><td><b>SQLName</b></td><td>The SQL name of the field. The property is an empty string if the object isn't an SQL type field.</td></tr>
+    <tr><td><b>SQLTable</b></td><td>The SQL name of the table. The property is an empty string if the object isn't the main element or if schema mapping isn't of SQL type.</td></tr>
+    <tr><td><b>size</b></td><td>For string nodes, the maximum length of the node value. Alias to <b>length</b>.</td></tr>
+    <tr><td><b>length</b></td><td>For string nodes, the maximum length of the node value. Alias to <b>size</b>.</td></tr>
+    <tr><td><b>target</b></td><td>A string corresponding to the target of a link. Note that in the SDK, this is a string, whereas in the JS API, this is the actual target node. Because the SDK is async. Use <b>linkTarget</b> to get the target node of a link.</td></tr>
+    <tr><td><b>type</b></td><td>The data type of the node, for instance "string", "long", etc.</td></tr>
+    <tr><td><b>userEnumeration</b></td><td>Returns a string of characters which is the name of the user enumeration used by the current node.</td></tr>
+    <tr><td><b>ref</b></td><td>Some nodes are only references to other nodes. There are 2 kind of references. Local references are simply a xpath in the current schema (starting from the schema itself, and not the schema root). Fully qualified references are prefixed with a schema id. The target node can be accessed with the <b>refTarget</b> funtion.</td></tr>
+    <tr><td><b>isMappedAsXml</b></td><td>Is the field mapped as XML?</td></tr>
+    <tr><td><b>visibleIf</b></td><td>The visibility expression of the node (if any) since version 1.1.9 of the SDK</td></tr>
+    <tr><td><b>belongsTo</b></td><td>For attribute and elements, indicates the schema id in which they were defined. Since version 1.1.10 of the SDK</td></tr>
+  </tbody>
+</table>
+
+<p>Methods of a schema node</p>
+
+<table>
+  <thead>
+    <tr><th>Method</th><th>Description</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>async <b>findNode</b></td><td>Find a child node using a xpath. This function follows links and references if necessary and will dynamically fetch/cache necessary schemas. </td></tr></td></tr>
+    <tr><td>async <b>refTarget</b></td><td>Get the target node of a reference</td></tr></td></tr>
+    <tr><td>async <b>linkTarget</b></td><td>Get the target node of a link. See <b>target</b></td></tr></td></tr>
+    <tr><td>async <b>joinNodes</b></td><td>Get the schema nodes corresponding to link. The function returns nodes for both the source and the destination of the link. See <b>joins</b>.</td></tr></td></tr>
+    <tr><td>async <b>reverseLink</b></td><td>Returns the node corresponding to the reverse link of a link. See <b>revLink</b> to get the reverse link name rather than the actual node</td></tr></td></tr>
+    <tr><td>async <b>computeString</b></td><td>Returns the compute string of a node, following references if necessary</td></tr></td></tr>
+    <tr><td>async <b>enumeration</b></td><td>For nodes whose value is an enumeration, return the <b>XtkEnumeration</b> object corresponding to the enumeration definition. See <b>enum</b> property to get the enumeration name instead of the object</td></tr></td></tr>
+    <tr><td><b>firstInternalKeyDef</b></td><td></td></tr>
+    <tr><td><b>firstExternalKeyDef</b></td><td>
+    <tr><td><b>firstKeyDef</b></td><td>
+  </tbody>
+</table>
+
+<h1>XtkSchemaKey</h1>
+
+<table>
+  <thead>
+    <tr><th>Attribute/Method</th><th>Description</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><b>schema</b></td><td>The schema to which this key belongs</td></tr>
+    <tr><td><b>name</b></td><td> The name of the key (internal name)</td></tr>
+    <tr><td><b>label</b></td><td>The label (i.e. human readable, localised) name of the key</td></tr>
+    <tr><td><b>description</b></td><td>A long, human readable, description of the key</td></tr>
+    <tr><td><b>isInternal</b></td><td>Indicates if the key is an internal key (as opposed to an external key)</td></tr>
+    <tr><td><b>allowEmptyPart</b></td><td>
+    <tr><td><b>fields</b></td><td>A ArrayMap of key fields making up the key. Each value is a reference to a <b>XtkSchemaNode</b> </td></tr>
+  </tbody>
+</table>
+
+<h1>XtkEnumeration</h1>
+
+<table>
+  <thead>
+    <tr><th>Attribute/Method</th><th>Description</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><b>name</b></td><td> The name of the enumeration, fully qualified, i.e. prefixed with the schema id</td></tr>
+    <tr><td><b>label</b></td><td>The label (i.e. human readable, localised) name of the key</td></tr>
+    <tr><td><b>labelLocalizationId</b></td><td>The translation id of the label of the key.</td></tr>
+    <tr><td><b>description</b></td><td>A long, human readable, description of the key</td></tr>
+    <tr><td><b>descriptionLocalizationId</b></td><td>The translation id of the description of the key.</td></tr>
+    <tr><td><b>baseType</b></td><td>The base type of the enumeration, usually "string" or "byte"</td></tr>
+    <tr><td><b>default</b></td><td>The default value of the enumeration, casted to the enumeration type</td></tr>
+    <tr><td><b>hasImage</b></td><td>If the enumeration has an image</td></tr>
+    <tr><td><b>values</b></td><td>A ArrayMap of enumeration values, of type <b>XtkEnumerationValue</b></td></tr>
+    </tbody>
+  </table>
+  
+<h1>XtkEnumerationValue</h1>
+
+<table>
+  <thead>
+    <tr><th>Attribute/Method</th><th>Description</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><b>name</b></td><td> The name of the key (internal name)</td></tr>
+    <tr><td><b>label</b></td><td>The label (i.e. human readable, localised) name of the key</td></tr>
+    <tr><td><b>labelLocalizationId</b></td><td>The translation id of the label of the key.</td></tr>
+    <tr><td><b>description</b></td><td>A long, human readable, description of the key</td></tr>
+    <tr><td><b>descriptionLocalizationId</b></td><td>The translation id of the description of the key.</td></tr>
+    <tr><td><b>image</b></td><td>
+    <tr><td><b>enabledIf</b></td><td>
+    <tr><td><b>applicableIf</b></td><td>
+    <tr><td><b>value</b></td><td>The value of the enumeration (casted to the proper Javascript type)</td></tr>
+  </tbody>
+</table>

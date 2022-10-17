@@ -1,0 +1,210 @@
+---
+layout: page
+title: Connecting to Campaign
+---
+
+<p>In order to call any Campaign  API, you need to create a <b>client</b> object first using the <b>sdk.init</b> function. You pass it the Campaign URL, as well as your credentials.</p>
+
+<pre class="code">
+const sdk = require('@adobe/acc-js-sdk');
+const connectionParameters = sdk.ConnectionParameters.ofUserAndPassword(
+                                    "https://myInstance.campaign.adobe.com", 
+                                    "admin", "admin");
+const client = await sdk.init(connectionParameters);
+</pre>
+
+<p>Additional parameters can be passed when creating a connection. The connection parameters are described <a href="{{ site.baseurl }}/connectionParameters.html">here.</a></p>
+<pre class="code">
+const connectionParameters = sdk.ConnectionParameters.ofUserAndPassword(
+    "https://myInstance.campaign.adobe.com", 
+    "admin", "admin",
+    { representation: "xml", rememberMe: true });
+</pre>
+
+
+<h1>Logging on</h1>
+<p>
+    After a <b>client</b> object has been created, it's time to log on to Campaign.
+    The <b>sdk.init</b> call will not actually connect to Campaign, you can call the <b>logon</b> method for this. Logon does not need to be called when using session-token authentication or anonymous authentication.
+</p>
+
+<pre class="code">
+await client.logon();
+</pre>
+
+<p>It's also best practice to logoff when finished</p>
+
+<pre class="code">
+await client.logoff();
+</pre>
+
+
+
+<h1>User info and Server info</h1>
+
+<p>
+    upon return, the <b>logon</b> function returns a lot of useful information
+</p>
+<ul>
+    <li>Informations about the server, such as the build number, etc.</li>
+    <li>The list of available packages</li>
+    <li>Informations about the connected user, and it's privileges</li>
+</ul>
+
+<p>T
+    he most convenient way to access this information is by using the <a href="{{ site.baseurl }}/application.html">Application object</a>, but you can
+    also use the <b>client.getSessionInfo().serverInfo</b> and <b>client.getSessionInfo().sessionInfo</b> calls.
+</p>
+
+
+
+<h1>Credentials</h1>
+
+<p>
+    There are several methods of the <b>sdk.ConnectionParameters</b> depending on the type of authentication you want to use. They are
+    described below.
+</p>>
+
+<h2>Login with user and password</h2>
+<p>This is the most common method to log in to Campaign. User the <b>ofUserAndPassword</b> function and pass it the user name and password</p>
+<pre class="code">
+const connectionParameters = sdk.ConnectionParameters.ofUserAndPassword(
+    "https://myInstance.campaign.adobe.com", 
+    "admin", "admin");
+</pre>
+
+
+<h2>Login with IMS access token</h2>
+<p>The SDK supports IMS access token of an IMS user with the <b>ofBearerToken</b> function. Pass it a bearer token.</p>
+<pre class="code">
+const connectionParameters = sdk.ConnectionParameters.ofBearerToken(
+                                "https://myInstance.campaign.adobe.com", 
+                                "ims_bearer_token");
+</pre>
+
+
+<h2>Login with Session token</h2>
+<p>
+Campaign supports authenticating with a session token in some contexts. This is usually used for Message Center API calls (see the <a href="{{ site.baseurl }}/messageCenter.html">Message Center</a> section).
+
+In the following example, the session token is a string composed of the user name, a slash sign, and the password (often empty)
+
+<pre class="code">
+const connectionParameters = sdk.ConnectionParameters.ofSessionToken(url, "mc/mc");
+</pre>
+<p>
+Note that this authentication mode is very specific and does not actually performs a Logon: the session token will be passed to each API calls as-is (with an empty security token) and requires proper setup of the security zones for access to be granted.
+</p>
+<p>
+Another consequence is that the Application object will not be available (client.application will be undefined) when using this authentication mode. The reason is that the application object requires an actual login call to be made to be populated.
+</p>
+
+
+
+
+<h2>Anonymous logon</h2>
+<p>
+Several Campaign APIs are anonymous, i.e. do not require to actually logon to be used. For instance the <b>/r/test</b> API is anonymous. The SDK supports anonymous APIs but still need to be initialized with anonymous credentials as follows. Of course, anonymous APIs also work if you are logged on with a different method.
+</p>
+
+<pre class="code">
+const connectionParameters = sdk.ConnectionParameters.ofAnonymousUser(url);
+const client = await sdk.init(connectionParameters);
+</pre>
+
+
+
+
+
+<h2>Logon with Security token</h2>
+<p>
+If you want to use the SDK client-side in a web page returned by Campaign, you cannot use the previous authentication functions because you do not know the user and password, and because you cannot read the session token cookie.
+</p>
+<p>
+For this scenario, the `ofSecurityToken` function can be used. Pass it a security token (usually available as document.__securitytoken), and the SDK will let the browser handle the session token (cookie) for you.
+</p>
+
+<pre class="code">
+&lt;script src="acc-sdk.js">&lt;/script>
+&lt;script>
+    (async () => {
+        try {
+            const sdk = document.accSDK;
+            var securityToken = "@UyAN...";
+            const connectionParameters = sdk.ConnectionParameters.ofSecurityToken(url, securityToken);
+            const client = await sdk.init(connectionParameters);
+            await client.logon();
+            const option = await client.getOption("XtkDatabaseId");
+            console.log(option);
+        } catch(ex) {
+            console.error(ex);
+        }
+    })();
+&lt;/script>
+&lt;/body>
+&lt;/html>
+</pre>
+<p>
+Note: if the HTML page is served by the Campaign server (which is normally the case in this situation), you can pass an empty url to the `ofSecurityToken` API call.
+</p>
+
+
+
+
+
+<h2>Login with IMS Service Tokens</h2>
+<p>
+The SDK also supports IMS service token with the <b>ofUserAndServiceToken</b> function. Pass it a user to impersonate and the IMS service token.
+</p>
+<p>
+In that context, the IMS service token grants admin-level privileges, and the user indicates which Campaign user to impersonate. 
+</p>
+
+<pre class="code">
+const connectionParameters = sdk.ConnectionParameters.ofUserAndPassword(
+                                    "https://myInstance.campaign.adobe.com", 
+                                    "admin", "==ims_service_token_here");
+</pre>
+
+<p class="warning">This ability is reserved for Adobe services only.</p>
+
+
+
+
+
+<h1>Refreshing connection tokens</h1>
+
+<p>
+The <b>refreshClient</b> is an async callback function with the SDK client as parameter, it is called when the ACC session is expired.
+The callback must refresh the client session and return it. if a SOAP query fails with session expiration error then it will be retried when the callback is defined.
+</p>
+<pre class="code">
+const connectionParameters = sdk.ConnectionParameters.ofUserAndPassword(
+                                    url, "admin", "admin",
+                                    { refreshClient: async (client) => {
+                                        await client.logon();
+                                        return client;
+                                    }});
+</pre>
+
+
+<h1>IP Whitelisting</h1>
+<p>
+Campaign includes an IP whitelisting component which prevents connections from unauthorized IP addresses. This is a common source of authentication errors. 
+</p>
+<p>
+A node application using the SDK must be whitelisted to be able to access Campaign. The SDK <b>sdk.ip</b> function is a helper function that can help you find the IP or IPs which need to be whitelisted.
+</p>
+<p>
+This API is only meant for troubleshooting purposes and uses the <b>https://api.db-ip.com/v2/free/self</b> service.
+</p>
+
+<pre class="code">
+const ip = await sdk.ip();
+</pre>
+<p>
+Will return something like
+</p>
+<pre class="code">
+{ "ipAddress":"AAA.BBB.CCC.DDD","continentCode":"EU","continentName":"Europe","countryCode":"FR","countryName":"France","stateProv":"Centre-Val de Loire","city":"Bourges" }
+</pre>

@@ -1,0 +1,33 @@
+<nav>
+  <ul>
+  {% for item in site.data.navigation %}
+    <li>
+      {% if item.link %}
+      <a href="{{ site.baseurl }}/{{ item.link }}" {% if page.url == item.link %}style="color: red;"{% endif %}>
+        {{ item.name }}
+      </a>
+      {% else %}
+        {% if item.name == '--' %}
+          &nbsp;
+        {% else %}
+        {{ item.name }}
+        {% endif %}
+      {% endif %}
+
+      {% if item.children %}
+      <ul>
+
+        {% for child in item.children %}
+        <li>
+          <a href="{{ site.baseurl }}/{{ child.link }}" {% if page.url == child.link %}style="color: red;"{% endif %}>
+            {{ child.name }}
+          </a>
+        </li>
+        {% endfor %}
+    
+      </ul>
+      {% endif %}
+    </li>
+  {% endfor %}
+  </ul>
+</nav>

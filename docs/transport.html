@@ -1,0 +1,45 @@
+---
+layout: page
+title: The Transport Protocol
+---
+
+<p>The SDK uses <b>axios</b> library internally to perform HTTP calls. This can be customized and one can use any other (async) protocol, which is implemented in the <b>transport.js</b> file.</p>
+<p>The transport protocol defines</p>
+<ul>
+    <li>What is an HTTP request</li>
+    <li>What is the corresponding response</li>
+    <li>How errors are handled</li>
+</ul>
+
+<p>The transport protocol exports a single asynchronous function <b>request</b> which takes two parameters.</p>
+
+<p>The first parameter is the request object with the following attributes. Note that it matches axios requests.</p>
+
+<ul>
+    <li><b>method</b> is the HTTP verb</li>
+    <li><b>url</b> is the URL to call</li>
+    <li><b>headers</b> is an object containing key value pairs with http headers and their values</li>
+    <li><b>data</b> is the request payload</li>
+
+</ul>
+
+<p>The second parameter is an set of additional parameters that have been pushed down to the transport layer (see the <b>Pushdown</b> paragraph for more details). In particular, the <b>timeout</b> parameter should be honored by the transport layer.</p>
+
+<p>If the request is successful, a promise is returned with the result payload, as a string.</p>
+
+<p>If the request fails, the promise is rejected with an error object with class <b>HttpError</b>, a litteral with the following attributes:</p>
+<ul>
+    <li><b>statusCode</b> is the HTTP status code, such as 404, 500, etc.</li>
+    <li><b>statusText</b> is the HTTP status text coming with the error</li>
+    <li><b>data</b> is the response data, if any</li>
+</ul>
+
+<p>For proper error handling by the ACC SDK, it's important that the actual class of returned objects is named <b>HttpError</b></p>
+
+<p>The transport can be overriden by using the <b>client.setTransport</b> call and passing it a transport function, i.e. an async function which</p>
+
+<ul>
+    <li>Takes a <b>Request</b> object litteral as a parameter</li>
+    <li>Returns a the request result in a promise</li>
+    <li>Returns a rejected promise containing an <b>HttpError</b> in case of failure</li>
+</ul>

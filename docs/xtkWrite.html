@@ -1,0 +1,51 @@
+---
+layout: page
+title: Writer API
+---
+
+<p>More details on the CRUD API <a href="{{ site.baseurl }}/xtkPersist.html">here</a>.</p>
+
+<p>Creates an image (data is base64 encoded)</p>
+
+<pre class="code">
+var data = "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAA9ElEQVQ4jaXTIUsFQRSG4eeKiBjEIBeDYDGoSUwGm81s8SdYtIhFhPMDbEaz/SIIZkGbWg1Gg0GwiIgYZPZuWBxn8bJvWXb2O+/scM70lAhjuMO1sF9IVaES61jFnjBbyLQKjurnJz6yr62CsI2t+m0gRhGERZw1Vk6zTFEQ+rjETOP3b7OqBr1G8SRusPYrc4I3LGCeapN37AqP443g8R/FiYNsZcgGSRCmq1ZxmEXa6Yt0hKh6/dAaLbOcd+H/XOGpi2AFU10EqWsTXQQ7wmsSPNdzP8DXCII0D41BSgxvXboHm1jCXDpnPbHfeME9znEh+AFoTyfEnWJgLQAAAABJRU5ErkJggg==";
+var doc = {
+    xtkschema: "xtk:image",
+    _operation: "insert",
+    namespace: "cus",
+    name: "test.png",
+    label: "Self test",
+    type: "png",
+    $data: data
+};
+await NLWS.xtkSession.write(doc);
+</pre>
+
+<p>Creates a folder (with image previously created)</p>
+
+<pre class="code">
+const folder = {
+    xtkschema: "xtk:folder",
+    _operation: "insert",
+    parent-id: 1167,
+    name: "testSDK",
+    label: "Test SDK",
+    entity: "xtk:folder",
+    schema: "xtk:folder",
+    model: "xtkFolder",
+    "image-namespace": "cus",
+    "image-name": "test.png"
+};
+await NLWS.xtkSession.write(folder);
+</pre>
+
+<p>Some objects, such as deliveries are created from templates. The `createFromModel` API is preferred in this case. Given a template name, and a patch object, it will return an object created from the template and the patch, applying all sort of business rules and default values. This object can be inserted using a writer.</p>
+
+<p>In this example, an email delivery is created from the "mail" delivery template and it's label is set to "Hello".</p>
+
+<p class="info">Note the xtkschema attribute in the second parameter of the `createFromModel` API call which is needed for the SDK to perform the proper JSON to XML transformation.</p>
+
+<pre class="code">
+const mail = await client.NLWS.nmsDelivery.createFromModel('mail', { xtkschema:'nms:delivery', label:'Hello'});
+await client.NLWS.xtkSession.write(mail);
+</pre>

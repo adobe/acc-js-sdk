@@ -1,0 +1,96 @@
+---
+layout: page
+title: XML <=> JSON
+---
+
+<p>
+  In general, XML to JSON conversion is a tricky problem. In the case of Campaign, it's even trickier since the structure
+  of the XML documents is defined by Campaign, and is therefore imposed.
+</p>
+
+
+
+<h1>Converting collections (arrays)</h1>
+
+<p>
+  In Campaign, collections of objects are represented by multiple XML elements. There isn't generally a containing element.
+  For instance in the example below, we have books. Books have an author and chapters.
+</p>
+
+<pre class="code">
+&amp;book title="A confederacy of dunces">
+  &amp;author>John Kennedy Toole&amp;/author>
+  &amp;chapter name="Chapter I" pages="20">
+  &amp;/chapter>
+  &amp;chapter name="Chapter II" pages="34">
+  &amp;/chapter>
+&amp;/book>  
+</pre>
+
+<p>
+  As you can see, there is one "author" element and two "chapter" elements. But can there be multiple author elements?
+  Well it depends, and this depends on the schema, whether the schema author has decided that "author" is a single 
+  element or can be a collection (unbound="true"). 
+  But looking a the XML only, it's impossible to tell. We're going to assume that the author here is not a collection,
+  it is simply a string property that has been implemented as an XML element and not as an XML attribute. The corresponding
+  SimpleJson will be the following.
+</p>
+
+<pre class="code">
+  { "$author": "John Kennedy Toole",
+  "chapter": [
+   {
+      "name": "Chapter I",
+      "pages": 20
+    }, {
+      "name": "Chapter II",
+      "pages”: 3
+    },
+  ] }
+</pre>
+
+<p>
+  So far, so good, but what if the book only had one chapter?
+</p>
+
+<pre class="code">
+  &amp;book title="A confederacy of dunces">
+    &amp;author>John Kennedy Toole&amp;/author>
+    &amp;chapter name="Chapter I" pages="20">
+    &amp;/chapter>
+  &amp;/book>  
+</pre>
+
+<p>
+  This becomes trickier because now we have two alternatives: in JSON the "chapter" property can be
+  either an array of one element (which is what is expected) or the element itself
+</p>
+
+<pre class="code">
+  { "$author": "John Kennedy Toole",
+  "chapter": [
+   {
+      "name": "Chapter I",
+      "pages": 20
+  ] }
+
+  <span class="comment">// or</span>
+
+  { "$author": "John Kennedy Toole",
+  "chapter": {
+      "name": "Chapter I",
+      "pages": 20
+  } }
+</pre>
+
+
+<p>
+  And what if a particular book has no chapters? There will not even be any &lt;chapter> elements in the XML. How can
+  the SDK decide if it should create an empty chapters array or leave the chapter property undefined.
+</p>
+
+<p>
+  This is really painful from a user point of view at it can lead to complex and error prone code: every time a
+  JSON property is accessed, one has to wonder what type it is and whether it is the right type
+</p>
+

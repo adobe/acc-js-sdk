@@ -1,0 +1,189 @@
+---
+layout: page
+title: Best Practices
+---
+
+<h1>Start with the concepts</h1>
+
+<p></p>
+<p class="ref">Start with the <a href="{{ site.baseurl }}/concepts.html">concepts</a> behind Campaign and the SDK.</p>
+
+
+
+
+
+<h1>API limits</h1>
+
+<p>
+    Most of the Campaign APIs are not meant for high volume, low concurrency processing. For instance, we 
+    provide APIs to create recipients. However, this is not meant to be used as a streaming ingestion
+    API, i.e. you do not want to use this API to insert large amount of recipients. This kind of operation
+    should still be done in batch, using workflows.
+</p>
+
+<p>
+    However, the APIs are well fit to use for use cases such as an UI, Landing pages, within the provisioned
+    capacity.
+</p>
+
+
+
+
+<h1>XML or JSON</h1>
+
+<p>
+    The SDK supports both JSON and XML. Campaign internally uses XML, so it's always more accurate to use XML.
+    However it's not as simple to use XML as it is to use JSON. Still, the SDK provides several
+    <a href="{{ site.baseurl }}/domHelper.html">helpers</a> do deal with XML in a simple way.
+</p>
+
+<p>
+    You can use either one or both, however, it's a good idea to undestand the gotchas of using JSON. It
+    may seem easier than XML, but there are a few gotchas which makes this not an obvious choice. 
+</p>
+
+<p></p>
+<p class="ref">Learn about the <a href="{{ site.baseurl }}/xml2json.html">Gotchas of using JSON</a></p>
+<p class="ref">Understand the <a href="{{ site.baseurl }}/domHelper.html">DOM helpers</a> to make your life simpler with XML</p>
+
+
+
+<h1>Data types</h1>
+
+<p>
+    The SDK will not always return the proper data types. For instance, it may return a string instead of a 
+    number, an object in place of an array, etc.
+</p>
+
+<p>
+    Those are all consequences of using XML in the first place (attribute values are all serialized as strings)
+    but also of transforming XML to JSON and back.
+</p>
+
+<p>
+    Dealing with those inconsistencies in the application code can be challenging: it's difficult to always
+    keep them in mind and error-prone to rely on such rigor to make sure things are always correct.
+</p>
+
+<p>
+    Let's take as an example a <b>condition</b> object. This is usually used in queries to filter the
+    result, but is also available at many other places, such as sys filters, delivery targets, etc. The
+    <b>condition</b> object is defined in the xtk:queryDef schema from which there's an extract below.
+</p>
+
+<pre class="code">
+&lt;element name="condition">
+    &lt;attribute name="expr" type="string" label="Expression"/>
+    &lt;attribute name="ignore" <span class="emphasis">type="boolean"</span> label="Ignore condition"/>
+    ...
+    <span class="emphasis">
+    &lt;element ref="xtk:queryDef:condition" name="condition" ordered="true" unbound="true"/>
+    </span>
+    ...
+&lt;/element>
+</pre>
+
+<p>
+    In this example, we see two things: the ignore attribute is a boolean, and conditions are recursive objects
+    which can contain sub conditions. We also see that the <b>condition</b> node is a collection, i.e. that there
+    can be zero, one or more sub-conditions (unbound="true")
+</p>
+
+<pre class="code">
+&lt;condition>                               <span class="comment">&lt;-- I have exactly one child element --></span>
+    &lt;condition boolOperator="AND">        <span class="comment">&lt;-- I have exactly two children elements --></span>
+        &lt;condition boolOperator="OR" ignore="false" expr=.../>
+        &lt;condition boolOperator="OR" ignore="1" expr=.../>
+    &lt;/condition>
+&lt;/condition>
+</pre>
+<p class="caption">An example of a condition object in XML</p>
+
+<p>
+    What this example shows that the ignore attribute, which is a boolean, can have a variety of values, such a "true", "false", "1", "0", etc. 
+    We also see that the first level of condition (with AND operator) has 2 children, but the top level condition has only one children.
+</p>
+
+<p>
+    In JSON, such an object will become this
+</p>
+
+<pre class="code">
+const condition = {
+    condition: {
+        boolOperator: "AND",
+        condition: [
+            { boolOperator: "OR", ignore: "false", expr:"..." },
+            { boolOperator: "OR", ignore: "1", expr:"..." },
+        ]
+    }
+}
+</pre>
+
+<p>
+    As you can see, the SDK did not realize that the ignore property is a boolean, and did not cast it for you. Similarly, it did not 
+    realize that the condition element is a collection (an array), and has generated both an array (for the two OR conditions) and
+    an object (for the AND condition).
+</p>
+
+<p>
+    This can become quickly very hard to use. For instance, if I want to test the ignore boolean, I need to write
+</p>
+
+<pre class="code">
+const ignore = condition.condition.condition[0].ignore;
+if (ignore == "true" || ignore == "1") {
+    ...
+}
+</pre>
+
+
+<p>
+    One would want to simply test ignore as a boolean, and you can (should) use the XTK caster to force the conversion
+</p>
+
+<pre class="code">
+const ignore = XtkCaster.asBoolean(condition.condition.condition[0].ignore);
+if (ignore) {
+    ...
+}
+</pre>
+
+<p>
+    In fact, you should use XtkCaster for the condition objects which are potential arrays, as follows
+</p>
+
+<pre class="code">
+    const ignore = XtkCaster.asBoolean(
+        XtkCaster.asArray(
+            XtkCaster.asArray(condition.condition)
+            .condition
+        )[0].ignore);
+    if (ignore) {
+        ...
+    }
+</pre>
+
+<p>
+    This is a little bit hard to read. It's better to create an object model and make sure data is casted to the proper types
+    as the objects are constructed.
+</p>
+
+<pre class="code">
+const makeCondition = (condition) => {
+    if (condition === null || condition === undefined) return condition;
+    return {
+        boolOperator: XtkCaster.asString(condition.boolOperator),
+        ignore: XtkCaster.asBoolean(condition.ignore),
+        condition: makeCondition(condition.condition);
+    };
+}
+const safeCondition = makeCondition(condition);
+expect(safeCondition.ignore).toBe(false);
+</pre>
+
+
+<p></p>
+<p class="ref">Use the <a href="{{ site.baseurl }}/xtkCaster.html">XTK Caster</a></p>
+<p class="ref">Use the <a href="{{ site.baseurl }}/application.html">Application object</a> to handle schemas</p>
+<p class="ref">Learn about the <a href="{{ site.baseurl }}/xml2json.html">Gotchas of using JSON</a></p>

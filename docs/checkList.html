@@ -1,0 +1,168 @@
+---
+layout: page
+title: Commit Checklist
+---
+
+<p>In summary, the following tasks <b>must</b> be performed before submitting a pull request</p>
+
+<ul>
+  <li>Check that tests run with 100% coverage</li>
+  <li>Check and resolve any security issues</li>
+  <li>Check if there are any code warnings</li>
+  <li>Check that JavaScript documentation builds and is complete</li>
+  <li>Check that your new features or fixed are documented and appear in the changelog</li>
+  <li>Check that the client-side library builds and work</li>
+  <li>Review your own code and fix any thing that looks hack, fix all typos, etc., document all public functions, etc.</li>
+</ul>
+
+<p></p>
+<pre class="code">
+    npm i
+    npm run unit-tests
+    npm audit
+    node_modules/jshint/bin/jshint src/
+    npm run jsdoc
+    open ./docs/jsdoc/index.html
+    node ./compile.js
+    </pre>
+    
+
+
+<h1>Write and run tests</h1>
+
+<p>
+    The JS SDK has 100% coverage and should stay so. Each PR <b>must</b> include a series of unit test which test that
+    the feature works, but also test all the error cases and edge cases. In general it's better to write more tests
+    than few.
+</p>
+<p>
+    Tests should be fast. We will not accept tests which wait for timeouts for example. Each test should not run for
+    more than a few ms.
+</p>
+
+
+<pre class="code">
+npm run unit-tests
+</pre>
+
+<p>
+    The result should look like this
+</p>
+
+
+<pre class="code">
+    PASS  test/soap.test.js
+    PASS  test/xtkPersist.test.js
+    PASS  test/domUtil.test.js
+    PASS  test/caches.test.js
+    PASS  test/testUtil.test.js
+    PASS  test/entityAccessor.test.js
+    PASS  test/client.hasPackage.test.js
+    PASS  test/xtkProxy.test.js
+    PASS  test/credentials.test.js
+    PASS  test/index.test.js
+    PASS  test/crypto.test.js
+    PASS  test/xtkCaster.test.js
+    PASS  test/escape.test.js
+    PASS  test/transport.test.js
+    PASS  test/util.test.js
+    PASS  test/web.bundler.test.js
+    PASS  test/error.test.js
+   --------------------|---------|----------|---------|---------|-------------------
+   File                | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s
+   --------------------|---------|----------|---------|---------|-------------------
+   All files           |     100 |      100 |    98.8 |     100 |
+    src                |     100 |      100 |    98.8 |     100 |
+     application.js    |     100 |      100 |     100 |     100 |
+     cache.js          |     100 |      100 |     100 |     100 |
+     cacheRefresher.js |     100 |      100 |     100 |     100 |
+     client.js         |     100 |      100 |     100 |     100 |
+     crypto.js         |     100 |      100 |     100 |     100 |
+     domUtil.js        |     100 |      100 |   97.29 |     100 |
+     entityAccessor.js |     100 |      100 |   85.71 |     100 |
+     errors.js         |     100 |      100 |     100 |     100 |
+     index.js          |     100 |      100 |     100 |     100 |
+     methodCache.js    |     100 |      100 |     100 |     100 |
+     optionCache.js    |     100 |      100 |     100 |     100 |
+     soap.js           |     100 |      100 |     100 |     100 |
+     testUtil.js       |     100 |      100 |     100 |     100 |
+     transport.js      |     100 |      100 |     100 |     100 |
+     util.js           |     100 |      100 |   93.33 |     100 |
+     xtkCaster.js      |     100 |      100 |   95.65 |     100 |
+     xtkEntityCache.js |     100 |      100 |     100 |     100 |
+    src/web            |     100 |      100 |     100 |     100 |
+     bundler.js        |     100 |      100 |     100 |     100 |
+   --------------------|---------|----------|---------|---------|-------------------
+   
+   Test Suites: 21 passed, 21 total
+   Tests:       1773 passed, 1773 total
+   Snapshots:   0 total
+   Time:        11.654 s
+</pre>
+
+<p>Run tests</p>
+<pre class="code">
+npm run unit-tests
+</pre>
+
+
+
+
+
+<h1>Check for security issues</h1>
+
+<p>
+    Run <b>npm audit</b> to check for security issues. If any is found, make sure to fix it before you pull request your PR.
+</p>
+
+<pre class="code">
+npm audit
+</pre>
+
+<p>
+    It should not return any errors or warnings
+</p>
+
+
+
+
+<h1>Run the linter</h1>
+
+<p></p>
+
+<pre class="code">
+node_modules/jshint/bin/jshint src/
+</pre>
+
+<p>
+    It should not return any errors or warnings
+</p>
+
+
+
+
+<h1>Generate and run the JS doc</h1>
+
+<p></p>
+
+<pre class="code">
+npm run jsdoc
+</pre>
+
+<p>
+    It should not return any errors or warnings. You should then open the generated documentation and check it
+</p>
+
+<pre class="code">
+open ./docs/jsdoc/index.html
+</pre>
+
+
+
+<h1>Document your changes</h1>
+
+<p></p>
+
+<p class="ref">Follow <a href="{{ site.baseurl }}/writeDoc.html">this link</a> to understand how to document your changes</p>
+
+<p>You'll also have to change the <a href="{{ site.baseurl }}/changeLog.html">Changelog file</a></p>

@@ -1,0 +1,21 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>{{ page.title }}</title>
+    <link rel="stylesheet" href="{{ site.baseurl }}/assets/css/styles.css">
+    <link rel="shortcut icon" type="image/png" href="{{ site.baseurl }}/favicon.png">
+  </head>
+  <body>
+    <div class="header">
+      <div class="logo" onclick="location.href='./index.html'"><img src="{{ site.baseurl }}/assets/images/adobe-campaign-256.png"></img></div>
+      <h1 onclick="location.href='{{ site.baseurl }}/index.html'">Adobe Campaign JavaScript SDK</h1>
+    </div>
+    {% include navigation.html %}
+    <div class="body">
+      {{ content }}
+    </div>
+    <div class="footer">
+    </div>
+  </body>
+</html>

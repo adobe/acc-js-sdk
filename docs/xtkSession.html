@@ -1,0 +1,29 @@
+---
+layout: page
+title: Session API
+---
+
+<p>The <b>xtk:session</b> schema contains APIs to manage sessions and connections to the Campaign server, plus some other general purpose APIs.</p>
+
+<h1>Logging on and off</h1>
+
+<p>
+    The <b>xtk:session</b> schema contains all the methods for logging on and off. They are described in more details in the <a href="{{ site.baseurl }}/connecting.html">Connecting to Campaign</a> page
+</p>
+
+
+
+
+
+<h1>Server time</h1>
+
+<p>
+    The <b>xtk:session#GetServerTime</b> API call returns the current data/time in the server (i.e. database) referential. This is a useful function
+    to use to make sure all timestamps are in the same referential.
+</p>
+
+<pre class="code">
+const timestamp = await NLWS.xtkSession.getServerTime();
+console.log(`>> Server timestamp (UTC): ${timestamp.toUTCString()}`);
+console.log(`>> Server timestamp (localized): ${timestamp}`);
+</pre>

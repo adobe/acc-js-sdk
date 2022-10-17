@@ -1,0 +1,130 @@
+---
+layout: page
+title: Concepts
+---
+
+<h1>The Campaign Object model</h1>
+<p>
+  Campaign has schemas to describe every piece of data. For instance recipients have a schema : nms:recipient. Even Schemas
+  have their own schema (xtk:schema). A Campaign schema is more than just a description of the data, the available properties
+  of an entity and their types. Campaign schemas are really similar to classes in an object model: they describe the data
+  of course, but they also contain <b>methods</b> which will be made available automatically as SOAP APIs. Schemas also
+  support an inheritance mechanism, including the notion of <b>interface</b>. An interface is simply a descrption of one or
+  several methods. Schemas inheriting the interface will inherit their methods.
+</p> 
+
+<h1>Campaign SOAP APIs</h1>
+
+<p>
+  Campaign SOAP APIs are not REST APIs. Not only, we're using SOAP and XML, but Campaign also uses a very different model for APIs. 
+  In fact we use a object oriented model, i.e. APIs in Campaign are closer to remote methods invocation than REST APIs are. For
+  instance, imagine what a REST API call to retreive a profile would look like. You'll probably issue a GET operation on the profile
+  resource with a more or less sophisticated mechanism to filter the selected profile based on query parameters. 
+</p>
+<p>
+  In Campaign, you'll execute a query. You are going to use the <b>ExecuteQuery</b> method of the <b>xtk:queryDef</b> schema. This
+  API actually directly matches the method VExecuteQuery of the XtkQueryDef class of the C++ code. 
+</p>
+
+<pre class="code">
+  &lt;srcSchema <span class="emphasis">namespace="xtk"</span> <span class="emphasis">name="queryDef"</span> implements="xtk:persist">
+    &lt;element name="queryDef" pkgStatus="never">...&lt;/element>
+    &lt;methods async="true">
+      &lt;method <span class="emphasis">name="ExecuteQuery"</span> const="true">
+        &lt;parameters>
+          &lt;param desc="Output XML document" name="output" type="DOMDocument" inout="out"/>
+        &lt;/parameters>
+      &lt;/method>
+      ...
+    &lt;/methods>
+  &lt;/srcSchema>
+</pre>
+<p class="caption">This is the <b>xtk:queryDef</b> source schema, which defines the <b>ExecuteQuery</b> method</p>
+
+<p>
+  To name APIs, we use the convention <b>{schemaId}#{methodName}</b>. For instance, the <b>ExecuteQuery</b> method of the 
+  <b>xtk:queryDef</b> schema is named by its <b>URN</b>: <b>xtk:queryDef#ExecuteQuery</b>. The <b>URN</b> is an important concept
+  and is passed to every SOAP call through the <b>SOAPAction</b> HTTP header.
+</p>
+<p>
+  Sometimes, methods which are inherited from an interface. For example the Write method is defined in the xtk:persist interface which is
+  implemented by the xtk:session schema. For such methods, the URN is <b>xkt:persist|xtk:session#Write</b>, where we have both the interface
+  id and the schema id separated by a pipe character.
+</p>
+
+<pre class="code">
+  &lt;srcSchema namespace="xtk" name="queryDef"</span> <span class="emphasis">implements="xtk:persist"</span>>
+    ...
+  &lt;/srcSchema>
+</pre>
+<p class="caption">Thee <b>xtk:queryDef</b> inherits the <b>xtk:persist</b> interface</p>
+
+<p>
+  Regarding schema inheritance, it is possible to define custom methods in derived schemas. For example, a customer may extend
+  the nms:recipient schema with an extension schema named cus:recipient, and may declare one or more custom methods in this extension 
+  schema. Such methods will of course be exposed as SOAP APIs, but they are available on the base schema only, i.e. on nms:recipient
+  and not on cus:recipipent. The reason for this is that Campaign actually merges all the schemas and their extensions (which we all
+  call source schemas, by the way) into the actual schema which takes the name of the base source schema. As a consequence, the
+  SDK actually always deal with schemas, and not source schemas, although it is also possible to handle source schemas by calling
+  the appropriate APIs.
+</p>
+
+
+
+<h1>Representations</h1>
+
+<p>
+The SDK works with the underlying notion of <b>representation</b>. Internally, Campaign uses XML to represent all entities. 
+Using XML is fine, but nowadays, people find it complicated and verbose and prefer to use JSON.
+</p>
+<p>
+The SDK is able to handle both XML and JSON representation for Campagin objects. It defaults to JSON, which means you pass JSON
+objects to the SDK and it returns JSON objects, and takes care of the JSON <=> XML conversion automatically. The SDK is not limited
+to JSON, but can use XML instead (DOM API) if you change the representation. 
+</p>
+
+<p>3 type of representation are handled by the SDK</p>
+<ul>
+  <li>The <b>SimpleJson</b> representation, which is the default is used to deal with JSON instead of XML</li>
+  <li>The <b>xml></b> representation is used to deal with XML. In fact it does not transform anything, this is the native language of Campaign</li>
+  <li>The <b>BadgerFish</b> representation, which is an alternative variant of JSON and is deprecated. It's only there for backwards compatibility</li>
+</ul>
+
+<p></p>
+<p class="ref">To understand the challenges and pitfalls of XML to JSON conversion, follow <a href="{{ site.baseurl }}/xml2json.html">this link</a></p>
+<p class="ref">To know more about the SimpleJson representation, follow <a href="{{ site.baseurl }}/simpleJson.html">this link</a></p>
+<p class="ref">To better understand how Campaign deals with XML and use helpers to simplify your code, follow <a href="{{ site.baseurl }}/domHelper.html">this link</a></p>
+<p class="ref">To know more about the BadgerFishs representation, follow <a href="{{ site.baseurl }}/badgerFish.html">this link</a></p>
+
+
+<h1>Asynchronous API</h1>
+
+<p>
+  The JS SDK provides an asynchronous API, which means most of the functions return promises. 
+  In particular, many functions in the <a href="{{ site.baseurl }}/application.html">Application API</a> return promises.
+</p>
+<p>
+  This is an important difference between the SDK and Campaign. The reason is that the JavaScript which runs inside
+  Campaign is running server side and is synchronous. The SDK however, is running outside of Campaign and needs to
+  be able to wait for the result of API calls.
+</p>
+
+
+<p class="ref">To understand the differences between the JS SDK and Campaign JS, follow <a href="{{ site.baseurl }}/differences.html">this link</a></p>
+
+
+
+
+<srcSchema name="recipient" namespace="nms" label="Recipients">
+  <element img="nms:recipient.png" name="recipient" autopk="true">
+  </element>
+  <methods>
+    <method name="RegisterGroup" static="true">
+      <parameters>
+        <param name="groupList" type="DOMElement" desc="Lists"/>
+        <param name="recipientList" type="DOMElement" desc="Recipient list"/>
+        <param name="register" type="boolean" desc="Subscribe/Unsubscribe recipients"/>
+      </parameters>
+    </method>
+  </methods>
+</srcSchema>
