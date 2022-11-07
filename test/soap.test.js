@@ -539,6 +539,19 @@ describe('SOAP', function() {
             });
         });
 
+        it("Should not throw sesion expired exception", function() {
+          const transport = function() { 
+              return Promise.resolve(makeSOAPResponse("Date", 
+                  "p", "xsd:string", "XSV-350008 Session has expired or is invalid. Please reconnect.",
+              )); 
+          };
+          const call = makeSoapMethodCall(transport, "xtk:session", "Date", "$session$", "$security$");
+          call.finalize(URL);
+          return call.execute().then(() => {
+              expect(call.getNextString()).toBe("XSV-350008 Session has expired or is invalid. Please reconnect.");
+          });
+      });
+
         it("Should should read Element response", function() {
             const xml = '<root att="Hello"><child/></root>';
             const transport = function() { 

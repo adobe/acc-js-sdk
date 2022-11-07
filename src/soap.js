@@ -218,7 +218,7 @@ class SoapMethodCall {
      * @param {string} tag the parameter name
      * @param {*} value the parameter value, which will be casted to a int32 according to xtk rules
      */
-     writeLong(tag, value) {
+    writeLong(tag, value) {
         value = XtkCaster.asLong(value);
         this._addNode(tag, "xsd:int", XtkCaster.asString(value), SOAP_ENCODING_NATIVE);
     }
@@ -356,7 +356,7 @@ class SoapMethodCall {
      * 
      * @returns {string} the string result value
      */
-     getNextString() {
+    getNextString() {
         this._checkTypeMatch("xsd:string");
         var value = DomUtil.elementValue(this.elemCurrent);
         this.elemCurrent = DomUtil.getNextSiblingElement(this.elemCurrent);
@@ -368,7 +368,7 @@ class SoapMethodCall {
      * 
      * @returns {string} the primary key string result value
      */
-     getNextPrimaryKey() {
+    getNextPrimaryKey() {
         this._checkTypeMatch("xsd:primarykey");
         var value = DomUtil.elementValue(this.elemCurrent);
         this.elemCurrent = DomUtil.getNextSiblingElement(this.elemCurrent);
@@ -630,8 +630,6 @@ class SoapMethodCall {
         const that = this;
         const promise = this._transport(this.request, this.requestOptions);
         return promise.then(function(body) {
-            if (body.indexOf(`XSV-350008`) != -1)
-                throw CampaignException.SESSION_EXPIRED();
             that.response = body;
             // Response is a serialized XML document with the following structure
             //
@@ -685,7 +683,9 @@ class SoapMethodCall {
             }
         })
         .catch(function(err) {
-            throw makeCampaignException(that, err);
+            if (that.response && that.response.indexOf(`XSV-350008`) != -1)
+              throw CampaignException.SESSION_EXPIRED();
+            else throw makeCampaignException(that, err);
         });
     }
 
