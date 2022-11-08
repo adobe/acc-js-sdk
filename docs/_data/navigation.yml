@@ -109,7 +109,7 @@
     - name: Writing documentation
       link: writeDoc.html
     - name: Commit Checklist
-      link: checklist.html
+      link: checkList.html
     - name: Releasing a new version
       link: release.html
 - name: --
