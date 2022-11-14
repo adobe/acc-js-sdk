@@ -70,6 +70,39 @@ const PING = Promise.resolve("OK\n2021-08-27 15:43:48.862Z\n");
 const MC_PING = Promise.resolve("Ok\n2021-08-27 15:48:07.893Z\n7/400 pending events");
 const MC_PING_ERROR = Promise.resolve("Error\nThe queue is full (7/400)");
 
+const REPORT_RESPONSE = Promise.resolve(`<ctx lang="en" date="2022-11-09T06:10:27Z" _target="web" alt_period="604800" statsCount="1" webApp-id="1569" _context="selection" _reportContext="throughput" _hasFilter="false" _selectionCount="1" _selection="12133" _schema="nms:delivery" _folderModel="nmsDelivery" _folderLinkId="@folder-id" _folderLink="folder" activityHist="xxx">
+	<userInfo datakitInDatabase="true" homeDir="" instanceLocale="en-US" locale="en-US" login="admin" loginCS="Administrator (admin)" loginId="1059" noConsoleCnx="false" orgUnitId="0" theme="" timezone="Asia/Kolkata" xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ns="urn:xtk:session" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+		<login-group id="1060"/>
+		<login-right right="admin"/>
+	</userInfo>
+	<vars>
+		<period>604800</period>
+		<trunc>3600</trunc>
+		<valueScaleFactor>1</valueScaleFactor>
+		<dateStepType>hour</dateStepType>
+		<dateStepFactor>1</dateStepFactor>
+	</vars>
+	<activityHistory>
+		<activity name="page" type="page"/>
+		<activity name="script" type="script"/>
+		<activity name="query2" type="query"/>
+		<activity name="test" type="test"/>
+	</activityHistory>
+	<delivery label="Email delivery">
+		<scheduling contactDate="2021-12-07 17:13:39.507Z"/>
+	</delivery>
+	<title>Delivery: Email delivery</title>
+	<data>
+		<deliveryStat>
+		<deliveryStat date="2021-12-07 17:30:00.000Z" count="1" series="Success"/>
+		<deliveryStat date="2021-12-07 17:30:00.000Z" count="0" series="Errors"/>
+		</deliveryStat>
+		<bandwidth>
+		<deliveryStat date="2021-12-07 17:30:00.000Z" size="1.34"/>
+		</bandwidth>
+	</data>
+	</ctx>`);
+
 const LOGON_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
     <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:xtk:session' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
     <SOAP-ENV:Body>
@@ -828,6 +861,7 @@ exports.Mock = {
   PING: PING,
   MC_PING: MC_PING,
   MC_PING_ERROR: MC_PING_ERROR,
+  REPORT_RESPONSE: REPORT_RESPONSE,
   LOGON_RESPONSE: LOGON_RESPONSE,
   BEARER_LOGON_RESPONSE: BEARER_LOGON_RESPONSE,
   LOGON_RESPONSE_NO_SESSIONTOKEN: LOGON_RESPONSE_NO_SESSIONTOKEN,

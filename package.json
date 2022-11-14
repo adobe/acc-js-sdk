@@ -11,7 +11,8 @@
   },
   "dependencies": {
     "axios": "^0.25.0",
-    "jsdom": "^19.0.0"
+    "jsdom": "^19.0.0",
+    "qs": "^6.11.0"
   },
   "devDependencies": {
     "docdash": "^1.2.0",
