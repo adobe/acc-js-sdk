@@ -2154,13 +2154,15 @@ describe('Application', () => {
                 loginCS: "Alex",
                 timezone: "Europe/Paris",
                 "login-right": [
-                ]
+                ],
+                instanceLocale: "en"
             })
             expect(op.login).toBe("alex");
             expect(op.id).toBe(12);
             expect(op.computeString).toBe("Alex");
             expect(op.timezone).toBe("Europe/Paris");
             expect(op.rights).toEqual([]);
+            expect(op.instanceLocale).toBe("en");
         })
 
         it("Should support missing 'login-right' node", () => {

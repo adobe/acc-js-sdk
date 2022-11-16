@@ -1223,7 +1223,13 @@ class CurrentLogin {
          * @type {string}
          */
         this.timezone = EntityAccessor.getAttributeAsString(userInfo, "timezone");
-        
+       
+        /**
+         * The instance locale
+         * @type { string }
+         */
+        this.instanceLocale = EntityAccessor.getAttributeAsString(userInfo, "instanceLocale");
+
         /**
          * The llist of operator rights
          * @type {string[]}
