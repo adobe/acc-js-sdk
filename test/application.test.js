@@ -2061,21 +2061,34 @@ describe('Application', () => {
         });
 
         describe("Translation ids", () => {
-          it("schema should have a correct label localization id", () => {
+          it("schema should not have label localization id when label does not exist", () => {
             const xml = DomUtil.parse("<schema namespace='nms' name='recipient'><element name='recipient' label='Recipients'/></schema>");
+            const schema = newSchema(xml);
+            expect(schema.labelLocalizationId).toBeUndefined();
+            expect(schema.descriptionLocalizationId).toBeUndefined();
+          });
+
+          it("schema should have a correct label localization id", () => {
+            const xml = DomUtil.parse("<schema namespace='nms' name='recipient' label='Recipients' desc='Recipient table(profiles)'><element name='recipient' label='Recipients'/></schema>");
             const schema = newSchema(xml);
             expect(schema.labelLocalizationId).toBe('nms__recipient__@label');
             expect(schema.descriptionLocalizationId).toBe('nms__recipient__@desc');
           });
 
           it("schema should have a correct singular label localization id", () => {
-            const xml = DomUtil.parse("<schema namespace='nms' name='recipient'><element name='recipient' label='Recipients'/></schema>");
+            const xml = DomUtil.parse("<schema namespace='nms' name='recipient' labelSingular='Recipient'><element name='recipient' label='Recipients'/></schema>");
             const schema = newSchema(xml);
             expect(schema.labelSingularLocalizationId).toBe('nms__recipient__@labelSingular');
           });
 
-          it("root node should have a correct label localization id", () => {
+          it("schema should not have singular label localization id when singular label does not exist", () => {
             const xml = DomUtil.parse("<schema namespace='nms' name='recipient'><element name='recipient' label='Recipients'/></schema>");
+            const schema = newSchema(xml);
+            expect(schema.labelSingularLocalizationId).toBeUndefined();
+          });
+
+          it("root node should have a correct label localization id", () => {
+            const xml = DomUtil.parse("<schema namespace='nms' name='recipient'><element name='recipient' label='Recipients' desc='Recipients'/></schema>");
             const schema = newSchema(xml);
             const root = schema.root;
             expect(root.labelLocalizationId).toBe('nms__recipient__e____recipient__@label');
@@ -2083,7 +2096,7 @@ describe('Application', () => {
           });
 
           it("child node should have a correct label localization id", () => {
-            const xml = DomUtil.parse("<schema namespace='nms' name='recipient'><element name='lib' label='library'/><element name='recipient' label='Recipients'/></schema>");
+            const xml = DomUtil.parse("<schema namespace='nms' name='recipient'><element name='lib' label='library' desc='library'/><element name='recipient' label='Recipients'/></schema>");
             const schema = newSchema(xml);
             const lib = schema.children["lib"];
             expect(lib.labelLocalizationId).toBe('nms__recipient__e____lib__@label');
@@ -2093,7 +2106,7 @@ describe('Application', () => {
           it("attribute should have a correct label localization id", () => {
             const xml = DomUtil.parse(`<schema namespace='nms' name='recipient'>
                                             <element name='recipient' label='Recipients'>
-                                                <attribute name='email' type='string' label='email' length='3'/>
+                                                <attribute name='email' type='string' label='email'  desc='email' length='3'/>
                                             </element>
                                         </schema>`);
             const schema = newSchema(xml);
