@@ -548,7 +548,7 @@ const fileUploader = (client) => {
                         processData: false,
                         credentials: 'include',
                         method: 'POST',
-                        body: data,
+                        data: data,
                         headers: {
                             'x-security-token': client._securityToken,
                             'Cookie': '__sessiontoken=' + client._sessionToken,
