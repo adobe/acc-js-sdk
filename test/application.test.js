@@ -1973,6 +1973,28 @@ describe('Application', () => {
                 expect(node.isSQL).toBe(false);
             });
 
+            it("Should have isSQL even if it also has isXML", async () => {
+                const xml = DomUtil.parse(`<schema namespace='nms' name='delivery' mappingType="sql">
+                    <element name='delivery' sqltable="NmsDelivery">
+                        <element name='properties'>
+                            <attribute name="midAccountUsedName" type="string" xml="true"/>
+                            <attribute name="seedProcessed" sqlname="iSeedProcessed" type="long" xml="true"/>
+                        </element>
+                    </element>
+                </schema>`);
+                const schema = newSchema(xml);
+                const properties = await schema.root.findNode("properties");
+                expect(properties.isSQL).toBe(false);
+                // xml only node is not sql
+                const midAccountUsedName = await properties.findNode("@midAccountUsedName");
+                expect(midAccountUsedName.isSQL).toBe(false);
+                expect(midAccountUsedName.isMappedAsXML).toBe(true);
+                // node may be both xml and sql. If that's the case, it's considered sql
+                const seedProcessed = await properties.findNode("@seedProcessed");
+                expect(seedProcessed.isSQL).toBe(true);
+                expect(seedProcessed.isMappedAsXML).toBe(true);
+            });
+
             it("Should be memo and memo data" , async () => {
                 const xml = DomUtil.parse(`<schema namespace='nms' name='recipient' label="Recipients" labelSingular="Recipient">
                     <element name='recipient' sqltable="NmsRecipient">
