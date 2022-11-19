@@ -133,6 +133,25 @@ class Util {
     }
     return obj;
   }
+
+  /**
+   * Trims the text value of an XML text node, i.e. remove leading and trailing whitespaces (space, tab, \r and \n)
+   * @param {string} text value of the XML text node
+   * @returns {string} the trimmed value
+   */
+  static removeXmlWhiteSpaces(text) {
+    if (!text) return text;
+      var first = 0, last = text.length - 1;
+      while (first <= last) {
+        var c = text[first];
+        if (c === ' ' || c === '\t' || c === '\n' || c === '\r') { first = first + 1; continue; }
+        c = text[last];
+        if (c === ' ' || c === '\t' || c === '\n' || c === '\r') { last = last - 1; continue; }
+        break;
+    }
+    text = text.substring(first, last + 1);
+    return text;
+  }
 }
 
 /**

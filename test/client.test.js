@@ -2592,7 +2592,7 @@ describe('ACC Client', function () {
         </extAccount-collection>`);
         });
 
-        it("Should force an json representation", async () => {
+        it("Should force a json representation", async () => {
             const client = await Mock.makeClient();
             client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
@@ -2611,7 +2611,7 @@ describe('ACC Client', function () {
             const query = client.NLWS.json.xtkQueryDef.create(queryDef);
             const result = await query.executeQuery();
             const json = JSON.stringify(result);
-            expect(json).toBe('{"#text":[],"extAccount":[{"id":"1816","name":"defaultPopAccount"},{"id":"1818","name":"defaultOther"},{"id":"1849","name":"billingReport"},{"id":"12070","name":"TST_EXT_ACCOUNT_POSTGRESQL"},{"id":"1817","name":"defaultEmailBulk"},{"id":"2087","name":"ffda"},{"id":"2088","name":"defaultEmailMid"}]}');
+            expect(json).toBe('{"extAccount":[{"id":"1816","name":"defaultPopAccount"},{"id":"1818","name":"defaultOther"},{"id":"1849","name":"billingReport"},{"id":"12070","name":"TST_EXT_ACCOUNT_POSTGRESQL"},{"id":"1817","name":"defaultEmailBulk"},{"id":"2087","name":"ffda"},{"id":"2088","name":"defaultEmailMid"}]}');
         });
     });
 

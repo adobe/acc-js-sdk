@@ -17,8 +17,8 @@ governing permissions and limitations under the License.
  * 
  *********************************************************************************/
 
- const { Util, ArrayMap } = require('../src/util.js');
- const { SafeStorage, Cache } = require('../src/cache.js');
+const { Util, ArrayMap } = require('../src/util.js');
+const { SafeStorage, Cache } = require('../src/cache.js');
 
 
 describe('Util', function() {
@@ -102,6 +102,20 @@ describe('Util', function() {
         })
     })
 
+    describe("Util.removeXmlWhiteSpaces", () => {
+        it("Should remove whitespaces", () => {
+            expect(Util.removeXmlWhiteSpaces("")).toBe("");
+            expect(Util.removeXmlWhiteSpaces(" ")).toBe("");
+            expect(Util.removeXmlWhiteSpaces("\t  ")).toBe("");
+            expect(Util.removeXmlWhiteSpaces(" \r\n  ")).toBe("");
+            expect(Util.removeXmlWhiteSpaces("Hello")).toBe("Hello");
+            expect(Util.removeXmlWhiteSpaces(" Hello")).toBe("Hello");
+            expect(Util.removeXmlWhiteSpaces(" \r\nHello")).toBe("Hello");
+            expect(Util.removeXmlWhiteSpaces(" \r\nHello ")).toBe("Hello");
+            expect(Util.removeXmlWhiteSpaces("Hello ")).toBe("Hello");
+            expect(Util.removeXmlWhiteSpaces("Hello World ")).toBe("Hello World");
+        });
+    });
 
     describe("Safe storage", () => {
       it("Should support undefined delegate", () => {
