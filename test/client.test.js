@@ -3224,6 +3224,17 @@ describe('ACC Client', function () {
                 type: 'text/html',
                 size: 12345
             })
+            expect(client._transport).toHaveBeenNthCalledWith(2,
+                expect.objectContaining({
+                    data: expect.anything(),
+                    url: expect.any(String),
+                    method: 'POST',
+                    processData: false,
+                    credentials: 'include',
+                    headers: expect.anything(),
+                })
+            );
+
             expect(result).toMatchObject({
                 md5: "d8e8fca2dc0f896fd7cb4cb0031ba249",
                 name: "test.txt",
