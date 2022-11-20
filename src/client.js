@@ -36,7 +36,7 @@ const request = require('./transport.js').request;
 const Application = require('./application.js').Application;
 const EntityAccessor = require('./entityAccessor.js').EntityAccessor;
 const { Util } = require('./util.js');
-const qs = require('qs');
+const qsStringify = require('qs-stringify');
 
 /**
  * @namespace Campaign
@@ -1770,19 +1770,21 @@ class Client {
 
     /**
      * This is the exposed/public method to request context data for a specific report.
-     * @param {*} callContext: {reportName: string, context: string, selection: string, selectionCount: number, formData: any}
+     * @param {*} callContext: {reportName: string, schema: string, context: string, selection: string, formData: any}
      * @param {string} representation the expected representation ('xml', 'BadgerFish', or 'SimpleJson'). If not set, will use the current representation
      *
      * @returns {Campaign.ReportContext} an object containing the context data for a specific report
      */
-    async getReport(callContext, representation) {
+    async getReportData(callContext, representation) {
         try {
-            if(callContext.formData?.ctx) {
+            if(callContext.formData && callContext.formData.ctx) {
                 var xmlCtx = this._fromRepresentation('ctx', callContext.formData.ctx);
-                var formData = {...callContext.formData, ctx: DomUtil.toXMLString(xmlCtx)};
+                callContext.formData.ctx = DomUtil.toXMLString(xmlCtx);
             }
+            const selectionCount = callContext.selection.split(',').length;
+
             const request = {
-                url: `${this._connectionParameters._endpoint}/report/${callContext.reportName}?_noRender=true&_context=${callContext.context}&_selection=${callContext.selection}&_selectionCount=${callContext.selectionCount}`,
+                url: `${this._connectionParameters._endpoint}/report/${callContext.reportName}?${encodeURI(`_noRender=true&_schema=${callContext.schema}&_context=${callContext.context}&_selection=${callContext.selection}`)}&_selectionCount=${selectionCount}`,
                 headers: {
                     'X-Security-Token': this._securityToken,
                     'Cookie': '__sessiontoken=' + this._sessionToken, 
@@ -1790,18 +1792,18 @@ class Client {
                 },
                 method: 'POST',
                 credentials: 'include',
-                data : qs.stringify(formData)
+                data : qsStringify(callContext.formData)
             };
             
             for (let h in this._connectionParameters._options.extraHttpHeaders)
                 request.headers[h] = this._connectionParameters._options.extraHttpHeaders[h];
             const body = await this._makeHttpCall(request);
+            if(!body.startsWith("<ctx"))
+                throw CampaignException.FEATURE_NOT_SUPPORTED("Reports Data");
             const xml = DomUtil.parse(body);
             const result = this._toRepresentation(xml, representation);
             return result;
         } catch(ex) {
-            if (this._traceAPICalls)
-                console.log("Report Fetching failed: ", ex);
              throw CampaignException.REPORT_FETCH_FAILED(callContext.reportName, ex);
         }
     }

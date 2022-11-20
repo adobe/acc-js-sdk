@@ -3485,11 +3485,11 @@ describe('ACC Client', function () {
             await client.NLWS.xtkSession.logon();
 
             client._transport.mockReturnValueOnce(Mock.REPORT_RESPONSE);
-            const report = await client.getReport({
+            const report = await client.getReportData({
                 reportName: "throughput",
                 context: "selection",
                 selection: "12133",
-                selectionCount: 1,
+                schema: "nms:delivery",
                 formData: {ctx: {}}
             });
             expect(report._reportContext).toBe("throughput");
@@ -3504,6 +3504,23 @@ describe('ACC Client', function () {
             await client.NLWS.xtkSession.logoff();
         });
 
+        it("Should fail to get report data, if API is not supported", async () => {
+            const client = await Mock.makeClient();
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+
+            client._transport.mockReturnValueOnce("Invalid response");
+            await expect(client.getReportData({
+                reportName: "throughput",
+                context: "selection",
+                selection: "12133",
+                schema: "nms:delivery"
+            })).rejects.toMatchObject({ statusCode:500, message:"500 - Error 16384: SDK-000014 Failed to fetch report throughput. 500 - Error 16384: SDK-000015 Reports Data feature is not supported by the ACC instance" });
+
+            client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
+            await client.NLWS.xtkSession.logoff();
+        });
+
         it("Should fail to call getReport API", async () => {
             const client = await Mock.makeClient();
             client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
@@ -3511,12 +3528,12 @@ describe('ACC Client', function () {
             client.traceAPICalls(true);
 
             client._transport.mockRejectedValueOnce(new HttpError(500, "Error rc=-57"));
-            await expect(client.getReport({
+            await expect(client.getReportData({
                 reportName: "throughput",
                 context: "selection",
                 selection: "12133",
-                selectionCount: 1
-            })).rejects.toMatchObject({ statusCode:500, message:"500 - Error 16384: SDK-000014 \"Failed to fetch report throughput. 500 - Error calling method '/report/throughput?_noRender=true&_context=selection&_selection=12133&_selectionCount=1': Error rc=-57" });
+                schema: "nms:delivery"
+            })).rejects.toMatchObject({ statusCode:500, message:"500 - Error 16384: SDK-000014 Failed to fetch report throughput. 500 - Error calling method '/report/throughput?_noRender=true&_schema=nms:delivery&_context=selection&_selection=12133&_selectionCount=1': Error rc=-57" });
 
             client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
             await client.NLWS.xtkSession.logoff();
