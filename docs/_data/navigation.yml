@@ -81,6 +81,8 @@
       link: methodLevelRepresentation.html
     - name: XTK Interfaces
       link: xtkInterface.html
+    - name: XTK Jobs
+      link: xtkJob.html
     - name: Handling timeouts
       link: timeouts.html
     - name: HTTP Headers

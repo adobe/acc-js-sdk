@@ -1,0 +1,131 @@
+---
+layout: page
+title: XTK Jobs (xkt:job, xkt:jobInterface)
+---
+<p>This section describes how long running jobs are handled in ACC and ACC api. There are 2 schemas for jobs</p>
+<ul>
+  <li>xtk:job which represents an acutal job, and which is implemented by several objects such as nms:delivery</li>
+  <li>xtk:jobInterface which contains methods to submit jobs and get their statuses. Other schemas do not actually implement the xtk:jobInterface interface</li>
+</ul>
+
+<p>In term of SOAP calls, running a job is simply executing a SOAP call synchronously or asynchronously in a separate thread or process. However, calls must be made on both the xtk:jobInterface and job entity schema. The SDK provides a helper interface to submit and handle jobs</p>
+
+<h1>Simple Jobs</h1>
+  
+<p>
+  Simple jobs are non-static methods with no parameters, such as the nms:delivery#Prepare method which is used to prepare a delivery. 
+  Such jobs can be executed synchronously (xtk:jobInterface#Execute) or asynchronously (xtk:jobInterface#Submit). Both methods return
+  a job id which can be used to retreive (poll) more about the job.
+<p>
+    
+<p>
+  First, we need to retreive a delivery, which is the object upon which to run the Prepare method, but also implements xtk:job interface. 
+  The Prepare method requires a complete delivery object, so we use SelectAll
+</p>
+
+<pre class="code">
+  const  queryDef = {
+    schema: "nms:delivery",
+    operation: "get",
+    select: { node: [ { expr: "@id" } ] },
+    where: { condition: [ { expr:`@internalName='DM19'` } ] }
+  }
+  const  query = NLWS.xtkQueryDef.create(queryDef);
+  await query.selectAll();
+  const delivery = await query.executeQuery();
+</pre>
+
+<p>
+  Now we can create a job for the Prepare method using the <b>client.jobInterface</b> function which returns a XtkJobInterface object. 
+  We pass it a job specification containing the schema, method, and object
+</p>
+
+<pre class="code">
+  const job = await client.jobInterface({
+    xtkschema: 'nms:delivery',
+    method: 'Prepare',
+    object: delivery
+  });
+</pre>
+
+<p>
+  Finally we can submit the job and get it's status, progress, result, etc.
+</p>
+
+<pre class="code">
+  await job.submit();
+  var status = await job.getStatus();
+</pre>
+
+
+<h1>Soap calls</h1>
+<p>
+  The <b>SubmitSoapCall</b> method allows to run more complex jobs with parameters. The principle is the same, for instance calling the <b>PrepareProof</b> method
+  which takes a boolean parameter
+</p>
+
+<pre class="code">
+  const job = await client.jobInterface({
+    xtkschema: 'nms:delivery',
+    method: 'PrepareProof',
+    object: delivery,
+    args: [ false ]
+  });
+</pre>
+
+
+<h1>Job Status</h1>
+<p>
+  The status of a job is made of 3 pieces of information
+</p>
+<ul>
+  <li>The job status code</li>
+  <li>Job logs</li>
+  <li>Job properties which are arbitrary key value pairs and also contain progress information</li>
+</ul>
+
+<p>
+  For convenience, the SDK provides a <b>getStatus</b> function which will fetch and return the full job status object with strong
+  typing. When getStatus is called several time, each call will fetch the most recent status, and new logs since the previous call.
+</p>
+
+<table>
+  <thead>
+    <tr><th>Status code</th><th>Description</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><b>0</b></td><td>Being edited</td></tr>
+    <tr><td><b>2</b></td><td>Running: execution is in progress</td></tr>
+    <tr><td><b>3</b></td><td>Canceling: a cancel request was submitted and the job will be canceld as soon as possible</td></tr>
+    <tr><td><b>4</b></td><td>Canceled</td></tr>
+    <tr><td><b>5</b></td><td>Finished: the job has finished successfully and getResult can be called</td></tr>
+    <tr><td><b>6</b></td><td>Error: the job failed. Details about the error can be found in the logs</td></tr>
+    <tr><td><b>7</b></td><td>Pause pending: a pause request was submitted and the job will be paused as soon as possible</td></tr>
+    <tr><td><b>8</b></td><td>Pause: the job is paused</td></tr>
+    <tr><td><b>9</b></td><td>Purge pending: a purge request was submitted and the job will be purged as soon as possible</td></tr>
+  </tbody>
+</table>
+
+
+<h1>Job Progress</h1>
+<p>
+  The progress of a job is available as 2 integers: current and max which represent the current progression and max value for progression.
+  Both values are returned by the getStatus call as properties (i.e. <b>properties.progress.current</b> and <b>properties.progress.max</b>).
+  The SDK provides the <b>getProgress</b> function to retreive the progress as a percentage (and a valid number)
+</p>
+
+<pre class="code">
+  // Returns progress as a percentage in the [0..1] range
+  var progressPercent = job.getProgress();
+</pre>
+
+
+<h1>Job Result</h1>
+<p>
+  Typically, a client would call the getStatus method every few seconds to get updates on the progress. When a job is finished and successfull,
+  one can get the result using the <b>getResult</b> function
+</p>
+
+<pre class="code">
+  var result = await job.getResult();
+</pre>

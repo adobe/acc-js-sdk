@@ -247,7 +247,114 @@ const GET_XTK_SESSION_SCHEMA_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
             </pdomDoc>
         </GetEntityIfMoreRecentResponse>
     </SOAP-ENV:Body>
-    </SOAP-ENV:Envelope>`)
+    </SOAP-ENV:Envelope>`);
+
+const GET_XTK_JOB_SCHEMA_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
+<SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:wpp:default' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
+<SOAP-ENV:Body>
+    <GetEntityIfMoreRecentResponse xmlns='urn:wpp:default' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
+        <pdomDoc xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
+            <schema implements="xtk:jobInterface"  name="job" namespace="xtk" xtkschema="xtk:schema">
+            <interface async="true" label="Job interface" name="jobInterface">
+                <method const="true" name="Execute">
+                <parameters>
+                    <param inout="in" name="methodName" type="string"/>
+                    <param  inout="out" name="id" type="string"/>
+                </parameters>
+                </method>
+                <method const="true" name="Submit">
+                <parameters>
+                    <param inout="in" name="methodName" type="string"/>
+                    <param inout="out" name="id" type="string"/>
+                </parameters>
+                </method>
+                <method const="true" name="SubmitSoapCall">
+                <parameters>
+                    <param inout="in" name="soapCall" type="DOMElement"/>
+                    <param inout="out" name="id" type="string"/>
+                </parameters>
+                </method>
+                <method name="SubmitFromModel" static="true">
+                <parameters>
+                    <param inout="in" name="schema" type="string"/>
+                    <param inout="in" name="where" type="string"/>
+                    <param inout="in" name="methodName" type="string"/>
+                    <param inout="in" name="diff" type="DOMElement"/>
+                    <param inout="in" name="async" type="boolean"/>
+                    <param inout="out" name="jobId" type="long"/>
+                </parameters>
+                </method>
+                <method name="Cancel" static="true">
+                <parameters>
+                    <param inout="in" name="id" type="string"/>
+                </parameters>
+                </method>
+                <method name="WaitJobCancelled" static="true">
+                <parameters>
+                    <param inout="in" name="id" type="string"/>
+                    <param desc="Maximum wait (in seconds)" inout="in" name="timeout" type="long"/>
+                </parameters>
+                </method>
+                <method name="Pause" static="true">
+                <parameters>
+                    <param inout="in" name="id" type="string"/>
+                </parameters>
+                </method>
+                <method name="CheckIfJobInProcess" static="true">
+                <parameters>
+                    <param inout="in" name="pid" type="long"/>
+                    <param name="hostName" type="string"/>
+                    <param inout="out" name="result" type="boolean"/>
+                </parameters>
+                </method>
+                <method name="GetJobsInProcess" static="true">
+                <parameters>
+                    <param desc="Returned document" inout="out" name="jobInfo" type="DOMDocument"/>
+                </parameters>
+                </method>
+                <method name="GetStatus" static="true">
+                <parameters>
+                    <param inout="in" name="id" type="string"/>
+                    <param inout="in" name="lastLogId" type="long"/>
+                    <param inout="in" name="maxLogCount" type="long"/>
+                    <param enum="xtk:jobLog:logType" inout="out" name="status" type="short"/>
+                    <param inout="out" name="returnLogs" type="DOMElement"/>
+                    <param inout="out" name="properties" type="DOMElement"/>
+                </parameters>
+                </method>
+                <method name="GetResult" static="true">
+                <parameters>
+                    <param inout="in" name="id" type="string"/>
+                    <param inout="out" name="response" type="string"/>
+                </parameters>
+                </method>
+                <method name="HasWarning" static="true">
+                <parameters>
+                    <param inout="in" name="id" type="string"/>
+                    <param inout="out" name="hasWarning" type="boolean"/>
+                </parameters>
+                </method>
+                <method name="FilesExist" static="true">
+                <parameters>
+                    <param inout="in" name="files" type="DOMDocument"/>
+                    <param inout="out" name="exist" type="DOMDocument"/>
+                </parameters>
+                </method>
+                <method name="GetServerDiskSpace" static="true">
+                <parameters>
+                    <param inout="out" name="serverDiskSpace" type="int64"/>
+                </parameters>
+                </method>
+            </interface>
+
+            <element autopk="true" name="job">
+                <attribute name="id" sqlname="iJobId" type="long"/>
+            </element>
+        </schema>
+    </pdomDoc>
+    </GetEntityIfMoreRecentResponse>
+</SOAP-ENV:Body>
+</SOAP-ENV:Envelope>`);
 
 const GET_DATABASEID_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
     <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:xtk:session' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
@@ -834,6 +941,7 @@ exports.Mock = {
   LOGON_RESPONSE_NO_SECURITYTOKEN: LOGON_RESPONSE_NO_SECURITYTOKEN,
   LOGOFF_RESPONSE: LOGOFF_RESPONSE,
   GET_XTK_SESSION_SCHEMA_RESPONSE: GET_XTK_SESSION_SCHEMA_RESPONSE,
+  GET_XTK_JOB_SCHEMA_RESPONSE: GET_XTK_JOB_SCHEMA_RESPONSE,
   GET_DATABASEID_RESPONSE: GET_DATABASEID_RESPONSE,
   GET_OPTION_NOTFOUND_RESPONSE: GET_OPTION_NOTFOUND_RESPONSE,
   GET_OPTION_MISSING_DATA_RESPONSE: GET_OPTION_MISSING_DATA_RESPONSE,

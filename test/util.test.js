@@ -17,8 +17,8 @@ governing permissions and limitations under the License.
  * 
  *********************************************************************************/
 
- const { Util, ArrayMap } = require('../src/util.js');
- const { SafeStorage, Cache } = require('../src/cache.js');
+const { Util, ArrayMap } = require('../src/util.js');
+const { SafeStorage, Cache } = require('../src/cache.js');
 
 
 describe('Util', function() {
@@ -35,6 +35,15 @@ describe('Util', function() {
 
         expect(Util.isArray([])).toBe(true);
         expect(Util.isArray([ 1 ])).toBe(true);
+    });
+
+    describe("util.schemaIdFromNamespace", () => {
+        it("Should should extract schema id for simple namespaces", () => {
+            expect(Util.schemaIdFromNamespace("")).toBe("");
+            expect(Util.schemaIdFromNamespace("nmsRecipient")).toBe("nms:recipient");
+            expect(Util.schemaIdFromNamespace("000Recipient")).toBe("000:recipient");
+            expect(Util.schemaIdFromNamespace("Recipient")).toBe(":recipient");
+        });
     });
 
     describe("Util.trim", () => {
