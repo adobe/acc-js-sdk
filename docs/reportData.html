@@ -1,0 +1,92 @@
+---
+layout: page
+title: Reports Data API
+---
+
+<p>Campaign provides an API to fetch reports data. Just like all APIs in the SDK, it's been wrapped into a function and will return a XML or JSON object based on the requested representation</p>
+
+<p>Function Definition</p>
+<pre class="code">
+client.getReportData = (callContext: any, representation: string) : Promise<any>
+</pre>
+<p>callContext</p>
+<pre class="code">
+{
+  reportName: string(Report Name),
+  context: string("selection"|"global"),
+  schema: string(entity type to be used for selection),
+  selection: string(Comma separated list of entity IDs),
+  formData: any
+}
+</pre>
+
+<p>Usage</p>
+<pre class="code">
+const report = await client.getReportData({
+  reportName: "throughput",
+  context: "selection",
+  schema: "nms:delivery",
+  selection: "12133"
+});
+console.log(JSON.stringify(report));
+</pre>
+<p>Usage with multiple entities</p>
+<pre class="code">
+const report = await client.getReportData({
+  reportName: "throughput",
+  context: "selection",
+  schema: "nms:delivery",
+  selection: "12133,12134"
+});
+console.log(JSON.stringify(report));
+</pre>
+<p>Usage with form data</p>
+<pre class="code">
+const report = await client.getReportData({
+  reportName: "throughput",
+  context: "selection",
+  schema: "nms:delivery",
+  selection: "12133",
+  formData: {
+    vars_opens: 1,
+    userAction: "next",
+    ctx: {
+      _context: 'selection',
+      _reportContext: 'throughput',
+      _hasFilter: 'false',
+      _selectionCount: '1',
+      _selection: '12133',
+      vars: {
+        '$period': '21600',
+        '$trunc': '600',
+        '$valueScaleFactor': '6',
+        '$dateStepType': 'minute',
+        '$dateStepFactor': '10'
+      },
+      data: {
+        deliveryStat: { deliveryStat: [Array] },
+        bandwidth: { deliveryStat: [Object] }
+      }
+    }
+  }
+});
+console.log(JSON.stringify(report));
+</pre>
+
+<p>A given representation can be forced</p>
+<pre class="code">
+const xmlReport = await client.getReportData({
+  reportName: "throughput",
+  context: "selection",
+  schema: "nms:delivery",
+  selection: "12133"
+}, "xml");
+const jsonReport = await client.getReportData({
+  reportName: "throughput",
+  context: "selection",
+  schema: "nms:delivery",
+  selection: "12133"
+}, "SimpleJson");
+</pre>
+
+
