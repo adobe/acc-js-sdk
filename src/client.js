@@ -1481,6 +1481,13 @@ class Client {
         var schemaName = schema.getAttribute("name");
         var method = that._methodCache.get(schemaId, methodName);
         if (!method) {
+            // first char of the method name may be lower case (ex: nms:seedMember.getAsModel) but the methodName 
+            // variable has been capitalized. Make an attempt to lookup method name without capitalisation
+            const methodNameLC = methodName.substring(0, 1).toLowerCase() + methodName.substring(1);
+            method = that._methodCache.get(schemaId, methodNameLC);
+            if (method) methodName = methodNameLC;
+        }
+        if (!method) {
             this._methodCache.put(schema);
             method = that._methodCache.get(schemaId, methodName);
         }

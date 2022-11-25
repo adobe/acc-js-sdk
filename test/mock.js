@@ -275,6 +275,11 @@ const GET_XTK_SESSION_SCHEMA_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
                             <param name="name" type="string"/>
                         </parameters>
                     </method>
+                    <method name="startsWithLowerCase" static="true">
+                        <parameters>
+                            <param name="result" type="long" inout="out"/>
+                        </parameters>
+                    </method>
                 </methods>
             </schema>
             </pdomDoc>
