@@ -546,16 +546,14 @@ const fileUploader = (client) => {
                     }
                     const data = new FormData();
                     data.append('file_noMd5', file);
-                    //TODO: Needs to be refactored after cookie issue get resolved.
                     client._makeHttpCall({
                         url: `${client._connectionParameters._endpoint}/nl/jsp/uploadFile.jsp`,
                         processData: false,
-                        credentials: 'include',
                         method: 'POST',
                         data: data,
                         headers: {
-                            'x-security-token': client._securityToken,
-                            'Cookie': '__sessiontoken=' + client._sessionToken,
+                            'X-Security-Token': client._securityToken,
+                            'X-Session-Token': client._sessionToken,
                         }
                     }).then((okay) => {
                         if (!okay.startsWith('Ok')) {
@@ -1794,11 +1792,10 @@ class Client {
                 url: `${this._connectionParameters._endpoint}/report/${callContext.reportName}?${encodeURI(`_noRender=true&_schema=${callContext.schema}&_context=${callContext.context}&_selection=${callContext.selection}`)}&_selectionCount=${selectionCount}`,
                 headers: {
                     'X-Security-Token': this._securityToken,
-                    'Cookie': '__sessiontoken=' + this._sessionToken, 
+                    'X-Session-Token': this._sessionToken,
                     'Content-Type': 'application/x-www-form-urlencoded'
                 },
                 method: 'POST',
-                credentials: 'include',
                 data : qsStringify(callContext.formData)
             };
             

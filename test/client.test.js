@@ -3252,8 +3252,10 @@ describe('ACC Client', function () {
                     url: expect.any(String),
                     method: 'POST',
                     processData: false,
-                    credentials: 'include',
-                    headers: expect.anything(),
+                    headers: expect.objectContaining({
+                        'X-Security-Token': expect.any(String),
+                        'X-Session-Token': expect.any(String),
+                    }),
                 })
             );
 
@@ -3514,6 +3516,18 @@ describe('ACC Client', function () {
                 schema: "nms:delivery",
                 formData: {ctx: {}}
             });
+            expect(client._transport).toHaveBeenLastCalledWith(
+                expect.objectContaining({
+                    data: expect.anything(),
+                    url: expect.any(String),
+                    method: 'POST',
+                    headers: expect.objectContaining({
+                        'X-Security-Token': expect.any(String),
+                        'X-Session-Token': expect.any(String),
+                        "Content-Type": "application/x-www-form-urlencoded",
+                    }),
+                })
+            );
             expect(report._reportContext).toBe("throughput");
             expect(report._selection).toBe("12133");
             expect(report.vars.$period).toBe("604800");
