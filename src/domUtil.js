@@ -474,11 +474,11 @@ class DomUtil {
             while (child) {
                 if (child.nodeType === 3) { // text 
                     var nodeText = child.nodeValue;
-                    // Whitesapce trimming rule: alwasy trim for the root node, and trim for non-root nodes
+                    // Whitespace trimming rule: always trim for the root node, and trim for non-root nodes
                     // which actually have children elements
                     // Never trim CDATA nodes (nodeType 4)
                     if (!parentJson || hasChildElements)
-                        nodeText = Util.removeXmlWhiteSpaces(nodeText); 
+                        nodeText = nodeText.trim(); 
                     if (nodeText) text = text + nodeText;
                 }    
                 else if (child.nodeType === 4) { // CDATA    

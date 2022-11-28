@@ -39,9 +39,9 @@ JSON:    {}
 
 
 <h1>XML Attributes</h1>
-<p>XML attributes are mapped to JSON attributes with the same name, whose litteral value can be a string, number, or boolean. There's no "@" sign in the JSON attribute name.
+<p>XML attributes are mapped to JSON attributes with the same name, whose literal value can be a string, number, or boolean. There's no "@" sign in the JSON attribute name.
 Values in JSON attributes can be either typed (ex: number, boolean), or strings (ex: "3" instead of just 3) depending if the conversion could determine the attribute type or not. 
-API users should expect and handle both value and use the <b>XtkCaster</b> object to ensure proper conversion when using.</p>
+API users should expect and handle both value and use the <b>XtkCaster</b> object to ensure proper conversion.</p>
 
 <pre class="code">
 XML     &lt;root hello="world" count="3" ok="true"/>
@@ -73,7 +73,7 @@ JSON:   { item: [ { id:"1" }, { id:"2" } ] }
 
 
 <h1>Text nodes</h1>
-<p>Text of XML element is handle with the <b>$</b> sign in the JSON attribute name, or with a child JSON object name <b>$</b></p>
+<p>Text of XML element is handled with the <b>$</b> sign in the JSON attribute name, or with a child JSON object name <b>$</b></p>
 
 <p>Text of the root element</p>
 <pre class="code">
@@ -100,7 +100,7 @@ JSON:   { item: { $: "Hello", child: { id:"1" } }
 </p>
 
 <h1>Whitespaces</h1>
-<p>In XML documents, whitespaces can be either significant or insignifficant. The SDK uses the following rules to strip whitespaces, which correspond to how Campaign specifically uses XML</p>
+<p>In XML documents, whitespaces can be either significant or insignificant. The SDK uses the following rules to strip whitespaces, which correspond to how Campaign specifically uses XML</p>
 <p> </p>
 <ul>
 <li>The characters " ", "\t", "\r" and "\n" are considered whitespaces</li>
@@ -112,7 +112,7 @@ JSON:   { item: { $: "Hello", child: { id:"1" } }
 </ul>
 <p> </p>
 <p>
-  Whitespace trimming consist of removing all the leading and trainling whitespaces of each text node and concatenating all text node values. If the resulting value is empty, the text node is ignored. The rationale is to remove insignificant spaces created when formatting XML documents
+  Whitespace trimming consists of removing all the leading and trailing whitespaces of each text node and concatenating all text node values. If the resulting value is empty, the text node is ignored. The rationale is to remove insignificant spaces created when formatting XML documents
 </p>
 
 

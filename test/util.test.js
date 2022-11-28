@@ -102,21 +102,6 @@ describe('Util', function() {
         })
     })
 
-    describe("Util.removeXmlWhiteSpaces", () => {
-        it("Should remove whitespaces", () => {
-            expect(Util.removeXmlWhiteSpaces("")).toBe("");
-            expect(Util.removeXmlWhiteSpaces(" ")).toBe("");
-            expect(Util.removeXmlWhiteSpaces("\t  ")).toBe("");
-            expect(Util.removeXmlWhiteSpaces(" \r\n  ")).toBe("");
-            expect(Util.removeXmlWhiteSpaces("Hello")).toBe("Hello");
-            expect(Util.removeXmlWhiteSpaces(" Hello")).toBe("Hello");
-            expect(Util.removeXmlWhiteSpaces(" \r\nHello")).toBe("Hello");
-            expect(Util.removeXmlWhiteSpaces(" \r\nHello ")).toBe("Hello");
-            expect(Util.removeXmlWhiteSpaces("Hello ")).toBe("Hello");
-            expect(Util.removeXmlWhiteSpaces("Hello World ")).toBe("Hello World");
-        });
-    });
-
     describe("Safe storage", () => {
       it("Should support undefined delegate", () => {
           const storage = new SafeStorage();
