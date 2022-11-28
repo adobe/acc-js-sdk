@@ -144,17 +144,19 @@ describe('DomUtil', function() {
             return DomUtil.toXMLString(xml);
         }
 
-        assert.strictEqual(fromJSON({}), '<root/>');
-        assert.strictEqual(fromJSON({ "a":2, "b":"zz", "c": true }), '<root a="2" b="zz" c="true"/>');
-        assert.strictEqual(fromJSON({ "a":{ x:3 } }), '<root><a x="3"/></root>');
-        assert.strictEqual(fromJSON({ "$": "Hello" }), '<root>Hello</root>');
-        assert.strictEqual(fromJSON({ "$a": "Hello" }), '<root><a>Hello</a></root>');
-        assert.strictEqual(fromJSON({ a: { "$": "Hello" } }), '<root><a>Hello</a></root>');
-        assert.strictEqual(fromJSON({ a: "World", "$a": "Hello" }), '<root a="World"><a>Hello</a></root>');
-        assert.strictEqual(fromJSON({ "a": [ { "i":1 }, { "i": 2 } ] }), '<root><a i="1"/><a i="2"/></root>');
-        assert.strictEqual(fromJSON({ "a": [ ] }), '<root/>');
-        assert.strictEqual(fromJSON({ "a": null }), '<root/>');
-        assert.strictEqual(fromJSON({ "a": undefined }), '<root/>');
+        it("Should convert from JSON to XML", () => {
+            assert.strictEqual(fromJSON({}), '<root/>');
+            assert.strictEqual(fromJSON({ "a":2, "b":"zz", "c": true }), '<root a="2" b="zz" c="true"/>');
+            assert.strictEqual(fromJSON({ "a":{ x:3 } }), '<root><a x="3"/></root>');
+            assert.strictEqual(fromJSON({ "$": "Hello" }), '<root>Hello</root>');
+            assert.strictEqual(fromJSON({ "$a": "Hello" }), '<root><a>Hello</a></root>');
+            assert.strictEqual(fromJSON({ a: { "$": "Hello" } }), '<root><a>Hello</a></root>');
+            assert.strictEqual(fromJSON({ a: "World", "$a": "Hello" }), '<root a="World"><a>Hello</a></root>');
+            assert.strictEqual(fromJSON({ "a": [ { "i":1 }, { "i": 2 } ] }), '<root><a i="1"/><a i="2"/></root>');
+            assert.strictEqual(fromJSON({ "a": [ ] }), '<root/>');
+            assert.strictEqual(fromJSON({ "a": null }), '<root/>');
+            assert.strictEqual(fromJSON({ "a": undefined }), '<root/>');
+        });
     });
 
     describe('fromJSON (default)', function() {
@@ -164,17 +166,19 @@ describe('DomUtil', function() {
             return DomUtil.toXMLString(xml);
         }
 
-        assert.strictEqual(fromJSON({}), '<root/>');
-        assert.strictEqual(fromJSON({ "a":2, "b":"zz", "c": true }), '<root a="2" b="zz" c="true"/>');
-        assert.strictEqual(fromJSON({ "a":{ x:3 } }), '<root><a x="3"/></root>');
-        assert.strictEqual(fromJSON({ "$": "Hello" }), '<root>Hello</root>');
-        assert.strictEqual(fromJSON({ "$a": "Hello" }), '<root><a>Hello</a></root>');
-        assert.strictEqual(fromJSON({ a: { "$": "Hello" } }), '<root><a>Hello</a></root>');
-        assert.strictEqual(fromJSON({ a: "World", "$a": "Hello" }), '<root a="World"><a>Hello</a></root>');
-        assert.strictEqual(fromJSON({ "a": [ { "i":1 }, { "i": 2 } ] }), '<root><a i="1"/><a i="2"/></root>');
-        assert.strictEqual(fromJSON({ "a": [ ] }), '<root/>');
-        assert.strictEqual(fromJSON({ "a": null }), '<root/>');
-        assert.strictEqual(fromJSON({ "a": undefined }), '<root/>');
+        it("Should convert from JSON to XML", () => {
+            assert.strictEqual(fromJSON({}), '<root/>');
+            assert.strictEqual(fromJSON({ "a":2, "b":"zz", "c": true }), '<root a="2" b="zz" c="true"/>');
+            assert.strictEqual(fromJSON({ "a":{ x:3 } }), '<root><a x="3"/></root>');
+            assert.strictEqual(fromJSON({ "$": "Hello" }), '<root>Hello</root>');
+            assert.strictEqual(fromJSON({ "$a": "Hello" }), '<root><a>Hello</a></root>');
+            assert.strictEqual(fromJSON({ a: { "$": "Hello" } }), '<root><a>Hello</a></root>');
+            assert.strictEqual(fromJSON({ a: "World", "$a": "Hello" }), '<root a="World"><a>Hello</a></root>');
+            assert.strictEqual(fromJSON({ "a": [ { "i":1 }, { "i": 2 } ] }), '<root><a i="1"/><a i="2"/></root>');
+            assert.strictEqual(fromJSON({ "a": [ ] }), '<root/>');
+            assert.strictEqual(fromJSON({ "a": null }), '<root/>');
+            assert.strictEqual(fromJSON({ "a": undefined }), '<root/>');
+        });
     });
 
     describe('fromJSON (advanced)', function() {
@@ -213,12 +217,11 @@ describe('DomUtil', function() {
     });
 
     describe('fromJSON (invalid flavor)', function() {
-        try {
-            DomUtil.fromJSON("root", {}, "InvalidFlavor");
-            assert.fail("Should have failed");
-        } catch(ex) {
-            assert.ok(true);
-        }
+        it("Should fail", () => {
+            expect(() => {
+                DomUtil.fromJSON("root", {}, "InvalidFlavor");
+            }).toThrow();
+        });
     });
 
     describe('toJson (errors)', function() {
