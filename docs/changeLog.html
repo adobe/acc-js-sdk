@@ -2,6 +2,27 @@
 layout: page
 title: Change Log
 ---
+<section class="changelog"><h1>Version 1.1.15</h1>
+  <h2>2022/11/28</h2>
+  
+  <li>Fix an issue with SimpleJson serialization. See <a href="https://opensource.adobe.com/acc-js-sdk/simpleJson.html">SimpleJson documentation</a> for more details, and in particular the <b>Compatibility Notes</b> section</li>
+  <li>Fix credentials passing for fileUpload and getReportData methods. This is still a temporary fix until those APIs are made IMS compatible.</li>
+</section>
+
+<section class="changelog"><h1>Version 1.1.14</h1>
+  <h2>2022/11/25</h2>
+  
+  <li>Fix a bug calling the nms:seedMember#getAsModel method. This method starts with a lower case letter (unlike other methods which start with an upper case) which was not propertly handled by the SDK</li>
+</section>
+
+<section class="changelog"><h1>Version 1.1.13</h1>
+  <h2>2022/11/24</h2>
+  
+  <li>Fix a bug with file upload API: API call payload was not passed with the right property. The transport interface uses the "data" property and not the "body" property</li>
+  <li>Add "getReportData" API to fetch the data use to create a particular report</li>
+  <li>Add unit test to check that schema nodes mapped as both xml and sql are properly handled (as SQL)</li>
+</section>
+
 <section class="changelog"><h1>Version 1.1.12</h1>
   <h2>2022/11/16</h2>
   
@@ -188,7 +209,7 @@ For breaking changes see the [migration guide](MIGRATION.md)
 <li><b>getEntityIfMoreRecent</b> now takes an additional parameter which allows to specify and force a representation (xml, json...)
 <li>New helper function <b>DomUtil.isArray</b> to test if a JavaScript object is an array
 <li>New <b>EntityAccessor</b> object which allows to get attributes and child elements from xml or json objects, regardless of their representation
-<li>New <b>escapeXtk</b> function to escape litteral values in Xtk expression. Can be used as a function or as a tagged template litteral
+<li>New <b>escapeXtk</b> function to escape literal values in Xtk expression. Can be used as a function or as a tagged template literal
 <li>New function <b>XtkCaster._variantStorageAttribute</b> which returns the name of a schema attribute used to store variant value types. The name of the attribute depends on the type: stringValue, longValue, etc.
 <li>Support for non static method that mutate the object on which they apply. For instance, the <b>xtk:queryDef#SelectAll</b>
 <li>Added samples in the samples/ folder
@@ -215,7 +236,7 @@ _Breaking changes in 1.0.0_
 <li>Changes in the <b>sdk.init</b>, <b>Client</b> constructor, and <b>logon</b> functions. Now using <b>ConnectionParameters</b> and <b>Credentials</b> objects to configure a Campaign connection
 <li>Client object members are now private: access to representation, etc. attributes is not allowed anymore except for <b>NLWS</b>, <b>XtkCaster</b>, and <b>DomUtil</b>
 <li>Access to the <b>sessionInfo</b> object after <b>logon</b> can be done via the new <b>getSessionInfo</b> call
-<li>Options cache internal strucutre change: option values in the cache are now object litterals containing the option value, type, and raw value (which may not be casted to the expected type yet)
+<li>Options cache internal strucutre change: option values in the cache are now object literals containing the option value, type, and raw value (which may not be casted to the expected type yet)
 <li>Connecting to mid-sourcing (or other Campaign instances which are defined by an external account) is now done with the <b>ConnectionParameters.ofExternalAccount</b> function. As a consequence, <b>getSecretKeyCipher</b> is now private and deprecated
 <li>CampaignException object signature changed (but was not previously exposed)
 <li>The client-side bundle is now generated in the <b>dist/bundle.js</b> file instead of <b>bundle.js</b>

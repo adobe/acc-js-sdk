@@ -28,7 +28,7 @@ const { Util } = require("./util.js");
   static INVALID_CREDENTIALS_TYPE(type, details)          { return new CampaignException(undefined, 400, 16384, `SDK-000000 Invalid credentials type '${type}'`, details); }
   static CANNOT_GET_CREDENTIALS_USER(type)                { return new CampaignException(undefined, 400, 16384, `SDK-000001 Cannot get user for Credentials of type '${type}'`); }
   static CANNOT_GET_CREDENTIALS_PASSWORD(type)            { return new CampaignException(undefined, 400, 16384, `SDK-000002 Cannot get password for Credentials of type '${type}'`); }
-  static INVALID_CONNECTION_OPTIONS(options)              { return new CampaignException(undefined, 400, 16384, `SDK-000003 Invalid options parameter (type '${typeof options}'). An object litteral is expected`); }
+  static INVALID_CONNECTION_OPTIONS(options)              { return new CampaignException(undefined, 400, 16384, `SDK-000003 Invalid options parameter (type '${typeof options}'). An object literal is expected`); }
   static INVALID_REPRESENTATION(representation, details)  { return new CampaignException(undefined, 400, 16384, `SDK-000004 Invalid representation '${representation}'.`, details); }
   static CREDENTIALS_FOR_INVALID_EXT_ACCOUNT(name, type)  { return new CampaignException(undefined, 400, 16384, `SDK-000005 Cannot created connection parameters for external account '${name}': account type ${type} not supported`); }
   static BAD_PARAMETER(name, value, details)              { return new CampaignException(undefined, 400, 16384, `SDK-000006 Bad parameter '${name}' with value '${value}'`, details); }
@@ -39,8 +39,9 @@ const { Util } = require("./util.js");
   static DECRYPT_ERROR(details)                           { return new CampaignException(undefined, 400, 16384, `SDK-000011 "Cannot decrypt password: password marker is missing`, details); }
   static SESSION_EXPIRED()                                { return new CampaignException(undefined, 401, 16384, `SDK-000012 "Session has expired or is invalid. Please reconnect.`); }
   static FILE_UPLOAD_FAILED(name, details)                { return new CampaignException(undefined, 500, 16384, `SDK-000013 "Failed to upload file ${name}`, details); }
+  static REPORT_FETCH_FAILED(name, details)               { return new CampaignException(undefined, 500, 16384, `SDK-000014 Failed to fetch report ${name}`, details); }
+  static FEATURE_NOT_SUPPORTED(name)                      { return new CampaignException(undefined, 500, 16384, `SDK-000015 ${name} feature is not supported by the ACC instance`); }
   static UNKNOWN_SHEMA(schemaId, details)                 { return new CampaignException(undefined, 400, 16384, `SDK-000014 Unknown schema '${schemaId}'`, details); }
-
 
   /**
    * Returns a short description of the exception

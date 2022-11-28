@@ -27,7 +27,7 @@ title: The Transport Protocol
 
 <p>If the request is successful, a promise is returned with the result payload, as a string.</p>
 
-<p>If the request fails, the promise is rejected with an error object with class <b>HttpError</b>, a litteral with the following attributes:</p>
+<p>If the request fails, the promise is rejected with an error object with class <b>HttpError</b>, a literal with the following attributes:</p>
 <ul>
     <li><b>statusCode</b> is the HTTP status code, such as 404, 500, etc.</li>
     <li><b>statusText</b> is the HTTP status text coming with the error</li>
@@ -39,7 +39,7 @@ title: The Transport Protocol
 <p>The transport can be overriden by using the <b>client.setTransport</b> call and passing it a transport function, i.e. an async function which</p>
 
 <ul>
-    <li>Takes a <b>Request</b> object litteral as a parameter</li>
+    <li>Takes a <b>Request</b> object literal as a parameter</li>
     <li>Returns a the request result in a promise</li>
     <li>Returns a rejected promise containing an <b>HttpError</b> in case of failure</li>
 </ul>

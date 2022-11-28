@@ -264,7 +264,7 @@ const root = await node.linkTarget();
     <tr><td><b>isNotNull</b></td><td>Returns a boolean which indicates whether or not the current node can take the null value into account.</td></tr>
     <tr><td><b>isRequired</b></td><td>Returns a boolean which indicates whether or not the value of the current node is mandatory.</td></tr>
     <tr><td><b>isRoot</b></td><td>Indicates if the node is the root node of a schema, i.e. the first child of the schema node, whose name matches the schema name</td></tr>
-    <tr><td><b>isSQL</b></td><td>Returns a boolean which indicates whether the current node is mapped in SQL.</td></tr>
+    <tr><td><b>isSQL</b></td><td>Returns a boolean which indicates whether the current node is mapped in SQL. There are some inconsistencies in ACC schemas, and sometimes attributes may be defined as both sql and xml (for example: nms:delivery/properties/seedProcessed). Such nodes with have both isSql=true and isMappedAsXml=true</td></tr>
     <tr><td><b>isTemporaryTable</b></td><td>Returns a boolean indicating whether the table is a temporary table. The table will not be created during database creation.</td></tr>
     <tr><td><b>unbound</b></td><td>Returns a boolean which indicates whether the current node has an unlimited number of children of the same type.</td></tr>
     <tr><td><b>joins</b></td><td>Element of type "link" has an array of XtkJoin. See <b>joinNodes</b> method.</td></tr>

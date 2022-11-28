@@ -46,9 +46,9 @@ describe('escaping', function() {
             });
         })
 
-        describe('Tagged template litteral', function() {
+        describe('Tagged template literal', function() {
 
-            it("Should escape in template litteral", () => {
+            it("Should escape in template literal", () => {
                 expect(sdk.escapeXtk`Hello world`).toBe("Hello world");
                 expect(sdk.escapeXtk`Hello 'world'`).toBe("Hello 'world'");     // only variables are escaped
 
@@ -77,7 +77,7 @@ describe('escaping', function() {
             expect(sdk.escapeXtk`@name=${"Rock 'n' Roll"}`).toBe("@name='Rock \\'n\\' Roll'");
         });
 
-        describe('QueryDef & template litteral', () => {
+        describe('QueryDef & template literal', () => {
             
         })
 

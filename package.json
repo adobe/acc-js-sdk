@@ -1,6 +1,6 @@
 {
   "name": "@adobe/acc-js-sdk",
-  "version": "1.1.12",
+  "version": "1.1.15",
   "description": "ACC Javascript SDK",
   "main": "src/index.js",
   "homepage": "https://github.com/adobe/acc-js-sdk#readme",
@@ -11,7 +11,8 @@
   },
   "dependencies": {
     "axios": "^0.25.0",
-    "jsdom": "^19.0.0"
+    "jsdom": "^19.0.0",
+    "qs-stringify": "^1.2.1"
   },
   "devDependencies": {
     "docdash": "^1.2.0",

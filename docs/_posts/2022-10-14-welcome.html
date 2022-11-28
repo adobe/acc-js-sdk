@@ -129,7 +129,7 @@ console.log(`About to call method '${methodName}' of scope '${scopeName}'`);
     returnedValue = undefined;
   }
   // If the API returns one parameter which is an object, the return it directly.
-  // If not (return value is a litteral), then use a JSON with the return parameter name
+  // If not (return value is a literal), then use a JSON with the return parameter name
   else if (outNames.length == 1) {
     if (result && typeof result == "object")
       returnedValue = result;

@@ -41,6 +41,7 @@ var resources = [
     { name: "./crypto.js" },
     { name: "./application.js" },
     { name: "./testUtil.js" },
+    { file: "../node_modules/qs-stringify/index.js", name: "qs-stringify" },
     { name: "./client.js" },
     { name: "./index.js" },
 ];
