@@ -17,8 +17,8 @@ governing permissions and limitations under the License.
  * 
  *********************************************************************************/
 
- const { Util, ArrayMap } = require('../src/util.js');
- const { SafeStorage, Cache } = require('../src/cache.js');
+const { Util, ArrayMap } = require('../src/util.js');
+const { SafeStorage, Cache } = require('../src/cache.js');
 
 
 describe('Util', function() {
@@ -101,7 +101,6 @@ describe('Util', function() {
             expect(Util.trim({"Cookie": "a=b; __token =ABC; c=d"})).toMatchObject({"Cookie": "a=b; __token =ABC; c=d"});
         })
     })
-
 
     describe("Safe storage", () => {
       it("Should support undefined delegate", () => {

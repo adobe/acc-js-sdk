@@ -27,6 +27,7 @@ title: SimpleJson format
 </pre>
 
 
+<h1>XML Root</h1>
 <p>The XML root element tag is automatically determined by the SDK as it's generating the XML, usually from the current schema name.</p>
 
 <pre class="code">
@@ -34,15 +35,21 @@ XML:     &lt;root/>
 JSON:    {}
 </pre>
 
-<p>XML attributes are mapped to JSON attributes with the same name, whose litteral value can be a string, number, or boolean. There's no "@" sign in the JSON attribute name.
-Values in JSON attributes can be indifferently typed (ex: number, boolean), or strings (ex: "3" instead of just 3) depending if the conversion could determine the attribute type or not. 
-API users should expect and handle both value and use the `XtkCaster` object to ensure proper conversion when using.</p>
+
+
+
+<h1>XML Attributes</h1>
+<p>XML attributes are mapped to JSON attributes with the same name, whose literal value can be a string, number, or boolean. There's no "@" sign in the JSON attribute name.
+Values in JSON attributes can be either typed (ex: number, boolean), or strings (ex: "3" instead of just 3) depending if the conversion could determine the attribute type or not. 
+API users should expect and handle both value and use the <b>XtkCaster</b> object to ensure proper conversion.</p>
 
 <pre class="code">
 XML     &lt;root hello="world" count="3" ok="true"/>
 JSON:   { hello:"world", count:"3", ok:"true" }
 </pre>
 
+
+<h1>XML Elements</h1>
 <p>XML elements are mapped to JSON objects</p>
 
 <pre class="code">
@@ -64,7 +71,9 @@ XML:    &lt;root>&lt;item id=1/>&lt;item id=2/>&lt;/root>
 JSON:   { item: [ { id:"1" }, { id:"2" } ] }
 </pre>
 
-<p>Text of XML element is handle with the <b>$</b> sign in the JSON attribute name, or with a child JSON object name <b>$</b></p>
+
+<h1>Text nodes</h1>
+<p>Text of XML element is handled with the <b>$</b> sign in the JSON attribute name, or with a child JSON object name <b>$</b></p>
 
 <p>Text of the root element</p>
 <pre class="code">
@@ -86,3 +95,66 @@ XML:    &lt;root>&lt;item>Hello&lt;child id="1"/>
         &lt;/root>
 JSON:   { item: { $: "Hello", child: { id:"1" } }
 </pre>
+
+<p>Normally Campaign will not generate XML with elements containing multiple sibling text nodes. If this should happen, the SDK will consider them as a single text value, i.e. it will concatenate the contents of each text and CDATA node as if there was only one. However, whitespaces are processed independently for each text node.
+</p>
+
+<h1>Whitespaces</h1>
+<p>In XML documents, whitespaces can be either significant or insignificant. The SDK uses the following rules to strip whitespaces, which correspond to how Campaign specifically uses XML</p>
+<p> </p>
+<ul>
+<li>The characters " ", "\t", "\r" and "\n" are considered whitespaces</li>
+<li>CDATA sections are kept unchanged, i.e. whitespaces are preserved exactly</li>
+<li>For TEXT nodes directly under the root node are, whitespaces will be trimmed as explained below</li>
+<li>For element nodes which only contain text and possibly attributes (for instance &lt;node&gt;value&lt;/node&gt;</li>, the text is kept unchanged, i.e. whitespaces are preserved exactly</li>
+<li>For element nodes which have child elements, whitespaces will be trimmed as explained below</li>
+<li>For the root element, whitespaces are always trimmed</li>
+</ul>
+<p> </p>
+<p>
+  Whitespace trimming consists of removing all the leading and trailing whitespaces of each text node and concatenating all text node values. If the resulting value is empty, the text node is ignored. The rationale is to remove insignificant spaces created when formatting XML documents
+</p>
+
+
+<h1>Exceptions</h1>
+
+<h2>When an attribute has the same name of an element</h2>
+
+<p>If an element contains another element and an attribute which have the same name, the attribute name is prefixed with the "@" character</p>
+<pre class="code">
+XML:    &lt;root timezone="Europe/Paris">
+          &lt;timezone>Europe/Paris&lt;/timezone>
+        &lt;/root>
+JSON:   { "@timezone": "Europe/Paris", 
+          timezone: { "$": "Europe/Paris" } }
+</pre>
+
+
+<h1>Arrays of text elements</h1>
+<pre class="code">
+  XML:    &lt;root>
+            &lt;item>One&lt;/item>
+            &lt;item>Two&lt;/item>
+          &lt;/root>
+  JSON:   { item: [
+            { $: "One" },
+            { $: "Two" }
+          ] }
+  </pre>
+  
+
+
+<h1>Compatibility notes</h1>
+
+<p>
+  A few gaps were identified regarding SimpleJson format when converting from XML to JSON. They were fixed in release 1.1.13 and may introduce some behavior changes for cases which were ambiguous
+</p>
+<p> </p>
+<ul>
+  <li>When XML element has both a text content and attributes or child elements</li>
+  <li>When root element has only text</li>
+  <li>When XML element has both an attribute and a child element with the same name</li>
+  <li>When array contains element which only have text</li>
+  <li>When XML is formatted (and therefore has insignificant whitespaces)</li>
+  <li>XML collections (i.e. when root node ends with “-collection”) would sometimes contain a JSON property “#text”</li>  
+</ul>
