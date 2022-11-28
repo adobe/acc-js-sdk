@@ -36,6 +36,7 @@ const request = require('./transport.js').request;
 const Application = require('./application.js').Application;
 const EntityAccessor = require('./entityAccessor.js').EntityAccessor;
 const { Util } = require('./util.js');
+const { QueryDefSchemaInferer, EntityCaster } = require('./entityCaster.js');
 
 /**
  * @namespace Campaign
@@ -305,6 +306,7 @@ class Credentials {
     * @property {boolean} noSDKHeaders - set to disable "ACC-SDK" HTTP headers
     * @property {boolean} noMethodInURL - Can be set to true to remove the method name from the URL
     * @property {number} timeout - Can be set to change the HTTP call timeout. Value is passed in ms.
+    * @property {entityCasterOptions} entityCasterOptions - Options for the entity caster
     * @memberOf Campaign
  */
 
@@ -658,6 +660,8 @@ class Client {
         this._observers = [];
         this._cacheChangeListeners = [];
         this._refreshClient = connectionParameters._options.refreshClient;
+
+        this._entityCasterOptions = connectionParameters._options.entityCasterOptions;
 
         // expose utilities
         /**
@@ -1385,6 +1389,7 @@ class Client {
             var doc = soapCall.getNextDocument();
             soapCall.checkNoMoreArgs();
             doc = that._toRepresentation(doc, representation);
+            doc = that.adjust(doc, representation, entityType);
             return doc;
         });
     }
@@ -1412,6 +1417,7 @@ class Client {
           }
         }
         entity = this._toRepresentation(entity, representation);
+        entity = this.adjust(entity, representation, "xtk:schema");
         return entity;
     }
 
@@ -1452,8 +1458,10 @@ class Client {
         const schema = optionalStartSchemaOrSchemaName;
         for (const e of EntityAccessor.getChildElements(schema, "enumeration")) {
             const n = EntityAccessor.getAttributeAsString(e, "name");
-            if (n == enumName)
-                return e;
+            if (n == enumName) {
+                const casted = this.adjust(e, undefined, "xtk:enum");
+                return casted;
+            }
         }
     }
 
@@ -1468,7 +1476,6 @@ class Client {
      */
     async _callMethod(methodName, callContext, parameters) {
         const that = this;
-        const result = [];
         const schemaId = callContext.schemaId;
 
         var schema = await that.getSchema(schemaId, "xml", true);
@@ -1595,6 +1602,8 @@ class Client {
                 }
             }
 
+            const resultNames = [];
+            const result = [];
             if (params) {
                 var param = DomUtil.getFirstChildElement(params, "param");
                 while (param) {
@@ -1669,14 +1678,17 @@ class Client {
                                 throw CampaignException.UNEXPECTED_SOAP_RESPONSE(soapCall, `Unsupported return type '${type}' for parameter '${paramName}' of method '${methodName}' of schema '${schemaId}'`);
                         }
                         result.push(returnValue);
+                        resultNames.push(paramName);
                     }
                     param = DomUtil.getNextSiblingElement(param, "param");
                 }
             }
             soapCall.checkNoMoreArgs();
-            if (result.length == 0) return null;
-            if (result.length == 1) return result[0];
-            return result;
+            return that._adjustResult(resultNames, result, callContext.representation, schemaId, methodName, callContext.object).then((castedResult) => {
+                if (castedResult.length == 0) return null;
+                if (castedResult.length == 1) return castedResult[0];
+                return castedResult;    
+            });
         });
     }
 
@@ -1819,6 +1831,43 @@ class Client {
         if (threshold !== undefined && rtCount.trim() != "") root.setAttribute("eventQueueMaxSize", threshold);
         const result = this._toRepresentation(doc);
         return result;
+    }
+
+    async _adjustResult(resultNames, result, representation, schemaId, methodName, object, options) {
+        options = options || this._entityCasterOptions;
+        if (!options || !options.enabled) return result;
+        representation = representation || this._representation;
+        if (representation !== "SimpleJson") return result;
+        const casted = [];
+        for (var i=0; i<result.length; i++) {
+            const paramName = resultNames[i];
+            const paramValue = result[i];
+            const castedValue = await this._adjustParam(paramName, paramValue, schemaId, methodName, object, options);
+            casted.push(castedValue);
+        }
+        return casted;
+    }
+
+    async _adjustParam(paramName, paramValue, schemaId, methodName, object, options) {
+        if (schemaId === "xtk:queryDef" && methodName === "ExecuteQuery" && paramName === "output") {
+            const inferer = new QueryDefSchemaInferer(this, object, options);
+            const querySchema = await inferer.getSchema();
+            const caster = new EntityCaster(this, querySchema, options);
+            const casted = await caster.cast(paramValue);
+            return casted;
+        }
+        // Defaults to no casting
+        return paramValue;
+    }
+
+    async adjust(entity, representation, schema, options) {
+        options = options || this._entityCasterOptions;
+        if (!options || !options.enabled) return entity;
+        representation = representation || this._representation;
+        if (representation !== "SimpleJson") return entity;
+        const caster = new EntityCaster(this, schema, options);
+        const casted = await caster.cast(entity);
+        return casted;
     }
 }
 

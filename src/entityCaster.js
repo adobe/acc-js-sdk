@@ -17,28 +17,31 @@ governing permissions and limitations under the License.
    * Helper class to cast entities according to schema definitions
    * 
    *********************************************************************************/
-
   const { CampaignException } = require("./campaign");
   const { XtkCaster } = require("./xtkCaster");
   const { newSchema } = require("./application");
   const { XPath, DomUtil } = require("./domUtil");
-  
 
-
-// ========================================================================================
-// the EntityCaster casts object according to a schema
-// ========================================================================================
-
+  // ========================================================================================
+  // Casting options
+  // ========================================================================================
 
   /**
-   * Options to configure a EntityCaster object
+   * Options to configure a EntityCaster and QueryDefSchemaInferer objects
    * 
    * @typedef {Object} EntityCasterOptions
+   * @property {boolean} enabled - If casting is enabled or not
    * @property {boolean} addEmptyArrays - if set, will add empty arrays for all unbound collections found in the casted object
+   * @property {function} exprTypeInferer - a callback function to infer the type of a xtk epression
    * @memberOf Campaign
    */
-  
 
+
+  // ========================================================================================
+  // the EntityCaster casts object according to a schema
+  // ========================================================================================
+
+  
   /**
    * @class
    * @constructor
@@ -50,12 +53,12 @@ governing permissions and limitations under the License.
      * to a schema. The schema may be partial, i.e. attributes of the object which are not in 
      * the schema will be kept unchanged
      * @param {Campaign.Client} client - The Campaign Client which will be used to dynamically load schemas
-     * @param {string} schemaId - the schema id (ex: nms:recipient)
+     * @param {string|Campaign.XtkSchema} schema - the schema id (ex: nms:recipient)
      * @param {Campaing.EntityCasterOptions} options - casting options
      */
-    constructor(client, schemaId, options) {
+    constructor(client, schema, options) {
       this._client = client;
-      this._schemaId = schemaId;
+      this._schema = schema;
       this._options = options;
     }
 
@@ -65,9 +68,18 @@ governing permissions and limitations under the License.
      * @returns {*} entity - the casted entity
      */
     async cast(entity) {
-      const schema = await this._client.application.getSchema(this._schemaId);
-      if (!schema) 
-        throw CampaignException.UNKNOWN_SHEMA(schemaId);
+      if (!this._options || !this._options.enabled) return entity;
+      var schema = this._schema;
+      if (!schema) return entity;
+
+      // We were given a schema id, let's lookup the schema
+      if (typeof schema === "string") {
+        const schemaId = schema;
+        schema = await this._client.application.getSchema(schema);
+        if (!schema) 
+          throw CampaignException.UNKNOWN_SHEMA(schemaId);
+      }
+      
       const result = await this._cast(entity, schema.root);
       if (this._options && this._options.addEmptyArrays)
         await this._addEmptyArrays(entity, schema.root);
@@ -129,9 +141,17 @@ governing permissions and limitations under the License.
             }
             // For structure node, recursively casts node
             else if (schemaNode.isElementOnly) {
-              value = await this._cast(value, schemaNode);
-              if (schemaNode.unbound)
+              if (schemaNode.unbound) {
                 value = XtkCaster.asArray(value);
+                for (var i=0; i<value.length; i++) {
+                  var item = value[i];
+                  item = await this._cast(item, schemaNode);
+                  value[i] = item;             
+                }
+              }
+              else {
+                value = await this._cast(value, schemaNode);
+              }
             }
             // And for text nodes, convert to string
             else {
@@ -152,12 +172,6 @@ governing permissions and limitations under the License.
   // ========================================================================================
 
   /**
-   * @typedef {Object} QueryDefSchemaInfererOptions
-   * @property {function} exprTypeInferer - a callback function to infer the type of a xtk epression
-   * @memberOf Campaign
-   */
-
-  /**
    * @typedef {Object} XtkExpressionType
    * @property {string} type - the xtk type
    * @memberOf Campaign
@@ -173,7 +187,7 @@ governing permissions and limitations under the License.
      * A QueryDefSchemaInferer will infer a schema from a querydef
      * @param {Campaign.Client} client - The Campaign Client which will be used to dynamically load schemas
      * @param {*} queryDef - A QueryDef object (in SimpleJson format)
-     * @param {Campaing.QueryDefSchemaInfererOptions} options - schema inference options
+     * @param {Campaing.EntityCasterOptions} options - schema inference options
      */
     constructor(client, queryDef, options) {
       this._client = client;
@@ -202,7 +216,7 @@ governing permissions and limitations under the License.
 
       // Custom expression type inferer
       if (this._options && this._options.exprTypeInferer) {
-        return this._options.exprTypeInferer(root, expr);
+        return await this._options.exprTypeInferer(root, expr);
       }
 
       // If the expression is xpath then look it up
@@ -299,10 +313,12 @@ governing permissions and limitations under the License.
         for (const key of keys) {
           const item = root.children[key];
           if (key[0] === '@') {
-            const eAttr = doc.createElement("attribute");
-            eAttr.setAttribute("name", key.substring(1));
-            eAttr.setAttribute("type", item.node.type);
-            eRoot.appendChild(eAttr);
+            if (item.node) { // only add to schema if we could actually infer the type
+              const eAttr = doc.createElement("attribute");
+              eAttr.setAttribute("name", key.substring(1));
+              eAttr.setAttribute("type", item.node.type);
+              eRoot.appendChild(eAttr);
+            }
           }
           else {
             const eElem = doc.createElement("element");

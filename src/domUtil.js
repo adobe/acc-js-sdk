@@ -548,17 +548,6 @@ class XPathElement {
     toString() {
         return this.asString();
     }
-
-    /**
-     * 
-     */
-    isAttribute() {
-        return this._pathElement[0] === '@';
-    }
-
-    name() {
-        return this._pathElement;
-    }
 }
 
 /**

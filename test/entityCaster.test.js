@@ -44,6 +44,37 @@ const { EntityCaster, QueryDefSchemaInferer } = require('../src/entityCaster.js'
                                 <attribute name="created" type="datetime"/>
                             </element>
 
+                            <!-- unbound collection directly in the root node -->
+                            <element name="coll" unbound="true">
+                                <attribute name="count" type="long"/>
+                                <attribute name="created" type="datetime"/>
+                            </element>
+                            <!-- unbound collection is a child element -->
+                            <element name="book">
+                                <element name="chapter" unbound="true">
+                                    <attribute name="idx" type="long"/>
+                                    <attribute name="name" type="string"/>
+                                </element>
+                            </element>
+
+                            <element name="country" type="link" target="xtk:country"/>
+                        </element>
+                    </schema>
+                </pdomDoc>
+            </GetEntityIfMoreRecentResponse>
+        </SOAP-ENV:Body>
+        </SOAP-ENV:Envelope>`);
+
+
+const GET_XTK_ENTITYCASTER_COUNTRY_SCHEMA_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
+        <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:wpp:default' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
+        <SOAP-ENV:Body>
+            <GetEntityIfMoreRecentResponse xmlns='urn:wpp:default' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
+                <pdomDoc xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
+                    <schema name="country" namespace="xtk">
+                        <element name="country">
+                            <attribute name="id" type="long"/>
+                            <attribute name="name" type="string"/>
                         </element>
                     </schema>
                 </pdomDoc>
@@ -55,14 +86,18 @@ describe('EntityCaster', function() {
 
     describe('Cast according to schema', () => {
 
-        const cast = async (entity) => {
+        const cast = async (entity, options, beforeCastHook) => {
             const client = await Mock.makeClient();
             client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
             client._transport.mockReturnValueOnce(GET_XTK_ENTITYCASTER_SCHEMA_RESPONSE);
-            const schema = await client.getSchema("xtk:entityCaster", "xml");
-            const caster = new EntityCaster(client, "xtk:entityCaster");
-            const result = caster.cast(entity);
+            const schema = await client.getSchema("xtk:entityCaster", "xml");   // preload schema
+            if (options === undefined) options = { enabled: true };
+            const caster = new EntityCaster(client, "xtk:entityCaster", options);
+            if (beforeCastHook) {
+                await beforeCastHook(client, caster);
+            }
+            const result = await caster.cast(entity);
             client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
             await client.NLWS.xtkSession.logoff();
             return result;
@@ -88,11 +123,75 @@ describe('EntityCaster', function() {
         });
 
         it("Should recurse to child elements", async () => {
+            // Regular child
             await expect(cast({ struct: { count: "4", created: "2022-11-17 14:08:52.670Z" } })).resolves.toEqual({ struct: { count:4, created: new Date(1668694132670) } });
+            // Child is unbound
+            await expect(cast({ coll: null })).resolves.toEqual({ coll:[] });
+            await expect(cast({ coll: { count: "4" } })).resolves.toEqual({ coll:[ { count: 4 } ] });
+            await expect(cast({ coll: [ { count: "1" }, { count: "2" } ] })).resolves.toEqual({ coll:[ { count: 1 }, { count: 2 } ] });
+            // Nested child
+            await expect(cast({ book: { chapter: [ { id:"4", idx:"4" } ] } })).resolves.toEqual({ book: { chapter: [ { id: "4", idx: 4 } ] } });
+        });
+
+        it("Should not case if options do not say enabled", async () => {
+            await expect(cast({ id: "123" }, null)).resolves.toEqual({ id: "123" });
+            await expect(cast({ id: "123" }, null)).resolves.not.toEqual({ id: 123 });
+        });
+
+        it("Should fail on unknown schema", async () => {
+            const client = await Mock.makeClient();
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+            client._transport.mockReturnValueOnce(Mock.GET_MISSING_SCHEMA_RESPONSE);
+            const caster = new EntityCaster(client, "xtk:entityCaster", { enabled: true });
+            await expect(caster.cast({ id: "123" })).rejects.toMatchObject({ errorCode: "SDK-000014", faultString: "Unknown schema 'xtk:entityCaster'" });
+            client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
+            await client.NLWS.xtkSession.logoff();
+        });
+
+        describe("addEmptyArrays option", () => {
+
+            it("Should add empty arrays on root element", async () => {
+                const options = { enabled: true, addEmptyArrays: true };
+                await expect(cast({}, options)).resolves.toEqual({ coll:[] });
+            });
+            it("Should add empty arrays in child element", async () => {
+                const options = { enabled: true, addEmptyArrays: true };
+                await expect(cast({ book: {} }, options)).resolves.toEqual({ coll:[], book: { chapter:[] } });
+            });
+        });
+
+        describe("Link support", () => {
+            it("Should cast linked entities", async () => {
+                const hook = async (client, caster) => {
+                    client._transport.mockReturnValueOnce(GET_XTK_ENTITYCASTER_COUNTRY_SCHEMA_RESPONSE);
+                    await client.getSchema("xtk:country", "xml");         
+                };
+                await expect(cast({ id: "123", country: { id: "4", name: "France" } }, undefined, hook)).resolves.toEqual({ id: 123, country: { id: 4, name: "France" } });
+            });
         });
     });
 
     describe("Infer query schema", () => {
+
+        const inferQueryDefSchema = async (nodes, options) => {
+            const client = await Mock.makeClient();
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+            client._transport.mockReturnValueOnce(GET_XTK_ENTITYCASTER_SCHEMA_RESPONSE);
+            await client.getSchema("xtk:entityCaster", "xml");
+            const queryDef = {
+                schema: "xtk:entityCaster",
+                operation: "get",
+                select: { node: nodes },
+                where: { condition: [ { expr:`@internalName='DM19'` } ] }
+              };
+            const infer = new QueryDefSchemaInferer(client, queryDef, options);
+            const schema = await infer.getSchema();
+            client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
+            await client.NLWS.xtkSession.logoff();
+            return schema;
+        };
 
         describe("Create nodes on the fly", () => {
 
@@ -107,25 +206,6 @@ describe('EntityCaster', function() {
         });
 
         describe("Build Schema", () => {
-
-            const inferQueryDefSchema = async (nodes) => {
-                const client = await Mock.makeClient();
-                client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
-                await client.NLWS.xtkSession.logon();
-                client._transport.mockReturnValueOnce(GET_XTK_ENTITYCASTER_SCHEMA_RESPONSE);
-                await client.getSchema("xtk:entityCaster", "xml");
-                const queryDef = {
-                    schema: "xtk:entityCaster",
-                    operation: "get",
-                    select: { node: nodes },
-                    where: { condition: [ { expr:`@internalName='DM19'` } ] }
-                  };
-                const infer = new QueryDefSchemaInferer(client, queryDef);
-                const schema = await infer.getSchema();
-                client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
-                await client.NLWS.xtkSession.logoff();
-                return schema;
-            }
 
             it("Should support query with a single node created as an object and not as an array", async () => {
                 const schema = await inferQueryDefSchema( { expr: "@id" } );
@@ -174,9 +254,30 @@ describe('EntityCaster', function() {
                 await expect(schema.root.findNode("@stateLabel")).resolves.toMatchObject({ name:"@stateLabel", type:"string" });
             });
 
+            it("Should not anything to schema if type cannot be inferred", async () => {
+                // Type is an expression from which we cannot infer the type
+                const schema = await inferQueryDefSchema( { expr: "xyz(@id)", alias: "@id" } );
+                await expect(schema.root.findNode("@id")).resolves.toBeUndefined();
+            });
+
             //TODO: what about anyType="true"
 
             // TODO: a nod which ontain just a link name (ex: "delivery")
+        });
+
+        describe("Custom type inferer", () => {
+            it("Should use custom type inferer", async () => {
+                // No inferer
+                var schema = await inferQueryDefSchema( { expr: "lower(@id)", alias: "@id" } );
+                await expect(schema.root.findNode("@id")).resolves.toBeUndefined();
+                // Custom inferer
+                const options = { exprTypeInferer: jest.fn() };
+                options.exprTypeInferer.mockReturnValueOnce(Promise.resolve([ undefined, { type: "long" } ]));
+                var schema = await inferQueryDefSchema( { expr: "lower(@id)", alias: "@id" }, options);
+                await expect(schema.root.findNode("@id")).resolves.toMatchObject({ name:"@id", type:"long" });
+                expect(options.exprTypeInferer.mock.calls.length).toBe(1);
+                expect(options.exprTypeInferer.mock.calls[0]).toEqual([ "", "lower(@id)" ]);
+            });
         });
     });
 
