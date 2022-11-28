@@ -28,7 +28,7 @@ const { Util } = require("./util.js");
   static INVALID_CREDENTIALS_TYPE(type, details)          { return new CampaignException(undefined, 400, 16384, `SDK-000000 Invalid credentials type '${type}'`, details); }
   static CANNOT_GET_CREDENTIALS_USER(type)                { return new CampaignException(undefined, 400, 16384, `SDK-000001 Cannot get user for Credentials of type '${type}'`); }
   static CANNOT_GET_CREDENTIALS_PASSWORD(type)            { return new CampaignException(undefined, 400, 16384, `SDK-000002 Cannot get password for Credentials of type '${type}'`); }
-  static INVALID_CONNECTION_OPTIONS(options)              { return new CampaignException(undefined, 400, 16384, `SDK-000003 Invalid options parameter (type '${typeof options}'). An object litteral is expected`); }
+  static INVALID_CONNECTION_OPTIONS(options)              { return new CampaignException(undefined, 400, 16384, `SDK-000003 Invalid options parameter (type '${typeof options}'). An object literal is expected`); }
   static INVALID_REPRESENTATION(representation, details)  { return new CampaignException(undefined, 400, 16384, `SDK-000004 Invalid representation '${representation}'.`, details); }
   static CREDENTIALS_FOR_INVALID_EXT_ACCOUNT(name, type)  { return new CampaignException(undefined, 400, 16384, `SDK-000005 Cannot created connection parameters for external account '${name}': account type ${type} not supported`); }
   static BAD_PARAMETER(name, value, details)              { return new CampaignException(undefined, 400, 16384, `SDK-000006 Bad parameter '${name}' with value '${value}'`, details); }

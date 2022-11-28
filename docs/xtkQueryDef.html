@@ -74,7 +74,7 @@ const extAccount = await query.executeQuery();
 
 
 <h1>Escaping</h1>
-<p>It's common to use variables in query conditions. For instance, in the above example, you'll want to query an account by name instead of using the hardcoded <b>ffda</b> name. The <b>expr</b> attribute takes an XTK expression as a parameter, and <b>ffda</b> is a string litteral in an xtk expression.</p>
+<p>It's common to use variables in query conditions. For instance, in the above example, you'll want to query an account by name instead of using the hardcoded <b>ffda</b> name. The <b>expr</b> attribute takes an XTK expression as a parameter, and <b>ffda</b> is a string literal in an xtk expression.</p>
 
 <p>To prevent xtk ingestions vulnerabilities, you should not concatenate strings and write code such as expr: "@name = '" + name + "'": if the value of the name 
   parameter contains single quotes, your code will not work, but could also cause vulnerabilities.

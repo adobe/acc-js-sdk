@@ -40,14 +40,14 @@ describe('ACC Client', function () {
         it('Create client with invalid parameters', () => {
             // No 4th parameter should be ok
             expect(new Client(sdk, ConnectionParameters.ofUserAndPassword("http://acc-sdk:8080", "admin", "admin"))).not.toBeFalsy();
-            // Object litteral is ok too
+            // Object literal is ok too
             expect(new Client(sdk, ConnectionParameters.ofUserAndPassword("http://acc-sdk:8080", "admin", "admin"), {})).not.toBeFalsy();
             expect(new Client(sdk, ConnectionParameters.ofUserAndPassword("http://acc-sdk:8080", "admin", "admin"), { representation: "BadgerFish" })).not.toBeFalsy();
             expect(new Client(sdk, ConnectionParameters.ofUserAndPassword("http://acc-sdk:8080", "admin", "admin"), { dummy: 1 })).not.toBeFalsy();
             // Boolean is not ok
-            expect(() => { new Client(sdk, ConnectionParameters.ofUserAndPassword("http://acc-sdk:8080", "admin", "admin", true)); }).toThrow("An object litteral is expected");
-            expect(() => { new Client(sdk, ConnectionParameters.ofUserAndPassword("http://acc-sdk:8080", "admin", "admin", false)); }).toThrow("An object litteral is expected");
-            expect(() => { new Client(sdk, ConnectionParameters.ofUserAndPassword("http://acc-sdk:8080", "admin", "admin", "BadgerFish")); }).toThrow("An object litteral is expected");
+            expect(() => { new Client(sdk, ConnectionParameters.ofUserAndPassword("http://acc-sdk:8080", "admin", "admin", true)); }).toThrow("An object literal is expected");
+            expect(() => { new Client(sdk, ConnectionParameters.ofUserAndPassword("http://acc-sdk:8080", "admin", "admin", false)); }).toThrow("An object literal is expected");
+            expect(() => { new Client(sdk, ConnectionParameters.ofUserAndPassword("http://acc-sdk:8080", "admin", "admin", "BadgerFish")); }).toThrow("An object literal is expected");
             // Invalid representation is not ok
             expect(() => { new Client(sdk, ConnectionParameters.ofUserAndPassword("http://acc-sdk:8080", "admin", "admin", { representation: "Hello" })); }).toThrow("Invalid representation");
         });

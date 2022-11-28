@@ -85,7 +85,7 @@ const NS_XSD = "http://www.w3.org/2001/XMLSchema";
 class SoapMethodCall {
     
     constructor(transport, urn, methodName, sessionToken, securityToken, userAgentString, pushDownOptions, extraHttpHeaders) {
-        this.request = undefined;       // The HTTP request (object litteral passed to the transport layer)
+        this.request = undefined;       // The HTTP request (object literal passed to the transport layer)
         this.requestOptions = undefined;
         this.response = undefined;      // The HTTP response object (in case of success)
 
