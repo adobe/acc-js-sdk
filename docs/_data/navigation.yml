@@ -62,6 +62,8 @@
       link: midSourcing.html
     - name: Message Center
       link: messageCenter.html
+    - name: Reports Data API
+      link: reportData.html
 - name: --
 - name: Advanced Topics
   children:

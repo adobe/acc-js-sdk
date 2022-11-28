@@ -2,12 +2,25 @@
 layout: page
 title: Change Log
 ---
-<section class="changelog"><h1>Version 1.1.13</h1>
+<section class="changelog"><h1>Version 1.1.15</h1>
   <h2>Work in progress</h2>
   
   <li>Fix an issue with SimpleJson serialization. See <a href="https://opensource.adobe.com/acc-js-sdk/simpleJson.html">SimpleJson documentation</a> for more details/li>
 </section>
 
+<section class="changelog"><h1>Version 1.1.14</h1>
+  <h2>2022/11/25</h2>
+  
+  <li>Fix a bug calling the nms:seedMember#getAsModel method. This method starts with a lower case letter (unlike other methods which start with an upper case) which was not propertly handled by the SDK</li>
+</section>
+
+<section class="changelog"><h1>Version 1.1.13</h1>
+  <h2>2022/11/24</h2>
+  
+  <li>Fix a bug with file upload API: API call payload was not passed with the right property. The transport interface uses the "data" property and not the "body" property</li>
+  <li>Add "getReportData" API to fetch the data use to create a particular report</li>
+  <li>Add unit test to check that schema nodes mapped as both xml and sql are properly handled (as SQL)</li>
+</section>
 
 <section class="changelog"><h1>Version 1.1.12</h1>
   <h2>2022/11/16</h2>

@@ -848,6 +848,28 @@ describe('ACC Client', function () {
             await client.NLWS.xtkSession.logon();
 
             client._transport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
+            client._transport.mockReturnValueOnce(Promise.resolve(`<?xml version='1.0'?>
+                <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:xtk:session' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
+                <SOAP-ENV:Body>
+                    <startsWithLowerCaseResponse xmlns='urn:xtk:session' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
+                        <presult xsi:type='xsd:int'>44</presult>
+                    </startsWithLowerCaseResponse>
+                </SOAP-ENV:Body>
+                </SOAP-ENV:Envelope>`));
+
+            const response = await client.NLWS.xtkSession.startsWithLowerCase()
+            expect(response).toBe(44);
+
+            client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
+            await client.NLWS.xtkSession.logoff();
+        });
+
+        it("Should support methods starting with a lower case letter", async () => {
+            const client = await Mock.makeClient();
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+
+            client._transport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
             await expect(client.NLWS.xtkSession.nonStatic()).rejects.toMatchObject({ errorCode: "SDK-000009" });
 
             client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
@@ -3224,6 +3246,19 @@ describe('ACC Client', function () {
                 type: 'text/html',
                 size: 12345
             })
+            expect(client._transport).toHaveBeenNthCalledWith(2,
+                expect.objectContaining({
+                    data: expect.anything(),
+                    url: expect.any(String),
+                    method: 'POST',
+                    processData: false,
+                    headers: expect.objectContaining({
+                        'X-Security-Token': expect.any(String),
+                        'X-Session-Token': expect.any(String),
+                    }),
+                })
+            );
+
             expect(result).toMatchObject({
                 md5: "d8e8fca2dc0f896fd7cb4cb0031ba249",
                 name: "test.txt",
@@ -3464,6 +3499,80 @@ describe('ACC Client', function () {
             }, []);
             expect(client._transport).toHaveBeenCalledTimes(4);
             expect(client._transport.mock.calls[3][0].data).toMatch("<delivery label=\"hello\" xtkschema=\"nms:delivery\"/>");
+        });
+    });
+
+    describe("getReport API", () => {
+        it("Should call report API", async () => {
+            const client = await Mock.makeClient();
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+
+            client._transport.mockReturnValueOnce(Mock.REPORT_RESPONSE);
+            const report = await client.getReportData({
+                reportName: "throughput",
+                context: "selection",
+                selection: "12133",
+                schema: "nms:delivery",
+                formData: {ctx: {}}
+            });
+            expect(client._transport).toHaveBeenLastCalledWith(
+                expect.objectContaining({
+                    data: expect.anything(),
+                    url: expect.any(String),
+                    method: 'POST',
+                    headers: expect.objectContaining({
+                        'X-Security-Token': expect.any(String),
+                        'X-Session-Token': expect.any(String),
+                        "Content-Type": "application/x-www-form-urlencoded",
+                    }),
+                })
+            );
+            expect(report._reportContext).toBe("throughput");
+            expect(report._selection).toBe("12133");
+            expect(report.vars.$period).toBe("604800");
+            expect(report.delivery.scheduling.contactDate).toBe("2021-12-07 17:13:39.507Z");
+            expect(report.data.bandwidth.deliveryStat.size).toBe("1.34");
+            expect(report.userInfo).toBeDefined();
+            expect(report.activityHistory).toBeDefined();
+
+            client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
+            await client.NLWS.xtkSession.logoff();
+        });
+
+        it("Should fail to get report data, if API is not supported", async () => {
+            const client = await Mock.makeClient();
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+
+            client._transport.mockReturnValueOnce("Invalid response");
+            await expect(client.getReportData({
+                reportName: "throughput",
+                context: "selection",
+                selection: "12133",
+                schema: "nms:delivery"
+            })).rejects.toMatchObject({ statusCode:500, message:"500 - Error 16384: SDK-000014 Failed to fetch report throughput. 500 - Error 16384: SDK-000015 Reports Data feature is not supported by the ACC instance" });
+
+            client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
+            await client.NLWS.xtkSession.logoff();
+        });
+
+        it("Should fail to call getReport API", async () => {
+            const client = await Mock.makeClient();
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+            client.traceAPICalls(true);
+
+            client._transport.mockRejectedValueOnce(new HttpError(500, "Error rc=-57"));
+            await expect(client.getReportData({
+                reportName: "throughput",
+                context: "selection",
+                selection: "12133",
+                schema: "nms:delivery"
+            })).rejects.toMatchObject({ statusCode:500, message:"500 - Error 16384: SDK-000014 Failed to fetch report throughput. 500 - Error calling method '/report/throughput?_noRender=true&_schema=nms:delivery&_context=selection&_selection=12133&_selectionCount=1': Error rc=-57" });
+
+            client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
+            await client.NLWS.xtkSession.logoff();
         });
     });
 

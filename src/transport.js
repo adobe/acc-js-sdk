@@ -114,7 +114,6 @@ if (!Util.isBrowser()) {
         method: options.method,
         headers: headers,
         body: options.data,
-        credentials: options.credentials || 'same-origin'
     });
 
     const p = fetch(r).then(async (response) => {
