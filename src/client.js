@@ -36,6 +36,7 @@ const request = require('./transport.js').request;
 const Application = require('./application.js').Application;
 const EntityAccessor = require('./entityAccessor.js').EntityAccessor;
 const { Util } = require('./util.js');
+const { XtkJobInterface } = require('./xtkJob.js');
 const qsStringify = require('qs-stringify');
 
 /**
@@ -173,16 +174,7 @@ const clientHandler = (representation, headers, pushDownOptions) => {
                         return callContext;
 
                     // get Schema id from namespace (find first upper case letter)
-                    var schemaId = "";
-                    for (var i=0; i<namespace.length; i++) {
-                        const c = namespace[i];
-                        if (c >='A' && c<='Z') {
-                            schemaId = schemaId + ":" + c.toLowerCase() + namespace.substr(i+1);
-                            break;
-                        }
-                        schemaId = schemaId + c;
-                    }
-                    callContext.schemaId = schemaId;
+                    callContext.schemaId = Util.schemaIdFromNamespace(namespace);
 
                     const caller = function(thisArg, argumentsList) {
                         const callContext = thisArg["."];
@@ -1473,11 +1465,21 @@ class Client {
         const result = [];
         const schemaId = callContext.schemaId;
 
-        var schema = await that.getSchema(schemaId, "xml", true);
+        var entitySchemaId = schemaId;
+        if (schemaId === 'xtk:jobInterface')
+            entitySchemaId = callContext.entitySchemaId;
+
+        // Get the schema which contains the method call. Methods of the xtk:jobInterface interface are handled specificaaly
+        // because xtk:jobInterface is not actually a schema, but just an interface. In practice, it's used as an xtk template
+        // rather that an xtk inheritance mechanism
+        const methodSchemaId = schemaId === 'xtk:jobInterface' ? 'xtk:job' : schemaId;
+        var schema = await that.getSchema(methodSchemaId, "xml", true);
         if (!schema)
             throw CampaignException.SOAP_UNKNOWN_METHOD(schemaId, methodName, `Schema '${schemaId}' not found`);
         var schemaName = schema.getAttribute("name");
-        var method = that._methodCache.get(schemaId, methodName);
+
+        // Lookup the method to call
+        var method = that._methodCache.get(methodSchemaId, methodName);
         if (!method) {
             // first char of the method name may be lower case (ex: nms:seedMember.getAsModel) but the methodName 
             // variable has been capitalized. Make an attempt to lookup method name without capitalisation
@@ -1487,13 +1489,16 @@ class Client {
         }
         if (!method) {
             this._methodCache.put(schema);
-            method = that._methodCache.get(schemaId, methodName);
+            method = that._methodCache.get(methodSchemaId, methodName);
         }
         if (!method)
             throw CampaignException.SOAP_UNKNOWN_METHOD(schemaId, methodName, `Method '${methodName}' of schema '${schemaId}' not found`);
-        // console.log(method.toXMLString());
 
-        var urn = that._methodCache.getSoapUrn(schemaId, methodName);
+        // Compute the SOAP URN. Again, specically handle xtk:jobInterface as it's not a real schema. The actual entity schema
+        // would be available as the entitySchemaId property of the callContext
+        var urn = schemaId !== 'xtk:jobInterface' ? that._methodCache.getSoapUrn(schemaId, methodName)
+            : `xtk:jobInterface|${entitySchemaId}`;
+
         var soapCall = that._prepareSoapCall(urn, methodName, false, callContext.headers, callContext.pushDownOptions);
 
         // If method is called with one parameter which is a function, then we assume it's a hook: the function will return
@@ -1510,13 +1515,13 @@ class Client {
             if (!object)
                 throw CampaignException.SOAP_UNKNOWN_METHOD(schemaId, methodName, `Cannot call non-static method '${methodName}' of schema '${schemaId}' : no object was specified`);
 
-            const rootName = schemaId.substr(schemaId.indexOf(':') + 1);
+            const rootName = entitySchemaId.substr(entitySchemaId.indexOf(':') + 1);
             object = that._fromRepresentation(rootName, object, callContext.representation);
             // The xtk:persist#NewInstance requires a xtkschema attribute which we can compute here
             // Actually, we're always adding it, for all non-static methods
             const xmlRoot = object.nodeType === 9 ? object.documentElement : object;
             if (!xmlRoot.hasAttribute("xtkschema"))
-                xmlRoot.setAttribute("xtkschema", schemaId);
+                xmlRoot.setAttribute("xtkschema", entitySchemaId);
             soapCall.writeDocument("document", object);
         }
         const parametersIsArray = (typeof parameters == "object") && parameters.length;
@@ -1525,7 +1530,7 @@ class Client {
             var param = DomUtil.getFirstChildElement(params, "param");
             var paramIndex = 0;
             while (param) {
-                   const inout = DomUtil.getAttributeAsString(param, "inout");
+                const inout = DomUtil.getAttributeAsString(param, "inout");
                 if (!inout || inout=="in") {
                     const type = DomUtil.getAttributeAsString(param, "type");
                     const paramName = DomUtil.getAttributeAsString(param, "name");
@@ -1568,9 +1573,9 @@ class Client {
                             // Hack for workflow API. The C++ code checks that the name of the XML element is <variables>. When
                             // using xml representation at the SDK level, it's ok since the SDK caller will set that. But this does
                             // not work when using "BadgerFish" representation where we do not know the root element name.
-                            if (schemaId == "xtk:workflow" && methodName == "StartWithParameters" && paramName == "parameters")
+                            if (entitySchemaId == "xtk:workflow" && methodName == "StartWithParameters" && paramName == "parameters")
                                 docName = "variables";
-                            if (schemaId == "nms:rtEvent" && methodName == "PushEvent")
+                            if (entitySchemaId == "nms:rtEvent" && methodName == "PushEvent")
                                 docName = "rtEvent";
                             // Try to guess the document name. This is usually available in the xtkschema attribute
                             var xtkschema = EntityAccessor.getAttributeAsString(paramValue, "xtkschema");
@@ -1634,7 +1639,7 @@ class Client {
                         else if (type == "DOMDocument") {
                             returnValue = soapCall.getNextDocument();
                             returnValue = that._toRepresentation(returnValue, callContext.representation);
-                            if (schemaId === "xtk:queryDef" && methodName === "ExecuteQuery" && paramName === "output") {
+                            if (entitySchemaId === "xtk:queryDef" && methodName === "ExecuteQuery" && paramName === "output") {
                                 // https://github.com/adobe/acc-js-sdk/issues/3
                                 // Check if query operation is "getIfExists". The "object" variable at this point
                                 // is always an XML, regardless of the xml/json representation
@@ -1867,6 +1872,15 @@ class Client {
         if (threshold !== undefined && rtCount.trim() != "") root.setAttribute("eventQueueMaxSize", threshold);
         const result = this._toRepresentation(doc);
         return result;
+    }
+
+    /**
+     * Creates a Job object which can be used to submit jobs, retrieve status, logs and progress, etc.
+     * @param {Campaign.XtkSoapCallSpec} soapCallSpec the definition of the SOAP call
+     * @returns {Campaign.XtkJobInterface} a job
+     */
+    jobInterface(soapCallSpec) {
+        return new XtkJobInterface(this, soapCallSpec);
     }
 }
 

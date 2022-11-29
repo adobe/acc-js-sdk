@@ -133,6 +133,24 @@ class Util {
     }
     return obj;
   }
+
+  /**
+   * Get Schema id from namespace (find first upper case letter)
+   * @param {string} namespace a SDK namespace, i.e. xtkWorkflow, nmsDelivery, etc.
+   * @return {string} the corresponding schema id, i.e. xtk:workflow, nms:delivery, etc.
+   */
+  static schemaIdFromNamespace(namespace) {
+    var schemaId = "";
+    for (var i=0; i<namespace.length; i++) {
+        const c = namespace[i];
+        if (c >='A' && c<='Z') {
+            schemaId = schemaId + ":" + c.toLowerCase() + namespace.substr(i+1);
+            break;
+        }
+        schemaId = schemaId + c;
+    }
+    return schemaId;
+  }
 }
 
 /**

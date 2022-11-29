@@ -37,6 +37,15 @@ describe('Util', function() {
         expect(Util.isArray([ 1 ])).toBe(true);
     });
 
+    describe("util.schemaIdFromNamespace", () => {
+        it("Should should extract schema id for simple namespaces", () => {
+            expect(Util.schemaIdFromNamespace("")).toBe("");
+            expect(Util.schemaIdFromNamespace("nmsRecipient")).toBe("nms:recipient");
+            expect(Util.schemaIdFromNamespace("000Recipient")).toBe("000:recipient");
+            expect(Util.schemaIdFromNamespace("Recipient")).toBe(":recipient");
+        });
+    });
+
     describe("Util.trim", () => {
         it("Should remove trailing spaces", () => {
             expect(Util.trim("Hello   \n \r \t ")).toBe("Hello");
