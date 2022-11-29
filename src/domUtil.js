@@ -386,6 +386,7 @@ class DomUtil {
     static _getTextIfTextNode(xml) {
         const child = xml.firstChild;
         if (!child) return null;                   // no children
+        if (xml.hasAttributes()) return null;      // no attributes
         if (child.nextSibling) return null;        // more than 1 child
         if (child.nodeType !== 3 && child.nodeType !== 4) return null;
         const text = child.nodeValue;
@@ -400,29 +401,37 @@ class DomUtil {
      * @param {Element} xml the DOM element to convert to JSON
      * @param {Object} json the object literal to write to
      * @param {string} flavor the JSON flavor: "SimpleJson" or "BadgerFish"
+     * @param {Object} parentJson parent JSON node during recursion. Is undefined for first call
+     * @param {boolean} forceTextAs is set during recursion (SimpleJson format) to force serialization of text nodes using "$: value" syntax 
+     *                  instead of "$name: value" syntax. This is necessary to process collections and arrays of elements which only 
+     *                  contain text nodes.
      */
-    static _toJSON(xml, json, flavor) {
-        if (xml.hasAttributes()) {
-            var attributes = xml.attributes;
-            for (var i=0; i<attributes.length; i++) {
-                var att = attributes[i];
-                var attName = (flavor == "BadgerFish" ? "@" : "") + att.name;
-                json[attName] = att.value;
-            }
-        }
+    static _toJSON(xml, json, flavor, parentJson, forceTextAs$) {
 
         // Heuristic to determine if element is an object or an array
         const isCollection = xml.tagName.length > 11 && xml.tagName.substr(xml.tagName.length-11) == '-collection';
 
+        // Figure out which elements are arrays. Keep a count of elements for each tag name.
+        // When count >1 we consider this tag name to be an array
+        var hasChildElements = false; // Will be set if there is at least one child element
+        const countByTag = {};
         var child = xml.firstChild;
         while (child) {
-            var childName = child.nodeName;
-            if (isCollection && (json[childName] === null || json[childName] === undefined))
-                json[childName] = [ ];
-            var isArray = !!json[childName];
-            if (isArray && !Util.isArray(json[childName]))
-                json[childName] = [ json[childName] ];
-            if (child.nodeType == 1) {  // element
+            if (child.nodeType == 1) {
+                const childName = child.nodeName;
+                if (countByTag[childName] === undefined) countByTag[childName] = 1;
+                else countByTag[childName] = countByTag[childName] + 1;
+                hasChildElements = true;
+            }
+            child = child.nextSibling;
+        }
+        
+        child = xml.firstChild;
+        while (child) {
+            if (child.nodeType == 1) {
+                const childName = child.nodeName;
+                const isArray = isCollection || countByTag[childName] > 1;
+                if (isArray && !json[childName]) json[childName] = [];
                 // In SimpleJson representation, ensure we have proper transformation
                 // of text and CDATA nodes. For instance, the following
                 //  <workflow><desc>Hello</desc></workflow>
@@ -434,12 +443,12 @@ class DomUtil {
                 // from the schema, we cannot know if <desc></desc> should be
                 // transformed into "$desc": "" or into "desc": {}
                 const text = this._getTextIfTextNode(child);
-                if (text !== null && flavor == "SimpleJson") {
+                if (!isArray && text !== null && flavor == "SimpleJson") {
                     json[`$${childName}`] = text;
                 }
                 else {
                     const jsonChild = flavor == "BadgerFish" ? new BadgerFishObject() : {};
-                    this._toJSON(child, jsonChild, flavor);
+                    this._toJSON(child, jsonChild, flavor, json, isArray);
                     if (isArray) 
                         json[childName].push(jsonChild);
                     else
@@ -456,6 +465,46 @@ class DomUtil {
                 }
             }
             child = child.nextSibling;
+        }
+
+        // Proceed with text nodes in SimpleJson format. 
+        if (flavor === "SimpleJson") {
+            var text = "";
+            child = xml.firstChild;
+            while (child) {
+                if (child.nodeType === 3) { // text 
+                    var nodeText = child.nodeValue;
+                    // Whitespace trimming rule: always trim for the root node, and trim for non-root nodes
+                    // which actually have children elements
+                    // Never trim CDATA nodes (nodeType 4)
+                    if (!parentJson || hasChildElements)
+                        nodeText = nodeText.trim(); 
+                    if (nodeText) text = text + nodeText;
+                }    
+                else if (child.nodeType === 4) { // CDATA    
+                    const cdataText = child.nodeValue;
+                    if (cdataText) text = text + cdataText;
+                }    
+                child = child.nextSibling;
+            }
+            if (text) {
+                json.$ = text;
+            }
+        }
+
+        // Finally proceed with attributes. They are processed last so that we get a chance to prefix
+        // the attribute name with "@" in SimpleJson format if there's already an element with the
+        // same name
+        if (xml.hasAttributes()) {
+            const attributes = xml.attributes;
+            for (var i=0; i<attributes.length; i++) {
+                const att = attributes[i];
+                var attName = (flavor == "BadgerFish" ? "@" : "") + att.name;
+                if (json[attName] !== undefined && flavor === "SimpleJson")
+                    // There's already an element with the same name as the attribute
+                    attName = "@" + attName;
+                json[attName] = att.value;
+            }
         }
     }
 

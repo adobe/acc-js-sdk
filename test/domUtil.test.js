@@ -144,17 +144,19 @@ describe('DomUtil', function() {
             return DomUtil.toXMLString(xml);
         }
 
-        assert.strictEqual(fromJSON({}), '<root/>');
-        assert.strictEqual(fromJSON({ "a":2, "b":"zz", "c": true }), '<root a="2" b="zz" c="true"/>');
-        assert.strictEqual(fromJSON({ "a":{ x:3 } }), '<root><a x="3"/></root>');
-        assert.strictEqual(fromJSON({ "$": "Hello" }), '<root>Hello</root>');
-        assert.strictEqual(fromJSON({ "$a": "Hello" }), '<root><a>Hello</a></root>');
-        assert.strictEqual(fromJSON({ a: { "$": "Hello" } }), '<root><a>Hello</a></root>');
-        assert.strictEqual(fromJSON({ a: "World", "$a": "Hello" }), '<root a="World"><a>Hello</a></root>');
-        assert.strictEqual(fromJSON({ "a": [ { "i":1 }, { "i": 2 } ] }), '<root><a i="1"/><a i="2"/></root>');
-        assert.strictEqual(fromJSON({ "a": [ ] }), '<root/>');
-        assert.strictEqual(fromJSON({ "a": null }), '<root/>');
-        assert.strictEqual(fromJSON({ "a": undefined }), '<root/>');
+        it("Should convert from JSON to XML", () => {
+            assert.strictEqual(fromJSON({}), '<root/>');
+            assert.strictEqual(fromJSON({ "a":2, "b":"zz", "c": true }), '<root a="2" b="zz" c="true"/>');
+            assert.strictEqual(fromJSON({ "a":{ x:3 } }), '<root><a x="3"/></root>');
+            assert.strictEqual(fromJSON({ "$": "Hello" }), '<root>Hello</root>');
+            assert.strictEqual(fromJSON({ "$a": "Hello" }), '<root><a>Hello</a></root>');
+            assert.strictEqual(fromJSON({ a: { "$": "Hello" } }), '<root><a>Hello</a></root>');
+            assert.strictEqual(fromJSON({ a: "World", "$a": "Hello" }), '<root a="World"><a>Hello</a></root>');
+            assert.strictEqual(fromJSON({ "a": [ { "i":1 }, { "i": 2 } ] }), '<root><a i="1"/><a i="2"/></root>');
+            assert.strictEqual(fromJSON({ "a": [ ] }), '<root/>');
+            assert.strictEqual(fromJSON({ "a": null }), '<root/>');
+            assert.strictEqual(fromJSON({ "a": undefined }), '<root/>');
+        });
     });
 
     describe('fromJSON (default)', function() {
@@ -164,17 +166,37 @@ describe('DomUtil', function() {
             return DomUtil.toXMLString(xml);
         }
 
-        assert.strictEqual(fromJSON({}), '<root/>');
-        assert.strictEqual(fromJSON({ "a":2, "b":"zz", "c": true }), '<root a="2" b="zz" c="true"/>');
-        assert.strictEqual(fromJSON({ "a":{ x:3 } }), '<root><a x="3"/></root>');
-        assert.strictEqual(fromJSON({ "$": "Hello" }), '<root>Hello</root>');
-        assert.strictEqual(fromJSON({ "$a": "Hello" }), '<root><a>Hello</a></root>');
-        assert.strictEqual(fromJSON({ a: { "$": "Hello" } }), '<root><a>Hello</a></root>');
-        assert.strictEqual(fromJSON({ a: "World", "$a": "Hello" }), '<root a="World"><a>Hello</a></root>');
-        assert.strictEqual(fromJSON({ "a": [ { "i":1 }, { "i": 2 } ] }), '<root><a i="1"/><a i="2"/></root>');
-        assert.strictEqual(fromJSON({ "a": [ ] }), '<root/>');
-        assert.strictEqual(fromJSON({ "a": null }), '<root/>');
-        assert.strictEqual(fromJSON({ "a": undefined }), '<root/>');
+        it("Should convert from JSON to XML", () => {
+            assert.strictEqual(fromJSON({}), '<root/>');
+            assert.strictEqual(fromJSON({ "a":2, "b":"zz", "c": true }), '<root a="2" b="zz" c="true"/>');
+            assert.strictEqual(fromJSON({ "a":{ x:3 } }), '<root><a x="3"/></root>');
+            assert.strictEqual(fromJSON({ "$": "Hello" }), '<root>Hello</root>');
+            assert.strictEqual(fromJSON({ "$a": "Hello" }), '<root><a>Hello</a></root>');
+            assert.strictEqual(fromJSON({ a: { "$": "Hello" } }), '<root><a>Hello</a></root>');
+            assert.strictEqual(fromJSON({ a: "World", "$a": "Hello" }), '<root a="World"><a>Hello</a></root>');
+            assert.strictEqual(fromJSON({ "a": [ { "i":1 }, { "i": 2 } ] }), '<root><a i="1"/><a i="2"/></root>');
+            assert.strictEqual(fromJSON({ "a": [ ] }), '<root/>');
+            assert.strictEqual(fromJSON({ "a": null }), '<root/>');
+            assert.strictEqual(fromJSON({ "a": undefined }), '<root/>');
+        });
+    });
+
+    describe('fromJSON (advanced)', function() {
+        function fromJSON(json) {
+            var xml = DomUtil.fromJSON("root", json);
+            return DomUtil.toXMLString(xml);
+        }
+
+        it("Should handle fixes made in version 1.1.3", () => {
+            expect(fromJSON({ $: "Hello" })).toBe("<root>Hello</root>");
+            expect(fromJSON({ "$delivery": "Hello" })).toBe("<root><delivery>Hello</delivery></root>");
+            expect(fromJSON({ "delivery": { $: "Hello" } })).toBe("<root><delivery>Hello</delivery></root>");
+            //expect(fromJSON({ "$delivery": "World", "delivery": { $: "Hello" } })).toBe("<root><delivery>Hello</delivery></root>");
+            expect(fromJSON({delivery: { "transaction": "0", "$": "0" }})).toBe('<root><delivery transaction="0">0</delivery></root>');            
+            expect(fromJSON({delivery: { "$": "Hello", child: { name: "world" } }})).toBe('<root><delivery>Hello<child name="world"/></delivery></root>');
+            expect(fromJSON({delivery: { "$": "Hello", child: { name: "world" } }})).toBe('<root><delivery>Hello<child name="world"/></delivery></root>');
+            expect(fromJSON({ delivery: { $: "HelloWorld", child:{} } })).toBe('<root><delivery>HelloWorld<child/></delivery></root>');
+        });
     });
 
     describe('toJSON (SimpleJson)', function() {
@@ -185,20 +207,21 @@ describe('DomUtil', function() {
             return json;
         }
 
-        assert.deepStrictEqual(toJSON('<root/>'), {});
-        assert.deepStrictEqual(toJSON('<root a="1"/>'), { a:"1" });
-        assert.deepStrictEqual(toJSON('<root a="1" b="2"/>'), { a:"1", b:"2" });
-        assert.deepStrictEqual(toJSON('<root><a/></root>'), { a:{} });
-        assert.deepStrictEqual(toJSON('<root><a/><a/></root>'), { a:[{},{}] });
+        it("Should convert XML to SimpleJSON", () => {
+            assert.deepStrictEqual(toJSON('<root/>'), {});
+            assert.deepStrictEqual(toJSON('<root a="1"/>'), { a:"1" });
+            assert.deepStrictEqual(toJSON('<root a="1" b="2"/>'), { a:"1", b:"2" });
+            assert.deepStrictEqual(toJSON('<root><a/></root>'), { a:{} });
+            assert.deepStrictEqual(toJSON('<root><a/><a/></root>'), { a:[{},{}] });
+        });
     });
 
     describe('fromJSON (invalid flavor)', function() {
-        try {
-            DomUtil.fromJSON("root", {}, "InvalidFlavor");
-            assert.fail("Should have failed");
-        } catch(ex) {
-            assert.ok(true);
-        }
+        it("Should fail", () => {
+            expect(() => {
+                DomUtil.fromJSON("root", {}, "InvalidFlavor");
+            }).toThrow();
+        });
     });
 
     describe('toJson (errors)', function() {
@@ -217,6 +240,233 @@ describe('DomUtil', function() {
         
     });
     
+    describe('toJson (SimpleJson, advanced)', function() {
+        function toJSON(xml) {
+            xml = DomUtil.parse(xml);
+            var json = DomUtil.toJSON(xml, "SimpleJson");
+            return json;
+        }
+
+        it("Should handle elements containing both text and other elements", () => {
+            expect(toJSON('<root>Hello</root>')).toEqual({ $: "Hello" });
+            expect(toJSON('<ctx><delivery>Hello</delivery></ctx>')).toEqual({ "$delivery": "Hello" });
+            expect(toJSON('<delivery transaction="0">0</delivery>')).toEqual({ "transaction": "0", "$": "0" });
+            expect(toJSON('<ctx><delivery transaction="0">0</delivery></ctx>')).toEqual({delivery: { "transaction": "0", "$": "0" }});
+            expect(toJSON('<ctx><delivery>Hello<child name="world"/></delivery></ctx>')).toEqual({delivery: { "$": "Hello", child: { name: "world" } }});
+            expect(toJSON('<ctx><delivery><child name="world"/>Hello</delivery></ctx>')).toEqual({delivery: { "$": "Hello", child: { name: "world" } }});
+            expect(toJSON('<root><delivery>Hello<child/>World</delivery></root>')).toEqual({ delivery: { $: "HelloWorld", child:{} } });
+        });
+
+        describe("Should handle insignificant whitespaces", () => {
+            it("Should not remove whitespace for element which does not have any children", () => {
+                expect(toJSON('<root><delivery> \nHello </delivery></root>')).toEqual({ $delivery: " \nHello " });
+            });
+            it("Should remove whitespace for root element even if it does not have any children. Because in SimpleJson we consider that root always has children", () => {
+                expect(toJSON('<root>\n</root>')).toEqual({ });
+                expect(toJSON('<root> \nHello </root>')).toEqual({ $: "Hello" });
+                expect(toJSON('<root> \nHello <delivery/></root>')).toEqual({ $: "Hello", delivery: {} });
+                expect(toJSON('<root> \nHello<delivery/> </root>')).toEqual({ $: "Hello", delivery: {} });
+            });
+            it("Should never remove whitespace in the middle of text", () => {
+                expect(toJSON('<root>Hello World</root>')).toEqual({ $: "Hello World" });
+                expect(toJSON('<root><delivery>Hello World</delivery></root>')).toEqual({ $delivery: "Hello World" });
+                expect(toJSON('<root><delivery>   Hello World </delivery></root>')).toEqual({ $delivery: "   Hello World " });
+                expect(toJSON('<root><delivery>   Hello <child/>World </delivery></root>')).toEqual({ delivery: { $: "HelloWorld", child:{} } });
+                expect(toJSON('<root><delivery>   Hello Cruel W<child/>orld </delivery></root>')).toEqual({ delivery: { $: "Hello Cruel World", child:{} } });
+            });
+
+            it("Should remove insignificant spaces", () => {
+                expect(toJSON('<ctx>\n  <delivery>\n    <target x="2"/>\n  </delivery>\n</ctx>')).toEqual({delivery: { target: { x:"2"} }});    
+            });
+
+            it("Should handle collections", () => {
+                expect(toJSON('<test-collection>\n  <test a="1"></test>\n</test-collection>')).toEqual({test: [ { a:"1" }] });
+                expect(toJSON('<test-collection>\n  <test a="1"></test>\n  <test a="2"></test>\n</test-collection>')).toEqual({test: [ { a:"1" }, { a:"2" }] });
+            });
+
+            it("Should handle collections of text elements", () => {
+                expect(toJSON('<test-collection>\n  <test>One</test>\n</test-collection>')).toEqual({test: [ { $:"One" }] });
+                expect(toJSON('<test-collection>\n  <test>One</test>\n  <test>Two</test>\n</test-collection>')).toEqual({test: [ { $:"One" }, { $:"Two" }] });
+                expect(toJSON('<array>\n  <test>One</test>\n  <test>Two</test>\n</array>')).toEqual({test: [ { $:"One" }, { $:"Two" }] });
+            });
+
+            it("Should never remove whitespaces of CDATA nodes", () => {
+                expect(toJSON('<root><![CDATA[]]></root>')).toEqual({});
+                expect(toJSON('<root><![CDATA[ Hello\tWorld\n  ]]></root>')).toEqual({ $: " Hello\tWorld\n  "});
+                expect(toJSON('<root><![CDATA[ Hello\t]]><![CDATA[World\n  ]]></root>')).toEqual({ $: " Hello\tWorld\n  "});
+            });
+
+            it("Should not handle whitespaces if element containing text has only attributes", () => {
+                // Whitespaces are always removed for the root node
+                expect(toJSON('<delivery transaction="0"> Hello World </delivery>')).toEqual({ "transaction": "0", "$": "Hello World" });
+                // But not for child nodes
+                expect(toJSON('<root><delivery transaction="0"> Hello World </delivery></root>')).toEqual({ delivery: { "transaction": "0", "$": " Hello World " } });
+            });
+        });
+
+        describe("Real payloads", () => {
+            it("Should convert report data payload", () => {
+                const xml = `<ctx lang="en" date="2022-11-18T08:04:06Z" _target="web" webApp-id="1583" _context="selection" _reportContext="deliverySending" _schema="nms:delivery" _hasFilter="false" _selection="12133" _folderModel="nmsDelivery" _folderLinkId="@folder-id" _folderLink="folder" activityHist="@r2rp0BOIZulQ3PcAaXVCr+9of9KxMPqM4MWmTTydhh4/qMVzTGmcRevNzHnoPS0WHvHKH084KIWom6NaVlzR1vCXv47bq3m/dfT3j7MQDSyDwb0rPU/4rD08CeDN3xqR6GazBmh+Lmz+ugo85WCwAaCDUYEJtG/EcqCOO0G+PRtjHlrNOhSrDSxanl4pxonQ4DhDTejA5VjSopu7pvV8U32e5k+fFuk/vvaOMHUP2Zk+VNuMnEytIExnbstFDepeSRDEMuIgmHWuENglhtcdfH3suIcibmqFyBF6Xupcqp2LlicJFFkXHXuM2LgUC7BTGsqMsN4HhNSs6NzW8ZhMPA==">
+                <userInfo datakitInDatabase="true" homeDir="" instanceLocale="en-US" locale="en-US" login="internal" loginCS="Internal account" loginId="0" noConsoleCnx="false" orgUnitId="0" theme="" timezone="Europe/Paris" xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ns="urn:xtk:session" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"/>
+                <timezone current="Europe/Paris" changed="false"/>
+                <_contextFilter>
+                  <where>
+                    <condition enabledIf="$(@_context) = 'selection' and $(@_hasFilter) = false" expr="@id = $noescaping(@_selection)"/>
+                    <condition enabledIf="$(@_context) = 'selection' and $(@_hasFilter) and $(@_locationName) != 'descriptiveAnalysis'" expr="@id" setOperator="IN" subQuery="$(whereCond)"/>
+                  </where>
+                </_contextFilter>
+                <activityHistory>
+                  <activity name="page" type="page"/>
+                  <activity name="query2" type="query"/>
+                  <activity name="script2" type="script"/>
+                  <activity name="query" type="query"/>
+                  <activity name="start" type="start"/>
+                </activityHistory>
+                <data>
+                  <query>
+                    <delivery amount="0" article="0" contactDate="" error="0" estimatedRecipientOpen="0" estimatedTotalRecipientOpen="0" forward="0" label="" mirrorPage="0" newQuarantine="0" optOut="0" personClick="0" recipientClick="0" reject="0" success="0" toDeliver="0" totalRecipientClick="0" totalTarget="0" totalWebPage="0" transaction="0">0</delivery>
+                  </query>
+                </data>
+                <vars>
+                  <operator>0</operator>
+                </vars>
+                <title>Delivery:</title>
+                <query2/>
+                <chart_page_123722795831>
+                  <data>&lt;data/&gt;</data>
+                  <config>&lt;graphConfig accumulate="false" autoScale="true" autoStretch="true" computePercent="false" displayEmptySamples="false" filledOpacity="50" innerPieRadius="0" perspective="true" renderType="pie" reverseSeries="false" reverseStacking="false" showLabels="0" sortMode="2" zoomOnWheel="true"&gt;&lt;onclick action="url" enabledWhenHistory="false" target="_blank"/&gt;&lt;legend layout="right" visible="true"/&gt;&lt;series aggregate="sum" label="" renderGroup="layered" xpath="/dlvExclusion" xpathIndex="@label" xpathValue="@count"/&gt;&lt;/graphConfig&gt;</config>
+                </chart_page_123722795831>
+              </ctx>`;
+                expect(toJSON(xml)).toEqual(
+                    {
+                        userInfo: {
+                          datakitInDatabase: "true",
+                          homeDir: "",
+                          instanceLocale: "en-US",
+                          locale: "en-US",
+                          login: "internal",
+                          loginCS: "Internal account",
+                          loginId: "0",
+                          noConsoleCnx: "false",
+                          orgUnitId: "0",
+                          theme: "",
+                          timezone: "Europe/Paris",
+                          "xmlns:SOAP-ENV": "http://schemas.xmlsoap.org/soap/envelope/",
+                          "xmlns:ns": "urn:xtk:session",
+                          "xmlns:xsd": "http://www.w3.org/2001/XMLSchema",
+                          "xmlns:xsi": "http://www.w3.org/2001/XMLSchema-instance",
+                        },
+                        timezone: {
+                          current: "Europe/Paris",
+                          changed: "false",
+                        },
+                        _contextFilter: {
+                          where: {
+                            condition: [
+                              {
+                                enabledIf: "$(@_context) = 'selection' and $(@_hasFilter) = false",
+                                expr: "@id = $noescaping(@_selection)",
+                              },
+                              {
+                                enabledIf: "$(@_context) = 'selection' and $(@_hasFilter) and $(@_locationName) != 'descriptiveAnalysis'",
+                                expr: "@id",
+                                setOperator: "IN",
+                                subQuery: "$(whereCond)",
+                              },
+                            ],
+                          },
+                        },
+                        activityHistory: {
+                          activity: [
+                            {
+                              name: "page",
+                              type: "page",
+                            },
+                            {
+                              name: "query2",
+                              type: "query",
+                            },
+                            {
+                              name: "script2",
+                              type: "script",
+                            },
+                            {
+                              name: "query",
+                              type: "query",
+                            },
+                            {
+                              name: "start",
+                              type: "start",
+                            },
+                          ],
+                        },
+                        data: {
+                          query: {
+                            delivery: {
+                              $: "0",
+                              amount: "0",
+                              article: "0",
+                              contactDate: "",
+                              error: "0",
+                              estimatedRecipientOpen: "0",
+                              estimatedTotalRecipientOpen: "0",
+                              forward: "0",
+                              label: "",
+                              mirrorPage: "0",
+                              newQuarantine: "0",
+                              optOut: "0",
+                              personClick: "0",
+                              recipientClick: "0",
+                              reject: "0",
+                              success: "0",
+                              toDeliver: "0",
+                              totalRecipientClick: "0",
+                              totalTarget: "0",
+                              totalWebPage: "0",
+                              transaction: "0",
+                            },
+                          },
+                        },
+                        vars: {
+                          $operator: "0",
+                        },
+                        $title: "Delivery:",
+                        query2: {
+                        },
+                        chart_page_123722795831: {
+                          $data: "<data/>",
+                          $config: "<graphConfig accumulate=\"false\" autoScale=\"true\" autoStretch=\"true\" computePercent=\"false\" displayEmptySamples=\"false\" filledOpacity=\"50\" innerPieRadius=\"0\" perspective=\"true\" renderType=\"pie\" reverseSeries=\"false\" reverseStacking=\"false\" showLabels=\"0\" sortMode=\"2\" zoomOnWheel=\"true\"><onclick action=\"url\" enabledWhenHistory=\"false\" target=\"_blank\"/><legend layout=\"right\" visible=\"true\"/><series aggregate=\"sum\" label=\"\" renderGroup=\"layered\" xpath=\"/dlvExclusion\" xpathIndex=\"@label\" xpathValue=\"@count\"/></graphConfig>",
+                        },
+                        lang: "en",
+                        date: "2022-11-18T08:04:06Z",
+                        _target: "web",
+                        "webApp-id": "1583",
+                        _context: "selection",
+                        _reportContext: "deliverySending",
+                        _schema: "nms:delivery",
+                        _hasFilter: "false",
+                        _selection: "12133",
+                        _folderModel: "nmsDelivery",
+                        _folderLinkId: "@folder-id",
+                        _folderLink: "folder",
+                        activityHist: "@r2rp0BOIZulQ3PcAaXVCr+9of9KxMPqM4MWmTTydhh4/qMVzTGmcRevNzHnoPS0WHvHKH084KIWom6NaVlzR1vCXv47bq3m/dfT3j7MQDSyDwb0rPU/4rD08CeDN3xqR6GazBmh+Lmz+ugo85WCwAaCDUYEJtG/EcqCOO0G+PRtjHlrNOhSrDSxanl4pxonQ4DhDTejA5VjSopu7pvV8U32e5k+fFuk/vvaOMHUP2Zk+VNuMnEytIExnbstFDepeSRDEMuIgmHWuENglhtcdfH3suIcibmqFyBF6Xupcqp2LlicJFFkXHXuM2LgUC7BTGsqMsN4HhNSs6NzW8ZhMPA==",
+                      }
+                );
+            });
+        });
+
+        it("Should support attribute and element with same name", () => {
+            expect(toJSON('<ctx lang="en" timezone="Europe/Paris"><timezone current="Europe/Paris" changed="false"/></ctx>')).toEqual({
+                lang: "en",
+                "@timezone": "Europe/Paris",
+                "timezone": {
+                    current: "Europe/Paris",
+                    changed: "false",
+                }
+            });
+        });
+
+    });
 
     describe('toXMLString', function() {
 

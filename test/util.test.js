@@ -111,7 +111,6 @@ describe('Util', function() {
         })
     })
 
-
     describe("Safe storage", () => {
       it("Should support undefined delegate", () => {
           const storage = new SafeStorage();

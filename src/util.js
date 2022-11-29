@@ -55,7 +55,7 @@ class Util {
     // JavaScript arrays are objects
     if (typeof obj != "object") return false;
     // They also have a length property. But checking the length is not enough
-    // since, it can also be an object litteral with a "length" property. Campaign
+    // since, it can also be an object literal with a "length" property. Campaign
     // schema attributes typically have a "length" attribute and are not arrays
     if (obj.length === undefined || obj.length === null) return false;
     // So check for a "push" function

@@ -37,6 +37,7 @@ const Application = require('./application.js').Application;
 const EntityAccessor = require('./entityAccessor.js').EntityAccessor;
 const { Util } = require('./util.js');
 const { XtkJobInterface } = require('./xtkJob.js');
+const qsStringify = require('qs-stringify');
 
 /**
  * @namespace Campaign
@@ -54,6 +55,9 @@ const { XtkJobInterface } = require('./xtkJob.js');
  * @memberOf Campaign
  *
  * @typedef {Object} Observer
+ * @memberOf Campaign
+ *
+ * @typedef {Object} ReportContext
  * @memberOf Campaign
 */
 
@@ -534,16 +538,14 @@ const fileUploader = (client) => {
                     }
                     const data = new FormData();
                     data.append('file_noMd5', file);
-                    //TODO: Needs to be refactored after cookie issue get resolved.
                     client._makeHttpCall({
                         url: `${client._connectionParameters._endpoint}/nl/jsp/uploadFile.jsp`,
                         processData: false,
-                        credentials: 'include',
                         method: 'POST',
-                        body: data,
+                        data: data,
                         headers: {
-                            'x-security-token': client._securityToken,
-                            'Cookie': '__sessiontoken=' + client._sessionToken,
+                            'X-Security-Token': client._securityToken,
+                            'X-Session-Token': client._sessionToken,
                         }
                     }).then((okay) => {
                         if (!okay.startsWith('Ok')) {
@@ -1479,6 +1481,13 @@ class Client {
         // Lookup the method to call
         var method = that._methodCache.get(methodSchemaId, methodName);
         if (!method) {
+            // first char of the method name may be lower case (ex: nms:seedMember.getAsModel) but the methodName 
+            // variable has been capitalized. Make an attempt to lookup method name without capitalisation
+            const methodNameLC = methodName.substring(0, 1).toLowerCase() + methodName.substring(1);
+            method = that._methodCache.get(schemaId, methodNameLC);
+            if (method) methodName = methodNameLC;
+        }
+        if (!method) {
             this._methodCache.put(schema);
             method = that._methodCache.get(methodSchemaId, methodName);
         }
@@ -1769,6 +1778,45 @@ class Client {
         }
         const result = this._toRepresentation(doc);
         return result;
+    }
+
+    /**
+     * This is the exposed/public method to request context data for a specific report.
+     * @param {*} callContext: {reportName: string, schema: string, context: string, selection: string, formData: any}
+     * @param {string} representation the expected representation ('xml', 'BadgerFish', or 'SimpleJson'). If not set, will use the current representation
+     *
+     * @returns {Campaign.ReportContext} an object containing the context data for a specific report
+     */
+    async getReportData(callContext, representation) {
+        try {
+            if(callContext.formData && callContext.formData.ctx) {
+                var xmlCtx = this._fromRepresentation('ctx', callContext.formData.ctx);
+                callContext.formData.ctx = DomUtil.toXMLString(xmlCtx);
+            }
+            const selectionCount = callContext.selection.split(',').length;
+
+            const request = {
+                url: `${this._connectionParameters._endpoint}/report/${callContext.reportName}?${encodeURI(`_noRender=true&_schema=${callContext.schema}&_context=${callContext.context}&_selection=${callContext.selection}`)}&_selectionCount=${selectionCount}`,
+                headers: {
+                    'X-Security-Token': this._securityToken,
+                    'X-Session-Token': this._sessionToken,
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                method: 'POST',
+                data : qsStringify(callContext.formData)
+            };
+            
+            for (let h in this._connectionParameters._options.extraHttpHeaders)
+                request.headers[h] = this._connectionParameters._options.extraHttpHeaders[h];
+            const body = await this._makeHttpCall(request);
+            if(!body.startsWith("<ctx"))
+                throw CampaignException.FEATURE_NOT_SUPPORTED("Reports Data");
+            const xml = DomUtil.parse(body);
+            const result = this._toRepresentation(xml, representation);
+            return result;
+        } catch(ex) {
+             throw CampaignException.REPORT_FETCH_FAILED(callContext.reportName, ex);
+        }
     }
 
     /**
