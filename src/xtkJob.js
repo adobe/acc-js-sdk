@@ -184,7 +184,7 @@ class XtkJobInterface {
 
     /**
      * Poll the status of a job previous sumbitted with Execute, Submit, or SubmitSoapCall. The status is made of 3 objects: the status code,
-     * logs, and job properties. Job Properties are arbitrary key value pairs set by the job, but also contains progress informtion.
+     * logs, and job properties. Job Properties are arbitrary key value pairs set by the job, but also contains progress information.
      * This call will fetch the most recent status and logs and aggregate it with previously fetched statuses
      * @param {number|undefined} lastLogId the log id fetch logs from. If unspecified, this function will return the next batch of logs. If set to 0, will return logs from the beginning
      * @param {number|undefined} maxLogCount the max number of logs to fetch. Defaults to 100
