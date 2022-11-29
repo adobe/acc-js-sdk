@@ -264,7 +264,7 @@ class XtkJobInterface {
             rawLog.iRc = XtkCaster.asLong(rawLog.iRc);
             rawLog.logDate = XtkCaster.asDatetime(rawLog.logDate);
             rawLog.logType = XtkCaster.asLong(rawLog.logType);
-            rawLog.message = message
+            rawLog.message = message;
             rawLog.object = XtkCaster.asString(rawLog.object);
             rawLog.errorCode = errorCode;
             logs.push(rawLog);
