@@ -207,7 +207,7 @@ governing permissions and limitations under the License.
     //      <node expr="struct"><node expr="@count"/></node>
     // The @count attribute must be interpreted in the "struct" node. For this to work, _inferExprNode
     // must return an XtkSchemaNode when processing the "struct" node
-    async _inferExprNode(root, expr) {
+    async _inferExprNode(root, startPath, expr, allowCustomInferrer) {
       if (!expr) return [undefined, undefined];
 
       // Compute string
@@ -215,13 +215,13 @@ governing permissions and limitations under the License.
         return [ undefined, { type: "string" } ];
 
       // Custom expression type inferer
-      if (this._options && this._options.exprTypeInferer) {
-        return await this._options.exprTypeInferer(root, expr);
+      if (allowCustomInferrer && this._options && this._options.exprTypeInferer) {
+        const inferedNode = await this._options.exprTypeInferer(root, startPath, expr);
+        return [ undefined, inferedNode ];
       }
 
       // If the expression is xpath then look it up
-      //const xpath = this._client.sdk.unexpandXPath(expr);
-      const node = await root.findNode(expr);
+      const node = await root.findNode(startPath + expr);
       if (node) {
         return [ node, { type: node.type } ];
       }
@@ -250,13 +250,7 @@ governing permissions and limitations under the License.
       for (var i = 0; i<elements.length; i++) {
         const e = elements[i];
         const isLast = i === (elements.length - 1);
-        if (!parent) break;
         if (e.isSelf()) continue;
-        if (e.isParent()) {
-          parent = parent.parent;
-          continue;
-        }
-        var child = parent.children[e.name()];
         if (e.isAttribute()) {
           const newChild = { node: node, parent: parent };
           parent.children[e.name()] = newChild;
@@ -264,6 +258,7 @@ governing permissions and limitations under the License.
           break;
         }
         else {
+          var child = parent.children[e.name()];
           if (!child)
             child = parent.children[e.name()] = { children: [], parent: parent };
           if (isLast)
@@ -278,11 +273,16 @@ governing permissions and limitations under the License.
     // @param {*} targetRoot is the intermediate node to fill up
     // @param {*} node is the query node to process
     // @param {Campaign.XtkSchemaNode} sourceRoot is the start schema node in which to interpret xpaths
-    async _buildSchema(targetRoot, node, sourceRoot) {
+    async _buildSchema(targetRoot, node, sourceRoot, startPath) {
       const expr = node.expr;
-      const [xtkNode, inferedNode] = await this._inferExprNode(sourceRoot, expr);
+
+      // if query node has children query nodes, then te expression of the query node must be a xpath which
+      // corresponds to the start node which will be used to evaluate children query nodes
+      const allowCustomInferrer = !node.node;
+
+      const [xtkNode, inferedNode] = await this._inferExprNode(sourceRoot, startPath, expr, allowCustomInferrer);
       const alias = node.alias || expr;
-      const newNode = this._createNode(targetRoot, alias, inferedNode);
+      /*const newNode = */this._createNode(targetRoot, alias, inferedNode);
       // Analyze attribute adds 2 schema attributes with -Name and -Label suffixes
       if (node.analyze) {
         this._createNode(targetRoot, `${alias}Name`, { type: "string" });
@@ -291,8 +291,9 @@ governing permissions and limitations under the License.
       // Nested nodes ?
       if (node.node) {
         const children = XtkCaster.asArray(node.node);
+        let newStartPath = xtkNode.nodePath.substring(1) + "/"; // remove starting "/" and add ending "/"
         for (const child of children) {
-          await this._buildSchema(newNode, child, xtkNode || schema.root);
+          await this._buildSchema(targetRoot, child, sourceRoot, newStartPath);
         }
       }
     }
@@ -330,13 +331,15 @@ governing permissions and limitations under the License.
             if (item.children) {
               recurse(eElem, item);
             }
+            else {
+              var x = 0;
+            }
           }
         }
       };
-      recurse(eRoot, root);
+      if (root && root.children) recurse(eRoot, root);
 
       return new newSchema(eSchema, this._client.application);
-
     }
 
     /**
@@ -350,7 +353,7 @@ governing permissions and limitations under the License.
       const targetRoot = { children: {} };
       const nodes = XtkCaster.asArray(this._queryDef.select.node);
       for (const node of nodes) {
-        await this._buildSchema(targetRoot, node, schema.root);
+        await this._buildSchema(targetRoot, node, schema.root, "");
       }
       return this._convertToSchema(targetRoot);
     }

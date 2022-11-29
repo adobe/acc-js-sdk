@@ -10,6 +10,7 @@ OF ANY KIND, either express or implied. See the License for the specific languag
 governing permissions and limitations under the License.
 */
 const Mock = require('./mock.js').Mock;
+const { DomUtil } = require('../src/domUtil.js');
 const { EntityCaster, QueryDefSchemaInferer } = require('../src/entityCaster.js');
 
 /**********************************************************************************
@@ -56,6 +57,8 @@ const { EntityCaster, QueryDefSchemaInferer } = require('../src/entityCaster.js'
                                     <attribute name="name" type="string"/>
                                 </element>
                             </element>
+
+                            <element name="sourceId" type="long"/>
 
                             <element name="country" type="link" target="xtk:country"/>
                         </element>
@@ -144,20 +147,25 @@ describe('EntityCaster', function() {
             await client.NLWS.xtkSession.logon();
             client._transport.mockReturnValueOnce(Mock.GET_MISSING_SCHEMA_RESPONSE);
             const caster = new EntityCaster(client, "xtk:entityCaster", { enabled: true });
-            await expect(caster.cast({ id: "123" })).rejects.toMatchObject({ errorCode: "SDK-000014", faultString: "Unknown schema 'xtk:entityCaster'" });
+            await expect(caster.cast({ id: "123" })).rejects.toMatchObject({ errorCode: "SDK-000016", faultString: "Unknown schema 'xtk:entityCaster'" });
             client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
             await client.NLWS.xtkSession.logoff();
         });
 
         describe("addEmptyArrays option", () => {
-
             it("Should add empty arrays on root element", async () => {
                 const options = { enabled: true, addEmptyArrays: true };
                 await expect(cast({}, options)).resolves.toEqual({ coll:[] });
             });
+
             it("Should add empty arrays in child element", async () => {
                 const options = { enabled: true, addEmptyArrays: true };
                 await expect(cast({ book: {} }, options)).resolves.toEqual({ coll:[], book: { chapter:[] } });
+            });
+
+            it("Should support falsy entities", async () => {
+                const options = { enabled: true, addEmptyArrays: true };
+                await expect(cast(undefined, options)).resolves.toBeUndefined();
             });
         });
 
@@ -165,10 +173,44 @@ describe('EntityCaster', function() {
             it("Should cast linked entities", async () => {
                 const hook = async (client, caster) => {
                     client._transport.mockReturnValueOnce(GET_XTK_ENTITYCASTER_COUNTRY_SCHEMA_RESPONSE);
-                    await client.getSchema("xtk:country", "xml");         
+                    return await client.getSchema("xtk:country", "xml");
                 };
                 await expect(cast({ id: "123", country: { id: "4", name: "France" } }, undefined, hook)).resolves.toEqual({ id: 123, country: { id: 4, name: "France" } });
             });
+
+            it("Should support links with not found target", async () => {
+                const hook = async (client, caster) => {
+                    client._transport.mockReturnValueOnce(Mock.GET_MISSING_SCHEMA_RESPONSE);
+                    return await client.application.getSchema("xtk:country");
+                };
+                // The "country" link is not found => this part of the entity will not be casted
+                await expect(cast({ id: "123", country: { id: "4", name: "France" } }, undefined, hook)).resolves.toEqual({ id: 123, country: { id: "4", name: "France" } });
+            });
+        });
+
+        it("Should ignore falsy schema", async () => {
+            const client = await Mock.makeClient();
+            var caster = new EntityCaster(client, undefined, { enabled: true });
+            var result = await caster.cast({ id: "42" });
+            expect(result).toMatchObject({ id: "42" });
+            var caster = new EntityCaster(client, null, { enabled: true });
+            var result = await caster.cast({ id: "42" });
+            expect(result).toMatchObject({ id: "42" });
+        });
+
+        it("Should support preloaded schema", async () => {
+            const client = await Mock.makeClient();
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+            client._transport.mockReturnValueOnce(GET_XTK_ENTITYCASTER_SCHEMA_RESPONSE);
+            const schema = await client.application.getSchema("xtk:entityCaster");   // preload schema
+            const caster = new EntityCaster(client, schema, { enabled: true });
+            
+            const result = await caster.cast({ id: "123" });
+            expect(result).toEqual({ id: 123 }); 
+
+            client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
+            await client.NLWS.xtkSession.logoff();
         });
     });
 
@@ -193,6 +235,21 @@ describe('EntityCaster', function() {
             return schema;
         };
 
+        it("Should handle invalid schemas", async () => {
+            const client = await Mock.makeClient();
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+            client._transport.mockReturnValueOnce(Mock.GET_MISSING_SCHEMA_RESPONSE);
+            const queryDef = {
+                schema: "xtk:entityCaster",
+                operation: "get",
+                select: { node: { expr: "@id" } },
+                where: { condition: [ { expr:`@internalName='DM19'` } ] }
+              };
+            const infer = new QueryDefSchemaInferer(client, queryDef);
+            await expect(infer.getSchema()).rejects.toMatchObject({ errorCode: "SDK-000016" });
+        });
+
         describe("Create nodes on the fly", () => {
 
             it("Should create attributes", () => {
@@ -203,6 +260,28 @@ describe('EntityCaster', function() {
                 infer._createNode(root, "@internalName", { type:"string", length: 64 });
                 expect(root.children).toMatchObject({ "@id": { node:{type:"long"} }, "@internalName": { node:{type:"string",length:64} } });
             });
+
+            it("Should support self elements in xpath", () => {
+                const infer = new QueryDefSchemaInferer();
+                const root = { children:{} };
+                infer._createNode(root, "./@id", { type:"long" });
+                expect(root.children).toMatchObject({ "@id": { node:{type:"long"} } });
+            });
+
+            it("Should create nested nodes", () => {
+                const infer = new QueryDefSchemaInferer();
+                const root = { children:{} };
+                infer._createNode(root, "a/b/c/@id", { type:"long" });
+                expect(root.children.a.children.b.children.c.children).toMatchObject({ "@id": { node:{type:"long"} } });
+            });
+
+            it("Should add multiple times with same child", () => {
+                const infer = new QueryDefSchemaInferer();
+                const root = { children:{} };
+                infer._createNode(root, "a/@id", { type:"long" });
+                infer._createNode(root, "a/@two", { type:"boolean" });
+                expect(root.children.a.children).toMatchObject({ "@id": { node:{type:"long"} }, "@two": { node:{type:"boolean"} } });
+            });
         });
 
         describe("Build Schema", () => {
@@ -210,6 +289,11 @@ describe('EntityCaster', function() {
             it("Should support query with a single node created as an object and not as an array", async () => {
                 const schema = await inferQueryDefSchema( { expr: "@id" } );
                 await expect(schema.root.findNode("@id")).resolves.toMatchObject({ name:"@id", type:"long" });
+            });
+
+            it("Should support missing expressions", async () => {
+                const schema = await inferQueryDefSchema( { expr: undefined } );
+                await expect(schema.root.childrenCount).toBe(0);
             });
 
             it("Should support query with multiple attributes", async () => {
@@ -244,7 +328,8 @@ describe('EntityCaster', function() {
 
             it("Should support nested query nodes", async () => {
                 const schema = await inferQueryDefSchema([ { expr:"struct", node: { expr:"@count" } } ]);
-                await expect(schema.root.findNode("struct/@count")).resolves.toMatchObject({ name:"@count", type:"long" });
+                await expect(schema.root.findNode("@count")).resolves.toMatchObject({ name:"@count", type:"long" });
+                await expect(schema.root.findNode("struct/@count")).resolves.toBeUndefined();
             });
 
             it("Should support analyze attribute", async () => {
@@ -265,6 +350,67 @@ describe('EntityCaster', function() {
             // TODO: a nod which ontain just a link name (ex: "delivery")
         });
 
+        describe("Support for aliases", () => {
+            it("Should support top-level aliases for top-level attributes", async () => {
+                const schema = await inferQueryDefSchema( { expr: "@id", alias: "@hello" } );
+                await expect(schema.root.findNode("@hello")).resolves.toMatchObject({ name:"@hello", type:"long" });
+                await expect(schema.root.findNode("hello")).resolves.toBeUndefined();
+                await expect(schema.root.findNode("@id")).resolves.toBeUndefined();
+            });
+
+            it("Should support top-level aliases for top-level attributes to an entity type", async () => {
+                const schema = await inferQueryDefSchema( { expr: "@id", alias: "hello" } );
+                await expect(schema.root.findNode("hello")).resolves.toMatchObject({ name:"hello", type:"long" });
+                await expect(schema.root.findNode("@hello")).resolves.toBeUndefined();
+                await expect(schema.root.findNode("@id")).resolves.toBeUndefined();
+            });
+
+            it("Should support top-level aliases for top-level elements (string type)", async () => {
+                const schema = await inferQueryDefSchema( { expr: "textOnly", alias: "hello" } );
+                await expect(schema.root.findNode("hello")).resolves.toMatchObject({ name:"hello", type:"string" });
+                await expect(schema.root.findNode("@hello")).resolves.toBeUndefined();
+                await expect(schema.root.findNode("@id")).resolves.toBeUndefined();
+                await expect(schema.root.findNode("@textOnly")).resolves.toBeUndefined();
+            });
+
+            it("Should support top-level aliases for top-level elements (long type)", async () => {
+                const schema = await inferQueryDefSchema( { expr: "sourceId", alias: "hello" } );
+                await expect(schema.root.findNode("hello")).resolves.toMatchObject({ name:"hello", type:"long" });
+                await expect(schema.root.findNode("@hello")).resolves.toBeUndefined();
+                await expect(schema.root.findNode("@id")).resolves.toBeUndefined();
+                await expect(schema.root.findNode("@sourceId")).resolves.toBeUndefined();
+            });
+
+            it("Should support top-level aliases for top-level elements to attributes (long type)", async () => {
+                const schema = await inferQueryDefSchema( { expr: "sourceId", alias: "@hello" } );
+                await expect(schema.root.findNode("@hello")).resolves.toMatchObject({ name:"@hello", type:"long" });
+                await expect(schema.root.findNode("hello")).resolves.toBeUndefined();
+                await expect(schema.root.findNode("@id")).resolves.toBeUndefined();
+                await expect(schema.root.findNode("@sourceId")).resolves.toBeUndefined();
+                await expect(schema.root.findNode("sourceId")).resolves.toBeUndefined();
+            });
+
+            it("Should support aliases for nested xpaths", async () => {
+                var schema = await inferQueryDefSchema( { expr: "struct", node: { expr: "@count", alias: "@count" } });
+                await expect(schema.root.findNode("@count")).resolves.toMatchObject({ name:"@count", type:"long" });
+                await expect(schema.root.findNode("struct/@count")).resolves.toBeUndefined();
+            });
+
+            it("Should support aliases for nested nodes", async () => {
+                var schema = await inferQueryDefSchema( { expr: "[struct/@count]", alias: "@count" } );
+                await expect(schema.root.findNode("@count")).resolves.toMatchObject({ name:"@count", type:"long" });
+                await expect(schema.root.findNode("struct/@count")).resolves.toBeUndefined();
+            });
+
+            it("Should create nested elements for nested aliases", async () => {
+                var schema = await inferQueryDefSchema( { expr: "[struct/@count]", alias: "hello/@count" } );
+                await expect(schema.root.findNode("struct/@count")).resolves.toBeUndefined();
+                await expect(schema.root.findNode("@count")).resolves.toBeUndefined();
+                await expect(schema.root.findNode("hello/@count")).resolves.toMatchObject({ name:"@count", type:"long" });
+            });
+
+        });
+
         describe("Custom type inferer", () => {
             it("Should use custom type inferer", async () => {
                 // No inferer
@@ -272,11 +418,50 @@ describe('EntityCaster', function() {
                 await expect(schema.root.findNode("@id")).resolves.toBeUndefined();
                 // Custom inferer
                 const options = { exprTypeInferer: jest.fn() };
-                options.exprTypeInferer.mockReturnValue(Promise.resolve([ undefined, { type: "long" } ]));
+                options.exprTypeInferer.mockReturnValueOnce(Promise.resolve({ type: "long" }));
                 var schema = await inferQueryDefSchema( { expr: "lower(@id)", alias: "@id" }, options);
                 await expect(schema.root.findNode("@id")).resolves.toMatchObject({ name:"@id", type:"long" });
                 expect(options.exprTypeInferer.mock.calls.length).toBe(1);
-                //expect(options.exprTypeInferer.mock.calls[0]).toEqual([ "", "lower(@id)" ]);
+                expect(options.exprTypeInferer.mock.calls[0].length).toBe(3);
+                expect(options.exprTypeInferer.mock.calls[0][0]).toMatchObject({ name:"entityCaster", isRoot:true }); // this is a temp XtkSchemaNode
+                expect(options.exprTypeInferer.mock.calls[0][1]).toBe(""); // no start path
+                expect(options.exprTypeInferer.mock.calls[0][2]).toBe("lower(@id)");
+            });
+        });
+
+        describe("Convert intermediate representation to schema", () => {
+            const convert = async (root) => {
+                const client = await Mock.makeClient();
+                client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+                await client.NLWS.xtkSession.logon();
+                client._transport.mockReturnValueOnce(GET_XTK_ENTITYCASTER_SCHEMA_RESPONSE);
+                await client.application.getSchema("xtk:entityCaster");
+                const queryDef = {
+                    schema: "xtk:entityCaster",
+                    operation: "get",
+                    select: { node: { expr: "@id" } },
+                    where: { condition: [ { expr:`@internalName='DM19'` } ] }
+                  };
+                const infer = new QueryDefSchemaInferer(client, queryDef, { enabled: true });
+                const schema = infer._convertToSchema(root);
+
+                client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
+                await client.NLWS.xtkSession.logoff();
+                return schema;
+            };
+
+            it("Should support undefined root", async () => {
+                var schema = await convert();
+                expect(schema.root.childrenCount).toBe(0);
+                schema = await convert(null);
+                expect(schema.root.childrenCount).toBe(0);
+                schema = await convert({});
+                expect(schema.root.childrenCount).toBe(0);
+            });
+
+            it("Should convert attributes", async () => {
+                const schema = await convert({ children: { "@id":  { node: { type:"boolean" }} } });
+                expect(schema.root.children).toMatchObject({ "d": 3 });
             });
         });
     });
