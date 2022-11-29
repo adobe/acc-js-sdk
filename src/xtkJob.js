@@ -1,7 +1,3 @@
-const { CampaignException } = require("./campaign");
-const { DomUtil } = require("./domUtil");
-const { XtkCaster } = require("./xtkCaster");
-
 /*
 Copyright 2022 Adobe. All rights reserved.
 This file is licensed to you under the Apache License, Version 2.0 (the "License");
@@ -16,6 +12,9 @@ governing permissions and limitations under the License.
 (function() {
 "use strict";
 
+const { CampaignException } = require("./campaign.js");
+const { DomUtil } = require("./domUtil.js");
+const { XtkCaster } = require("./xtkCaster.js");
 
 /**
  * @namespace Campaign
@@ -173,7 +172,7 @@ class XtkJobInterface {
         var jobId = await callContext.client._callMethod("SubmitSoapCall", callContext, [ {
             name: this._soapCall.method,
             service: this._soapCall.xtkschema,
-            param: [
+            param: [
                 { name:"this", type:"DOMDocument", value: this._soapCall.object },
                 { name:"bStart", type:"boolean", value:"false" },
             ]

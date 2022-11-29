@@ -31,6 +31,7 @@ var resources = [
     { name: "./transport.js" },
     { name: "./xtkCaster.js" },
     { name: "./domUtil.js" },
+    { name: "./xtkJob.js" },
     { name: "./cache.js" },
     { name: "./entityAccessor.js" },
     { name: "./xtkEntityCache.js" },
