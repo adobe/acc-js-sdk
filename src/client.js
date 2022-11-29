@@ -1486,7 +1486,7 @@ class Client {
             throw CampaignException.SOAP_UNKNOWN_METHOD(schemaId, methodName, `Method '${methodName}' of schema '${schemaId}' not found`);
 
         // Compute the SOAP URN. Again, specically handle xtk:jobInterface as it's not a real schema. The actual entity schema
-        // would be available as the entitySchemaId proprtey of the callContext
+        // would be available as the entitySchemaId property of the callContext
         var urn = schemaId !== 'xtk:jobInterface'
             ? that._methodCache.getSoapUrn(schemaId, methodName)
             : `xtk:jobInterface|${entitySchemaId}`;
