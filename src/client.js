@@ -1829,7 +1829,7 @@ class Client {
     }
 
     /**
-     * Creates a Job object which can be used to submit jobs, retreive status, logs and progress, etc.
+     * Creates a Job object which can be used to submit jobs, retrieve status, logs and progress, etc.
      * @param {Campaign.XtkSoapCallSpec} soapCallSpec the definition of the SOAP call
      * @returns {Campaign.XtkJobInterface} a job
      */
