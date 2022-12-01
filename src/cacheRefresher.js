@@ -146,7 +146,7 @@ governing permissions and limitations under the License.
         // Get last modified entities for the Campaign server and remove from cache last modified entities
         async _callAndRefresh() {
             const that = this;
-            const soapCall = this._client._prepareSoapCall("xtk:session", "GetModifiedEntities", true, this._connectionParameters._options.extraHttpHeaders);
+            const soapCall = this._client._prepareSoapCall("xtk:session", "GetModifiedEntities", true, true, this._connectionParameters._options.extraHttpHeaders);
 
             if (this._lastTime === undefined) {
                 const storedTime = this._refresherStateCache.get("time");
@@ -191,6 +191,7 @@ governing permissions and limitations under the License.
 
             // Do a soap call GetModifiedEntities instead of xtksession.GetModifiedEnties because we don't want to go through methodCache 
             // which might not contain the method GetModifiedEntities just after a build updgrade from a old version of acc 
+            // This is an internal SOAP call that cannot be intercepted by observers onBeforeCall / onAfterCall
             return this._client._makeSoapCall(soapCall)
                 .then(() => {
                     let doc = soapCall.getNextDocument();

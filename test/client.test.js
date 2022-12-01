@@ -842,6 +842,18 @@ describe('ACC Client', function () {
             await client.NLWS.xtkSession.logoff();
         });
 
+        it("Should fail if method parameter inout attribute is not correct", async () => {
+            const client = await Mock.makeClient();
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+
+            client._transport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
+            await expect(client.NLWS.xtkSession.badParam()).rejects.toMatchObject({ errorCode: "SDK-000006" });
+
+            client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
+            await client.NLWS.xtkSession.logoff();
+        });
+
         it("Should fail if calling non static function without object", async () => {
             const client = await Mock.makeClient();
             client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);

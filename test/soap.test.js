@@ -734,7 +734,7 @@ describe('SOAP', function() {
             const client = await sdk.init(connectionParameters);
             client._transport = jest.fn();
             expect(client._connectionParameters._options.charset).toBe('UTF-8');
-            const soapCall = client._prepareSoapCall("xtk:persist", "GetEntityIfMoreRecent", true);
+            const soapCall = client._prepareSoapCall("xtk:persist", "GetEntityIfMoreRecent", true, true);
             expect (soapCall._charset).toBe('UTF-8');
             const [ request ] = soapCall._createHTTPRequest(URL);
             assert.equal(request.headers["Content-type"], "application/soap+xml;charset=UTF-8");
@@ -745,7 +745,7 @@ describe('SOAP', function() {
             const client = await sdk.init(connectionParameters);
             client._transport = jest.fn();
             expect(client._connectionParameters._options.charset).toBe('');
-            const soapCall = client._prepareSoapCall("xtk:persist", "GetEntityIfMoreRecent", true);
+            const soapCall = client._prepareSoapCall("xtk:persist", "GetEntityIfMoreRecent", true, true);
             expect (soapCall._charset).toBe('');
             const [ request ] = soapCall._createHTTPRequest(URL);
             assert.equal(request.headers["Content-type"], "application/soap+xml");
@@ -756,7 +756,7 @@ describe('SOAP', function() {
             const client = await sdk.init(connectionParameters);
             client._transport = jest.fn();
             expect(client._connectionParameters._options.charset).toBe('ISO-8859-1');
-            const soapCall = client._prepareSoapCall("xtk:persist", "GetEntityIfMoreRecent", true);
+            const soapCall = client._prepareSoapCall("xtk:persist", "GetEntityIfMoreRecent", true, true);
             expect (soapCall._charset).toBe('ISO-8859-1');
             const [ request ] = soapCall._createHTTPRequest(URL);
             assert.equal(request.headers["Content-type"], "application/soap+xml;charset=ISO-8859-1");
