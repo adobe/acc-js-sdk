@@ -613,7 +613,7 @@ class SoapMethodCall {
             this._method.prepend(sessionTokenElem);
         }
         const noMethodInURL = !!this._pushDownOptions.noMethodInURL;
-        const actualUrl = noMethodInURL ? url : `${url}?${this.urn}:${this.methodName}`;
+        const actualUrl = noMethodInURL ? url : `${url}?soapAction=${encodeURIComponent(this.urn + "#" + this.methodName)}`;
 
         // Prepare request and empty response objects
         [this.request, this.requestOptions] = this._createHTTPRequest(actualUrl);
