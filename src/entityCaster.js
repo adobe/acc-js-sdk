@@ -75,7 +75,7 @@ governing permissions and limitations under the License.
       // We were given a schema id, let's lookup the schema
       if (typeof schema === "string") {
         const schemaId = schema;
-        schema = await this._client.application.getSchema(schema);
+        schema = await this._client.application.getSchema(schema);  // TODO: should use internal flag (3 more occurrences)
         if (!schema) 
           throw CampaignException.UNKNOWN_SHEMA(schemaId);
       }
@@ -84,6 +84,158 @@ governing permissions and limitations under the License.
       if (this._options && this._options.addEmptyArrays)
         await this._addEmptyArrays(entity, schema.root);
       return result;
+    }
+
+    /**
+     * Transforms an XML entity to a JSON object, using a schema to guide the transformation
+     * Attributes or elements outside of the schema will be transformed, assuming the default SimpleJson rules
+     */
+    async toJSON(xml) {
+      if (xml === null || xml === undefined) return xml;
+      // If no schema is specified or if otpions says casting is disable, then use
+      // the default SimpleJson rules
+      var schema = this._schema;
+      if (!schema || !this._options || !this._options.enabled) 
+        return DomUtil.toJSON(xml, "SimpleJson");
+
+      // We were given a schema id, let's lookup the schema
+      if (typeof schema === "string") {
+        const schemaId = schema;
+        schema = await this._client.application.getSchema(schema);
+        if (!schema) 
+          throw CampaignException.UNKNOWN_SHEMA(schemaId);
+      }
+
+      if (xml.nodeType == 9)
+        xml = xml.documentElement;
+      const json = { };
+      await this._toJSON(xml, json, schema.root);
+      
+      if (this._options && this._options.addEmptyArrays)
+      await this._addEmptyArrays(json, schema.root);
+
+      return json;
+    }
+
+    async _toJSON(xml, json, nodeDef, parentJson, forceTextAs$) {
+
+        // Heuristic to determine if element is an object or an array
+        const isCollection = (nodeDef && nodeDef.unbound) || (xml.tagName.length > 11 && xml.tagName.substr(xml.tagName.length-11) == '-collection');
+        
+        // Figure out which elements are arrays. Keep a count of elements for each tag name.
+        // When count >1 we consider this tag name to be an array
+        var hasChildElements = false; // Will be set if there is at least one child element
+        const countByTag = {};
+        var child = xml.firstChild;
+        while (child) {
+            if (child.nodeType == 1) {
+                const childName = child.nodeName;
+                if (countByTag[childName] === undefined) countByTag[childName] = 1;
+                else countByTag[childName] = countByTag[childName] + 1;
+                hasChildElements = true;
+            }
+            child = child.nextSibling;
+        }
+
+        const isXmlAnyLocalizableWithChildren = nodeDef && nodeDef.type === "ANY" && nodeDef.localizable && nodeDef.childrenCount > 0;
+        
+        child = xml.firstChild;
+        while (child && !isXmlAnyLocalizableWithChildren) {
+            if (child.nodeType == 1) {
+                const childName = child.nodeName;
+                var isArray = isCollection || countByTag[childName] > 1;
+
+                const elNodeDef = nodeDef ? nodeDef.children[childName] : undefined;
+                if (elNodeDef && elNodeDef.unbound) isArray = true;
+                const isCDATA = elNodeDef && elNodeDef.isCDATA;
+                const isHTML = elNodeDef && elNodeDef.type === "html";
+                const isAnyLocalizable = elNodeDef && elNodeDef.type === "ANY" && elNodeDef.localizable;
+
+                // Does the ANY schema has child attributes (or elements), just like the <static> element in form has
+                const isAnyLocalizableWithChildren = isAnyLocalizable && elNodeDef.childrenCount > 0;
+
+                if (isArray && !json[childName]) json[childName] = [];
+
+                // In SimpleJson representation, ensure we have proper transformation
+                // of text and CDATA nodes. For instance, the following
+                //  <workflow><desc>Hello</desc></workflow>
+                // should be transformed into { "$desc": "Hello" }
+                // Note that an empty element such as
+                //  <workflow><desc></desc></workflow>
+                // will be transformed into { "desc": {} }
+                // because there is an ambiguity and, unless we have information
+                // from the schema, we cannot know if <desc></desc> should be
+                // transformed into "$desc": "" or into "desc": {}
+                let text = DomUtil._getTextIfTextNode(child);
+                if (!isArray && (text !== null || isCDATA || isHTML || isAnyLocalizable) && !isAnyLocalizableWithChildren) {
+                    if (elNodeDef && elNodeDef.type)
+                        text = XtkCaster.as(text, !isAnyLocalizable ? elNodeDef.type : "string");
+                    json[`$${childName}`] = text;
+                }
+                else {
+                    const jsonChild = {};
+                    await this._toJSON(child, jsonChild, elNodeDef, json, isArray);
+                    if (isArray) 
+                        json[childName].push(jsonChild);
+                    else
+                        json[childName] = jsonChild;
+                }
+            }
+            child = child.nextSibling;
+        }
+
+        // Proceed with text nodes in SimpleJson format. 
+        if (isXmlAnyLocalizableWithChildren) {
+          const text = DomUtil.innerHTML(xml);
+          json.$ = text;
+        }
+        else {
+          var text = "";
+          child = xml.firstChild;
+          while (child) {
+              if (child.nodeType === 3) { // text 
+                  var nodeText = child.nodeValue;
+                  // Whitespace trimming rule: always trim for the root node, and trim for non-root nodes
+                  // which actually have children elements
+                  // Never trim CDATA nodes (nodeType 4)
+                  if (!parentJson || hasChildElements)
+                      nodeText = nodeText.trim(); 
+                  if (nodeText) text = text + nodeText;
+              }    
+              else if (child.nodeType === 4) { // CDATA    
+                  const cdataText = child.nodeValue;
+                  if (cdataText) text = text + cdataText;
+              }    
+              child = child.nextSibling;
+          }
+          if (text) {
+              json.$ = text;
+          }
+        }
+
+        // Finally proceed with attributes. They are processed last so that we get a chance to prefix
+        // the attribute name with "@" in SimpleJson format if there's already an element with the
+        // same name
+        if (xml.hasAttributes()) {
+            const attributes = xml.attributes;
+            for (var i=0; i<attributes.length; i++) {
+                const att = attributes[i];
+                var attName = att.name;
+                var attValue = att.value;
+
+                var prependAtChar = json[attName] !== undefined; // There's already an element with the same name as the attribute
+                const attNodeDef = nodeDef ? nodeDef.children[`@${attName}`] : undefined;
+                if (attNodeDef) {
+                  attValue = XtkCaster.as(attValue, attNodeDef.type);
+                  // preppend @ char if element and att exist with same name in schema
+                  prependAtChar = prependAtChar || nodeDef.children[attName];
+                }
+
+                if (prependAtChar)
+                    attName = "@" + attName;
+                json[attName] = attValue;
+            }
+        }
     }
 
     // Adds empty array after an entity has been casted
@@ -302,12 +454,17 @@ governing permissions and limitations under the License.
     // an actual XtkSchemaNode hierarchy
     // @param {*} root - the root of the intermediate node tree
     // @returns {Promise<XtkSchema>} - the resulting schema
-    async _convertToSchema(root) {
-      const doc = DomUtil.parse('<schema name="query" namespace="temp"></schema>');
+    async _convertToSchema(schemaName, unbound, root) {
+      const doc = DomUtil.parse(`<schema name="query" namespace="temp"></schema>`);
       const eSchema = doc.documentElement;
       const eRoot = doc.createElement("element");
       eRoot.setAttribute("name", "query");
       eSchema.appendChild(eRoot);
+
+      const eEntity = doc.createElement("element");
+      eEntity.setAttribute("name", schemaName);
+      eEntity.setAttribute("unbound", unbound ? "true": "false");
+      eRoot.appendChild(eEntity);
 
       const recurse = (eRoot, root) => {
         const keys = Object.keys(root.children);
@@ -331,13 +488,10 @@ governing permissions and limitations under the License.
             if (item.children) {
               recurse(eElem, item);
             }
-            else {
-              var x = 0;
-            }
           }
         }
       };
-      if (root && root.children) recurse(eRoot, root);
+      if (root && root.children) recurse(eEntity, root);
 
       return new newSchema(eSchema, this._client.application);
     }
@@ -350,12 +504,15 @@ governing permissions and limitations under the License.
       const schema = await this._client.application.getSchema(this._queryDef.schema);
       if (!schema) 
         throw CampaignException.UNKNOWN_SHEMA(this._queryDef.schema);
-      const targetRoot = { children: {} };
+      //const entityNode = { children: {}, unbound: this._queryDef.operation === "select" };
+      //const schemaName = schema.name;
+      const targetRoot = { children: { } };
       const nodes = XtkCaster.asArray(this._queryDef.select.node);
       for (const node of nodes) {
         await this._buildSchema(targetRoot, node, schema.root, "");
       }
-      return this._convertToSchema(targetRoot);
+      const result = await this._convertToSchema(schema.name, this._queryDef.operation === "select", targetRoot);
+      return result;
     }
   }
 

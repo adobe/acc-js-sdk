@@ -38,6 +38,8 @@ async function makeAnonymousClient(options) {
 }
 
 async function makeClient(options) {
+  options = options || {};
+  options.entityCasterOptions = { enabled: true };
   const connectionParameters = sdk.ConnectionParameters.ofUserAndPassword("http://acc-sdk:8080", "admin", "admin", options);
   const client = await sdk.init(connectionParameters);
   if (!options || !options.transport) // allow tests to explicitely set the transport
@@ -446,7 +448,9 @@ const GET_NMS_EXTACCOUNT_SCHEMA_RESPONSE = Promise.resolve(`<?xml version='1.0'?
                         <value name="none" value="0"/>
                         <value name="ssl" value="1"/>
                     </enumeration>
-                    <element name="extAccount"></element>
+                    <element name="extAccount">
+                        <attribute name="id" type="long"/>
+                    </element>
                 </schema>
             </pdomDoc>
         </GetEntityIfMoreRecentResponse>

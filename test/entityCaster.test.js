@@ -43,6 +43,9 @@ const { EntityCaster, QueryDefSchemaInferer } = require('../src/entityCaster.js'
                             <element name="struct">
                                 <attribute name="count" type="long"/>
                                 <attribute name="created" type="datetime"/>
+                                <element name="child">
+                                    <attribute name="enabled" type="boolean"/>
+                                </element>
                             </element>
 
                             <!-- unbound collection directly in the root node -->
@@ -55,10 +58,24 @@ const { EntityCaster, QueryDefSchemaInferer } = require('../src/entityCaster.js'
                                 <element name="chapter" unbound="true">
                                     <attribute name="idx" type="long"/>
                                     <attribute name="name" type="string"/>
+                                    <element name="notes">
+                                        <element name="idx" type="long"/>
+                                        <element name="note" type="string" unbound="true"/>
+                                    </element>
                                 </element>
                             </element>
 
                             <element name="sourceId" type="long"/>
+
+                            <element name="cdata" type="CDATA"/>
+                            <element name="html" type="html"/>
+                            <element name="anyLocalizable" type="ANY" localizable="true"/>
+                            <element name="any" type="ANY"/>
+
+                            <element name="static" localizable="true" type="ANY">
+                                <attribute name="style" type="string"/>
+                                <attribute name="width" type="short"/>
+                            </element> 
 
                             <element name="country" type="link" target="xtk:country"/>
                         </element>
@@ -214,6 +231,76 @@ describe('EntityCaster', function() {
         });
     });
 
+    describe("XML to JSON with Schema help", () => {
+    
+        async function toJSON(xml, options, beforeCastHook) {
+            xml = DomUtil.parse(xml);
+
+            const client = await Mock.makeClient();
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+            client._transport.mockReturnValueOnce(GET_XTK_ENTITYCASTER_SCHEMA_RESPONSE);
+            const schema = await client.getSchema("xtk:entityCaster", "xml");   // preload schema
+            if (options === undefined) options = { enabled: true };
+            const caster = new EntityCaster(client, "xtk:entityCaster", options);
+            if (beforeCastHook) {
+                await beforeCastHook(client, caster);
+            }
+            const result = await caster.toJSON(xml);
+            client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
+            await client.NLWS.xtkSession.logoff();
+            return result;
+        }
+
+        it("Should convert XML to SimpleJSON", async () => {
+            await expect(toJSON('<root/>')).resolves.toEqual({});
+            await expect(toJSON('<root id="1"/>')).resolves.toEqual({ id:1 });
+            await expect(toJSON('<root id="1" b="2"/>')).resolves.toEqual({ id:1, b:"2" });
+            await expect(toJSON('<root><coll count="1"/></root>')).resolves.toEqual({ coll:[ { count: 1 }] });
+            await expect(toJSON('<root><coll count="1"/><coll/></root>')).resolves.toEqual({ coll:[{ count:1 },{}] });
+            await expect(toJSON('<root>Hello</root>')).resolves.toEqual({ $: "Hello" });
+            await expect(toJSON('<root><textOnly>Hello</textOnly></root>')).resolves.toEqual({ $textOnly: "Hello" });
+            await expect(toJSON('<root><sourceId>-123</sourceId></root>')).resolves.toEqual({ $sourceId: -123 });
+            await expect(toJSON('<ctx><delivery>Hello</delivery></ctx>')).resolves.toEqual({ "$delivery": "Hello" });
+            await expect(toJSON('<delivery transaction="0">0</delivery>')).resolves.toEqual({ "transaction": "0", "$": "0" });
+            await expect(toJSON('<delivery attAndElem="42"><attAndElem>777</attAndElem></delivery>')).resolves.toEqual({ "@attAndElem": 42, "$attAndElem": "777" });
+            await expect(toJSON('<ctx><struct>Hello<child enabled="true"/></struct></ctx>')).resolves.toEqual({struct: { "$": "Hello", child: { enabled: true } }});
+            await expect(toJSON('<ctx><struct><child enabled="true"/>Hello</struct></ctx>')).resolves.toEqual({struct: { "$": "Hello", child: { enabled: true } }});
+            await expect(toJSON('<ctx><struct>Hello<child enabled="true"/>World</struct></ctx>')).resolves.toEqual({struct: { "$": "HelloWorld", child: { enabled: true } }});
+            await expect(toJSON('<root><book><chapter><notes><idx>4</idx><note></note></notes></chapter></book></root>')).resolves.toEqual({ book: { chapter: [ { notes: { $idx: 4, note: [{}] } } ] } });
+        });
+
+        it("Should support CDATA elements", async () => {
+            await expect(toJSON('<root><cdata></cdata></root>')).resolves.toEqual({ $cdata: "" });
+            await expect(toJSON('<root><cdata>Hello</cdata></root>')).resolves.toEqual({ $cdata: "Hello" });
+            await expect(toJSON('<root><cdata> Hello </cdata></root>')).resolves.toEqual({ $cdata: " Hello " });
+            await expect(toJSON('<root><cdata><![CDATA[Hello]]></cdata></root>')).resolves.toEqual({ $cdata: "Hello" });
+            await expect(toJSON('<root><cdata><![CDATA[ Hello ]]></cdata></root>')).resolves.toEqual({ $cdata: " Hello " });
+        });
+
+        it("Should support html elements", async () => {
+            await expect(toJSON('<root><html></html></root>')).resolves.toEqual({ $html: "" });
+            await expect(toJSON('<root><html>Hello</html></root>')).resolves.toEqual({ $html: "Hello" });
+            await expect(toJSON('<root><html> Hello </html></root>')).resolves.toEqual({ $html: " Hello " });
+            await expect(toJSON('<root><html><![CDATA[Hello]]></html></root>')).resolves.toEqual({ $html: "Hello" });
+            await expect(toJSON('<root><html><![CDATA[ Hello ]]></html></root>')).resolves.toEqual({ $html: " Hello " });
+            await expect(toJSON('<root><html>&lt;!DOCTYPE html&gt;\n&lt;html&gt;\n&lt;head&gt;\n&lt;/head&gt;\n&lt;body&gt;\n&lt;p&gt;Hello &lt;strong&gt;World&lt;/strong&gt;&lt;/p&gt;\n&lt;/body&gt;\n&lt;/html&gt;</html></root>')).resolves.toEqual({ $html: "<!DOCTYPE html>\n<html>\n<head>\n</head>\n<body>\n<p>Hello <strong>World</strong></p>\n</body>\n</html>" });
+        });
+
+        it("Should support ANY elements which are localizable (such as schema help)", async () => {
+            await expect(toJSON('<root><anyLocalizable></anyLocalizable></root>')).resolves.toEqual({ $anyLocalizable: "" });
+            await expect(toJSON('<root><anyLocalizable>Hello</anyLocalizable></root>')).resolves.toEqual({ $anyLocalizable: "Hello" });
+            await expect(toJSON('<root><anyLocalizable> Hello </anyLocalizable></root>')).resolves.toEqual({ $anyLocalizable: " Hello " });
+            await expect(toJSON('<root><anyLocalizable><![CDATA[Hello]]></anyLocalizable></root>')).resolves.toEqual({ $anyLocalizable: "Hello" });
+            await expect(toJSON('<root><anyLocalizable><![CDATA[ Hello ]]></anyLocalizable></root>')).resolves.toEqual({ $anyLocalizable: " Hello " });
+            await expect(toJSON('<root><static>Hello</static></root>')).resolves.toEqual({ static: { $:"Hello" } });
+            await expect(toJSON('<root><static></static></root>')).resolves.toEqual({ static: { $:"" } });
+            await expect(toJSON('<root><static>Hello <b>World</b></static></root>')).resolves.toEqual({ static: { $:"Hello <b>World</b>" } });
+            await expect(toJSON('<root><static width="3">Hello <b>World</b></static></root>')).resolves.toEqual({ static: { $:"Hello <b>World</b>", width: 3 } });
+        });
+
+    });
+    
     describe("Infer query schema", () => {
 
         const inferQueryDefSchema = async (nodes, options) => {
@@ -461,7 +548,66 @@ describe('EntityCaster', function() {
 
             it("Should convert attributes", async () => {
                 const schema = await convert({ children: { "@id":  { node: { type:"boolean" }} } });
-                expect(schema.root.children).toMatchObject({ "d": 3 });
+                expect(schema).toMatchObject({
+                    id: "temp:query", children: {
+                        query: {
+                            isRoot: true, name: "query",
+                            childrenCount: 1,
+                            children: {
+                                "@id": {
+                                    childrenCount: 0,
+                                    name: "@id", nodePath: "/@id", isAttribute: true, type: "boolean"
+                                }
+                            }
+                        }
+                    }
+                });
+            });
+
+            it("Should convert elements with value", async () => {
+                const schema = await convert({ children: { "text":  { node: { type:"string" }}, "number": {node:{type:"long"}} } });
+                expect(schema).toMatchObject({
+                    id: "temp:query", children: {
+                        query: {
+                            isRoot: true, name: "query",
+                            childrenCount: 2,
+                            children: {
+                                "text": {
+                                    childrenCount: 0,
+                                    name: "text", nodePath: "/text", isAttribute: false, type: "string"
+                                },
+                                "number": {
+                                    childrenCount: 0,
+                                    name: "number", nodePath: "/number", isAttribute: false, type: "long"
+                                }
+                            }
+                        }
+                    }
+                });
+            });
+
+            it("Should convert element only", async () => {
+                const schema = await convert({ children: { "el":  { children: { "child": {} }} } });
+                expect(schema).toMatchObject({
+                    id: "temp:query", children: {
+                        query: {
+                            isRoot: true, name: "query",
+                            childrenCount: 1,
+                            children: {
+                                "el": {
+                                    childrenCount: 1,
+                                    name: "el", nodePath: "/el", isAttribute: false, type: "",
+                                    children: {
+                                        "child": {
+                                            childrenCount: 0,
+                                            name: "child", nodePath: "/el/child", isAttribute: false, type: ""
+                                        },
+                                    }
+                                },
+                            }
+                        }
+                    }
+                });
             });
         });
     });

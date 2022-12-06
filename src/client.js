@@ -500,7 +500,7 @@ class ConnectionParameters {
             }
         };
         // Convert to current representation
-        queryDef = client._convertToRepresentation(queryDef, "SimpleJson");
+        queryDef = await client._convertToRepresentation(queryDef, "SimpleJson");
         const query = client.NLWS.xtkQueryDef.create(queryDef);
         const extAccount = await query.executeQuery();
 
@@ -729,9 +729,31 @@ class Client {
      * @private
      * @param {DOMElement} xml the XML DOM element to convert
      * @param {string} representation the expected representation ('xml', 'BadgerFish', or 'SimpleJson'). If not set, will use the current representation
+     * @param {string|XtkSchemaNode} schemaHint
      * @returns {XML.XtkObject} the object converted in the requested representation
      */
-    _toRepresentation(xml, representation) {
+    async _toRepresentation(xml, representation, schemaHint) {
+        representation = representation || this._representation;
+        if (representation == "SimpleJson") {
+            const caster = new EntityCaster(this, schemaHint, this._entityCasterOptions);
+            return await caster.toJSON(xml);
+        }
+        if (representation == "xml")
+            return xml;
+        if (representation == "BadgerFish")
+            return DomUtil.toJSON(xml, representation);
+        throw CampaignException.INVALID_REPRESENTATION(this._representation, "Cannot convert XML document to this representation");
+    }
+
+    /**
+     * Convert an XML object into a representation
+     *
+     * @private
+     * @param {DOMElement} xml the XML DOM element to convert
+     * @param {string} representation the expected representation ('xml', 'BadgerFish', or 'SimpleJson'). If not set, will use the current representation
+     * @returns {XML.XtkObject} the object converted in the requested representation
+     */
+    _toRepresentationSync(xml, representation) {
         representation = representation || this._representation;
         if (representation == "xml")
             return xml;
@@ -769,12 +791,12 @@ class Client {
      * @param {string} toRepresentation the target representation ('xml', 'BadgerFish', or 'SimpleJson'). If not set, will use the current representation
      * @returns {DOMElement} the converted object
      */
-    _convertToRepresentation(entity, fromRepresentation, toRepresentation) {
+    async _convertToRepresentation(entity, fromRepresentation, toRepresentation) {
         toRepresentation = toRepresentation || this._representation;
         if (this._isSameRepresentation(fromRepresentation, toRepresentation))
             return entity;
         var xml = this._fromRepresentation("root", entity, fromRepresentation);
-        entity = this._toRepresentation(xml, toRepresentation);
+        entity = await this._toRepresentation(xml, toRepresentation);
         return entity;
     }
 
@@ -1178,7 +1200,7 @@ class Client {
      */
     getSessionInfo(representation) {
         representation = representation || this._representation;
-        return this._toRepresentation(this._sessionInfo, representation);
+        return this._toRepresentationSync(this._sessionInfo, representation);
     }
 
     /**
@@ -1387,13 +1409,11 @@ class Client {
         soapCall.writeString("pk", entityType + "|" + fullName);
         soapCall.writeString("md5", "");
         soapCall.writeBoolean("mustExist", false);
-        return this._makeSoapCall(soapCall).then(function() {
-            var doc = soapCall.getNextDocument();
-            soapCall.checkNoMoreArgs();
-            doc = that._toRepresentation(doc, representation);
-            doc = that.adjust(doc, representation, entityType);
-            return doc;
-        });
+        await this._makeSoapCall(soapCall);
+        var doc = soapCall.getNextDocument();
+        soapCall.checkNoMoreArgs();
+        doc = await that._toRepresentation(doc, representation, entityType);
+        return doc;
     }
 
     /**
@@ -1408,7 +1428,14 @@ class Client {
         var entity = this._entityCache.get("xtk:schema", schemaId);
         if (!entity) {
           entity = await this.getEntityIfMoreRecent("xtk:schema", schemaId, "xml", internal);
-          if (entity) {
+          await this._cacheEntity(schemaId, entity);
+        }
+        entity = await this._toRepresentation(entity, representation, "xtk:schema");
+        return entity;
+    }
+
+    async _cacheEntity(schemaId, entity) {
+        if (entity) {
             const impls = DomUtil.getAttributeAsString(entity, "implements");
             if (impls === "xtk:persist" && schemaId !== "xtk:session" && schemaId !== "xtk:persist") {
                 // Ensure xtk:persist is present by loading the xtk:session schema
@@ -1416,11 +1443,7 @@ class Client {
             }
             this._entityCache.put("xtk:schema", schemaId, entity);
             this._methodCache.put(entity);
-          }
         }
-        entity = this._toRepresentation(entity, representation);
-        entity = this.adjust(entity, representation, "xtk:schema");
-        return entity;
     }
 
     /**
@@ -1461,7 +1484,7 @@ class Client {
         for (const e of EntityAccessor.getChildElements(schema, "enumeration")) {
             const n = EntityAccessor.getAttributeAsString(e, "name");
             if (n == enumName) {
-                const casted = this.adjust(e, undefined, "xtk:enum");
+                const casted = await this._toRepresentation(e, undefined, "xtk:enum");
                 return casted;
             }
         }
@@ -1601,104 +1624,107 @@ class Client {
             }
         }
 
-        return that._makeSoapCall(soapCall).then(function() {
-            if (!isStatic) {
-                // Non static methods, such as xtk:query#SelectAll return a element named "entity" which is the object itself on which
-                // the method is called. This is the new version of the object (in XML form)
-                const entity = soapCall.getEntity();
-                if (entity) {
-                    callContext.object = that._toRepresentation(entity, callContext.representation);
-                }
+        await that._makeSoapCall(soapCall);
+
+        if (!isStatic) {
+            // Non static methods, such as xtk:query#SelectAll return a element named "entity" which is the object itself on which
+            // the method is called. This is the new version of the object (in XML form)
+            const entity = soapCall.getEntity();
+            if (entity) {
+                callContext.object = await that._toRepresentation(entity, callContext.representation, schemaId);
             }
+        }
 
-            const resultNames = [];
-            const result = [];
-            if (params) {
-                var param = DomUtil.getFirstChildElement(params, "param");
-                while (param) {
-                    const inout = DomUtil.getAttributeAsString(param, "inout");
-                    if (inout=="out") {
-                        const type = DomUtil.getAttributeAsString(param, "type");
-                        const paramName = DomUtil.getAttributeAsString(param, "name");
-                        var returnValue;
-                        if (type == "string")
-                            returnValue = soapCall.getNextString();
-                        else if (type == "primarykey")
-                            returnValue = soapCall.getNextPrimaryKey();
-                        else if (type == "boolean")
-                            returnValue = soapCall.getNextBoolean();
-                        else if (type == "byte")
-                            returnValue = soapCall.getNextByte();
-                        else if (type == "short")
-                            returnValue = soapCall.getNextShort();
-                        else if (type == "long")
-                            returnValue = soapCall.getNextLong();
-                        else if (type == "int64")
-                            // int64 are represented as strings to make sure no precision is lost
-                            returnValue = soapCall.getNextInt64();
-                        else if (type == "datetime")
-                            returnValue = soapCall.getNextDateTime();
-                        else if (type == "date")
-                            returnValue = soapCall.getNextDate();
-                        else if (type == "DOMDocument") {
-                            returnValue = soapCall.getNextDocument();
-                            returnValue = that._toRepresentation(returnValue, callContext.representation);
-                            if (schemaId === "xtk:queryDef" && methodName === "ExecuteQuery" && paramName === "output") {
-                                // https://github.com/adobe/acc-js-sdk/issues/3
-                                // Check if query operation is "getIfExists". The "object" variable at this point
-                                // is always an XML, regardless of the xml/json representation
-                                const objectRoot = object.documentElement;
-                                const emptyResult = Object.keys(returnValue).length == 0;
-                                var operation = DomUtil.getAttributeAsString(objectRoot, "operation");
-                                if (operation == "getIfExists" && emptyResult)
-                                    returnValue = null;
-                                if (operation == "select" && emptyResult) {
-                                    const querySchemaId = DomUtil.getAttributeAsString(objectRoot, "schema");
-                                    const index = querySchemaId.indexOf(':');
-                                    const querySchemaName = querySchemaId.substr(index + 1);
-                                    returnValue[querySchemaName] = [];
-                                }
+        const resultNames = [];
+        const result = [];
+        if (params) {
+            var param = DomUtil.getFirstChildElement(params, "param");
+            while (param) {
+                const inout = DomUtil.getAttributeAsString(param, "inout");
+                if (inout=="out") {
+                    const type = DomUtil.getAttributeAsString(param, "type");
+                    const paramName = DomUtil.getAttributeAsString(param, "name");
+                    var returnValue;
+                    if (type == "string")
+                        returnValue = soapCall.getNextString();
+                    else if (type == "primarykey")
+                        returnValue = soapCall.getNextPrimaryKey();
+                    else if (type == "boolean")
+                        returnValue = soapCall.getNextBoolean();
+                    else if (type == "byte")
+                        returnValue = soapCall.getNextByte();
+                    else if (type == "short")
+                        returnValue = soapCall.getNextShort();
+                    else if (type == "long")
+                        returnValue = soapCall.getNextLong();
+                    else if (type == "int64")
+                        // int64 are represented as strings to make sure no precision is lost
+                        returnValue = soapCall.getNextInt64();
+                    else if (type == "datetime")
+                        returnValue = soapCall.getNextDateTime();
+                    else if (type == "date")
+                        returnValue = soapCall.getNextDate();
+                    else if (type == "DOMDocument") {
+                        returnValue = soapCall.getNextDocument();
+                        var schemaHint;
+                        if (schemaId === "xtk:queryDef" && methodName === "ExecuteQuery" && paramName === "output") {
+                            const inferer = new QueryDefSchemaInferer(this, callContext.object, this._entityCasterOptions);
+                            schemaHint = await inferer.getSchema();                    
+                        }
+                        returnValue = await that._toRepresentation(returnValue, callContext.representation, schemaHint);
+                        /*if (schemaId === "xtk:queryDef" && methodName === "ExecuteQuery" && paramName === "output") {
+                            // https://github.com/adobe/acc-js-sdk/issues/3
+                            // Check if query operation is "getIfExists". The "object" variable at this point
+                            // is always an XML, regardless of the xml/json representation
+                            const objectRoot = object.documentElement;
+                            const emptyResult = Object.keys(returnValue).length == 0;
+                            var operation = DomUtil.getAttributeAsString(objectRoot, "operation");
+                            if (operation == "getIfExists" && emptyResult)
+                                returnValue = null;
+                            if (operation == "select" && emptyResult) {
+                                const querySchemaId = DomUtil.getAttributeAsString(objectRoot, "schema");
+                                const index = querySchemaId.indexOf(':');
+                                const querySchemaName = querySchemaId.substr(index + 1);
+                                returnValue[querySchemaName] = [];
                             }
-                        }
-                        else if (type == "DOMElement") {
-                            returnValue = soapCall.getNextElement();
-                            returnValue = that._toRepresentation(returnValue, callContext.representation);
-                        }
-                        else {
-                            // type can reference a schema element. The naming convension is that the type name
-                            // is {schemaName}{elementNameCamelCase}. For instance, the type "sessionUserInfo"
-                            // matches the "userInfo" element of the "xtkSession" schema
-                            let element;
-                            if (type.substr(0, schemaName.length) == schemaName) {
-                                const shortTypeName = type.substr(schemaName.length, 1).toLowerCase() + type.substr(schemaName.length + 1);
-                                element = DomUtil.getFirstChildElement(schema, "element");
-                                while (element) {
-                                    if (element.getAttribute("name") == shortTypeName) {
-                                        // Type found in schema: Process as a DOM element
-                                        returnValue = soapCall.getNextElement();
-                                        returnValue = that._toRepresentation(returnValue, callContext.representation);
-                                        break;
-                                    }
-                                    element = DomUtil.getNextSiblingElement(element, "element");
-                                }
-
-                            }
-                            if (!element)
-                                throw CampaignException.UNEXPECTED_SOAP_RESPONSE(soapCall, `Unsupported return type '${type}' for parameter '${paramName}' of method '${methodName}' of schema '${schemaId}'`);
-                        }
-                        result.push(returnValue);
-                        resultNames.push(paramName);
+                        }*/
                     }
-                    param = DomUtil.getNextSiblingElement(param, "param");
+                    else if (type == "DOMElement") {
+                        returnValue = soapCall.getNextElement();
+                        returnValue = await that._toRepresentation(returnValue, callContext.representation);
+                    }
+                    else {
+                        // type can reference a schema element. The naming convension is that the type name
+                        // is {schemaName}{elementNameCamelCase}. For instance, the type "sessionUserInfo"
+                        // matches the "userInfo" element of the "xtkSession" schema
+                        let element;
+                        if (type.substr(0, schemaName.length) == schemaName) {
+                            const shortTypeName = type.substr(schemaName.length, 1).toLowerCase() + type.substr(schemaName.length + 1);
+                            element = DomUtil.getFirstChildElement(schema, "element");
+                            while (element) {
+                                if (element.getAttribute("name") == shortTypeName) {
+                                    // Type found in schema: Process as a DOM element
+                                    returnValue = soapCall.getNextElement();
+                                    returnValue = await that._toRepresentation(returnValue, callContext.representation);
+                                    break;
+                                }
+                                element = DomUtil.getNextSiblingElement(element, "element");
+                            }
+
+                        }
+                        if (!element)
+                            throw CampaignException.UNEXPECTED_SOAP_RESPONSE(soapCall, `Unsupported return type '${type}' for parameter '${paramName}' of method '${methodName}' of schema '${schemaId}'`);
+                    }
+                    result.push(returnValue);
+                    resultNames.push(paramName);
                 }
+                param = DomUtil.getNextSiblingElement(param, "param");
             }
-            soapCall.checkNoMoreArgs();
-            return that._adjustResult(resultNames, result, callContext.representation, schemaId, methodName, callContext.object).then((castedResult) => {
-                if (castedResult.length == 0) return null;
-                if (castedResult.length == 1) return castedResult[0];
-                return castedResult;    
-            });
-        });
+        }
+        soapCall.checkNoMoreArgs();
+        if (result.length == 0) return null;
+        if (result.length == 1) return result[0];
+        return result;    
     }
 
     async _makeHttpCall(request) {
@@ -1751,7 +1777,7 @@ class Client {
             request.headers[h] = this._connectionParameters._options.extraHttpHeaders[h];
         const body = await this._makeHttpCall(request);
         const xml = DomUtil.parse(body);
-        const result = this._toRepresentation(xml);
+        const result = await this._toRepresentation(xml);
         return result;
     }
 
@@ -1781,7 +1807,7 @@ class Client {
             const timestamp = lines[1].trim();
             if (timestamp != "") root.setAttribute("timestamp", timestamp);
         }
-        const result = this._toRepresentation(doc);
+        const result = await this._toRepresentation(doc);
         return result;
     }
 
@@ -1817,7 +1843,7 @@ class Client {
             if(!body.startsWith("<ctx"))
                 throw CampaignException.FEATURE_NOT_SUPPORTED("Reports Data");
             const xml = DomUtil.parse(body);
-            const result = this._toRepresentation(xml, representation);
+            const result = await this._toRepresentation(xml, representation);
             return result;
         } catch(ex) {
              throw CampaignException.REPORT_FETCH_FAILED(callContext.reportName, ex);
@@ -1877,10 +1903,10 @@ class Client {
         }
         if (rtCount !== undefined && rtCount.trim() != "") root.setAttribute("eventQueueSize", rtCount);
         if (threshold !== undefined && rtCount.trim() != "") root.setAttribute("eventQueueMaxSize", threshold);
-        const result = this._toRepresentation(doc);
+        const result = await this._toRepresentation(doc);
         return result;
     }
-
+/*
     async _adjustResult(resultNames, result, representation, schemaId, methodName, object, options) {
         options = options || this._entityCasterOptions;
         if (!options || !options.enabled) return result;
@@ -1917,6 +1943,7 @@ class Client {
         const casted = await caster.cast(entity);
         return casted;
     }
+*/
 }
 
 

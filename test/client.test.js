@@ -2738,7 +2738,8 @@ describe('ACC Client', function () {
                     headers = request.headers;
                 }
             });
-            await query.executeQuery();
+            client._transport.mockReturnValueOnce(Mock.GET_NMS_EXTACCOUNT_SCHEMA_RESPONSE);
+            const result = await query.executeQuery();
             expect(headers).toMatchObject({
                 "SoapAction": "xtk:queryDef#ExecuteQuery",
                 "X-Test": "hello",

@@ -295,6 +295,16 @@ class DomUtil {
         return s;
     }
 
+    static innerHTML(node) {
+        var s = "";
+        if (node) {
+            if (node.nodeType == 9) // documentElement 
+                node = node.documentElement;
+            s = node.innerHTML;
+        }
+        return s;
+    }
+
     /**
      * Internal recursive method to convert a object literal (JSON) to an XML element/document.
      * This function does not return anything. Instead it creates children elements in the passed 'xmlRoot' element
@@ -522,9 +532,9 @@ class DomUtil {
             throw new DomException(`Invalid JSON flavor '${flavor}'. Should be 'SimpleJson' or 'BadgerFish'`);
         if (xml.nodeType == 9)
             xml = xml.documentElement;
-            var json = flavor == "BadgerFish" ? new BadgerFishObject() : {};
-            this._toJSON(xml, json, flavor);
-            return json;
+        var json = flavor == "BadgerFish" ? new BadgerFishObject() : {};
+        this._toJSON(xml, json, flavor);
+        return json;
     }
 
 }
