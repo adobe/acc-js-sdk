@@ -280,6 +280,11 @@ const GET_XTK_SESSION_SCHEMA_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
                             <param name="result" type="long" inout="out"/>
                         </parameters>
                     </method>
+                    <method name="badParam" static="true">
+                        <parameters>
+                            <param name="bad" type="long" inout="zz"/>
+                        </parameters>
+                    </method>
                 </methods>
             </schema>
             </pdomDoc>

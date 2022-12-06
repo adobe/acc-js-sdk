@@ -263,5 +263,154 @@ describe('ACC Client Observability', function () {
         jest.useRealTimers();
     });
 
+    describe("SOAP method intercept", () => {
+        it("Should intercept SOAP call", async () => {
+            const [client, assertion] = await makeObservableClient();
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+
+            const observer = { beforeSoapCall: jest.fn(), afterSoapCall: jest.fn() };
+            client.registerObserver(observer);
+
+            client._transport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_DATABASEID_RESPONSE);
+            await client.getOption("XtkDatabaseId");
+            
+            // Only one call is intercepted: xtk:session#GetOption. The internal call to get the xtk:session schema is internal
+            // and hence not interceptable
+            expect(observer.beforeSoapCall).toHaveBeenCalledTimes(1);
+            expect(observer.beforeSoapCall.mock.calls[0]).toEqual([ { urn:"xtk:session", name: "GetOption" }, [ { name:"name", type:"string", value:"XtkDatabaseId" } ], "SimpleJson" ]);
+            expect(observer.afterSoapCall).toHaveBeenCalledTimes(1);
+            expect(observer.afterSoapCall.mock.calls[0]).toEqual([ { urn:"xtk:session", name: "GetOption" }, [ { name:"name", type:"string", value:"XtkDatabaseId" } ], "SimpleJson", [ { name:"value", type:"string", value:"uFE80000000000000F1FA913DD7CC7C480041161C" }, { name:"type", type:"byte", value:6 }] ]);
+
+            client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
+            await client.NLWS.xtkSession.logoff();
+        });
+
+        it("Should support intercept callback to get schemas", async () => {
+            const [client, assertion] = await makeObservableClient();
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+
+            const observer = { beforeSoapCall: jest.fn(), afterSoapCall: jest.fn() };
+            client.registerObserver(observer);
+
+            var extAccountSchema;
+            client._transport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_NMS_EXTACCOUNT_SCHEMA_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_DATABASEID_RESPONSE);
+            observer.beforeSoapCall.mockImplementationOnce(async (method, inputParameters, representation) => {
+                extAccountSchema = await client.getSchema("nms:extAccount");
+            });
+            var databaseId = await client.getOption("XtkDatabaseId");
+            expect(databaseId).toBe("uFE80000000000000F1FA913DD7CC7C480041161C");
+            expect(extAccountSchema.name).toBe("extAccount");
+            
+            client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
+            await client.NLWS.xtkSession.logoff();
+        });
+
+        it("Should allow to rewrite method call parameters", async () => {
+            const [client, assertion] = await makeObservableClient();
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+
+            const observer = { beforeSoapCall: jest.fn(), afterSoapCall: jest.fn() };
+            client.registerObserver(observer);
+
+            client._transport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
+            const getOption = (options) => {
+                // SOAP request contains the option name as <name xsi:type="xsd:string">Dummy</name>
+                const index = options.data.indexOf('<name xsi:type="xsd:string">');
+                const index2 = options.data.indexOf('</name>', index);
+                const name = options.data.substring(index + 28, index2);
+                // Option value is the option name followed by a "ZZ"
+                return Promise.resolve(`<?xml version='1.0'?>
+    <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:xtk:session' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
+    <SOAP-ENV:Body>
+        <GetOptionResponse xmlns='urn:xtk:session' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
+            <pstrValue xsi:type='xsd:string'>${name}ZZ</pstrValue>
+            <pbtType xsi:type='xsd:byte'>6</pbtType>
+        </GetOptionResponse>
+    </SOAP-ENV:Body>
+    </SOAP-ENV:Envelope>`);
+            };
+            client._transport.mockImplementationOnce(getOption);
+            client.clearOptionCache();
+            var value = await client.getOption("Dummy");
+            expect(value).toBe("DummyZZ");
+
+            jest.clearAllMocks();
+            observer.beforeSoapCall.mockImplementationOnce(async (method, inputParameters, representation) => {
+                if (inputParameters[0].value === "Dummy") inputParameters[0].value = "XtkDatabaseId";
+            });
+            client._transport.mockImplementationOnce(getOption);
+            client.clearOptionCache();
+            var value = await client.getOption("Dummy");
+            expect(value).toBe("XtkDatabaseIdZZ");
+            
+            // Only one call is intercepted: xtk:session#GetOption. The internal call to get the xtk:session schema is internal
+            // and hence not interceptable
+            expect(observer.beforeSoapCall).toHaveBeenCalledTimes(1);
+            expect(observer.beforeSoapCall.mock.calls[0]).toEqual([ { urn:"xtk:session", name: "GetOption" }, [ { name:"name", type:"string", value:"XtkDatabaseId" } ], "SimpleJson" ]);
+            expect(observer.afterSoapCall).toHaveBeenCalledTimes(1);
+            expect(observer.afterSoapCall.mock.calls[0]).toEqual([ { urn:"xtk:session", name: "GetOption" }, [ { name:"name", type:"string", value:"XtkDatabaseId" } ], "SimpleJson", [ { name:"value", type:"string", value:"XtkDatabaseIdZZ" }, { name:"type", type:"byte", value:6 }] ]);
+
+            client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
+            await client.NLWS.xtkSession.logoff();
+        });
+
+        it("Should allow to rewrite method return parameters", async () => {
+            const [client, assertion] = await makeObservableClient();
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+
+            const observer = { beforeSoapCall: jest.fn(), afterSoapCall: jest.fn() };
+            client.registerObserver(observer);
+
+            client._transport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_DATABASEID_RESPONSE);
+
+            observer.afterSoapCall.mockImplementationOnce(async (method, inputParameters, representation, outputParameters) => {
+                outputParameters[0].value = "Patched";
+            });
+            var value = await client.getOption("XtkDatabaseId");
+            expect(value).toBe("Patched");
+            
+            // Only one call is intercepted: xtk:session#GetOption. The internal call to get the xtk:session schema is internal
+            // and hence not interceptable
+            expect(observer.beforeSoapCall).toHaveBeenCalledTimes(1);
+            expect(observer.beforeSoapCall.mock.calls[0]).toEqual([ { urn:"xtk:session", name: "GetOption" }, [ { name:"name", type:"string", value:"XtkDatabaseId" } ], "SimpleJson" ]);
+            expect(observer.afterSoapCall).toHaveBeenCalledTimes(1);
+            
+            expect(observer.afterSoapCall.mock.calls[0]).toEqual([ { urn:"xtk:session", name: "GetOption" }, [ { name:"name", type:"string", value:"XtkDatabaseId" } ], "SimpleJson", [ { name:"value", type:"string", value:"Patched" }, { name:"type", type:"byte", value:6 }] ]);
+            client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
+            await client.NLWS.xtkSession.logoff();
+        });
+
+        it("Should not intercept internal calls", async () => {
+            const [client, assertion] = await makeObservableClient();
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+
+            const observer = { beforeSoapCall: jest.fn(), afterSoapCall: jest.fn() };
+            client.registerObserver(observer);
+
+            client._transport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
+            var schema = await client.getEntityIfMoreRecent("xtk:schema", "xtk:session", undefined, true);
+            expect(schema.name).toBe("session");
+            expect(observer.beforeSoapCall).not.toHaveBeenCalled();
+            expect(observer.afterSoapCall).not.toHaveBeenCalled();
+
+            client._transport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
+            schema = await client.getEntityIfMoreRecent("xtk:schema", "xtk:session", undefined, false);
+            expect(schema.name).toBe("session");
+            expect(observer.beforeSoapCall).toHaveBeenCalledTimes(1);
+            expect(observer.afterSoapCall).toHaveBeenCalledTimes(1);
+
+            client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
+            await client.NLWS.xtkSession.logoff();
+        });
+    });
 });
 

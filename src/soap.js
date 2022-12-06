@@ -92,6 +92,7 @@ class SoapMethodCall {
         // Current URN and method (for error reporting)
         this.urn = urn;
         this.methodName = methodName;
+        this.isStatic = false;
 
         // Soap calls marked as internal are calls performed by the framework internally
         // (such as GetEntityIfMoreRecent calls needed to lookup schemas)
@@ -341,7 +342,7 @@ class SoapMethodCall {
     getEntity() {
         if (!this.elemCurrent)
             return null;
-            if (this.elemCurrent.getAttribute("xsi:type") != "ns:Element")
+        if (this.elemCurrent.getAttribute("xsi:type") != "ns:Element")
             return null;
         if (this.elemCurrent.tagName != "entity")
             return null;
