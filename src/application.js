@@ -255,7 +255,7 @@ class XtkSchemaNode {
          * Returns a string of characters which specifies the editing type of the current node.
          * @type {string}
          */
-         this.editType = EntityAccessor.getAttributeAsString(xml, "editType");
+         this.editType = EntityAccessor.getAttributeAsString(xml, "edit");
 
         /**
          * Only on the root node, returns a string which contains the folder template(s). On the other nodes, it returns undefined.
