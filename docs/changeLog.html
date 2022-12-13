@@ -2,6 +2,14 @@
 layout: page
 title: Change Log
 ---
+<section class="changelog"><h1>Version 1.1.17</h1>
+  <h2>2022/12/06</h2>
+  
+  <li>Fix a bug in schemas: the editType property of a schema node was not set properly (internal attribute is named "edit" but property exposed by the API is "editType")</li>
+  <li>Fix a bug with encoding of the SOAP urls: query parameter was not escaped properly</li>
+  <li>Add observer callbacks before and after SOAP calls (onBeforeCall, onAfterCall) which allow to intercept SOAP calls and modify SOAP call parameters and results. See the "Method Interception" section in <a href="https://opensource.adobe.com/acc-js-sdk/observability.html">the observability documentation</a> for more details</li>
+</section>
+
 <section class="changelog"><h1>Version 1.1.16</h1>
   <h2>2022/11/29</h2>
   
