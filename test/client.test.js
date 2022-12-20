@@ -2316,7 +2316,7 @@ describe('ACC Client', function () {
             expect(JSON.parse(call[1])).toMatchObject({
                 value: { value: "World", type: 6 }
             })
-        });
+        })
 
         it("Should ignore protocol for local storage root key", async () => {
             const version = sdk.getSDKVersion().version; // "${version}" or similar
@@ -2359,7 +2359,7 @@ describe('ACC Client', function () {
             client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
             client._transport.mockReturnValueOnce(Mock.GET_NMS_EXTACCOUNT_SCHEMA_RESPONSE);
-             await client.getSchema("nms:extAccount");
+            await client.getSchema("nms:extAccount");
             // Schema should have been cached to local storage
             expect(storage.setItem.mock.calls.length).toBe(1);
             expect(storage.setItem.mock.calls[0][0]).toMatch("cache.XtkEntityCache$xtk:schema|nms:extAccount");
@@ -2375,6 +2375,73 @@ describe('ACC Client', function () {
             await client.NLWS.xtkSession.logon();
             client._transport.mockReturnValueOnce(Mock.GET_NMS_EXTACCOUNT_SCHEMA_RESPONSE);
             await client.getSchema("nms:extAccount");
+            // Here we can't simply check the length of mock calls since there're for "lastCleared"
+            // We check inside the new calls, since the creation of the second client, if there's 
+            // one for the schema "nms:extAccount"
+            let callLength = storage.getItem.mock.calls.length;
+            expect(storage.getItem.mock.calls[callLength-1][0]).toMatch("cache.XtkEntityCache$xtk:schema|nms:extAccount");
+        })
+
+        it("Should clear storage if necessary", async () => {
+            const sdkVersion = sdk.getSDKVersion().version;
+            const mockSdkVersionItemKey    = "acc.js.sdk.0.0.0.acc-sdk:8080.cache.Hello";
+            const otherItemKey             = "other.Hello";
+            const map = {};
+            const storage = {
+                "acc.js.sdk.0.0.0.acc-sdk:8080.cache.Hello": "0.0.0.World",
+                "other.Hello": "other.World",
+                getItem: jest.fn((key) => map[key]),
+                setItem: jest.fn((key, value) => map[key] = value),
+                removeItem: jest.fn((key) => { delete map[key] })
+            }
+
+            let client = await Mock.makeClient({ storage: storage });
+
+            // Remove item not matches to the current sdk version and begins with "acc.js.sdk"
+            expect(storage.removeItem.mock.calls.length).toBe(1);
+            expect(storage.removeItem.mock.calls[0][0]).toMatch(mockSdkVersionItemKey);
+
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+            client._transport.mockReturnValueOnce(Mock.GET_NMS_EXTACCOUNT_SCHEMA_RESPONSE);
+            await client.getSchema("nms:extAccount");
+            const currentSdkVersionItemKey = "acc.js.sdk."+sdkVersion+".acc-sdk:8080.cache.XtkEntityCache$xtk:schema|nms:extAccount";
+            expect(storage.setItem.mock.calls[0][0]).toMatch(currentSdkVersionItemKey);
+
+            // Remove ONLY the item not matches to the current sdk version but not the one matches
+            // Now simulate reusing the local storage to make sure that we remove ONLY the item 
+            // not matches to the current sdk version.
+            // We need a new client to make sure we do not reuse the in-memory cache of the client.
+            // We use the same test method as the one we use in the previous test "Should cache XML in storage"
+            client = await Mock.makeClient({ storage: storage });
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+            client._transport.mockReturnValueOnce(Mock.GET_NMS_EXTACCOUNT_SCHEMA_RESPONSE);
+            await client.getSchema("nms:extAccount");
+            let callLength = storage.getItem.mock.calls.length;
+            expect(storage.getItem.mock.calls[callLength-1][0]).toMatch("cache.XtkEntityCache$xtk:schema|nms:extAccount");
+        })
+
+        it("Should support 'storage.removeItem' not defined", async () => {
+            const mockSdkVersionItemKey    = "acc.js.sdk.0.0.0.acc-sdk:8080.cache.Hello";
+            const map = {};
+            const storage = {
+                "acc.js.sdk.0.0.0.acc-sdk:8080.cache.Hello": "0.0.0.World",
+                getItem: jest.fn((key) => map[key]),
+                setItem: jest.fn((key, value) => map[key] = value)
+            }
+            let client = await Mock.makeClient({ storage: storage });
+            // storage.removeItem not defined. Cache should not be removed.
+            expect(storage[mockSdkVersionItemKey]).toStrictEqual("0.0.0.World");
+        })
+
+        it("Should support 'storage' not defined", async () => {
+            const storage = undefined
+            let client = await Mock.makeClient({ storage: storage });
+            // Create a client with "storage" undefined
+            const NLWS = client.NLWS;
+            expect(NLWS).toBeTruthy();
+            expect(client.isLogged()).toBe(false);
         })
     })
 

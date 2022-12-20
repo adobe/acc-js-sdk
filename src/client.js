@@ -647,6 +647,15 @@ class Client {
         if (instanceKey.startsWith("https://")) instanceKey = instanceKey.substr(8);
         const rootKey = `acc.js.sdk.${sdk.getSDKVersion().version}.${instanceKey}.cache`;
 
+        // Clear storage cache if the sdk versions or the instances are different
+        if (this._storage && typeof this._storage.removeItem === 'function') {
+          for (let key in this._storage) {
+            if (key.startsWith("acc.js.sdk.") && !key.startsWith(rootKey)) {
+              this._storage.removeItem(key);
+            }
+          }
+        }
+
         this._entityCache = new XtkEntityCache(this._storage, `${rootKey}.XtkEntityCache`, connectionParameters._options.entityCacheTTL);
         this._entityCacheRefresher = new CacheRefresher(this._entityCache, this, "xtk:schema", `${rootKey}.XtkEntityCache`);
         this._methodCache = new MethodCache(this._storage, `${rootKey}.MethodCache`, connectionParameters._options.methodCacheTTL);
