@@ -98,7 +98,8 @@ class Util {
     }
     if (typeof obj == "object") {
       for (const p in obj) {
-        if (p.toLowerCase() === "x-security-token")
+        const lowerP = p.toLowerCase();
+        if (lowerP === "x-security-token" || lowerP === "x-session-token")
           obj[p] = "***";
         else if (p === "Cookie") {
           var index = obj[p].toLowerCase().indexOf("__sessiontoken");
@@ -126,6 +127,7 @@ class Util {
       // Hide session tokens
       obj = this._removeBetween(obj, "<Cookie>__sessiontoken=", "</Cookie>");
       obj = this._removeBetween(obj, "<X-Security-Token>", "</X-Security-Token>");
+      obj = this._removeBetween(obj, "<X-Session-Token>", "</X-Session-Token>");
       obj = this._removeBetween(obj, '<sessiontoken xsi:type="xsd:string">', '</sessiontoken>');
       obj = this._removeBetween(obj, "<pstrSessionToken xsi:type='xsd:string'>", "</pstrSessionToken>");
       obj = this._removeBetween(obj, "<pstrSecurityToken xsi:type='xsd:string'>", "</pstrSecurityToken>");

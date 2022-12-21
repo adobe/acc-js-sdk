@@ -86,6 +86,10 @@ describe('Util', function() {
             expect(Util.trim({hello:"Lead<X-Security-Token>Stuff</X-Security-Token>Trail"})).toStrictEqual({hello:"Lead<X-Security-Token>***</X-Security-Token>Trail"});
         })
 
+        it("Should remove session token headers", () => {
+            expect(Util.trim({hello:"Lead<X-Session-Token>Stuff</X-Session-Token>Trail"})).toStrictEqual({hello:"Lead<X-Session-Token>***</X-Session-Token>Trail"});
+        })
+
         it("Should remove session tokens", () => {
             expect(Util.trim({hello:'Lead<sessiontoken xsi:type="xsd:string">Stuff</sessiontoken>Trail'})).toStrictEqual({hello:'Lead<sessiontoken xsi:type="xsd:string">***</sessiontoken>Trail'});
         })

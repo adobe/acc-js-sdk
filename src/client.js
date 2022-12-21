@@ -1881,6 +1881,7 @@ class Client {
             url: `${this._connectionParameters._endpoint}/nl/jsp/ping.jsp`,
             headers: {
                 'X-Security-Token': this._securityToken,
+                'X-Session-Token': this._sessionToken,
                 'Cookie': '__sessiontoken=' + this._sessionToken
             }
         };
@@ -1951,6 +1952,7 @@ class Client {
             url: `${this._connectionParameters._endpoint}/nl/jsp/mcPing.jsp`,
             headers: {
                 'X-Security-Token': this._securityToken,
+                'X-Session-Token': this._sessionToken,
                 'Cookie': '__sessiontoken=' + this._sessionToken
             }
         };
