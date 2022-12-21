@@ -163,6 +163,7 @@ describe('SOAP', function() {
             const call = makeSoapMethodCall(undefined, "xtk:session", "Empty", "$session$", "$security$");
             const [ request ] = call._createHTTPRequest(URL);
             assert.equal(request.headers["X-Security-Token"], "$security$", "Security token matches");
+            assert.equal(request.headers["X-Session-Token"], "$session$", "Session token matches");
             assert.equal(request.headers["Cookie"], "__sessiontoken=$session$", "Session token matches");
             const env = DomUtil.parse(request.data).documentElement;
             const header = hasChildElement(env, "SOAP-ENV:Header");

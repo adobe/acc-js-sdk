@@ -538,7 +538,8 @@ class SoapMethodCall {
         const headers = {
             'Content-type': `application/soap+xml${this._charset ? ";charset=" + this._charset : ""}`,
             'SoapAction': `${this.urn}#${this.methodName}`,
-            'X-Security-Token': this._securityToken
+            'X-Security-Token': this._securityToken,
+            'X-Session-Token': this._sessionToken,
         };
 
         // Add HTTP headers specific to the SOAP call for better tracing/troubleshooting
