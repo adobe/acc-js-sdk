@@ -65,7 +65,7 @@ class OptionCache extends Cache {
      * @param {Array} rawValueAndtype a 2 elements array, whose first element is the raw option value (text serialized) and the second element 
      * is the data type of the option. Such an array is returned by the xtk:session#GetOption method
      */
-     cache(schemaId, methodName) {
+    async cache(schemaId, methodName) {
         return this.put(schemaId, methodName);
     }
 
@@ -76,7 +76,7 @@ class OptionCache extends Cache {
      * @param {Array} rawValueAndtype a 2 elements array, whose first element is the raw option value (text serialized) and the second element 
      * is the data type of the option. Such an array is returned by the xtk:session#GetOption method
      */
-    put(name, rawValueAndtype) {
+    async put(name, rawValueAndtype) {
         var value = null;
         var type = 0;
         var rawValue;
@@ -85,7 +85,7 @@ class OptionCache extends Cache {
             type = rawValueAndtype[1];
             value = XtkCaster.as(rawValue, type);
         }
-        super.put(name, { value:value, type:type, rawValue:rawValue });
+        await super.put(name, { value:value, type:type, rawValue:rawValue });
         return value;
     }
 
@@ -95,8 +95,8 @@ class OptionCache extends Cache {
      * @param {string} name the option name
      * @returns {*} the option value
      */
-    get(name) {
-        const option = super.get(name);
+    async get(name) {
+        const option = await super.get(name);
         return option ? option.value : undefined;
     }
 
@@ -106,8 +106,8 @@ class OptionCache extends Cache {
      * @param {string} name the option name
      * @returns {Campaign.XtkOption} the option
      */
-    getOption(name) {
-        return super.get(name);
+    async getOption(name) {
+        return await super.get(name);
     }
 }
 

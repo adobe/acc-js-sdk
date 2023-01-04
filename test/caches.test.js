@@ -27,75 +27,75 @@ const { DomUtil } = require('../src/domUtil.js');
 describe('Caches', function() {
 
     describe("Generic cache", () => {
-        it("Should cache with default TTL and default key function", () => {
+        it("Should cache with default TTL and default key function", async () => {
             const cache = new Cache();
-            cache.put("Hello", "World");
+            await cache.put("Hello", "World");
             expect(cache._stats).toMatchObject({ reads: 0, writes: 1 });
-            expect(cache.get("Hello")).toBe("World");
+            await expect(cache.get("Hello")).resolves.toBe("World");
             expect(cache._stats).toMatchObject({ reads: 1, writes: 1, memoryHits: 1, storageHits: 0 });
         })
 
-        it("Should expires after TTL", () => {
+        it("Should expires after TTL", async () => {
             const cache = new Cache(undefined, undefined, -1);    // negative TTL => will immediately expire
-            cache.put("Hello", "World");
-            expect(cache.get("Hello")).toBeUndefined();
+            await cache.put("Hello", "World");
+            await expect(cache.get("Hello")).resolves.toBeUndefined();
             expect(cache._stats).toMatchObject({ reads: 1, writes: 1, memoryHits: 0, storageHits: 0 });
         })
 
-        it("Should support custom key function", () => {
+        it("Should support custom key function", async () => {
             const cache = new Cache(undefined, undefined, 300000, ((a, b) => a + "||" + b));
-            cache.put("key-part-1", "key-part-2", "value");
-            expect(cache.get("key-part-1")).toBeUndefined();
-            expect(cache.get("key-part-2")).toBeUndefined();
-            expect(cache.get("key-part-1", "key-part-2")).toBe("value");
+            await cache.put("key-part-1", "key-part-2", "value");
+            await expect(cache.get("key-part-1")).resolves.toBeUndefined();
+            await expect(cache.get("key-part-2")).resolves.toBeUndefined();
+            await expect(cache.get("key-part-1", "key-part-2")).resolves.toBe("value");
         })
 
-        it("Should clear cache", () => {
+        it("Should clear cache", async () => {
             const cache = new Cache();
-            cache.put("Hello", "World");
-            expect(cache.get("Hello")).toBe("World");
-            cache.clear();
-            expect(cache.get("Hello")).toBeUndefined();
+            await cache.put("Hello", "World");
+            await expect(cache.get("Hello")).resolves.toBe("World");
+            await cache.clear();
+            await expect(cache.get("Hello")).resolves.toBeUndefined();
             expect(cache._stats).toMatchObject({ reads: 2, writes: 1, memoryHits: 1, storageHits: 0, clears: 1 });
         })
 
-        it("Should remove key in cache", () => {
+        it("Should remove key in cache", async () => {
             const cache = new Cache();
-            cache.put("Hello", "World");
-            cache.put("Hi", "A");
-            expect(cache.get("Hello")).toBe("World");
-            expect(cache.get("Hi")).toBe("A");
+            await cache.put("Hello", "World");
+            await cache.put("Hi", "A");
+            await expect(cache.get("Hello")).resolves.toBe("World");
+            await expect(cache.get("Hi")).resolves.toBe("A");
             expect(cache._stats).toMatchObject({ reads: 2, writes: 2, memoryHits: 2 });
-            cache.remove("Hello");
-            expect(cache.get("Hello")).toBeUndefined();
-            expect(cache.get("Hi")).toBe("A");
+            await cache.remove("Hello");
+            await expect(cache.get("Hello")).resolves.toBeUndefined();
+            await expect(cache.get("Hi")).resolves.toBe("A");
             expect(cache._stats).toMatchObject({ reads: 4, writes: 2, memoryHits: 3, removals: 1 });
             // should support removing a key which has already been removed
-            cache.remove("Hello");
-            expect(cache.get("Hello")).toBeUndefined();
-            expect(cache.get("Hi")).toBe("A");
+            await cache.remove("Hello");
+            await expect(cache.get("Hello")).resolves.toBeUndefined();
+            await expect(cache.get("Hi")).resolves.toBe("A");
         })
     });
 
     describe("Entity cache", function() {
-        it("Should cache value", function() {
+        it("Should cache value", async () => {
             const cache = new XtkEntityCache();
-            assert.equal(cache.get("xtk:srcSchema", "nms:recipient"), undefined);
-            cache.put("xtk:srcSchema", "nms:recipient", "$$entity$$");
-            assert.equal(cache.get("xtk:srcSchema", "nms:recipient"), "$$entity$$");
+            await expect(cache.get("xtk:srcSchema", "nms:recipient")).resolves.toBeUndefined();
+            await cache.put("xtk:srcSchema", "nms:recipient", "$$entity$$");
+            await expect(cache.get("xtk:srcSchema", "nms:recipient")).resolves.toBe("$$entity$$");
         });
 
-        it("Should cache interfaces", function() {
+        it("Should cache interfaces", async () => {
             const cache = new XtkEntityCache();
             const schema = DomUtil.parse(`<schema namespace="xtk" name="session" implements="xtk:persist">
                     <interface name="persist"/>
                     <element name="session"/>
                 </schema>`);
-            cache.put("xtk:schema", "xtk:session", schema.documentElement);
-            const session = cache.get("xtk:schema", "xtk:session");
+            await cache.put("xtk:schema", "xtk:session", schema.documentElement);
+            const session = await cache.get("xtk:schema", "xtk:session");
             expect(session).not.toBeNull();
             expect(session.getAttribute("name")).toBe("session");
-            const persist = cache.get("xtk:schema", "xtk:persist");
+            const persist = await cache.get("xtk:schema", "xtk:persist");
             expect(persist).not.toBeNull();
             expect(persist.getAttribute("name")).toBe("persist");
         });
@@ -104,124 +104,124 @@ describe('Caches', function() {
 
     describe("Option cache", function() {
 
-        it("Should cache value", function() {
+        it("Should cache value", async () => {
             const cache = new OptionCache();
-            expect(cache.get("hello")).toBeUndefined();
-            cache.put("hello", ["world", 6]);
-            expect(cache.get("hello")).toBe("world");
-            expect(cache.getOption("hello")).toEqual({"rawValue": "world", "type": 6, "value": "world"});
+            await expect(cache.get("hello")).resolves.toBeUndefined();
+            await cache.put("hello", ["world", 6]);
+            await expect(cache.get("hello")).resolves.toBe("world");
+            await expect(cache.getOption("hello")).resolves.toEqual({"rawValue": "world", "type": 6, "value": "world"});
         });
 
-        it("Should cache multiple value", function() {
+        it("Should cache multiple value", async () => {
             const cache = new OptionCache();
-            cache.put("hello", ["world", 6]);
-            cache.put("foo", ["bar", 6]);
-            expect(cache.get("hello")).toBe("world");
-            expect(cache.getOption("hello")).toEqual({"rawValue": "world", "type": 6, "value": "world"});
-            expect(cache.get("foo")).toBe("bar");
-            expect(cache.getOption("foo")).toEqual({"rawValue": "bar", "type": 6, "value": "bar"});
+            await cache.put("hello", ["world", 6]);
+            await cache.put("foo", ["bar", 6]);
+            await expect(cache.get("hello")).resolves.toBe("world");
+            await expect(cache.getOption("hello")).resolves.toEqual({"rawValue": "world", "type": 6, "value": "world"});
+            await expect(cache.get("foo")).resolves.toBe("bar");
+            await expect(cache.getOption("foo")).resolves.toEqual({"rawValue": "bar", "type": 6, "value": "bar"});
         });
 
-        it("Should overwrite cached value", function() {
+        it("Should overwrite cached value", async () => {
             const cache = new OptionCache();
-            cache.put("hello", ["world", 6]);
-            expect(cache.get("hello")).toBe( "world");
-            expect(cache.getOption("hello")).toEqual({"rawValue": "world", "type": 6, "value": "world"});
-            cache.put("hello", ["cruel world", 6]);
-            expect(cache.get("hello")).toBe("cruel world");
-            expect(cache.getOption("hello")).toEqual({"rawValue": "cruel world", "type": 6, "value": "cruel world"});
+            await cache.put("hello", ["world", 6]);
+            await expect(cache.get("hello")).resolves.toBe( "world");
+            await expect(cache.getOption("hello")).resolves.toEqual({"rawValue": "world", "type": 6, "value": "world"});
+            await cache.put("hello", ["cruel world", 6]);
+            await expect(cache.get("hello")).resolves.toBe("cruel world");
+            await expect(cache.getOption("hello")).resolves.toEqual({"rawValue": "cruel world", "type": 6, "value": "cruel world"});
         });
 
-        it("Should clear cache", function() {
+        it("Should clear cache", async () => {
             const cache = new OptionCache();
-            cache.put("hello", ["world", 6]);
-            expect(cache.get("hello")).toBe("world");
-            expect(cache.getOption("hello")).toEqual({"rawValue": "world", "type": 6, "value": "world"});
-            cache.clear();
-            expect(cache.get("hello")).toBeUndefined();
-            expect(cache.getOption("hello")).toBeUndefined();
+            await cache.put("hello", ["world", 6]);
+            await expect(cache.get("hello")).resolves.toBe("world");
+            await expect(cache.getOption("hello")).resolves.toEqual({"rawValue": "world", "type": 6, "value": "world"});
+            await cache.clear();
+            await expect(cache.get("hello")).resolves.toBeUndefined();
+            await expect(cache.getOption("hello")).resolves.toBeUndefined();
         });
 
-        it("Should not find", function() {
+        it("Should not find", async () => {
             const cache = new OptionCache();
-            expect(cache.get("hello")).toBeUndefined();
-            expect(cache.getOption("hello")).toBeUndefined();
+            await expect(cache.get("hello")).resolves.toBeUndefined();
+            await expect(cache.getOption("hello")).resolves.toBeUndefined();
         });
 
-        it("Deprecated cache methods should now replaced with put", () => {
+        it("Deprecated cache methods should now replaced with put", async () => {
             const cache = new OptionCache();
-            cache.cache("hello", ["world", 6]);
-            expect(cache.get("hello")).toBe("world");
-            expect(cache.getOption("hello")).toEqual({"rawValue": "world", "type": 6, "value": "world"});
+            await cache.cache("hello", ["world", 6]);
+            await expect(cache.get("hello")).resolves.toBe("world");
+            await expect(cache.getOption("hello")).resolves.toEqual({"rawValue": "world", "type": 6, "value": "world"});
         });
     });
 
     describe("Method cache", function() {
-        it("Should cache methods", function() {
+        it("Should cache methods", async () => {
             const cache = new MethodCache();
             var schema = DomUtil.parse("<schema namespace='nms' name='recipient'><methods><method name='Delete'/><method name='Create'/></methods></schema>");
-            cache.put(schema.documentElement);
+            await cache.put(schema.documentElement);
 
-            var found = cache.get("nms:recipient", "Delete");
+            var found = await cache.get("nms:recipient", "Delete");
             assert.ok(found !== null && found !== undefined);
             assert.equal(found.nodeName, "method");
             assert.equal(found.getAttribute("name"), "Delete");
 
-            found = cache.get("nms:recipient", "Create");
+            found = await cache.get("nms:recipient", "Create");
             assert.ok(found !== null && found !== undefined);
             assert.equal(found.nodeName, "method");
             assert.equal(found.getAttribute("name"), "Create");
         });
 
-        it("Should cache interface methods", function() {
+        it("Should cache interface methods", async () => {
             const cache = new MethodCache();
             var schema = DomUtil.parse("<schema namespace='nms' name='recipient' implements='nms:i'><interface name='i'><method name='Update'/></interface><element name='recipient'/><methods><method name='Delete'/><method name='Create'/></methods></schema>");
-            cache.put(schema.documentElement);
+            await cache.put(schema.documentElement);
             // interface method should be on schema
-            var found = cache.get("nms:recipient", "Update");
+            var found = await cache.get("nms:recipient", "Update");
             assert.ok(found !== null && found !== undefined);
             // and on interface as well
-            found = cache.get("nms:i", "Update");
+            found = await cache.get("nms:i", "Update");
             assert.ok(found !== null && found !== undefined);
         });
 
-        it("Should clear the cache", function() {
+        it("Should clear the cache", async () => {
             const cache = new MethodCache();
             var schema = DomUtil.parse("<schema namespace='nms' name='recipient'><methods><method name='Delete'/><method name='Create'/></methods></schema>");
-            cache.put(schema.documentElement);
+            await cache.put(schema.documentElement);
 
-            var found = cache.get("nms:recipient", "Delete");
+            var found = await cache.get("nms:recipient", "Delete");
             assert.ok(found !== null && found !== undefined);
 
-            cache.clear();
-            found = cache.get("nms:recipient", "Delete");
+            await cache.clear();
+            found = await cache.get("nms:recipient", "Delete");
             assert.ok(found === undefined);
         });
 
-        it("Should ignore non-method nodes", function() {
+        it("Should ignore non-method nodes", async () => {
             const cache = new MethodCache();
             var schema = DomUtil.parse("<schema namespace='nms' name='recipient'><methods><method name='Delete'/><dummy name='Update'/><method name='Create'/></methods></schema>");
-            cache.put(schema.documentElement);
+            await cache.put(schema.documentElement);
 
-            var found = cache.get("nms:recipient", "Delete");
+            var found = await cache.get("nms:recipient", "Delete");
             assert.ok(found !== null && found !== undefined);
-            found = cache.get("nms:recipient", "Update");
+            found = await cache.get("nms:recipient", "Update");
             assert.ok(found === undefined);
-            found = cache.get("nms:recipient", "Create");
+            found = await cache.get("nms:recipient", "Create");
             assert.ok(found !== null && found !== undefined);
         });
 
-        it("Deprecated cache methods should now replaced with put", () => {
+        it("Deprecated cache methods should now replaced with put", async () => {
             const cache = new MethodCache();
             var schema = DomUtil.parse("<schema namespace='nms' name='recipient'><methods><method name='Delete'/><method name='Create'/></methods></schema>");
-            cache.cache(schema.documentElement);
+            await cache.cache(schema.documentElement);
 
-            var found = cache.get("nms:recipient", "Delete");
+            var found = await cache.get("nms:recipient", "Delete");
             assert.ok(found !== null && found !== undefined);
             assert.equal(found.nodeName, "method");
             assert.equal(found.getAttribute("name"), "Delete");
 
-            found = cache.get("nms:recipient", "Create");
+            found = await cache.get("nms:recipient", "Create");
             assert.ok(found !== null && found !== undefined);
             assert.equal(found.nodeName, "method");
             assert.equal(found.getAttribute("name"), "Create");
@@ -240,71 +240,71 @@ describe('Caches', function() {
     });
 
     describe("Method cache for interfaces", function() {
-        it("Should cache methods", function() {
+        it("Should cache methods", async () => {
             const cache = new MethodCache();
             // Test for fix in verion 0.1.23. The xtk:session schema has a direct method "Logon" but also implements the
             // xtk:persist interface.
             var schema = DomUtil.parse("<schema namespace='xtk' name='session' implements='xtk:persist'><interface name='persist'><method name='Write' static='true'/></interface><methods><method name='Logon'/></methods></schema>");
-            cache.put(schema.documentElement);
+            await cache.put(schema.documentElement);
 
             // Logon method should be found in xtk:session and have the xtk:session URN (for SOAP action)
-            var found = cache.get("xtk:session", "Logon");
-            var urn = cache.getSoapUrn("xtk:session", "Logon");
+            var found = await cache.get("xtk:session", "Logon");
+            var urn = await cache.getSoapUrn("xtk:session", "Logon");
             assert.ok(found !== null && found !== undefined);
             assert.strictEqual(found.nodeName, "method");
             assert.strictEqual(found.getAttribute("name"), "Logon");
             assert.strictEqual(urn, "xtk:session");
 
             // Logon method should not exist on the xtk:persist interface
-            found = cache.get("xtk:persist", "Logon");
-            urn = cache.getSoapUrn("xtk:persist", "Logon");
+            found = await cache.get("xtk:persist", "Logon");
+            urn = await cache.getSoapUrn("xtk:persist", "Logon");
             assert.ok(found === undefined);
             assert.ok(urn === undefined);
 
             // The Write method should also be on xtk:session but use xtk:persist as a URN
-            found = cache.get("xtk:session", "Write");
-            urn = cache.getSoapUrn("xtk:session", "Write");
+            found = await cache.get("xtk:session", "Write");
+            urn = await cache.getSoapUrn("xtk:session", "Write");
             assert.ok(found !== null && found !== undefined);
             assert.strictEqual(found.nodeName, "method");
             assert.strictEqual(found.getAttribute("name"), "Write");
             assert.strictEqual(urn, "xtk:persist|xtk:session");
 
             // For compatibility reasons (SDK versions earlier than 0.1.23), keep the Write method on the interface too
-            found = cache.get("xtk:persist", "Write");
-            urn = cache.getSoapUrn("xtk:persist", "Write");
+            found = await cache.get("xtk:persist", "Write");
+            urn = await cache.getSoapUrn("xtk:persist", "Write");
             assert.ok(found !== null && found !== undefined);
             assert.strictEqual(found.nodeName, "method");
             assert.strictEqual(found.getAttribute("name"), "Write");
             assert.strictEqual(urn, "xtk:persist");
         });
 
-        it("Edge cases for getSoapUrn", () => {
+        it("Edge cases for getSoapUrn", async () => {
             const cache = new MethodCache();
             var schema = DomUtil.parse("<schema namespace='xtk' name='session' implements='xtk:persist'><interface name='persist'><method name='Write' static='true'/></interface><methods><method name='Logon'/></methods></schema>");
-            cache.put(schema.documentElement);
+            await cache.put(schema.documentElement);
 
             // Schema and method exist
-            var urn = cache.getSoapUrn("xtk:session", "Logon");
+            var urn = await cache.getSoapUrn("xtk:session", "Logon");
             expect(urn).toBe("xtk:session");
 
             // Schema exists but method doesn't
-            urn = cache.getSoapUrn("xtk:session", "Dummy");
+            urn = await cache.getSoapUrn("xtk:session", "Dummy");
             expect(urn).toBeUndefined();
 
             // Neither schema nor method exist
-            urn = cache.getSoapUrn("xtk:dummy", "Dummy");
+            urn = await cache.getSoapUrn("xtk:dummy", "Dummy");
             expect(urn).toBeUndefined();
         });
 
-        it("Schema has interfaces that do not match what schema implements", () => {
+        it("Schema has interfaces that do not match what schema implements", async () => {
             const cache = new MethodCache();
             // Schema has xtk:persist interface but does not implement it
             var schema = DomUtil.parse("<schema namespace='xtk' name='session'><interface name='persist'><method name='Write' static='true'/></interface><methods><method name='Logon'/></methods></schema>");
-            cache.put(schema.documentElement);
+            await cache.put(schema.documentElement);
 
             // Logon method should be found in xtk:session and have the xtk:session URN (for SOAP action)
-            var found = cache.get("xtk:session", "Logon");
-            var urn = cache.getSoapUrn("xtk:session", "Logon");
+            var found = await cache.get("xtk:session", "Logon");
+            var urn = await cache.getSoapUrn("xtk:session", "Logon");
             assert.ok(found !== null && found !== undefined);
             assert.strictEqual(found.nodeName, "method");
             assert.strictEqual(found.getAttribute("name"), "Logon");
@@ -316,18 +316,18 @@ describe('Caches', function() {
 
         describe("JSON safe storage", () => {
 
-            it("Should find mock json from the cache", () => {
+            it("Should find mock json from the cache", async () => {
                 const map = {};
                 const delegate = {
                     getItem: jest.fn((key) => map[key]),
                     setItem: jest.fn((key, value) => map[key] = value)
                 }
                 const storage = new SafeStorage(delegate, "");
-                expect(storage.getItem("not_found")).toBeUndefined();
+                await expect(storage.getItem("not_found")).resolves.toBeUndefined();
                 map["k1"] = `{ "hello": "world" }`;
-                expect(storage.getItem("k1")).toMatchObject({ hello: "world" });
+                await expect(storage.getItem("k1")).resolves.toMatchObject({ hello: "world" });
                 map["k2"] = `{ "value": { "hello": "world" } }`;
-                expect(storage.getItem("k2")).toMatchObject({ value: { hello: "world" } });
+                await expect(storage.getItem("k2")).resolves.toMatchObject({ value: { hello: "world" } });
             });
         });
 
@@ -346,32 +346,32 @@ describe('Caches', function() {
                 }
             };
 
-            it("Should find mock xml from the cache", () => {
+            it("Should find mock xml from the cache", async () => {
                 const map = {};
                 const delegate = {
                     getItem: jest.fn((key) => map[key]),
                     setItem: jest.fn((key, value) => map[key] = value)
                 }
                 const storage = new SafeStorage(delegate, "", xmlSerDeser);
-                expect(storage.getItem("not_found")).toBeUndefined();
+                await expect(storage.getItem("not_found")).resolves.toBeUndefined();
                 map["k1"] = `{ "hello": "world" }`;
-                expect(storage.getItem("k1")).toBeUndefined();      // k1 cached object does not have "value" attribute containing serialized XML
+                await expect(storage.getItem("k1")).resolves.toBeUndefined();      // k1 cached object does not have "value" attribute containing serialized XML
                 map["k1"] = `{ "hello": "world", "value": "" }`;
-                expect(storage.getItem("k1")).toBeUndefined();      // k1 cached object does not have "value" attribute containing serialized XML
+                await expect(storage.getItem("k1")).resolves.toBeUndefined();      // k1 cached object does not have "value" attribute containing serialized XML
                 map["k1"] = `{ "value": { "hello": "world" } }`;
-                expect(storage.getItem("k2")).toBeUndefined();      // k1 cached object does not have "value" attribute but it's not valid XML
+                await expect(storage.getItem("k2")).resolves.toBeUndefined();      // k1 cached object does not have "value" attribute but it's not valid XML
                 map["k1"] = `{ "value": "" } }`;
-                expect(storage.getItem("k1")).toBeUndefined();      // k1 cached object does not have "value" attribute but it's not valid XML
+                await expect(storage.getItem("k1")).resolves.toBeUndefined();      // k1 cached object does not have "value" attribute but it's not valid XML
                 map["k1"] = `{ "value": "bad" } }`;
-                expect(storage.getItem("k1")).toBeUndefined();      // k1 cached object does not have "value" attribute but it's not valid XML
+                await expect(storage.getItem("k1")).resolves.toBeUndefined();      // k1 cached object does not have "value" attribute but it's not valid XML
                 map["k2"] = `{ "value": "<hello/>" }`;
-                expect(storage.getItem("k2").value.tagName).toBe("hello");
+                await expect(storage.getItem("k2")).resolves.toMatchObject({ value: {tagName: "hello"}});
             });
         });
     });
 
     describe("Cache seralizers", () => {
-        it("Should serialize json", () => {
+        it("Should serialize json", async () => {
             const cache = new OptionCache();
             const serDeser = cache._storage._serDeser;
             expect(serDeser({ hello: "World" }, true)).toBe('{"hello":"World"}');
@@ -446,5 +446,33 @@ describe('Caches', function() {
             expect(cached.value.x).toBe(3);
             expect(cached.value.method.documentElement.tagName).toBe("hello");
         })
-    })
+    });
+    
+    describe("Sync and Async delegates", () => {
+        it("Should support synchronous delegates", async () => {
+            const map = {};
+            const delegate = {
+                getItem: jest.fn((key) => map[key]),
+                setItem: jest.fn((key, value) => map[key] = value)
+            }
+            const storage = new SafeStorage(delegate, "");
+            await storage.setItem("Hello", { cruel: "World" });
+            await expect(storage.getItem("Hello")).resolves.toMatchObject({ cruel: "World" });
+        });
+        it("Should support asynchronous delegates", async () => {
+            const map = {};
+            const delegate = {
+                getItem: jest.fn(async (key) => Promise.resolve(map[key]) ),
+                setItem: jest.fn(async (key, value) => {
+                    return new Promise((resolve, reject) => {
+                        map[key] = value;
+                        resolve(value);
+                    });
+                })
+            }
+            const storage = new SafeStorage(delegate, "");
+            await storage.setItem("Hello", { cruel: "World" });
+            await expect(storage.getItem("Hello")).resolves.toMatchObject({ cruel: "World" });
+        });
+    });
 });

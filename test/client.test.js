@@ -247,7 +247,7 @@ describe('ACC Client', function () {
              databaseId = await client.getOption("XtkDatabaseId", false);
             expect(databaseId).toBe("uFE80000000000000F1FA913DD7CC7C480041161C");
             // Clear cache
-            client.clearOptionCache();
+            await client.clearOptionCache();
             client._transport.mockReturnValueOnce(Mock.GET_DATABASEID_RESPONSE);
              databaseId = await client.getOption("XtkDatabaseId");
             expect(databaseId).toBe("uFE80000000000000F1FA913DD7CC7C480041161C");
@@ -401,7 +401,7 @@ describe('ACC Client', function () {
             expect(schema["name"]).toBe("extAccount");
 
             // Clear cache and ask again
-            client.clearEntityCache();
+            await client.clearEntityCache();
             client._transport.mockReturnValueOnce(Mock.GET_NMS_EXTACCOUNT_SCHEMA_RESPONSE);
             schema = await client.getSchema("nms:extAccount");
             expect(schema["namespace"]).toBe("nms");
@@ -421,11 +421,11 @@ describe('ACC Client', function () {
             await expect(client.getSchema("nms:extAccount", "invalid")).rejects.toMatchObject({ errorCode: 'SDK-000004' });
 
             // Get missing schema
-            client.clearAllCaches();
+            await client.clearAllCaches();
             client._transport.mockReturnValueOnce(Mock.GET_MISSING_SCHEMA_RESPONSE);
             schema = await client.getSchema("nms:dummy", "BadgerFish");
             expect(schema).toBeNull();
-            client.clearAllCaches();
+            await client.clearAllCaches();
             client._transport.mockReturnValueOnce(Mock.GET_MISSING_SCHEMA_RESPONSE);
             schema = await client.getSchema("nms:dummy", "xml");
             expect(schema).toBeNull();
@@ -477,13 +477,13 @@ describe('ACC Client', function () {
             client._representation = "xml";
 
             // Get non-cached XML representation
-            client.clearAllCaches();
+            await client.clearAllCaches();
             client._transport.mockReturnValueOnce(Mock.GET_NMS_EXTACCOUNT_SCHEMA_RESPONSE);
             sysEnum = await client.getSysEnum("nms:extAccount:encryptionType");
             expect(sysEnum.getAttribute("basetype")).toBe("byte");
 
             // Schema does not exist
-            client.clearAllCaches();
+            await client.clearAllCaches();
             client._transport.mockReturnValueOnce(Mock.GET_MISSING_SCHEMA_RESPONSE);
             await expect(client.getSysEnum("nms:dummy:encryptionType")).rejects.toMatchObject({ errorCode: "SDK-000006" });
 
@@ -701,7 +701,7 @@ describe('ACC Client', function () {
             expect(cipher.iv).not.toBeNull();
 
             // Ask again, should be cached (no mock methods)
-            client.clearAllCaches();
+            await client.clearAllCaches();
             cipher = await client._getSecretKeyCipher();
             expect(cipher).not.toBeNull();
             expect(cipher.key).not.toBeNull();
@@ -2283,6 +2283,7 @@ describe('ACC Client', function () {
             client._transport.mockReturnValueOnce(Mock.GETMODIFIEDENTITIES_RESPONSE);
             client._transport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
             await client.NLWS.xtkSession.logon();
+            storage.getItem.mockReturnValueOnce(undefined); // lastCleared
             storage.getItem.mockReturnValueOnce(JSON.stringify({value: { value: "Hello", type: 6 }, cachedAt: 1633715996021 }));
             const value = await client.getOption("XtkDatabaseId");
             expect(value).toBe("Hello");
@@ -2297,6 +2298,7 @@ describe('ACC Client', function () {
             client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             client._transport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
             await client.NLWS.xtkSession.logon();
+            storage.getItem.mockReturnValueOnce(undefined); // lastCleared
             storage.getItem.mockReturnValueOnce(JSON.stringify({value: { value: "Hello", type: 6 }, cachedAt: 1633715996021 }));
             client._transport.mockReturnValueOnce(Promise.resolve(`<?xml version='1.0'?>
                             <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:wpp:default' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
@@ -2443,12 +2445,57 @@ describe('ACC Client', function () {
             expect(NLWS).toBeTruthy();
             expect(client.isLogged()).toBe(false);
         })
+
+        it("Should support storage key type without version information", async () => {
+            // Default has version & instance name
+            const version = sdk.getSDKVersion().version; // "${version}" or similar
+            connectionParameters = sdk.ConnectionParameters.ofUserAndPassword("http://acc-sdk:8080", "admin", "admin");
+            var client = await sdk.init(connectionParameters);
+            expect(client._optionCache._storage._rootKey).toBe(`acc.js.sdk.${version}.acc-sdk:8080.cache.OptionCache$`);
+
+            // Default has version & instance name
+            connectionParameters = sdk.ConnectionParameters.ofUserAndPassword("http://acc-sdk:8080", "admin", "admin", { cacheRootKey: "default" });
+            var client = await sdk.init(connectionParameters);
+            expect(client._optionCache._storage._rootKey).toBe(`acc.js.sdk.${version}.acc-sdk:8080.cache.OptionCache$`);
+
+            // No prefix
+            connectionParameters = sdk.ConnectionParameters.ofUserAndPassword("http://acc-sdk:8080", "admin", "admin", { cacheRootKey: "none" });
+            var client = await sdk.init(connectionParameters);
+            expect(client._optionCache._storage._rootKey).toBe(`OptionCache$`);
+        });
+
+        describe("Should simulate the Shell Cache API", () => {
+            // See https://github.com/AdobeDocs/exc-app/blob/master/docs/modules/cache.md#sample-code
+            it("Sould get cached option", async () => {
+                const storage = {
+                    getItem: jest.fn(),
+                    setItem: jest.fn(),
+                }
+                const client = await Mock.makeClient({ storage: storage, cacheRootKey: "instance" });
+                client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+                await client.NLWS.xtkSession.logon();
+                storage.getItem.mockReturnValueOnce(Promise.resolve(undefined)); // lastCleared
+                storage.getItem.mockReturnValueOnce(Promise.resolve(JSON.stringify({value: { value: "Hello", type: 6 }, cachedAt: 1633715996021 })));
+                const value = await client.getOption("Test");
+                expect(value).toBe("Hello");
+                expect(storage.setItem.mock.calls.length).toBe(0);
+
+                client._transport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
+                client._transport.mockReturnValueOnce(Mock.GET_DATABASEID_RESPONSE);
+                var databaseId = await client.getOption("XtkDatabaseId");
+                expect(databaseId).toBe("uFE80000000000000F1FA913DD7CC7C480041161C");
+                const lastCall = storage.setItem.mock.calls[storage.setItem.mock.calls.length-1];
+                expect(lastCall[0]).toMatch("OptionCache$XtkDatabaseId");
+                expect(lastCall[0]).not.toMatch("acc.js.sdk");
+                expect(lastCall[1]).toMatch("uFE80000000000000F1FA913DD7CC7C480041161C");
+            });
+        });
     })
 
     describe("Get Schema, cache and representations", () => {
         it("Should get schema with no cache", async () => {
             const client = await Mock.makeClient();
-            client.clearAllCaches();
+            await client.clearAllCaches();
             client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
 

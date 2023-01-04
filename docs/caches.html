@@ -43,9 +43,34 @@ client.clearAllCaches();
 <p>It's possible to disable persistent caches using the <b>noStorage</b> connection option.</p>
 
 <p>It is also possible to setup one's own persistent cache, by passing a <b>storage</b> object as a connection option.
-  This object should implement 3 methods: <b>getItem</b>, <b>setItem</b>, and <b>removeItem</b> (synchronous)</p>
+   See the "Custom Storage" section below for more details.</p>
 
 <p>Additionally, since version 1.1.18, the <b>storage</b> object should also support the for...in operator to iterate through its keys</p>
+
+
+<h1>Cache root key</h1>
+
+<p>
+  By default, the SDK will prefix all cache entity by a root key, which is made of the SDK version and the instance URL. 
+  It is possible to change this using the `cacheRootKey` connection parameter.
+</p>
+<ul>
+  <li>* `default` or undefined: default prefix</li>
+  <li>* `none`: no prefix</li>
+</ul>
+
+<h1>Custom storage</h1>
+
+A custom storage is a JavaScript object with the following functions:
+* `getItem` is given a cache key and should return the corresponding value
+* `setItem` is given a cache key and value and should cache the corresponding key/value pair
+
+Optionally, the storage object can contain the following
+* `removeItem` is given a cache key and should remove the corresponding key/value pair from the cache
+* The storage object should also be iterable using the for..in construct
+
+The get/set/remove item function can be either synchronous or asynchronous, i.e. can optionally return a promise.
+
 
 <h1>Auto-refresh caches</h1>
 

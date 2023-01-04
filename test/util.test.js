@@ -116,18 +116,18 @@ describe('Util', function() {
     })
 
     describe("Safe storage", () => {
-      it("Should support undefined delegate", () => {
+      it("Should support undefined delegate", async () => {
           const storage = new SafeStorage();
-          expect(storage.getItem("Hello")).toBeUndefined();
+          await expect(storage.getItem("Hello")).resolves.toBeUndefined();
           storage.setItem("Hello", { text: "World" });
-          expect(storage.getItem("Hello")).toBeUndefined();
+          await expect(storage.getItem("Hello")).resolves.toBeUndefined();
           storage.setItem("Hello", "World");    // value should be JSON but errors are ignored
-          expect(storage.getItem("Hello")).toBeUndefined();
+          await expect(storage.getItem("Hello")).resolves.toBeUndefined();
           storage.removeItem("Hello");
-          expect(storage.getItem("Hello")).toBeUndefined();
+          await expect(storage.getItem("Hello")).resolves.toBeUndefined();
       })  
 
-      it("Should handle map", () => {
+      it("Should handle map", async () => {
         const map = {};
         const delegate = {
             getItem: (key) => map[key],
@@ -135,18 +135,18 @@ describe('Util', function() {
             removeItem: (key) => { delete map[key] }
         };
         const storage = new SafeStorage(delegate);
-        expect(storage.getItem("Hello")).toBeUndefined();
-        storage.setItem("Hello", { text: "World" });
+        await expect(storage.getItem("Hello")).resolves.toBeUndefined();
+        await storage.setItem("Hello", { text: "World" });
         expect(map["Hello"]).toStrictEqual(JSON.stringify({text: "World"}));
-        expect(storage.getItem("Hello")).toStrictEqual({"text": "World"});
-        storage.setItem("Hello", "World");    // value should be JSON but errors are ignored
-        expect(storage.getItem("Hello")).toBeUndefined();
-        storage.setItem("Hello", { text: "World" });
-        storage.removeItem("Hello");
-        expect(storage.getItem("Hello")).toBeUndefined();
+        await expect(storage.getItem("Hello")).resolves.toStrictEqual({"text": "World"});
+        await storage.setItem("Hello", "World");    // value should be JSON but errors are ignored
+        await expect(storage.getItem("Hello")).resolves.toBeUndefined();
+        await storage.setItem("Hello", { text: "World" });
+        await storage.removeItem("Hello");
+        await expect(storage.getItem("Hello")).resolves.toBeUndefined();
       })
 
-      it("Should handle root key", () => {
+      it("Should handle root key", async () => {
         const map = {};
         const delegate = {
             getItem: (key) => map[key],
@@ -154,17 +154,17 @@ describe('Util', function() {
             removeItem: (key) => { delete map[key] }
         };
         const storage = new SafeStorage(delegate, "root");
-        expect(storage.getItem("Hello")).toBeUndefined();
-        storage.setItem("Hello", { text: "World" });
+        await expect(storage.getItem("Hello")).resolves.toBeUndefined();
+        await storage.setItem("Hello", { text: "World" });
         expect(map["root$Hello"]).toStrictEqual(JSON.stringify({text: "World"}));
-        expect(storage.getItem("Hello")).toStrictEqual({"text": "World"});
-        storage.setItem("Hello", "World");    // value should be JSON but errors are ignored
+        await expect(storage.getItem("Hello")).resolves.toStrictEqual({"text": "World"});
+        await storage.setItem("Hello", "World");    // value should be JSON but errors are ignored
         expect(map["root$Hello"]).toBeUndefined();
-        expect(storage.getItem("Hello")).toBeUndefined();
-        storage.setItem("Hello", { text: "World" });
-        storage.removeItem("Hello");
+        await expect(storage.getItem("Hello")).resolves.toBeUndefined();
+        await storage.setItem("Hello", { text: "World" });
+        await storage.removeItem("Hello");
         expect(map["root$Hello"]).toBeUndefined();
-        expect(storage.getItem("Hello")).toBeUndefined();
+        await expect(storage.getItem("Hello")).resolves.toBeUndefined();
       })
 
       it("Edge cases", () => {
@@ -176,7 +176,7 @@ describe('Util', function() {
         expect(new SafeStorage(null, "")._rootKey).toBe("");
       })
 
-      it("Should remove invalid items on get", () => {
+      it("Should remove invalid items on get", async () => {
         const map = {};
         const delegate = {
             getItem: (key) => map[key],
@@ -186,12 +186,12 @@ describe('Util', function() {
         const storage = new SafeStorage(delegate, "root");
         // value is not valid because not a JSON serialized string
         map["root$Hello"] = "Invalid";
-        expect(storage.getItem("Hello")).toBeUndefined();
+        await expect(storage.getItem("Hello")).resolves.toBeUndefined();
         // Get should have removed invalid value
         expect(map["root$Hello"]).toBeUndefined()
       })
 
-      it("Should handle cache last cleared", () => {
+      it("Should handle cache last cleared", async () => {
         const map = {};
         const delegate = {
             getItem: (key) => map[key],
@@ -199,18 +199,18 @@ describe('Util', function() {
             removeItem: (key) => { delete map[key] }
         };
         const cache = new Cache(delegate, "root");
-        cache.put("Hello", "World");
+        await cache.put("Hello", "World");
         expect(JSON.parse(map["root$Hello"])).toMatchObject({ value:"World" });
-        expect(cache.get("Hello")).toBe("World");
-        cache.clear();
+        await expect(cache.get("Hello")).resolves.toBe("World");
+        await cache.clear();
         // Clear could not remove the item from the map
         expect(JSON.parse(map["root$Hello"])).toMatchObject({ value:"World" });
         // But get from cache will
-        expect(cache.get("Hello")).toBeUndefined();
+        await expect(cache.get("Hello")).resolves.toBeUndefined();
       })
     })
 
-    it("Should preserve last cleared", () => {
+    it("Should preserve last cleared", async () => {
         const map = {};
         const delegate = {
             getItem: (key) => map[key],
@@ -218,19 +218,22 @@ describe('Util', function() {
             removeItem: (key) => { delete map[key] }
         };
         const cache = new Cache(delegate, "root");
-        expect(cache._lastCleared).toBeUndefined();
-        cache.put("Hello", "World");
-        cache.clear();
+        expect(cache._lastCleared).toBeNull(); // means we do not have the last cleared value yet
+        await cache.get("dummy"); // trigger getItem to lastCleared, and then dummy
+        await cache.put("Hello", "World");
+        await cache.clear();
         const lastCleared = cache._lastCleared;
         expect(lastCleared).not.toBeUndefined();
-        expect(cache.get("Hello")).toBeUndefined();
+        await expect(cache.get("Hello")).resolves.toBeUndefined();
         expect(map["root$lastCleared"]).toBe(JSON.stringify({timestamp:lastCleared}));
         // New cache with same delegate storage should preserve lastCleared date
         const cache2 = new Cache(delegate, "root");
+        expect(cache2._lastCleared).toBeNull(); // means we do not have the last cleared value yet
+        await cache2.get("dummy"); // trigger getItem to lastCleared, and then dummy
         expect(cache2._lastCleared).toBe(lastCleared);
     })
 
-    it("Should cache in memory value which is in local storage", () => {
+    it("Should cache in memory value which is in local storage", async () => {
         const map = {};
         const delegate = {
             getItem: (key) => map[key],
@@ -239,7 +242,7 @@ describe('Util', function() {
         };
         const cache = new Cache(delegate, "root");
         map["root$Hello"] = JSON.stringify({ value: "World", cachedAt:Date.now() + 99999999 });
-        const value = cache.get("Hello");
+        const value = await cache.get("Hello");
         expect(value).toBe("World");
         expect(cache._cache["Hello"].value).toBe("World");
     })
@@ -407,6 +410,24 @@ describe('Util', function() {
     describe("Is Browser", () => {
         it("Should not be a browser", () => {
             expect(Util.isBrowser()).toBe(false);
+        });
+    });
+
+    describe("Promises", () => {
+        it("Should tell if an object is a promise", () => {
+            expect(Util.isPromise()).toBe(false);
+            expect(Util.isPromise(null)).toBe(false);
+            expect(Util.isPromise({})).toBe(false);
+            expect(Util.isPromise([])).toBe(false);
+            expect(Util.isPromise({ then: 3 })).toBe(false);
+            expect(Util.isPromise(new Promise((resolve, reject) => {}))).toBe(true);
+            expect(Util.isPromise(Promise.resolve(3))).toBe(true);
+        });
+
+        it("Should ensure a promise", async () => {
+            await expect(Util.asPromise(null)).resolves.toBe(null);
+            await expect(Util.asPromise(3)).resolves.toBe(3);
+            await expect(Util.asPromise(Promise.resolve(3))).resolves.toBe(3);
         });
     });
 });

@@ -36,13 +36,13 @@ describe("CacheRefresher cache", function () {
 
         client._transport.mockReturnValueOnce(Mock.GETMODIFIEDENTITIES_CLEAR_RESPONSE);
         await cacheRefresher._callAndRefresh();
-        expect(cacheRefresher._refresherStateCache.get("buildNumber")).toBe("9469");
-        expect(cacheRefresher._refresherStateCache.get("time")).toBe("2022-07-28T14:38:55.766Z");
+        await expect(cacheRefresher._refresherStateCache.get("buildNumber")).resolves.toBe("9469");
+        await expect(cacheRefresher._refresherStateCache.get("time")).resolves.toBe("2022-07-28T14:38:55.766Z");
 
         client._transport.mockReturnValueOnce(Mock.GETMODIFIEDENTITIES_CLEAR_RESPONSE);
         await cacheRefresher._callAndRefresh();
-        expect(cacheRefresher._refresherStateCache.get("buildNumber")).toBe("9469");
-        expect(cacheRefresher._refresherStateCache.get("time")).toBe("2022-07-28T14:38:55.766Z");
+        await expect(cacheRefresher._refresherStateCache.get("buildNumber")).resolves.toBe("9469");
+        await expect(cacheRefresher._refresherStateCache.get("time")).resolves.toBe("2022-07-28T14:38:55.766Z");
 
         client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
         await client.NLWS.xtkSession.logoff();
@@ -61,8 +61,8 @@ describe("CacheRefresher cache", function () {
 
         const cacheRefresher = new CacheRefresher(cache, client, "xtk:schema", "rootkey");
 
-        expect(cacheRefresher._refresherStateCache.get("buildNumber")).toBeUndefined();
-        expect(cacheRefresher._refresherStateCache.get("time")).toBeUndefined();
+        await expect(cacheRefresher._refresherStateCache.get("buildNumber")).resolves.toBeUndefined();
+        await expect(cacheRefresher._refresherStateCache.get("time")).resolves.toBeUndefined();
         client._transport.mockReturnValue(Promise.resolve(Mock.GETMODIFIEDENTITIES_CLEAR_RESPONSE));
         jest.useFakeTimers();
         cacheRefresher.startAutoRefresh(5000);
@@ -72,8 +72,8 @@ describe("CacheRefresher cache", function () {
         // to allow soap call to finish
         await new Promise(process.nextTick);
 
-        expect(cacheRefresher._refresherStateCache.get("buildNumber")).toBe("9469");
-        expect(cacheRefresher._refresherStateCache.get("time")).toBe("2022-07-28T14:38:55.766Z");
+        await expect(cacheRefresher._refresherStateCache.get("buildNumber")).resolves.toBe("9469");
+        await expect(cacheRefresher._refresherStateCache.get("time")).resolves.toBe("2022-07-28T14:38:55.766Z");
 
         cacheRefresher.stopAutoRefresh();
         client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
@@ -91,13 +91,13 @@ describe("CacheRefresher cache", function () {
             const cache = new Cache();
 
             const cacheRefresher = new CacheRefresher(cache, client, "xtk:schema", "rootkey");
-            cacheRefresher._refresherStateCache.put("buildNumber", "9469");
-            cacheRefresher._refresherStateCache.put("time", "2022-07-28T14:38:55.766Z");
+            await cacheRefresher._refresherStateCache.put("buildNumber", "9469");
+            await cacheRefresher._refresherStateCache.put("time", "2022-07-28T14:38:55.766Z");
 
             client._transport.mockReturnValueOnce(Mock.GETMODIFIEDENTITIES_CLEAR_RESPONSE);
             await cacheRefresher._callAndRefresh();
-            expect(cacheRefresher._refresherStateCache.get("buildNumber")).toBe("9469");
-            expect(cacheRefresher._refresherStateCache.get("time")).toBe("2022-07-28T14:38:55.766Z");
+            await expect(cacheRefresher._refresherStateCache.get("buildNumber")).resolves.toBe("9469");
+            await expect(cacheRefresher._refresherStateCache.get("time")).resolves.toBe("2022-07-28T14:38:55.766Z");
 
             client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
 
@@ -122,20 +122,20 @@ describe("CacheRefresher cache", function () {
         const cache = new Cache();
         const cacheRefresher = new CacheRefresher(cache, client, "xtk:schema", "rootkey");
 
-        cache.put("xtk:schema|nms:recipient", "<content recipient>");
-        cache.put("xtk:schema|nms:replicationStrategy", "<content xtk:schema|nms:replicationStrategy>");
-        cache.put("xtk:schema|nms:operation", "<content xtk:schema|nms:operation>");
-        expect(cache.get("xtk:schema|nms:recipient")).toBe("<content recipient>");
-        expect(cache.get("xtk:schema|nms:replicationStrategy")).toBe("<content xtk:schema|nms:replicationStrategy>");
-        expect(cache.get("xtk:schema|nms:operation")).toBe("<content xtk:schema|nms:operation>");
+        await cache.put("xtk:schema|nms:recipient", "<content recipient>");
+        await cache.put("xtk:schema|nms:replicationStrategy", "<content xtk:schema|nms:replicationStrategy>");
+        await cache.put("xtk:schema|nms:operation", "<content xtk:schema|nms:operation>");
+        await expect(cache.get("xtk:schema|nms:recipient")).resolves.toBe("<content recipient>");
+        await expect(cache.get("xtk:schema|nms:replicationStrategy")).resolves.toBe("<content xtk:schema|nms:replicationStrategy>");
+        await expect(cache.get("xtk:schema|nms:operation")).resolves.toBe("<content xtk:schema|nms:operation>");
 
         client._transport.mockReturnValueOnce(Mock.GETMODIFIEDENTITIES_SCHEMA_RESPONSE);
         await cacheRefresher._callAndRefresh();
-        expect(cacheRefresher._refresherStateCache.get("buildNumber")).toBe("9469");
-        expect(cacheRefresher._refresherStateCache.get("time")).toBe("2022-07-28T15:32:00.785Z");
-        expect(cache.get("xtk:schema|nms:recipient")).toBeUndefined();
-        expect(cache.get("xtk:schema|nms:replicationStrategy")).toBeUndefined();
-        expect(cache.get("xtk:schema|nms:operation")).toBe("<content xtk:schema|nms:operation>");
+        await expect(cacheRefresher._refresherStateCache.get("buildNumber")).resolves.toBe("9469");
+        await expect(cacheRefresher._refresherStateCache.get("time")).resolves.toBe("2022-07-28T15:32:00.785Z");
+        await expect(cache.get("xtk:schema|nms:recipient")).resolves.toBeUndefined();
+        await expect(cache.get("xtk:schema|nms:replicationStrategy")).resolves.toBeUndefined();
+        await expect(cache.get("xtk:schema|nms:operation")).resolves.toBe("<content xtk:schema|nms:operation>");
 
         client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
         await client.NLWS.xtkSession.logoff();
@@ -153,8 +153,8 @@ describe("CacheRefresher cache", function () {
 
         client._transport.mockReturnValueOnce(Mock.GETMODIFIEDENTITIES_UNDEFINED_RESPONSE);
         await cacheRefresher._callAndRefresh();
-        expect(cacheRefresher._refresherStateCache.get("buildNumber")).toBeUndefined();
-        expect(cacheRefresher._refresherStateCache.get("time")).toBeUndefined();
+        await expect(cacheRefresher._refresherStateCache.get("buildNumber")).resolves.toBeUndefined();
+        await expect(cacheRefresher._refresherStateCache.get("time")).resolves.toBeUndefined();
         expect(cacheRefresher._intervalId).toBeNull();
 
         client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
@@ -178,8 +178,8 @@ describe("CacheRefresher cache", function () {
         } catch (e) {
             expect(e).not.toBeNull();
         }
-        expect(cacheRefresher._refresherStateCache.get("buildNumber")).toBeUndefined();
-        expect(cacheRefresher._refresherStateCache.get("time")).toBeUndefined();
+        await expect(cacheRefresher._refresherStateCache.get("buildNumber")).resolves.toBeUndefined();
+        await expect(cacheRefresher._refresherStateCache.get("time")).resolves.toBeUndefined();
         expect(cacheRefresher._intervalId).not.toBeNull();
 
         cacheRefresher.stopAutoRefresh();
@@ -211,8 +211,8 @@ describe("CacheRefresher cache", function () {
         // to allow soap call to finish
         await new Promise(process.nextTick);
 
-        expect(cacheRefresher._refresherStateCache.get("buildNumber")).toBe("9469");
-        expect(cacheRefresher._refresherStateCache.get("time")).toBe("2022-07-28T14:38:55.766Z");
+        await expect(cacheRefresher._refresherStateCache.get("buildNumber")).resolves.toBe("9469");
+        await expect(cacheRefresher._refresherStateCache.get("time")).resolves.toBe("2022-07-28T14:38:55.766Z");
 
         cacheRefresher.stopAutoRefresh();
         client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);

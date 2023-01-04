@@ -3,6 +3,22 @@ layout: page
 title: Change Log
 ---
 
+<section class="changelog"><h1>Version 1.1.20</h1>
+  <h2>2023/01/03</h2>
+  
+  <li>
+    Add support for asynchronous caches. The signature of cache objects (Cache, MethodCache,
+    OptionCache, XtkEntityCache, SafeStorage) have changed to asynchronous functions.
+    However, the delegate object used to configure custom caches now support either synchronous
+    or async results. See the <a href="https://opensource.adobe.com/acc-js-sdk/cacehs.html">Cache documentation for more details</a>
+  </li>
+  <li>
+    Ability to configure the prefix to use for the cached objects. Default to a string containing
+    the SDK version and instance domain.
+  </li>
+</section>
+
+
 <section class="changelog"><h1>Version 1.1.19</h1>
   <h2>2022/12/21</h2>
   

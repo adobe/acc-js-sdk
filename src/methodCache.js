@@ -75,8 +75,8 @@ class MethodCache extends Cache {
      * @deprecated
      * @param {Element} schema DOM document node represening the schema 
      */
-    cache(schema) {
-        return this.put(schema);
+    async cache(schema) {
+        return await this.put(schema);
     }
     
     /**
@@ -84,7 +84,7 @@ class MethodCache extends Cache {
      * 
      * @param {Element} schema DOM document node represening the schema 
      */
-    put(schema) {
+    async put(schema) {
         var namespace = DomUtil.getAttributeAsString(schema, "namespace");
         var name = DomUtil.getAttributeAsString(schema, "name");
         var impls = DomUtil.getAttributeAsString(schema, "implements");
@@ -103,7 +103,7 @@ class MethodCache extends Cache {
                 while (child) {
                     const methodName = DomUtil.getAttributeAsString(child, "name");
                     const cached = { method: child, urn: schemaId };
-                    super.put(schemaId, methodName, cached);
+                    await super.put(schemaId, methodName, cached);
                     child = DomUtil.getNextSiblingElement(child, "method");
                 }
             }
@@ -124,7 +124,7 @@ class MethodCache extends Cache {
                     let cached = this._cache[key].value;
                     cached = { method: cached.method, urn: urn };
                     const methodName = DomUtil.getAttributeAsString(cached.method, "name");
-                    super.put(schemaId, methodName, cached);
+                    await super.put(schemaId, methodName, cached);
                 }
             }
         }
@@ -137,8 +137,8 @@ class MethodCache extends Cache {
      * @param {string} methodName the method name
      * @returns {Campaign.SoapMethodDefinition} the method definition, or undefined if the schema or the method is not found
      */
-    get(schemaId, methodName) {
-        const cached = super.get(schemaId, methodName);
+    async get(schemaId, methodName) {
+        const cached = await super.get(schemaId, methodName);
         return cached ? cached.method : undefined;
     }
 
@@ -149,8 +149,8 @@ class MethodCache extends Cache {
      * @param {string} methodName the method name
      * @returns {string} the URN (or Soap action header), or undefined if the schema or the method is not found
      */
-    getSoapUrn(schemaId, methodName) {
-        const cached = super.get(schemaId, methodName);
+    async getSoapUrn(schemaId, methodName) {
+        const cached = await super.get(schemaId, methodName);
         return cached ? cached.urn : undefined;
     }
 }

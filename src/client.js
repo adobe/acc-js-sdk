@@ -196,8 +196,7 @@ const clientHandler = (representation, headers, pushDownOptions) => {
                             var promise = callContext.client._callMethod(methodName, callContext, argumentsList);
                             return promise.then(function(optionAndValue) {
                                 const optionName = argumentsList[0];
-                                client._optionCache.put(optionName, optionAndValue);
-                                return optionAndValue;
+                                return client._optionCache.put(optionName, optionAndValue).then(() => optionAndValue);
                             });
                         }
                         // static method
@@ -308,6 +307,7 @@ class Credentials {
     * @property {boolean} noSDKHeaders - set to disable "ACC-SDK" HTTP headers
     * @property {boolean} noMethodInURL - Can be set to true to remove the method name from the URL
     * @property {number} timeout - Can be set to change the HTTP call timeout. Value is passed in ms.
+    * @property {string} cacheRootKey - "default" or "none" - determine the prefix to use for the keys in the caches of schemas, options, etc.
     * @memberOf Campaign
  */
 
@@ -379,6 +379,7 @@ class ConnectionParameters {
         this._options.clientApp = options.clientApp;
         this._options.noSDKHeaders = !!options.noSDKHeaders;
         this._options.noMethodInURL = !!options.noMethodInURL;
+        this._options.cacheRootKey = options.cacheRootKey === undefined ? "default": options.cacheRootKey;
     }
 
     /**
@@ -645,7 +646,12 @@ class Client {
         var instanceKey = connectionParameters._endpoint || "";
         if (instanceKey.startsWith("http://")) instanceKey = instanceKey.substr(7);
         if (instanceKey.startsWith("https://")) instanceKey = instanceKey.substr(8);
-        const rootKey = `acc.js.sdk.${sdk.getSDKVersion().version}.${instanceKey}.cache`;
+
+        // Determine the cache root key. By default, it's ade of the 
+        const rootKeyType = connectionParameters._options.cacheRootKey;
+        let rootKey = "";
+        if (!rootKeyType || rootKeyType === "default")
+            rootKey = `acc.js.sdk.${sdk.getSDKVersion().version}.${instanceKey}.cache.`;
 
         // Clear storage cache if the sdk versions or the instances are different
         if (this._storage && typeof this._storage.removeItem === 'function') {
@@ -656,11 +662,11 @@ class Client {
           }
         }
 
-        this._entityCache = new XtkEntityCache(this._storage, `${rootKey}.XtkEntityCache`, connectionParameters._options.entityCacheTTL);
-        this._entityCacheRefresher = new CacheRefresher(this._entityCache, this, "xtk:schema", `${rootKey}.XtkEntityCache`);
-        this._methodCache = new MethodCache(this._storage, `${rootKey}.MethodCache`, connectionParameters._options.methodCacheTTL);
-        this._optionCache = new OptionCache(this._storage, `${rootKey}.OptionCache`, connectionParameters._options.optionCacheTTL);
-        this._optionCacheRefresher = new CacheRefresher(this._optionCache, this, "xtk:option", `${rootKey}.OptionCache`);
+        this._entityCache = new XtkEntityCache(this._storage, `${rootKey}XtkEntityCache`, connectionParameters._options.entityCacheTTL);
+        this._entityCacheRefresher = new CacheRefresher(this._entityCache, this, "xtk:schema", `${rootKey}XtkEntityCache`);
+        this._methodCache = new MethodCache(this._storage, `${rootKey}MethodCache`, connectionParameters._options.methodCacheTTL);
+        this._optionCache = new OptionCache(this._storage, `${rootKey}OptionCache`, connectionParameters._options.optionCacheTTL);
+        this._optionCacheRefresher = new CacheRefresher(this._optionCache, this, "xtk:option", `${rootKey}OptionCache`);
         this.NLWS = new Proxy(this, clientHandler());
 
         this._transport = connectionParameters._options.transport;
@@ -1447,11 +1453,11 @@ class Client {
     async getOption(name, useCache = true) {
       var value;
       if (useCache) {
-        value = this._optionCache.get(name);
+        value = await this._optionCache.get(name);
       }
       if (value === undefined) {
         const option = await this.NLWS.xtkSession.getOption(name);
-        value = this._optionCache.put(name, option);
+        value = await this._optionCache.put(name, option);
       }
       return value;
     }
@@ -1467,7 +1473,7 @@ class Client {
     async setOption(name, rawValue, description) {
         // First, read the current option value to make sure we have the right type
         await this.getOption(name, true);
-        const option = this._optionCache.getOption(name);
+        const option = await this._optionCache.getOption(name);
         // Note: option is never null or undefined there: Campaign will return a value of type 0 and value ""
         var type = option.type;
         var value = XtkCaster.as(rawValue, type);
@@ -1483,40 +1489,41 @@ class Client {
         if (description != null && description != undefined)
             doc.description = description;
         doc[attName] = value;
-        return this.NLWS.xtkSession.write(doc).then(() => {
-            // Once set, cache the value
-            this._optionCache.put(name, [value, type]);
-        });
+        await this.NLWS.xtkSession.write(doc);
+        // Once set, cache the value
+        await this._optionCache.put(name, [value, type]);
     }
 
     /**
      * Clears the options cache
      */
-    clearOptionCache() {
-        this._optionCache.clear();
+    async clearOptionCache() {
+        await this._optionCache.clear();
     }
 
     /**
      * Clears the method cache
      */
-    clearMethodCache() {
-        this._methodCache.clear();
+    async clearMethodCache() {
+        await this._methodCache.clear();
     }
 
     /**
      * Clears the entity cache
      */
-    clearEntityCache() {
-        this._entityCache.clear();
+    async clearEntityCache() {
+        await this._entityCache.clear();
     }
 
     /**
      * Clears all caches (options, methods, entities)
      */
-    clearAllCaches() {
-        this.clearEntityCache();
-        this.clearMethodCache();
-        this.clearOptionCache();
+    async clearAllCaches() {
+        return Promise.all([
+            this.clearEntityCache(),
+            this.clearMethodCache(),
+            this.clearOptionCache(),
+        ]);
     }
 
     /**
@@ -1629,7 +1636,7 @@ class Client {
      * @returns {XML.XtkObject}  the schema definition, as either a DOM document or a JSON object
      */
     async getSchema(schemaId, representation, internal) {
-        var entity = this._entityCache.get("xtk:schema", schemaId);
+        var entity = await this._entityCache.get("xtk:schema", schemaId);
         if (!entity) {
           entity = await this.getEntityIfMoreRecent("xtk:schema", schemaId, "xml", internal);
           if (entity) {
@@ -1638,8 +1645,8 @@ class Client {
                 // Ensure xtk:persist is present by loading the xtk:session schema
                 await this.getSchema("xtk:session", "xml", true);
             }
-            this._entityCache.put("xtk:schema", schemaId, entity);
-            this._methodCache.put(entity);
+            await this._entityCache.put("xtk:schema", schemaId, entity);
+            await this._methodCache.put(entity);
           }
         }
         entity = this._toRepresentation(entity, representation);
@@ -1714,24 +1721,24 @@ class Client {
             throw CampaignException.SOAP_UNKNOWN_METHOD(schemaId, methodName, `Schema '${schemaId}' not found`);
 
         // Lookup the method to call
-        var method = that._methodCache.get(methodSchemaId, methodName);
+        var method = await that._methodCache.get(methodSchemaId, methodName);
         if (!method) {
             // first char of the method name may be lower case (ex: nms:seedMember.getAsModel) but the methodName 
             // variable has been capitalized. Make an attempt to lookup method name without capitalisation
             const methodNameLC = methodName.substring(0, 1).toLowerCase() + methodName.substring(1);
-            method = that._methodCache.get(schemaId, methodNameLC);
+            method = await that._methodCache.get(schemaId, methodNameLC);
             if (method) methodName = methodNameLC;
         }
         if (!method) {
-            this._methodCache.put(schema);
-            method = that._methodCache.get(methodSchemaId, methodName);
+            await this._methodCache.put(schema);
+            method = await that._methodCache.get(methodSchemaId, methodName);
         }
         if (!method)
             throw CampaignException.SOAP_UNKNOWN_METHOD(schemaId, methodName, `Method '${methodName}' of schema '${schemaId}' not found`);
 
         // Compute the SOAP URN. Again, specically handle xtk:jobInterface as it's not a real schema. The actual entity schema
         // would be available as the entitySchemaId property of the callContext
-        var urn = schemaId !== 'xtk:jobInterface' ? that._methodCache.getSoapUrn(schemaId, methodName)
+        var urn = schemaId !== 'xtk:jobInterface' ? await that._methodCache.getSoapUrn(schemaId, methodName)
             : `xtk:jobInterface|${entitySchemaId}`;
 
         const isStatic = DomUtil.getAttributeAsBoolean(method, "static");
