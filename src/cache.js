@@ -306,6 +306,14 @@ class Cache {
       delete this._cache[key];
       await this._remove(key);
   }
+
+  /**
+   * Change TTL for objects in the cache in ms. Defaults to 5 mins
+   * @param {any} ttl
+   */
+  setTTL(ttl) {
+    this._ttl = ttl || 1000 * 300;
+  }
 }
 
 // Public expots

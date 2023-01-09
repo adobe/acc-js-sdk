@@ -42,6 +42,25 @@ describe('Caches', function() {
             expect(cache._stats).toMatchObject({ reads: 1, writes: 1, memoryHits: 0, storageHits: 0 });
         })
 
+        it("When changes TTL cache value should use new ttl", async () => {
+          const cache = new Cache(undefined, undefined, 1000 * 300); // 5 min TTL
+          cache.setTTL(-1);
+          expect(cache._ttl).toBe(-1);
+          await cache.put("Hello", "World");
+          await expect(cache.get("Hello")).resolves.toBeUndefined();
+          expect(cache._stats).toMatchObject({ reads: 1, writes: 1, memoryHits: 0, storageHits: 0 });
+        })
+
+        it("When TTL value is empty , default value should be used", async () => {
+          const cache = new Cache(undefined, undefined, -1);
+          expect(cache._ttl).toBe(-1);
+          cache.setTTL();
+          expect(cache._ttl).toBe(1000 * 300);
+          await cache.put("Hello", "World");
+          await expect(cache.get("Hello")).resolves.toBe("World");
+          expect(cache._stats).toMatchObject({ reads: 1, writes: 1, memoryHits: 1, storageHits: 0 });
+        })
+
         it("Should support custom key function", async () => {
             const cache = new Cache(undefined, undefined, 300000, ((a, b) => a + "||" + b));
             await cache.put("key-part-1", "key-part-2", "value");

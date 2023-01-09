@@ -146,7 +146,9 @@ describe("CacheRefresher cache", function () {
         client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
 
         await client.NLWS.xtkSession.logon();
-        const cache = new Cache();
+        const cache = new Cache(undefined, undefined, 1000 * 600); 
+        await cache.put("Hello", "World");
+        await expect(cache.get("Hello")).resolves.toBe("World");
         const cacheRefresher = new CacheRefresher(cache, client, "xtk:schema", "rootkey");
 
         cacheRefresher.startAutoRefresh();
@@ -156,6 +158,8 @@ describe("CacheRefresher cache", function () {
         await expect(cacheRefresher._refresherStateCache.get("buildNumber")).resolves.toBeUndefined();
         await expect(cacheRefresher._refresherStateCache.get("time")).resolves.toBeUndefined();
         expect(cacheRefresher._intervalId).toBeNull();
+        await expect(cache.get("Hello")).resolves.toBeUndefined();
+        expect(cache._ttl).toBe(1000 * 300); // reset to default TTL of 5 minutes
 
         client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
         await client.NLWS.xtkSession.logoff();

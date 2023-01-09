@@ -259,6 +259,8 @@ governing permissions and limitations under the License.
             }
             clearInterval(this._intervalId);
             this._intervalId = null;
+            this._cache.setTTL(1000 * 300);
+            this._cache.clear();
         }
     }
 
