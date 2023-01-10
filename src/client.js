@@ -647,7 +647,9 @@ class Client {
         if (instanceKey.startsWith("http://")) instanceKey = instanceKey.substr(7);
         if (instanceKey.startsWith("https://")) instanceKey = instanceKey.substr(8);
 
-        // Determine the cache root key. By default, it's ade of the 
+        // Determine the cache root key. There are 3 possible values:
+        // * no value or "default" is the default behavior, i.e. all cache keys are prefixed with "acc.js.sdk.${sdk.getSDKVersion().version}.${instanceKey}.cache."
+        // * "none" (or actually anything else for now), where cache keys are not prefixed by anything
         const rootKeyType = connectionParameters._options.cacheRootKey;
         let rootKey = "";
         if (!rootKeyType || rootKeyType === "default")
