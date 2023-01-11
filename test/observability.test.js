@@ -336,7 +336,7 @@ describe('ACC Client Observability', function () {
     </SOAP-ENV:Envelope>`);
             };
             client._transport.mockImplementationOnce(getOption);
-            client.clearOptionCache();
+            await client.clearOptionCache();
             var value = await client.getOption("Dummy");
             expect(value).toBe("DummyZZ");
 
@@ -345,7 +345,7 @@ describe('ACC Client Observability', function () {
                 if (inputParameters[0].value === "Dummy") inputParameters[0].value = "XtkDatabaseId";
             });
             client._transport.mockImplementationOnce(getOption);
-            client.clearOptionCache();
+            await client.clearOptionCache();
             var value = await client.getOption("Dummy");
             expect(value).toBe("XtkDatabaseIdZZ");
             

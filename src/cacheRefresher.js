@@ -47,7 +47,7 @@ governing permissions and limitations under the License.
          * @param {string} name is the propertie name
          * @param {string} rawValue string value
          */
-        put(name, rawValue) {
+        async put(name, rawValue) {
             return super.put(name, { value: rawValue });
         }
 
@@ -57,8 +57,8 @@ governing permissions and limitations under the License.
          * @param {string} name the propertie name
          * @returns {*} the value
          */
-        get(name) {
-            const option = super.get(name);
+        async get(name) {
+            const option = await super.get(name);
             return option ? option.value : undefined;
         }
     }
@@ -149,13 +149,13 @@ governing permissions and limitations under the License.
             const soapCall = this._client._prepareSoapCall("xtk:session", "GetModifiedEntities", true, true, this._connectionParameters._options.extraHttpHeaders);
 
             if (this._lastTime === undefined) {
-                const storedTime = this._refresherStateCache.get("time");
+                const storedTime = await this._refresherStateCache.get("time");
                 if (storedTime != undefined) {
                     this._lastTime = storedTime;
                 }
             }
             if (this._buildNumber === undefined) {
-                const storedBuildNumber = this._refresherStateCache.get("buildNumber");
+                const storedBuildNumber = await this._refresherStateCache.get("buildNumber");
                 if (storedBuildNumber != undefined) {
                     this._buildNumber = storedBuildNumber;
                 }
@@ -192,37 +192,37 @@ governing permissions and limitations under the License.
             // Do a soap call GetModifiedEntities instead of xtksession.GetModifiedEnties because we don't want to go through methodCache 
             // which might not contain the method GetModifiedEntities just after a build updgrade from a old version of acc 
             // This is an internal SOAP call that cannot be intercepted by observers onBeforeCall / onAfterCall
-            return this._client._makeSoapCall(soapCall)
-                .then(() => {
-                    let doc = soapCall.getNextDocument();
-                    soapCall.checkNoMoreArgs();
-                    doc = that._client._toRepresentation(doc, 'xml');
-                    that._lastTime = DomUtil.getAttributeAsString(doc, "time"); // save time to be able to send it as an attribute in the next soap call
-                    that._buildNumber = DomUtil.getAttributeAsString(doc, "buildNumber");
-                    that._refresh(doc, event);
-                    that._refresherStateCache.put("time", that._lastTime);
-                    that._refresherStateCache.put("buildNumber", that._buildNumber);
-                })
-                .catch((ex) => {
-                    // if the method GetModifiedEntities is not found in this acc version we disable the autoresfresh of the cache
-                    if (soapCall.methodName == "GetModifiedEntities" && ex.errorCode == "SOP-330006") {
-                        this._client._trackEvent('CACHE_REFRESHER//abort', undefined, {
-                            cacheSchemaId: this._cacheSchemaId,
-                            error: ex,
-                        });
-                        this.stopAutoRefresh();
-                    } else {
-                        throw ex;
-                    }
-                });
+            try {
+                await this._client._makeSoapCall(soapCall);
+                let doc = soapCall.getNextDocument();
+                soapCall.checkNoMoreArgs();
+                doc = that._client._toRepresentation(doc, 'xml');
+                that._lastTime = DomUtil.getAttributeAsString(doc, "time"); // save time to be able to send it as an attribute in the next soap call
+                that._buildNumber = DomUtil.getAttributeAsString(doc, "buildNumber");
+                await that._refresh(doc, event);
+                await that._refresherStateCache.put("time", that._lastTime);
+                await that._refresherStateCache.put("buildNumber", that._buildNumber);
+            }
+            catch(ex) {
+                // if the method GetModifiedEntities is not found in this acc version we disable the autoresfresh of the cache
+                if (soapCall.methodName == "GetModifiedEntities" && ex.errorCode == "SOP-330006") {
+                    this._client._trackEvent('CACHE_REFRESHER//abort', undefined, {
+                        cacheSchemaId: this._cacheSchemaId,
+                        error: ex,
+                    });
+                    this.stopAutoRefresh();
+                } else {
+                    throw ex;
+                }
+            };
         }
 
         // Refresh Cache : remove entities modified recently listed in xmlDoc
-        _refresh(xmlDoc, event) {
+        async _refresh(xmlDoc, event) {
             const clearCache = XtkCaster.asBoolean(DomUtil.getAttributeAsString(xmlDoc, "emptyCache"));
             const evicted = [];
             if (clearCache == true) {
-                this._cache.clear();
+                await this._cache.clear();
             } else {
                 var child = DomUtil.getFirstChildElement(xmlDoc, "entityCache");
                 while (child) {
@@ -230,7 +230,7 @@ governing permissions and limitations under the License.
                     const schemaId = DomUtil.getAttributeAsString(child, "schema");
                     if (schemaId === this._cacheSchemaId) {
                         evicted.push(schemaId);
-                        this._cache.remove(pkSchemaId);
+                        await this._cache.remove(pkSchemaId);
                         // Notify listeners to refresh in SchemaCache
                         if (schemaId === "xtk:schema") {
                             const schemaIds = pkSchemaId.split("|");

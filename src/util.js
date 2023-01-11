@@ -153,6 +153,23 @@ class Util {
     }
     return schemaId;
   }
+
+  /**
+   * Test if an object is a promise
+   * @param {*} object the object to test
+   * @returns {boolean} if the object is a promise
+   */
+  static isPromise(object) {
+    if (object === null || object === undefined) return false;
+    if (object.then && (typeof object.then === "function")) return true;
+    return false;
+  }
+
+  static asPromise(object) {
+    if (this.isPromise(object)) 
+      return object;
+    return Promise.resolve(object);
+  }
 }
 
 /**
