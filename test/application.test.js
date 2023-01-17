@@ -141,6 +141,25 @@ describe('Application', () => {
             });
         });
 
+        describe('dbEnum', () => {
+            it("Should find dbEnum attribute", () => {
+                var xml = DomUtil.parse(`<schema namespace='nms' name='recipient'>
+                                            <element name='recipient' label='Recipients'>
+                                                <attribute dbEnum="operationNature" desc="Nature of the campaign" label="Nature"
+               length="64" name="nature" type="string"/>
+                                            </element>
+                                        </schema>`);
+                var schema = newSchema(xml);
+                var root = schema.root;
+                expect(!!root.children.get("@nature")).toBe(true);
+                var attribute = root.children["@nature"];
+                expect(attribute).not.toBeNull();
+                expect(attribute.dbEnum).toBe("operationNature");
+                expect(attribute.type).toBe("string");
+                expect(attribute.length).toBe(64);
+            });
+        });
+
         describe("Children", () => {
             it("Should browse root children", () => {
                 var xml = DomUtil.parse(`<schema namespace='nms' name='recipient'>
