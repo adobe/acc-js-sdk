@@ -252,6 +252,12 @@ class XtkSchemaNode {
          this.dataPolicy = EntityAccessor.getAttributeAsString(xml, "dataPolicy");
 
         /**
+         * Returns a string of characters which provides the db enum of the current node.
+         * @type {string}
+         */
+        this.dbEnum = EntityAccessor.getAttributeAsString(xml, "dbEnum");
+
+        /**
          * Returns a string of characters which specifies the editing type of the current node.
          * @type {string}
          */

@@ -214,7 +214,7 @@ governing permissions and limitations under the License.
                 } else {
                     throw ex;
                 }
-            };
+            }
         }
 
         // Refresh Cache : remove entities modified recently listed in xmlDoc

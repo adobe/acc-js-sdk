@@ -228,13 +228,14 @@ const root = await node.linkTarget();
   <tbody>
     <tr><td><b>children</b></td><td>A array/map of children of the node. See note on the ArrayMap structure below</td></tr>
     <tr><td><b>dataPolicy</b></td><td>Returns a string of characters which provides the data policy of the current node.</td></tr>
+    <tr><td><b>dbEnum</b></td><td>Returns a string of characters which provides the db enum of the current node.</td></tr>
     <tr><td><b>description</b></td><td>A long, human readable, description of the node</td></tr>
     <tr><td><b>descriptionLocalizationId</b></td><td>The translation id of the description of the node.</td></tr>
     <tr><td><b>editType</b></td><td>Returns a string of characters which specifies the editing type of the current node.
     <tr><td><b>enum</b></td><td>The name of the enumeration for the node, or an empty string if the node does node have an enumeration. See <b>enumeration()</b> method to get the corresponding <b>XtkSchemaNode</b></td></tr>
     <tr><td><b>enumerationImage</b></td><td>Returns the name of the image of the current node in the form of a string of characters.</td></tr>
     <tr><td><b>folderModel</b></td><td>Only on the root node, returns a string which contains the folder template(s). On the other nodes, it returns undefined.
-    <tr><td><b>image** </td><td>Returns the name of the image in the form of a string of characters.
+    <tr><td><b>image**</b></td><td>Returns the name of the image in the form of a string of characters.
     <tr><td><b>img</b></td><td>Returns the name of the image in the form of a string of characters. (alias to <b>image</b> property)</td></tr>
     <tr><td><b>integrity</b></td><td>Returns the link integrity type.</td></tr>
     <tr><td><b>keys</b></td><td>A array/map of keys in this node, indexed by key name. Map values are of type <b>XtkSchemaKey</b></td></tr>
@@ -271,7 +272,7 @@ const root = await node.linkTarget();
     <tr><td><b>label</b></td><td>The label (i.e. human readable, localised) name of the node.</td></tr>
     <tr><td><b>labelLocalizationId</b></td><td>The translation id of the label of the node.</td></tr>
     <tr><td><b>name</b></td><td>The name of the node (internal name)</td></tr>
-    <tr><td><b>nodePath** </td><td>The xpath of the node
+    <tr><td><b>nodePath**</b></td><td>The xpath of the node
     <tr><td><b>parent</b></td><td>The parent node (a <b>XtkSchemaNode</b> object). Will be null for schema nodes</td></tr>
     <tr><td><b>PKSequence</b></td><td>Returns a character string that provides the name of the sequence to use for the primary key.</td></tr>
     <tr><td><b>packageStatus</b></td><td>Returns a number that gives the package status.</td></tr>
