@@ -1065,7 +1065,7 @@ class XtkEnumeration {
              const e = new XtkEnumerationValue(child, this.baseType, this._localizationId);
              this.values._push(e.name, e);
              if (e.image != "") this.hasImage = true;
-             const stringValue = EntityAccessor.getAttributeAsString(child, "value");
+             const stringValue = EntityAccessor.getAttributeAsString(child, "name");
              if (defaultValue == stringValue)
                  this.default = e;
          }
