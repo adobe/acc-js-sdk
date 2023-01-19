@@ -467,7 +467,7 @@ describe('Application', () => {
 
             it("Should support default values", () => {
                 var xml = DomUtil.parse(`<schema namespace='nms' name='recipient'>
-                                            <enumeration basetype="byte" name="instanceType" default="1">
+                                            <enumeration basetype="byte" name="instanceType" default="master">
                                                 <value label="One-off event" name="single" value="0"/>
                                                 <value label="Reference recurrence" name="master" value="1"/>
                                                 <value label="Instance of a recurrence" name="instance" value="2"/>
@@ -492,7 +492,7 @@ describe('Application', () => {
                         <GetEntityIfMoreRecentResponse xmlns='urn:wpp:default' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
                             <pdomDoc xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
                                 <schema name="profile" namespace="nms" xtkschema="xtk:schema">
-                                    <enumeration basetype="byte" name="instanceType" default="1" label="Instance type">
+                                    <enumeration basetype="byte" name="instanceType" default="master" label="Instance type">
                                         <value label="One-off event" name="single" value="0"/>
                                         <value label="Reference recurrence" name="master" value="1"/>
                                         <value label="Instance of a recurrence" name="instance" value="2"/>
@@ -517,7 +517,7 @@ describe('Application', () => {
                         <GetEntityIfMoreRecentResponse xmlns='urn:wpp:default' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
                             <pdomDoc xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
                                 <schema name="profile" namespace="nms" xtkschema="xtk:schema">
-                                    <enumeration basetype="byte" name="instanceType" default="1" label="Instance type">
+                                    <enumeration basetype="byte" name="instanceType" default="master" label="Instance type">
                                         <value label="One-off event" name="single" value="0"/>
                                         <value label="Reference recurrence" name="master" value="1"/>
                                         <value label="Instance of a recurrence" name="instance" value="2"/>
@@ -558,7 +558,7 @@ describe('Application', () => {
                         <GetEntityIfMoreRecentResponse xmlns='urn:wpp:default' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
                             <pdomDoc xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
                                 <schema name="profile" namespace="nms" xtkschema="xtk:schema">
-                                    <enumeration basetype="byte" name="instanceType" default="1" label="Instance type">
+                                    <enumeration basetype="byte" name="instanceType" default="master" label="Instance type">
                                         <value label="One-off event" name="single" value="0"/>
                                         <value label="Reference recurrence" name="master" value="1"/>
                                         <value label="Instance of a recurrence" name="instance" value="2"/>
@@ -584,7 +584,7 @@ describe('Application', () => {
                         <GetEntityIfMoreRecentResponse xmlns='urn:wpp:default' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
                             <pdomDoc xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
                                 <schema name="profile" namespace="nms" xtkschema="xtk:schema">
-                                    <enumeration basetype="byte" name="instanceType" default="1" label="Instance type">
+                                    <enumeration basetype="byte" name="instanceType" default="master" label="Instance type">
                                         <value label="One-off event" name="single" value="0"/>
                                         <value label="Reference recurrence" name="master" value="1"/>
                                         <value label="Instance of a recurrence" name="instance" value="2"/>
@@ -625,7 +625,7 @@ describe('Application', () => {
                         <GetEntityIfMoreRecentResponse xmlns='urn:wpp:default' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
                             <pdomDoc xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
                                 <schema name="profile" namespace="nms" xtkschema="xtk:schema">
-                                    <enumeration basetype="byte" name="instanceType" default="1" label="Instance type">
+                                    <enumeration basetype="byte" name="instanceType" default="master" label="Instance type">
                                         <value label="One-off event" name="single" value="0"/>
                                         <value label="Reference recurrence" name="master" value="1"/>
                                         <value label="Instance of a recurrence" name="instance" value="2"/>
