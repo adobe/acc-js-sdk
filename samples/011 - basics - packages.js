@@ -21,7 +21,7 @@ const utils = require("./utils.js");
 ( async () => {
 
   await utils.sample({
-    title: "Testing generating and importing packages",
+    title: "Testing generating and importing packages (in XML)",
     labels: [ "Basics", "Packages", "xtk:builder", "InstallPackage" ],
     description: `The xtkBuilder.installPackage() can be used to import packages`,
     code: async() => {
@@ -51,6 +51,40 @@ const utils = require("./utils.js");
         // Install package. The package is in XML format and we set the timeout to 5 mins to prevent any issues
         console.log(`Installing package`, DomUtil.toXMLString(doc));
         await NLWS.xml.pushDown({ timeout: 5*60*1000 }).xtkBuilder.installPackage(doc);      
+      });
+    }
+  });
+
+  await utils.sample({
+    title: "Testing generating and importing packages (in JSON)",
+    labels: [ "Basics", "Packages", "xtk:builder", "InstallPackage" ],
+    description: `The xtkBuilder.installPackage() can be used to import packages`,
+    code: async() => {
+      return await utils.logon(async (client, NLWS) => {
+        console.log(`Generating package with a service named 'newsletterTest'`);
+
+        const jsonPackage = { 
+            package: {
+              buildNumber: "*",
+              buildVersion: "*",
+              entities: {
+                schema:"nms:service",
+                service: {
+                  label: "NewsletterTest",
+                  name: "newsletterTest", 
+                  folder: {
+                    _operation: "none",
+                    name: "nmsSetOfServices"
+                  },
+                  visitorFolder: {
+                    _operation: "none",
+                    name: "nmsVisitor"
+                  }
+                }
+              }
+            }
+          };
+        await NLWS.pushDown({ timeout: 5*60*1000 }).xtkBuilder.installPackage(jsonPackage);
         console.log(`Package installed`);
       });
     }
