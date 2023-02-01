@@ -3581,10 +3581,13 @@ describe('ACC Client', function () {
             client._transport.mockReturnValueOnce(Mock.GET_NMS_DELIVERY_SCHEMA_RESPONSE);
             client._transport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
             client._transport.mockReturnValueOnce(Mock.GET_DELIVERY_NEW_INSTANCE_RESPONSE);
+
+            const instance = new AbortController();
+            const signal = instance.signal;
             await client._callMethod("NewInstance", {
                 schemaId: 'nms:delivery',
                 object: { },
-            }, []);
+            }, [{signal}]);
             expect(client._transport).toHaveBeenCalledTimes(4);
             expect(client._transport.mock.calls[3][0].data).toMatch("<delivery xtkschema=\"nms:delivery\"/>");
         });

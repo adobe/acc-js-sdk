@@ -551,6 +551,21 @@ describe('SOAP', function() {
           return call.execute().then(() => {
               expect(call.getNextString()).toBe("XSV-350008 Session has expired or is invalid. Please reconnect.");
           });
+        });
+
+        it("aborting pending HTTP calls to avoid unnecessary attempts to re-render.", function() {
+            const instance = new AbortController();
+            const signal = instance.signal;
+            const transport = function() { 
+                return Promise.reject({name: 'AbortError'}); 
+            };
+            const call = makeSoapMethodCall(transport, "xtk:session", "Date", "$session$", "$security$");
+            const [ request, requestOptions ] = call._createHTTPRequest(URL, {signal});
+            instance.abort();
+            assert.equal(requestOptions.signal, signal);
+            return call.execute().catch((ex) => {
+                expect(ex.name).toBe('AbortError');
+            });
       });
 
         it("Should should read Element response", function() {
