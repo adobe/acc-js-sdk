@@ -686,6 +686,7 @@ class SoapMethodCall {
             }
         })
         .catch(function(err) {
+            //if exception is raised due to aborting request
             if(err.name === 'AbortError'){
                 throw err;
             }
