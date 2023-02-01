@@ -114,6 +114,7 @@ if (!Util.isBrowser()) {
         method: options.method,
         headers: headers,
         body: options.data,
+        ...(options.signal && {signal : options.signal})
     });
 
     const p = fetch(r).then(async (response) => {
@@ -123,6 +124,9 @@ if (!Util.isBrowser()) {
             return blob.text();
         });
     }).catch((ex) => {
+      if(ex.name === 'AbortError'){
+        throw ex;
+      }
       const proto = Object.getPrototypeOf(ex);
       if (proto.constructor.name == "HttpError")
         throw ex;

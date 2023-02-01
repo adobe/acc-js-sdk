@@ -554,7 +554,8 @@ class SoapMethodCall {
             url: url,
             method: 'POST',
             headers: headers,
-            data: DomUtil.toXMLString(this._doc)
+            data: DomUtil.toXMLString(this._doc),
+            ...(requestOptions && {signal : requestOptions.signal})
         };
         if (this._sessionToken)
             request.headers.Cookie = '__sessiontoken=' + this._sessionToken;
@@ -575,7 +576,7 @@ class SoapMethodCall {
      * @param {string} url the endpoint (/nl/jsp/soaprouter.jsp)
      * @param {client.Client} sdk client (optional)
      */
-    finalize(url, client) {
+    finalize(url, client, signal) {
         if (client) {
             this._sessionToken = client._sessionToken;
             this._securityToken = client._securityToken;
@@ -617,7 +618,7 @@ class SoapMethodCall {
         const actualUrl = noMethodInURL ? url : `${url}?soapAction=${encodeURIComponent(this.urn + "#" + this.methodName)}`;
 
         // Prepare request and empty response objects
-        [this.request, this.requestOptions] = this._createHTTPRequest(actualUrl);
+        [this.request, this.requestOptions] = this._createHTTPRequest(actualUrl, {signal});
         this.response = undefined;
     }
 
@@ -685,6 +686,9 @@ class SoapMethodCall {
             }
         })
         .catch(function(err) {
+            if(err.name === 'AbortError'){
+                throw err;
+            }
             if (that.response && that.response.indexOf(`XSV-350008`) != -1)
               throw CampaignException.SESSION_EXPIRED();
             else throw makeCampaignException(that, err);
