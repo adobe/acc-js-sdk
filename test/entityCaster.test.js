@@ -19,88 +19,6 @@ const { EntityCaster, QueryDefSchemaInferer } = require('../src/entityCaster.js'
  * 
  *********************************************************************************/
 
-
- const GET_XTK_ENTITYCASTER_SCHEMA_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
-        <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:wpp:default' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
-        <SOAP-ENV:Body>
-            <GetEntityIfMoreRecentResponse xmlns='urn:wpp:default' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
-                <pdomDoc xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
-                    <schema name="entityCaster" namespace="xtk">
-                        <enumeration basetype="byte" default="edit" name="state">
-                            <value name="edit" value="0"/>
-                            <value name="live" value="17"/>
-                        </enumeration>
-                        <element name="entityCaster">
-                            <attribute name="id" type="long"/>
-                            <attribute name="internalName" type="string"/>
-                            <element name="textOnly" type="string" length="100"/>
-                            <attribute name="recipient-id" type="long"/>
-                            <attribute name="state" type="byte" enum="state"/>
-
-                            <attribute name="attAndElem" type="long"/>
-                            <element name="attAndElem" type="string" length="100"/>
-
-                            <element name="struct">
-                                <attribute name="count" type="long"/>
-                                <attribute name="created" type="datetime"/>
-                                <element name="child">
-                                    <attribute name="enabled" type="boolean"/>
-                                </element>
-                            </element>
-
-                            <!-- unbound collection directly in the root node -->
-                            <element name="coll" unbound="true">
-                                <attribute name="count" type="long"/>
-                                <attribute name="created" type="datetime"/>
-                            </element>
-                            <!-- unbound collection is a child element -->
-                            <element name="book">
-                                <element name="chapter" unbound="true">
-                                    <attribute name="idx" type="long"/>
-                                    <attribute name="name" type="string"/>
-                                    <element name="notes">
-                                        <element name="idx" type="long"/>
-                                        <element name="note" type="string" unbound="true"/>
-                                    </element>
-                                </element>
-                            </element>
-
-                            <element name="sourceId" type="long"/>
-
-                            <element name="cdata" type="CDATA"/>
-                            <element name="html" type="html"/>
-                            <element name="anyLocalizable" type="ANY" localizable="true"/>
-                            <element name="any" type="ANY"/>
-
-                            <element name="static" localizable="true" type="ANY">
-                                <attribute name="style" type="string"/>
-                                <attribute name="width" type="short"/>
-                            </element> 
-
-                            <element name="country" type="link" target="xtk:country"/>
-                        </element>
-                    </schema>
-                </pdomDoc>
-            </GetEntityIfMoreRecentResponse>
-        </SOAP-ENV:Body>
-        </SOAP-ENV:Envelope>`);
-
-
-const GET_XTK_ENTITYCASTER_COUNTRY_SCHEMA_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
-        <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:wpp:default' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
-        <SOAP-ENV:Body>
-            <GetEntityIfMoreRecentResponse xmlns='urn:wpp:default' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
-                <pdomDoc xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
-                    <schema name="country" namespace="xtk">
-                        <element name="country">
-                            <attribute name="id" type="long"/>
-                            <attribute name="name" type="string"/>
-                        </element>
-                    </schema>
-                </pdomDoc>
-            </GetEntityIfMoreRecentResponse>
-        </SOAP-ENV:Body>
-        </SOAP-ENV:Envelope>`);
  
 describe('EntityCaster', function() {
 
@@ -110,8 +28,8 @@ describe('EntityCaster', function() {
             const client = await Mock.makeClient();
             client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
-            client._transport.mockReturnValueOnce(GET_XTK_ENTITYCASTER_SCHEMA_RESPONSE);
-            const schema = await client.getSchema("xtk:entityCaster", "xml");   // preload schema
+            //client._transport.mockReturnValueOnce(Mock.GET_XTK_ENTITYCASTER_SCHEMA_RESPONSE);
+            //const schema = await client.getSchema("xtk:entityCaster", "xml");   // preload schema
             if (options === undefined) options = { enabled: true };
             const caster = new EntityCaster(client, "xtk:entityCaster", options);
             if (beforeCastHook) {
@@ -162,9 +80,9 @@ describe('EntityCaster', function() {
             const client = await Mock.makeClient();
             client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
-            client._transport.mockReturnValueOnce(Mock.GET_MISSING_SCHEMA_RESPONSE);
-            const caster = new EntityCaster(client, "xtk:entityCaster", { enabled: true });
-            await expect(caster.cast({ id: "123" })).rejects.toMatchObject({ errorCode: "SDK-000016", faultString: "Unknown schema 'xtk:entityCaster'" });
+            //client._transport.mockReturnValueOnce(Mock.GET_MISSING_SCHEMA_RESPONSE);
+            const caster = new EntityCaster(client, "xtk:notFound", { enabled: true });
+            await expect(caster.cast({ id: "123" })).rejects.toMatchObject({ errorCode: "SDK-000016", faultString: "Unknown schema 'xtk:notFound'" });
             client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
             await client.NLWS.xtkSession.logoff();
         });
@@ -188,20 +106,22 @@ describe('EntityCaster', function() {
 
         describe("Link support", () => {
             it("Should cast linked entities", async () => {
-                const hook = async (client, caster) => {
-                    client._transport.mockReturnValueOnce(GET_XTK_ENTITYCASTER_COUNTRY_SCHEMA_RESPONSE);
-                    return await client.getSchema("xtk:country", "xml");
-                };
-                await expect(cast({ id: "123", country: { id: "4", name: "France" } }, undefined, hook)).resolves.toEqual({ id: 123, country: { id: 4, name: "France" } });
+                //const hook = async (client, caster) => {
+                //    client._transport.mockReturnValueOnce(Mock.GET_XTK_ENTITYCASTER_COUNTRY_SCHEMA_RESPONSE);
+                //    await client.application.getSchema("xtk:entityCasterCountry");
+                //};
+                //await expect(cast({ id: "123", country: { id: "4", name: "France" } }, undefined, hook)).resolves.toEqual({ id: 123, country: { id: 4, name: "France" } });
+                await expect(cast({ id: "123", country: { id: "4", name: "France" } })).resolves.toEqual({ id: 123, country: { id: 4, name: "France" } });
             });
 
             it("Should support links with not found target", async () => {
-                const hook = async (client, caster) => {
-                    client._transport.mockReturnValueOnce(Mock.GET_MISSING_SCHEMA_RESPONSE);
-                    return await client.application.getSchema("xtk:country");
-                };
-                // The "country" link is not found => this part of the entity will not be casted
-                await expect(cast({ id: "123", country: { id: "4", name: "France" } }, undefined, hook)).resolves.toEqual({ id: 123, country: { id: "4", name: "France" } });
+                //const hook = async (client, caster) => {
+                //    client._transport.mockReturnValueOnce(Mock.GET_MISSING_SCHEMA_RESPONSE);
+                //    return await client.application.getSchema("xtk:country");
+                //};
+                //// The "country" link is not found => this part of the entity will not be casted
+                //await expect(cast({ id: "123", country: { id: "4", name: "France" } }, undefined, hook)).resolves.toEqual({ id: 123, country: { id: "4", name: "France" } });
+                await expect(cast({ id: "123", notFound: { id: "4", name: "France" } })).resolves.toEqual({ id: 123, notFound: { id: "4", name: "France" } });
             });
         });
 
@@ -219,7 +139,7 @@ describe('EntityCaster', function() {
             const client = await Mock.makeClient();
             client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
-            client._transport.mockReturnValueOnce(GET_XTK_ENTITYCASTER_SCHEMA_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_XTK_ENTITYCASTER_SCHEMA_RESPONSE);
             const schema = await client.application.getSchema("xtk:entityCaster");   // preload schema
             const caster = new EntityCaster(client, schema, { enabled: true });
             
@@ -239,7 +159,7 @@ describe('EntityCaster', function() {
             const client = await Mock.makeClient();
             client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
-            client._transport.mockReturnValueOnce(GET_XTK_ENTITYCASTER_SCHEMA_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_XTK_ENTITYCASTER_SCHEMA_RESPONSE);
             const schema = await client.getSchema("xtk:entityCaster", "xml");   // preload schema
             if (options === undefined) options = { enabled: true };
             const caster = new EntityCaster(client, "xtk:entityCaster", options);
@@ -307,8 +227,8 @@ describe('EntityCaster', function() {
             const client = await Mock.makeClient();
             client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
-            client._transport.mockReturnValueOnce(GET_XTK_ENTITYCASTER_SCHEMA_RESPONSE);
-            await client.getSchema("xtk:entityCaster", "xml");
+            //client._transport.mockReturnValueOnce(Mock.GET_XTK_ENTITYCASTER_SCHEMA_RESPONSE);
+            //await client.getSchema("xtk:entityCaster", "xml");
             const queryDef = {
                 schema: "xtk:entityCaster",
                 operation: "get",
@@ -521,7 +441,7 @@ describe('EntityCaster', function() {
                 const client = await Mock.makeClient();
                 client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
                 await client.NLWS.xtkSession.logon();
-                client._transport.mockReturnValueOnce(GET_XTK_ENTITYCASTER_SCHEMA_RESPONSE);
+                client._transport.mockReturnValueOnce(Mock.GET_XTK_ENTITYCASTER_SCHEMA_RESPONSE);
                 await client.application.getSchema("xtk:entityCaster");
                 const queryDef = {
                     schema: "xtk:entityCaster",

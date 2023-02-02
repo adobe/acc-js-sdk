@@ -1186,7 +1186,7 @@ describe('ACC Client', function () {
             // GetIfExists should return element
             var query = client.NLWS.xtkQueryDef.create(queryDef);
             var extAccount = await query.executeQuery();
-            expect(extAccount).toEqual({ "id": "1" });
+            expect(extAccount).toEqual({ "id": 1 });
         });
 
         it("select with a result of exactly one element", async () => {
@@ -1219,7 +1219,7 @@ describe('ACC Client', function () {
 
             var query = client.NLWS.xtkQueryDef.create(queryDef);
             var extAccount = await query.executeQuery();
-            expect(extAccount).toEqual({ extAccount: [{ "id": "1" }] });
+            expect(extAccount).toEqual({ extAccount: [{ "id": 1 }] });
         });
     })
 
@@ -1242,14 +1242,14 @@ describe('ACC Client', function () {
             it("Should convert from BadgerFish to BadgerFish", async () => {
                 const client = await Mock.makeClient();
                 var from = { "@id": "1", "child": {} };
-                var to = client._convertToRepresentation(from, "BadgerFish", "BadgerFish");
+                var to = await client._convertToRepresentation(from, "BadgerFish", "BadgerFish");
                 expect(to).toStrictEqual(from);
             })
 
             it("Should convert from BadgerFish to SimpleJson", async () => {
                 const client = await Mock.makeClient();
                 var from = { "@id": "1", "child": {} };
-                var to = client._convertToRepresentation(from, "BadgerFish", "SimpleJson");
+                var to = await client._convertToRepresentation(from, "BadgerFish", "SimpleJson");
                 expect(to).toStrictEqual({ id: "1", child: {} });
             })
 
@@ -1951,6 +1951,7 @@ describe('ACC Client', function () {
         it("Call SAOP method", async () => {
             const connectionParameters = sdk.ConnectionParameters.ofBearerToken("http://acc-sdk:8080", "$token$");
             const client = await sdk.init(connectionParameters);
+            await Mock.mockGetCasterSchema(client);
             client._transport = jest.fn();
             client._transport.mockReturnValueOnce(Mock.BEARER_LOGON_RESPONSE);
             await client.logon();
@@ -1995,6 +1996,7 @@ describe('ACC Client', function () {
             const connectionParameters = sdk.ConnectionParameters.ofBearerToken("http://acc-sdk:8080",
                                                     "$token$", {refreshClient: refreshClient});
             const client = await sdk.init(connectionParameters);
+            await Mock.mockGetCasterSchema(client);
             client.traceAPICalls(true);
             client._transport = jest.fn();
             client._transport.mockReturnValueOnce(Mock.BEARER_LOGON_RESPONSE);
@@ -2052,6 +2054,7 @@ describe('ACC Client', function () {
             const connectionParameters = sdk.ConnectionParameters.ofBearerToken("http://acc-sdk:8080",
                                                     "$token$", {refreshClient: refreshClient});
             const client = await sdk.init(connectionParameters);
+            await Mock.mockGetCasterSchema(client);
             client.traceAPICalls(true);
             client._transport = jest.fn();
             client._transport.mockReturnValueOnce(Mock.BEARER_LOGON_RESPONSE);
@@ -2095,6 +2098,7 @@ describe('ACC Client', function () {
             const connectionParameters = sdk.ConnectionParameters.ofSecurityToken("http://acc-sdk:8080",
                                                     "$security_token$", {refreshClient: refreshClient});
             const client = await sdk.init(connectionParameters);
+            await Mock.mockGetCasterSchema(client);
             client._transport = jest.fn();
             client._transport.mockReturnValueOnce(Promise.resolve(`XSV-350008 Session has expired or is invalid. Please reconnect.`));
             client._transport.mockReturnValueOnce(Promise.resolve(`XSV-350008 Session has expired or is invalid. Please reconnect.`));
@@ -2341,7 +2345,9 @@ describe('ACC Client', function () {
             const map = {};
             const storage = {
                 getItem: jest.fn((key) => map[key]),
-                setItem: jest.fn((key, value) => map[key] = value)
+                setItem: jest.fn((key, value) => {
+                    map[key] = value
+                })
             }
             let client = await Mock.makeClient({ storage: storage });
             client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
@@ -2472,6 +2478,7 @@ describe('ACC Client', function () {
             const connectionParameters = sdk.ConnectionParameters.ofBearerToken("http://acc-sdk:8080",
                                                     "$token$", {refreshClient: refreshClient});
             const client = await sdk.init(connectionParameters);
+            await Mock.mockGetCasterSchema(client);
             jest.useFakeTimers();
             client.startRefreshCaches();
             client._entityCacheRefresher._safeCallAndRefresh = jest.fn();
@@ -2633,7 +2640,7 @@ describe('ACC Client', function () {
             const query = client.NLWS.json.xtkQueryDef.create(queryDef);
             const result = await query.executeQuery();
             const json = JSON.stringify(result);
-            expect(json).toBe('{"extAccount":[{"id":"1816","name":"defaultPopAccount"},{"id":"1818","name":"defaultOther"},{"id":"1849","name":"billingReport"},{"id":"12070","name":"TST_EXT_ACCOUNT_POSTGRESQL"},{"id":"1817","name":"defaultEmailBulk"},{"id":"2087","name":"ffda"},{"id":"2088","name":"defaultEmailMid"}]}');
+            expect(json).toBe('{"extAccount":[{"id":1816,"name":"defaultPopAccount"},{"id":1818,"name":"defaultOther"},{"id":1849,"name":"billingReport"},{"id":12070,"name":"TST_EXT_ACCOUNT_POSTGRESQL"},{"id":1817,"name":"defaultEmailBulk"},{"id":2087,"name":"ffda"},{"id":2088,"name":"defaultEmailMid"}]}');
         });
     });
 

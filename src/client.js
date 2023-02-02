@@ -733,6 +733,7 @@ class Client {
      * @returns {XML.XtkObject} the object converted in the requested representation
      */
     async _toRepresentation(xml, representation, schemaHint) {
+        if (!xml || (!xml.nodeType && !xml.tagName)) return xml;
         representation = representation || this._representation;
         if (representation == "SimpleJson") {
             const caster = new EntityCaster(this, schemaHint, this._entityCasterOptions);
@@ -1434,6 +1435,10 @@ class Client {
         return entity;
     }
 
+    async _getCasterSchema(schemaId) {
+        return this.application.getSchema(schemaId);
+    }
+
     async _cacheEntity(schemaId, entity) {
         if (entity) {
             const impls = DomUtil.getAttributeAsString(entity, "implements");
@@ -1666,19 +1671,20 @@ class Client {
                         returnValue = soapCall.getNextDate();
                     else if (type == "DOMDocument") {
                         returnValue = soapCall.getNextDocument();
+                        const representation = callContext.representation || this._representation;
                         var schemaHint;
                         if (schemaId === "xtk:queryDef" && methodName === "ExecuteQuery" && paramName === "output") {
-                            const inferer = new QueryDefSchemaInferer(this, callContext.object, this._entityCasterOptions);
-                            schemaHint = await inferer.getSchema();                    
+                            if (representation === 'SimpleJson') {
+                                const inferer = new QueryDefSchemaInferer(this, callContext.object, this._entityCasterOptions);
+                                schemaHint = await inferer.getSchema();
+                            }
                         }
                         returnValue = await that._toRepresentation(returnValue, callContext.representation, schemaHint);
-                        /*if (schemaId === "xtk:queryDef" && methodName === "ExecuteQuery" && paramName === "output") {
+                        if (representation === 'SimpleJson' && schemaId === "xtk:queryDef" && methodName === "ExecuteQuery" && paramName === "output") {
                             // https://github.com/adobe/acc-js-sdk/issues/3
-                            // Check if query operation is "getIfExists". The "object" variable at this point
-                            // is always an XML, regardless of the xml/json representation
                             const objectRoot = object.documentElement;
-                            const emptyResult = Object.keys(returnValue).length == 0;
                             var operation = DomUtil.getAttributeAsString(objectRoot, "operation");
+                            const emptyResult = Object.keys(returnValue).length == 0;
                             if (operation == "getIfExists" && emptyResult)
                                 returnValue = null;
                             if (operation == "select" && emptyResult) {
@@ -1687,7 +1693,7 @@ class Client {
                                 const querySchemaName = querySchemaId.substr(index + 1);
                                 returnValue[querySchemaName] = [];
                             }
-                        }*/
+                        }
                     }
                     else if (type == "DOMElement") {
                         returnValue = soapCall.getNextElement();

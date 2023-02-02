@@ -75,7 +75,7 @@ governing permissions and limitations under the License.
       // We were given a schema id, let's lookup the schema
       if (typeof schema === "string") {
         const schemaId = schema;
-        schema = await this._client.application.getSchema(schema);  // TODO: should use internal flag (3 more occurrences)
+        schema = await this._client._getCasterSchema(schema);  // TODO: should use internal flag (3 more occurrences)
         if (!schema) 
           throw CampaignException.UNKNOWN_SHEMA(schemaId);
       }
@@ -101,7 +101,7 @@ governing permissions and limitations under the License.
       // We were given a schema id, let's lookup the schema
       if (typeof schema === "string") {
         const schemaId = schema;
-        schema = await this._client.application.getSchema(schema);
+        schema = await this._client._getCasterSchema(schema);
         if (!schema) 
           throw CampaignException.UNKNOWN_SHEMA(schemaId);
       }
@@ -112,13 +112,12 @@ governing permissions and limitations under the License.
       await this._toJSON(xml, json, schema.root);
       
       if (this._options && this._options.addEmptyArrays)
-      await this._addEmptyArrays(json, schema.root);
+        await this._addEmptyArrays(json, schema.root);
 
       return json;
     }
 
     async _toJSON(xml, json, nodeDef, parentJson, forceTextAs$) {
-
         // Heuristic to determine if element is an object or an array
         const isCollection = (nodeDef && nodeDef.unbound) || (xml.tagName.length > 11 && xml.tagName.substr(xml.tagName.length-11) == '-collection');
         
@@ -455,16 +454,20 @@ governing permissions and limitations under the License.
     // @param {*} root - the root of the intermediate node tree
     // @returns {Promise<XtkSchema>} - the resulting schema
     async _convertToSchema(schemaName, unbound, root) {
-      const doc = DomUtil.parse(`<schema name="query" namespace="temp"></schema>`);
+      const name = schemaName + (unbound ? "-collection": "");
+      const doc = DomUtil.parse(`<schema name="${name}" namespace="temp"></schema>`);
       const eSchema = doc.documentElement;
       const eRoot = doc.createElement("element");
-      eRoot.setAttribute("name", "query");
+      eRoot.setAttribute("name", `${name}`);
+      eRoot.setAttribute("unbound", unbound ? "true": "false");
       eSchema.appendChild(eRoot);
 
-      const eEntity = doc.createElement("element");
-      eEntity.setAttribute("name", schemaName);
-      eEntity.setAttribute("unbound", unbound ? "true": "false");
-      eRoot.appendChild(eEntity);
+      var eEntity = eRoot;
+      if (unbound) {
+        eEntity = doc.createElement("element");
+        eEntity.setAttribute("name", schemaName);
+        eRoot.appendChild(eEntity);
+      }
 
       const recurse = (eRoot, root) => {
         const keys = Object.keys(root.children);
@@ -501,15 +504,17 @@ governing permissions and limitations under the License.
      * @returns {Promise<XtkSchema>} - the resulting schema
      */
     async getSchema() {
-      const schema = await this._client.application.getSchema(this._queryDef.schema);
+      const schema = await this._client._getCasterSchema(this._queryDef.schema);
       if (!schema) 
         throw CampaignException.UNKNOWN_SHEMA(this._queryDef.schema);
       //const entityNode = { children: {}, unbound: this._queryDef.operation === "select" };
       //const schemaName = schema.name;
       const targetRoot = { children: { } };
-      const nodes = XtkCaster.asArray(this._queryDef.select.node);
-      for (const node of nodes) {
-        await this._buildSchema(targetRoot, node, schema.root, "");
+      if (this._queryDef.select && this._queryDef.select.node) {
+        const nodes = XtkCaster.asArray(this._queryDef.select.node);
+        for (const node of nodes) {
+          await this._buildSchema(targetRoot, node, schema.root, "");
+        }
       }
       const result = await this._convertToSchema(schema.name, this._queryDef.operation === "select", targetRoot);
       return result;

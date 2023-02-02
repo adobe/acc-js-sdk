@@ -191,29 +191,29 @@ governing permissions and limitations under the License.
 
             // Do a soap call GetModifiedEntities instead of xtksession.GetModifiedEnties because we don't want to go through methodCache 
             // which might not contain the method GetModifiedEntities just after a build updgrade from a old version of acc 
-            return this._client._makeSoapCall(soapCall)
-                .then(() => {
-                    let doc = soapCall.getNextDocument();
-                    soapCall.checkNoMoreArgs();
-                    doc = that._client._toRepresentation(doc, 'xml');
-                    that._lastTime = DomUtil.getAttributeAsString(doc, "time"); // save time to be able to send it as an attribute in the next soap call
-                    that._buildNumber = DomUtil.getAttributeAsString(doc, "buildNumber");
-                    that._refresh(doc, event);
-                    that._refresherStateCache.put("time", that._lastTime);
-                    that._refresherStateCache.put("buildNumber", that._buildNumber);
-                })
-                .catch((ex) => {
-                    // if the method GetModifiedEntities is not found in this acc version we disable the autoresfresh of the cache
-                    if (soapCall.methodName == "GetModifiedEntities" && ex.errorCode == "SOP-330006") {
-                        this._client._trackEvent('CACHE_REFRESHER//abort', undefined, {
-                            cacheSchemaId: this._cacheSchemaId,
-                            error: ex,
-                        });
-                        this.stopAutoRefresh();
-                    } else {
-                        throw ex;
-                    }
-                });
+            try {
+                await this._client._makeSoapCall(soapCall)
+                let doc = soapCall.getNextDocument();
+                soapCall.checkNoMoreArgs();
+                doc = await that._client._toRepresentation(doc, 'xml');
+                that._lastTime = DomUtil.getAttributeAsString(doc, "time"); // save time to be able to send it as an attribute in the next soap call
+                that._buildNumber = DomUtil.getAttributeAsString(doc, "buildNumber");
+                that._refresh(doc, event);
+                that._refresherStateCache.put("time", that._lastTime);
+                that._refresherStateCache.put("buildNumber", that._buildNumber);
+            } 
+            catch(ex) {
+                // if the method GetModifiedEntities is not found in this acc version we disable the autoresfresh of the cache
+                if (soapCall.methodName == "GetModifiedEntities" && ex.errorCode == "SOP-330006") {
+                    this._client._trackEvent('CACHE_REFRESHER//abort', undefined, {
+                        cacheSchemaId: this._cacheSchemaId,
+                        error: ex,
+                    });
+                    this.stopAutoRefresh();
+                } else {
+                    throw ex;
+                }
+            }
         }
 
         // Refresh Cache : remove entities modified recently listed in xmlDoc
