@@ -560,9 +560,7 @@ describe('SOAP', function() {
                 return Promise.reject({name: 'AbortError'}); 
             };
             const call = makeSoapMethodCall(transport, "xtk:session", "Date", "$session$", "$security$");
-            const [ request, requestOptions ] = call._createHTTPRequest(URL, {signal});
             instance.abort();
-            assert.equal(requestOptions.signal, signal);
             return call.execute().catch((ex) => {
                 expect(ex.name).toBe('AbortError');
             });

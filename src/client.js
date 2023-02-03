@@ -1183,10 +1183,9 @@ class Client {
      * @param {SOAP.SoapMethodCall} soapCall is the SOAP call being performed
      * @param {Campaign.XtkMethodParam[]}  inputParams is the list of input parameters. The first paramater in the array is the "this" parameter for non-static method calls
      * @param {Campaign.XtkMethodParam[]}  outputParams is the list of output parameters. The first paramater in the array is the "this" parameter for non-static method calls
-     * @param {string} representation is the representation to use to interpret the parameters 
-     * @param {AbortSignal} signal used to cancel waiting for the event (optional)
+     * @param {string} representation is the representation to use to interpret the parameters
      */
-    async _makeInterceptableSoapCall(entitySchemaId, schema, soapCall, inputParams, outputParams, representation, signal) {
+    async _makeInterceptableSoapCall(entitySchemaId, schema, soapCall, inputParams, outputParams, representation) {
         // Call observers and give them a chance to modify the parameters before the call is actually made
         if (!soapCall.internal) {
             await this._beforeSoapCall({
@@ -1197,7 +1196,7 @@ class Client {
 
         // Make SOAP call
         await this._writeSoapCallParameters(entitySchemaId, schema, soapCall, inputParams, representation);
-        await this._makeSoapCall(soapCall, signal);
+        await this._makeSoapCall(soapCall);
         await this._readSoapCallResult(entitySchemaId, schema, soapCall, outputParams, representation);
         
         // Specific handling of query results
@@ -1232,13 +1231,12 @@ class Client {
      *
      * @private
      * @param {SOAP.SoapMethodCall} soapCall the SOAP method to call
-     * @param {AbortSignal} signal used to cancel waiting for the event (optional)
      */
-    _makeSoapCall(soapCall, signal) {
+    _makeSoapCall(soapCall) {
         const that = this;
         if (soapCall.requiresLogon() && !that.isLogged())
             throw CampaignException.NOT_LOGGED_IN(soapCall, `Cannot execute SOAP call ${soapCall.urn}#${soapCall.methodName}: you are not logged in. Use the Logon function first`);
-        soapCall.finalize(this._soapEndPoint(), null, signal);
+        soapCall.finalize(this._soapEndPoint());
 
         const safeCallData = Util.trim(soapCall.request.data);
         if (that._traceAPICalls)
@@ -1716,9 +1714,6 @@ class Client {
         if (schemaId === 'xtk:jobInterface')
             entitySchemaId = callContext.entitySchemaId;
 
-        const found = parameters.find(param => param.signal instanceof AbortSignal);
-        const signal = found && found.signal;
-
         // Get the schema which contains the method call. Methods of the xtk:jobInterface interface are handled specificaaly
         // because xtk:jobInterface is not actually a schema, but just an interface. In practice, it's used as an xtk template
         // rather that an xtk inheritance mechanism
@@ -1814,7 +1809,7 @@ class Client {
         }
 
         // Make the SOAP call
-        await this._makeInterceptableSoapCall(entitySchemaId, schema, soapCall, inputParams, outputParams, callContext.representation, signal);
+        await this._makeInterceptableSoapCall(entitySchemaId, schema, soapCall, inputParams, outputParams, callContext.representation);
         
         // Simplify the result when there's 0 or 1 return value
         if (!isStatic) {

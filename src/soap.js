@@ -555,7 +555,7 @@ class SoapMethodCall {
             method: 'POST',
             headers: headers,
             data: DomUtil.toXMLString(this._doc),
-            ...(requestOptions && {signal : requestOptions.signal})
+            ...(this._pushDownOptions && {signal : this._pushDownOptions.signal})
         };
         if (this._sessionToken)
             request.headers.Cookie = '__sessiontoken=' + this._sessionToken;
@@ -575,9 +575,8 @@ class SoapMethodCall {
      * Finalize a SOAP call just before sending
      * @param {string} url the endpoint (/nl/jsp/soaprouter.jsp)
      * @param {client.Client} sdk client (optional)
-     * @param {AbortSignal} signal used to cancel waiting for the event (optional)
      */
-    finalize(url, client, signal) {
+    finalize(url, client) {
         if (client) {
             this._sessionToken = client._sessionToken;
             this._securityToken = client._securityToken;
@@ -619,7 +618,7 @@ class SoapMethodCall {
         const actualUrl = noMethodInURL ? url : `${url}?soapAction=${encodeURIComponent(this.urn + "#" + this.methodName)}`;
 
         // Prepare request and empty response objects
-        [this.request, this.requestOptions] = this._createHTTPRequest(actualUrl, {signal});
+        [this.request, this.requestOptions] = this._createHTTPRequest(actualUrl);
         this.response = undefined;
     }
 
@@ -687,7 +686,6 @@ class SoapMethodCall {
             }
         })
         .catch(function(err) {
-            //if exception is raised due to aborting request
             if(err.name === 'AbortError'){
                 throw err;
             }
