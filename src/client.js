@@ -1183,7 +1183,7 @@ class Client {
      * @param {SOAP.SoapMethodCall} soapCall is the SOAP call being performed
      * @param {Campaign.XtkMethodParam[]}  inputParams is the list of input parameters. The first paramater in the array is the "this" parameter for non-static method calls
      * @param {Campaign.XtkMethodParam[]}  outputParams is the list of output parameters. The first paramater in the array is the "this" parameter for non-static method calls
-     * @param {string} representation is the representation to use to interpret the parameters
+     * @param {string} representation is the representation to use to interpret the parameters 
      */
     async _makeInterceptableSoapCall(entitySchemaId, schema, soapCall, inputParams, outputParams, representation) {
         // Call observers and give them a chance to modify the parameters before the call is actually made

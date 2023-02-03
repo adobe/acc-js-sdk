@@ -824,7 +824,7 @@ describe('ACC Client', function () {
             // Call directly
             client._transport.mockReturnValueOnce(Mock.GET_MISSING_SCHEMA_RESPONSE);
             const callContext = { schemaId: "xtk:notFound" };
-            await expect(client._callMethod("dummy", callContext,[])).rejects.toMatchObject({ errorCode: "SDK-000009" });
+            await expect(client._callMethod("dummy", callContext)).rejects.toMatchObject({ errorCode: "SDK-000009" });
 
             client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
             await client.NLWS.xtkSession.logoff();
@@ -3581,7 +3581,6 @@ describe('ACC Client', function () {
             client._transport.mockReturnValueOnce(Mock.GET_NMS_DELIVERY_SCHEMA_RESPONSE);
             client._transport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
             client._transport.mockReturnValueOnce(Mock.GET_DELIVERY_NEW_INSTANCE_RESPONSE);
-
             await client._callMethod("NewInstance", {
                 schemaId: 'nms:delivery',
                 object: { },
