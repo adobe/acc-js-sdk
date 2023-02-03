@@ -1184,6 +1184,7 @@ class Client {
      * @param {Campaign.XtkMethodParam[]}  inputParams is the list of input parameters. The first paramater in the array is the "this" parameter for non-static method calls
      * @param {Campaign.XtkMethodParam[]}  outputParams is the list of output parameters. The first paramater in the array is the "this" parameter for non-static method calls
      * @param {string} representation is the representation to use to interpret the parameters 
+     * @param {AbortSignal} signal used to cancel waiting for the event (optional)
      */
     async _makeInterceptableSoapCall(entitySchemaId, schema, soapCall, inputParams, outputParams, representation, signal) {
         // Call observers and give them a chance to modify the parameters before the call is actually made

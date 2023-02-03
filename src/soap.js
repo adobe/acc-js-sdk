@@ -575,6 +575,7 @@ class SoapMethodCall {
      * Finalize a SOAP call just before sending
      * @param {string} url the endpoint (/nl/jsp/soaprouter.jsp)
      * @param {client.Client} sdk client (optional)
+     * @param {AbortSignal} signal used to cancel waiting for the event (optional)
      */
     finalize(url, client, signal) {
         if (client) {
