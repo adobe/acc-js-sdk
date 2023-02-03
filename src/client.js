@@ -1232,6 +1232,7 @@ class Client {
      *
      * @private
      * @param {SOAP.SoapMethodCall} soapCall the SOAP method to call
+     * @param {AbortSignal} signal used to cancel waiting for the event (optional)
      */
     _makeSoapCall(soapCall, signal) {
         const that = this;
