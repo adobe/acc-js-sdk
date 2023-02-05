@@ -163,6 +163,7 @@ describe('SOAP', function() {
             const call = makeSoapMethodCall(undefined, "xtk:session", "Empty", "$session$", "$security$");
             const [ request ] = call._createHTTPRequest(URL);
             assert.equal(request.headers["X-Security-Token"], "$security$", "Security token matches");
+            assert.equal(request.headers["X-Session-Token"], "$session$", "Session token matches");
             assert.equal(request.headers["Cookie"], "__sessiontoken=$session$", "Session token matches");
             const env = DomUtil.parse(request.data).documentElement;
             const header = hasChildElement(env, "SOAP-ENV:Header");
@@ -734,7 +735,7 @@ describe('SOAP', function() {
             const client = await sdk.init(connectionParameters);
             client._transport = jest.fn();
             expect(client._connectionParameters._options.charset).toBe('UTF-8');
-            const soapCall = client._prepareSoapCall("xtk:persist", "GetEntityIfMoreRecent", true);
+            const soapCall = client._prepareSoapCall("xtk:persist", "GetEntityIfMoreRecent", true, true);
             expect (soapCall._charset).toBe('UTF-8');
             const [ request ] = soapCall._createHTTPRequest(URL);
             assert.equal(request.headers["Content-type"], "application/soap+xml;charset=UTF-8");
@@ -745,7 +746,7 @@ describe('SOAP', function() {
             const client = await sdk.init(connectionParameters);
             client._transport = jest.fn();
             expect(client._connectionParameters._options.charset).toBe('');
-            const soapCall = client._prepareSoapCall("xtk:persist", "GetEntityIfMoreRecent", true);
+            const soapCall = client._prepareSoapCall("xtk:persist", "GetEntityIfMoreRecent", true, true);
             expect (soapCall._charset).toBe('');
             const [ request ] = soapCall._createHTTPRequest(URL);
             assert.equal(request.headers["Content-type"], "application/soap+xml");
@@ -756,7 +757,7 @@ describe('SOAP', function() {
             const client = await sdk.init(connectionParameters);
             client._transport = jest.fn();
             expect(client._connectionParameters._options.charset).toBe('ISO-8859-1');
-            const soapCall = client._prepareSoapCall("xtk:persist", "GetEntityIfMoreRecent", true);
+            const soapCall = client._prepareSoapCall("xtk:persist", "GetEntityIfMoreRecent", true, true);
             expect (soapCall._charset).toBe('ISO-8859-1');
             const [ request ] = soapCall._createHTTPRequest(URL);
             assert.equal(request.headers["Content-type"], "application/soap+xml;charset=ISO-8859-1");
@@ -901,7 +902,7 @@ describe("Campaign exception", () => {
         it("Should add the method name by default in the URL", () => {
             const call = makeSoapMethodCall(undefined, "xtk:session", "Empty", "$session$", "$security$");
             call.finalize(URL);
-            expect(call.request.url).toBe("https://soap-test/nl/jsp/soaprouter.jsp?xtk:session:Empty");
+            expect(call.request.url).toBe("https://soap-test/nl/jsp/soaprouter.jsp?soapAction=xtk%3Asession%23Empty");
         });
 
         it("Should be able to disable adding the method name by default in the URL", () => {

@@ -98,7 +98,8 @@ class Util {
     }
     if (typeof obj == "object") {
       for (const p in obj) {
-        if (p.toLowerCase() === "x-security-token")
+        const lowerP = p.toLowerCase();
+        if (lowerP === "x-security-token" || lowerP === "x-session-token")
           obj[p] = "***";
         else if (p === "Cookie") {
           var index = obj[p].toLowerCase().indexOf("__sessiontoken");
@@ -126,12 +127,48 @@ class Util {
       // Hide session tokens
       obj = this._removeBetween(obj, "<Cookie>__sessiontoken=", "</Cookie>");
       obj = this._removeBetween(obj, "<X-Security-Token>", "</X-Security-Token>");
+      obj = this._removeBetween(obj, "<X-Session-Token>", "</X-Session-Token>");
       obj = this._removeBetween(obj, '<sessiontoken xsi:type="xsd:string">', '</sessiontoken>');
       obj = this._removeBetween(obj, "<pstrSessionToken xsi:type='xsd:string'>", "</pstrSessionToken>");
       obj = this._removeBetween(obj, "<pstrSecurityToken xsi:type='xsd:string'>", "</pstrSecurityToken>");
       obj = this._removeBetween(obj, '<password xsi:type="xsd:string">', '</password>');
     }
     return obj;
+  }
+
+  /**
+   * Get Schema id from namespace (find first upper case letter)
+   * @param {string} namespace a SDK namespace, i.e. xtkWorkflow, nmsDelivery, etc.
+   * @return {string} the corresponding schema id, i.e. xtk:workflow, nms:delivery, etc.
+   */
+  static schemaIdFromNamespace(namespace) {
+    var schemaId = "";
+    for (var i=0; i<namespace.length; i++) {
+        const c = namespace[i];
+        if (c >='A' && c<='Z') {
+            schemaId = schemaId + ":" + c.toLowerCase() + namespace.substr(i+1);
+            break;
+        }
+        schemaId = schemaId + c;
+    }
+    return schemaId;
+  }
+
+  /**
+   * Test if an object is a promise
+   * @param {*} object the object to test
+   * @returns {boolean} if the object is a promise
+   */
+  static isPromise(object) {
+    if (object === null || object === undefined) return false;
+    if (object.then && (typeof object.then === "function")) return true;
+    return false;
+  }
+
+  static asPromise(object) {
+    if (this.isPromise(object)) 
+      return object;
+    return Promise.resolve(object);
   }
 }
 

@@ -24,25 +24,60 @@ client.clearEntityCache();
 client.clearAllCaches();
 </pre>
 
-<p>Caches have a TTL of 5 minutes by default. The TTL can be changed at connection time using connection options <b>entityCacheTTL</b>, <b>methodCacheTTL</b>, and <b>optionCacheTTL</b>.</p>
+<p>Caches have a TTL of 5 minutes by default. The TTL can be changed at connection time using connection options
+  <b>entityCacheTTL</b>, <b>methodCacheTTL</b>, and <b>optionCacheTTL</b>.</p>
 
-<p>Caches can be de-activated by setting a TTL of -1 which will have the effect of making all cached data always invalid.</p>
+<p>Caches can be de-activated by setting a TTL of -1 which will have the effect of making all cached data always
+  invalid.</p>
 
 
 
 <h1>Persistent caches</h1>
-<p>In addition to memory caches, it is possible to use persistent caches as well. This was introduced in version 1.0.5 and is active by default as well when using the SDK in a browser. The browser local storage is used (if allowed).</p>
+<p>In addition to memory caches, it is possible to use persistent caches as well. This was introduced in version 1.0.5
+  and is active by default as well when using the SDK in a browser. The browser local storage is used (if allowed).</p>
 
-<p>Cached data is stored in local storage with keys prefixed with  <b>acc.js.sdk.{{version}}.{{server}}.cache.</b> where <b>version</b> is the SDK version and <b>server</b> is the Campaign server name. This means that the cached data is lost when upgrading the SDK.</p>
+<p>Cached data is stored in local storage with keys prefixed with <b>acc.js.sdk.{{version}}.{{server}}.cache.</b> where
+  <b>version</b> is the SDK version and <b>server</b> is the Campaign server name. This means that the cached data is
+  lost when upgrading the SDK.</p>
 
 <p>It's possible to disable persistent caches using the <b>noStorage</b> connection option.</p>
 
-<p>It is also possible to setup one's own persistent cache, by passing a <b>storage</b> object as a connection option. This object should implement 3 methods: <b>getItem</b>, <b>setItem</b>, and <b>removeItem</b> (synchronous)</p>
+<p>It is also possible to setup one's own persistent cache, by passing a <b>storage</b> object as a connection option.
+   See the "Custom Storage" section below for more details.</p>
+
+<p>Additionally, since version 1.1.18, the <b>storage</b> object should also support the for...in operator to iterate through its keys</p>
+
+
+<h1>Cache root key</h1>
+
+<p>
+  By default, the SDK will prefix all cache entity by a root key, which is made of the SDK version and the instance URL. 
+  It is possible to change this using the `cacheRootKey` connection parameter.
+</p>
+<ul>
+  <li>* `default` or undefined: default prefix</li>
+  <li>* `none`: no prefix</li>
+</ul>
+
+<h1>Custom storage</h1>
+
+A custom storage is a JavaScript object with the following functions:
+* `getItem` is given a cache key and should return the corresponding value
+* `setItem` is given a cache key and value and should cache the corresponding key/value pair
+
+Optionally, the storage object can contain the following
+* `removeItem` is given a cache key and should remove the corresponding key/value pair from the cache
+* The storage object should also be iterable using the for..in construct
+
+The get/set/remove item function can be either synchronous or asynchronous, i.e. can optionally return a promise.
 
 
 <h1>Auto-refresh caches</h1>
 
-<p>The SDK includes a mechnism to maintain the schemas and options caches up-to-date by polling the Campaign server on a regular basis (10 seconds by default). The server returns the list of entities (schemas or options) which have changed since they were cached, and the client removes them from the cache. When a schema changes, the corresponding methods are also removed from the method cache.</p>
+<p>The SDK includes a mechnism to maintain the schemas and options caches up-to-date by polling the Campaign server on a
+  regular basis (10 seconds by default). The server returns the list of entities (schemas or options) which have changed
+  since they were cached, and the client removes them from the cache. When a schema changes, the corresponding methods
+  are also removed from the method cache.</p>
 
 <p>This mechanism is not activate by default but can be activated or deactivated by the following functions</p>
 
@@ -51,7 +86,8 @@ client.startRefreshCaches(30000);   // activate cache auto-refresh mechanism eve
 client.stopRefreshCaches();         // de-activate cache auto-refresh
 </pre>
 
-<p>This mechanism is based on the <b>xtk:session#GetModifiedEntities</b> SOAP method which is only available in Campaign 8.4 and above only. For other builds of Campaign, the auto-refresh mechanism will not do anything. </p>
+<p>This mechanism is based on the <b>xtk:session#GetModifiedEntities</b> SOAP method which is only available in Campaign
+  8.4 and above only. For other builds of Campaign, the auto-refresh mechanism will not do anything. </p>
 
 <p>The following changes are handled:</p>
 <ul>
@@ -62,7 +98,11 @@ client.stopRefreshCaches();         // de-activate cache auto-refresh
 
 <p>The refresh mechanism includes the following guardrails</p>
 <ul>
-  <li>Both xtk:option and xtk:schema caches are refreshed every n seconds. To avoid issuing two API calls at the same time to the server, the schema cache refresh call is delayed by a few seconds. In the future this delay may change.</li>
-  <li>If the xtk:session#GetModifiedEntities API is not available, the auto refresh mechanism will silently stop automatically</li>
-  <li>If an error occurs while trying to refresh, a warning will be logged to the JavaScript console but the auto refresh will not be stopped. </li>
+  <li>Both xtk:option and xtk:schema caches are refreshed every n seconds. To avoid issuing two API calls at the same
+    time to the server, the schema cache refresh call is delayed by a few seconds. In the future this delay may change.
+  </li>
+  <li>If the xtk:session#GetModifiedEntities API is not available, the auto refresh mechanism will silently stop
+    automatically</li>
+  <li>If an error occurs while trying to refresh, a warning will be logged to the JavaScript console but the auto
+    refresh will not be stopped. </li>
 </ul>

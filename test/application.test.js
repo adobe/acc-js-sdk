@@ -141,6 +141,25 @@ describe('Application', () => {
             });
         });
 
+        describe('dbEnum', () => {
+            it("Should find dbEnum attribute", () => {
+                var xml = DomUtil.parse(`<schema namespace='nms' name='recipient'>
+                                            <element name='recipient' label='Recipients'>
+                                                <attribute dbEnum="operationNature" desc="Nature of the campaign" label="Nature"
+               length="64" name="nature" type="string"/>
+                                            </element>
+                                        </schema>`);
+                var schema = newSchema(xml);
+                var root = schema.root;
+                expect(!!root.children.get("@nature")).toBe(true);
+                var attribute = root.children["@nature"];
+                expect(attribute).not.toBeNull();
+                expect(attribute.dbEnum).toBe("operationNature");
+                expect(attribute.type).toBe("string");
+                expect(attribute.length).toBe(64);
+            });
+        });
+
         describe("Children", () => {
             it("Should browse root children", () => {
                 var xml = DomUtil.parse(`<schema namespace='nms' name='recipient'>
@@ -448,7 +467,7 @@ describe('Application', () => {
 
             it("Should support default values", () => {
                 var xml = DomUtil.parse(`<schema namespace='nms' name='recipient'>
-                                            <enumeration basetype="byte" name="instanceType" default="1">
+                                            <enumeration basetype="byte" name="instanceType" default="master">
                                                 <value label="One-off event" name="single" value="0"/>
                                                 <value label="Reference recurrence" name="master" value="1"/>
                                                 <value label="Instance of a recurrence" name="instance" value="2"/>
@@ -473,7 +492,7 @@ describe('Application', () => {
                         <GetEntityIfMoreRecentResponse xmlns='urn:wpp:default' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
                             <pdomDoc xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
                                 <schema name="profile" namespace="nms" xtkschema="xtk:schema">
-                                    <enumeration basetype="byte" name="instanceType" default="1" label="Instance type">
+                                    <enumeration basetype="byte" name="instanceType" default="master" label="Instance type">
                                         <value label="One-off event" name="single" value="0"/>
                                         <value label="Reference recurrence" name="master" value="1"/>
                                         <value label="Instance of a recurrence" name="instance" value="2"/>
@@ -498,7 +517,7 @@ describe('Application', () => {
                         <GetEntityIfMoreRecentResponse xmlns='urn:wpp:default' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
                             <pdomDoc xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
                                 <schema name="profile" namespace="nms" xtkschema="xtk:schema">
-                                    <enumeration basetype="byte" name="instanceType" default="1" label="Instance type">
+                                    <enumeration basetype="byte" name="instanceType" default="master" label="Instance type">
                                         <value label="One-off event" name="single" value="0"/>
                                         <value label="Reference recurrence" name="master" value="1"/>
                                         <value label="Instance of a recurrence" name="instance" value="2"/>
@@ -539,7 +558,7 @@ describe('Application', () => {
                         <GetEntityIfMoreRecentResponse xmlns='urn:wpp:default' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
                             <pdomDoc xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
                                 <schema name="profile" namespace="nms" xtkschema="xtk:schema">
-                                    <enumeration basetype="byte" name="instanceType" default="1" label="Instance type">
+                                    <enumeration basetype="byte" name="instanceType" default="master" label="Instance type">
                                         <value label="One-off event" name="single" value="0"/>
                                         <value label="Reference recurrence" name="master" value="1"/>
                                         <value label="Instance of a recurrence" name="instance" value="2"/>
@@ -565,7 +584,7 @@ describe('Application', () => {
                         <GetEntityIfMoreRecentResponse xmlns='urn:wpp:default' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
                             <pdomDoc xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
                                 <schema name="profile" namespace="nms" xtkschema="xtk:schema">
-                                    <enumeration basetype="byte" name="instanceType" default="1" label="Instance type">
+                                    <enumeration basetype="byte" name="instanceType" default="master" label="Instance type">
                                         <value label="One-off event" name="single" value="0"/>
                                         <value label="Reference recurrence" name="master" value="1"/>
                                         <value label="Instance of a recurrence" name="instance" value="2"/>
@@ -606,7 +625,7 @@ describe('Application', () => {
                         <GetEntityIfMoreRecentResponse xmlns='urn:wpp:default' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
                             <pdomDoc xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
                                 <schema name="profile" namespace="nms" xtkschema="xtk:schema">
-                                    <enumeration basetype="byte" name="instanceType" default="1" label="Instance type">
+                                    <enumeration basetype="byte" name="instanceType" default="master" label="Instance type">
                                         <value label="One-off event" name="single" value="0"/>
                                         <value label="Reference recurrence" name="master" value="1"/>
                                         <value label="Instance of a recurrence" name="instance" value="2"/>
@@ -1703,6 +1722,34 @@ describe('Application', () => {
                 expect(cs).toBe("@lastName + ' ' + @firstName");
                 expect(node.isCalculated).toBe(true);
             });
+
+            it("Should get node edit type", async () => {
+              const client = await Mock.makeClient();
+              client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+              await client.NLWS.xtkSession.logon();
+              client._transport.mockReturnValueOnce(Promise.resolve(`<?xml version='1.0'?>
+              <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:wpp:default' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
+              <SOAP-ENV:Body>
+                  <GetEntityIfMoreRecentResponse xmlns='urn:wpp:default' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
+                      <pdomDoc xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
+                          <schema name="profile" namespace="nms" xtkschema="xtk:schema">
+                              <element name="profile">
+                                  <compute-string expr="@lastName + ' ' + @firstName +' (' + @email + ')'"/>
+                                  <attribute name="firstName"/>
+                                  <attribute name="lastName"/>
+                                  <attribute name="email" edit="memo"/>
+                              </element>
+                          </schema>
+                      </pdomDoc>
+                  </GetEntityIfMoreRecentResponse>
+              </SOAP-ENV:Body>
+              </SOAP-ENV:Envelope>`));
+              const schema = await client.application.getSchema("nms:profile");
+
+              const node = schema.root.children.get("@email");
+              const editType = node.editType;
+              expect(editType).toBe("memo");
+          });
 
             it("Should get compute string for ref nodes", async () => {
                 const client = await Mock.makeClient();

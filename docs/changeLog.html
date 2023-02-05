@@ -2,6 +2,71 @@
 layout: page
 title: Change Log
 ---
+
+<section class="changelog"><h1>Version 1.1.22</h1>
+  <h2>2023/01/19</h2>
+
+  <li>
+    Fix enumeration default value support (XtkEnumeration class). When an enumertion as a default value ('default' attribute of the enumeration)
+    object, this value should match the 'name' attribute of one of the enumeration values, not the 'value' attribute.
+  </li>
+</section>
+
+<section class="changelog"><h1>Version 1.1.21</h1>
+  <h2>2023/01/18</h2>
+
+  <li>
+    Extended XtkSchemaNode class with dbEnum attribute.
+  </li>
+</section>
+
+<section class="changelog"><h1>Version 1.1.20</h1>
+  <h2>2023/01/11</h2>
+  
+  <li>
+    Upgrade json5 dependency from 2.2.1 to 2.2.3 to fix a vulnerability
+  </li>
+
+  <li>
+    Add support for asynchronous caches. The signature of cache objects (Cache, MethodCache,
+    OptionCache, XtkEntityCache, SafeStorage) have changed to asynchronous functions.
+    However, the delegate object used to configure custom caches now support either synchronous
+    or async results. See the <a href="https://opensource.adobe.com/acc-js-sdk/caches.html">Cache documentation for more details</a>
+  </li>
+  <li>
+    Ability to configure the prefix to use for the cached objects. Default to a string containing
+    the SDK version and instance domain.
+  </li>
+</section>
+
+
+<section class="changelog"><h1>Version 1.1.19</h1>
+  <h2>2022/12/21</h2>
+  
+  <li>Add the X-Session-Token custom header to all SOAP and API calls</li>
+</section>
+
+<section class="changelog"><h1>Version 1.1.18</h1>
+  <h2>2022/12/20</h2>
+  
+  <li>Automatically remove from local storage key items which correspond to previous versions of the SDK.</li>
+</section>
+
+<section class="changelog"><h1>Version 1.1.17</h1>
+  <h2>2022/12/06</h2>
+  
+  <li>Fix a bug in schemas: the editType property of a schema node was not set properly (internal attribute is named "edit" but property exposed by the API is "editType")</li>
+  <li>Fix a bug with encoding of the SOAP urls: query parameter was not escaped properly</li>
+  <li>Add observer callbacks before and after SOAP calls (onBeforeCall, onAfterCall) which allow to intercept SOAP calls and modify SOAP call parameters and results. See the "Method Interception" section in <a href="https://opensource.adobe.com/acc-js-sdk/observability.html">the observability documentation</a> for more details</li>
+</section>
+
+<section class="changelog"><h1>Version 1.1.16</h1>
+  <h2>2022/11/29</h2>
+  
+  <li>Added support for xtk:job interface and job-related methods. See <a href="https://opensource.adobe.com/acc-js-sdk/xtkJob.html">Jobs documentation</a> for more details</li>
+</section>
+
+
 <section class="changelog"><h1>Version 1.1.15</h1>
   <h2>2022/11/28</h2>
   
@@ -280,5 +345,5 @@ _Breaking changes in 1.0.0_
 
 </section>
 <section class="changelog"> <h1>0.1.0</h1>
-<h2>Initial versio</h2>
-
+<h2>Initial version</h2>
+</section>

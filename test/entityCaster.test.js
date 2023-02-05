@@ -80,7 +80,6 @@ describe('EntityCaster', function() {
             const client = await Mock.makeClient();
             client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
-            //client._transport.mockReturnValueOnce(Mock.GET_MISSING_SCHEMA_RESPONSE);
             const caster = new EntityCaster(client, "xtk:notFound", { enabled: true });
             await expect(caster.cast({ id: "123" })).rejects.toMatchObject({ errorCode: "SDK-000016", faultString: "Unknown schema 'xtk:notFound'" });
             client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
@@ -248,7 +247,7 @@ describe('EntityCaster', function() {
             await client.NLWS.xtkSession.logon();
             client._transport.mockReturnValueOnce(Mock.GET_MISSING_SCHEMA_RESPONSE);
             const queryDef = {
-                schema: "xtk:entityCaster",
+                schema: "xtk:notFound",
                 operation: "get",
                 select: { node: { expr: "@id" } },
                 where: { condition: [ { expr:`@internalName='DM19'` } ] }
@@ -450,7 +449,7 @@ describe('EntityCaster', function() {
                     where: { condition: [ { expr:`@internalName='DM19'` } ] }
                   };
                 const infer = new QueryDefSchemaInferer(client, queryDef, { enabled: true });
-                const schema = infer._convertToSchema(root);
+                const schema = infer._convertToSchema("query",false, root);
 
                 client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
                 await client.NLWS.xtkSession.logoff();

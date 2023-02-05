@@ -252,10 +252,16 @@ class XtkSchemaNode {
          this.dataPolicy = EntityAccessor.getAttributeAsString(xml, "dataPolicy");
 
         /**
+         * Returns a string of characters which provides the db enum of the current node.
+         * @type {string}
+         */
+        this.dbEnum = EntityAccessor.getAttributeAsString(xml, "dbEnum");
+
+        /**
          * Returns a string of characters which specifies the editing type of the current node.
          * @type {string}
          */
-         this.editType = EntityAccessor.getAttributeAsString(xml, "editType");
+         this.editType = EntityAccessor.getAttributeAsString(xml, "edit");
 
         /**
          * Only on the root node, returns a string which contains the folder template(s). On the other nodes, it returns undefined.
@@ -1064,7 +1070,7 @@ class XtkEnumeration {
              const e = new XtkEnumerationValue(child, this.baseType, this._localizationId);
              this.values._push(e.name, e);
              if (e.image != "") this.hasImage = true;
-             const stringValue = EntityAccessor.getAttributeAsString(child, "value");
+             const stringValue = EntityAccessor.getAttributeAsString(child, "name");
              if (defaultValue == stringValue)
                  this.default = e;
          }

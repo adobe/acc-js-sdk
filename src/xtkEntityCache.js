@@ -64,8 +64,8 @@ class XtkEntityCache extends Cache {
      * @param {string} entityFullName is the entity name, such as "nms:recipient"
      * @returns {*} the cached entity, or undefined if not found
      */
-    get(entityType, entityFullName) {
-        return super.get(entityType, entityFullName);
+    async get(entityType, entityFullName) {
+        return await super.get(entityType, entityFullName);
     }
 
     /**
@@ -74,15 +74,15 @@ class XtkEntityCache extends Cache {
      * @param {string} entityFullName is the entity name, such as "nms:recipient"
      * @param {*} entity is the entity
      */
-    put(entityType, entityFullName, entity) {
-        super.put(entityType, entityFullName, entity);
+    async put(entityType, entityFullName, entity) {
+        await super.put(entityType, entityFullName, entity);
         // For schemas, cache interfaces
         if (entityType == "xtk:schema") {
             const namespace = entity.getAttribute("namespace");
             var interfaceElement = DomUtil.getFirstChildElement(entity, "interface");
             while (interfaceElement) {
                 const name = `${namespace}:${interfaceElement.getAttribute("name")}`;
-                super.put(entityType, name, interfaceElement);
+                await super.put(entityType, name, interfaceElement);
                 interfaceElement = DomUtil.getNextSiblingElement(interfaceElement, "interface");
             }
         }

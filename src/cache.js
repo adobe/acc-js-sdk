@@ -12,6 +12,8 @@ governing permissions and limitations under the License.
 (function() {
 "use strict";    
   
+const { Util } = require("./util");
+
 
 /**********************************************************************************
  * 
@@ -78,11 +80,11 @@ class SafeStorage {
    * @returns {Utils.CachedObject} the cached object, or undefined if not found. 
    *                               The storage serDeser fucntion will be used to deserialize the cached value
    */
-  getItem(key) {
+  async getItem(key) {
     if (!this._delegate || this._rootKey === undefined || this._rootKey === null)
       return;
     const itemKey = `${this._rootKey}${key}`;
-    const raw = this._delegate.getItem(itemKey);
+    const raw = await Util.asPromise(this._delegate.getItem(itemKey));
     if (!raw)
       return undefined;
     try {
@@ -98,28 +100,28 @@ class SafeStorage {
    * @param {Utils.CachedObject} json the object to cache
    *                               The storage serDeser fucntion will be used to serialize the cached value
    */
-   setItem(key, json) {
+  async setItem(key, json) {
     if (!this._delegate || this._rootKey === undefined || this._rootKey === null)
       return;
     try {
       //if (json && typeof json === "object") {
       const raw = this._serDeser(json, true);
-      this._delegate.setItem(`${this._rootKey}${key}`, raw);
+      await Util.asPromise(this._delegate.setItem(`${this._rootKey}${key}`, raw));
       return;
     } catch(ex) { /* Ignore errors in safe class */
+      await this.removeItem(key);
     }
-    this.removeItem(key);
   }
 
   /**
    * Removes an item from the storage
    * @param {string} key the item key (relative to the root key)
    */
-  removeItem(key) {
+  async removeItem(key) {
     if (!this._delegate || this._rootKey === undefined || this._rootKey === null)
       return;
     try {
-      this._delegate.removeItem(`${this._rootKey}${key}`);
+      await this._delegate.removeItem(`${this._rootKey}${key}`);
     } catch(ex) { /* Ignore errors in safe class */
     }
   }
@@ -178,7 +180,12 @@ class Cache {
       this._makeKeyFn = makeKeyFn || ((x) => x);
       this._cache = {};
       // timestamp at which the cache was last cleared
-      this._lastCleared = this._loadLastCleared();
+      // The variable is set with special "null" value to indicate that the
+      // timestamp at which the cache was clear is not known, and therefore
+      // needs to be fetched. It will be fetched dynamically when needed, 
+      // resulting in either an undefined value (cache was never cleared)
+      // or a actual timestamp.
+      this._lastCleared = null;
       this._stats = {
         reads: 0,
         writes: 0,
@@ -192,53 +199,57 @@ class Cache {
   }
 
   // Load timestamp at which the cache was last cleared
-  _loadLastCleared() {
-    const json = this._storage.getItem("lastCleared");
+  async _loadLastCleared() {
+    const json = await this._storage.getItem("lastCleared");
     return json ? json.timestamp : undefined;
   }
 
-  _saveLastCleared() {
+  async _saveLastCleared() {
     const now = Date.now();
     this._lastCleared = now;
-    this._storage.setItem("lastCleared", { timestamp: now});
+    await this._storage.setItem("lastCleared", { timestamp: now});
   }
 
   // Load from local storage
-  _load(key) {
+  async _load(key) {
     this._stats.loads = this._stats.loads + 1;
-    const json = this._storage.getItem(key);
+    // A null value here indicates that we have not yet loaded the
+    // timestamp at which the cache was cleared last
+    if (this._lastCleared === null) 
+      this._lastCleared = await this._loadLastCleared();
+    const json = await this._storage.getItem(key);
     if (!json || !json.cachedAt || json.cachedAt <= this._lastCleared) {
-      this._storage.removeItem(key);
+      await this._storage.removeItem(key);
       return;
     }
     return json;
   }
 
   // Save to local storage
-  _save(key, cached) {
+  async _save(key, cached) {
     this._stats.saves = this._stats.saves + 1;
-    this._storage.setItem(key, cached);
+    await this._storage.setItem(key, cached);
   }
 
   // Remove from local storage
-  _remove(key) {
-    this._storage.removeItem(key);
+  async _remove(key) {
+    await this._storage.removeItem(key);
   }
 
-  _getIfActive(key) {
+  async _getIfActive(key) {
     // In memory cache?
     var cached = this._cache[key];
     var memoryHit = !!cached;
     // Local storage ?
     if (!cached) {
-      cached = this._load(key);
+      cached = await this._load(key);
       this._cache[key] = cached;
     }
     if (!cached) 
       return undefined;
     if (cached.expiresAt <= Date.now()) {
       delete this._cache[key];
-      this._remove(key);
+      await this._remove(key);
       return undefined;
     }
     this._stats.memoryHits = this._stats.memoryHits + 1;
@@ -251,10 +262,10 @@ class Cache {
    * @param {*} key the key or keys of the value to retreive
    * @returns {*} the cached value, or undefined if not found
    */
-  get() {
+  async get() {
       this._stats.reads = this._stats.reads + 1;
       const key = this._makeKeyFn.apply(this, arguments);
-      const cached = this._getIfActive(key);
+      const cached = await this._getIfActive(key);
       return cached;
   }
 
@@ -264,7 +275,7 @@ class Cache {
    * @param {*} value the value to cache
    * @returns {CachedObject} a cached object containing the cached value
    */
-   put() {
+   async put() {
       this._stats.writes = this._stats.writes + 1;
       const value = arguments[arguments.length -1];
       const key = this._makeKeyFn.apply(this, arguments);
@@ -272,7 +283,7 @@ class Cache {
       const expiresAt = now + this._ttl;
       const cached = new CachedObject(value, now, expiresAt);
       this._cache[key] = cached;
-      this._save(key, cached);
+      await this._save(key, cached);
       return cached;
   }
   
@@ -280,20 +291,20 @@ class Cache {
    * Removes everything from the cache. It does not directly removes data from persistent storage if there is, but it marks the cache
    * as cleared so that subsequent get operation will not actually return any data cached in persistent storage
    */
-  clear() {
+  async clear() {
       this._stats.clears = this._stats.clears + 1;
       this._cache = {};
-      this._saveLastCleared();
+      await this._saveLastCleared();
   }
 
   /**
    * Remove a key from the cache
    * @param {string} key the key to remove
    */
-  remove(key) {
+  async remove(key) {
       this._stats.removals = this._stats.removals + 1;
       delete this._cache[key];
-      this._remove(key);
+      await this._remove(key);
   }
 }
 

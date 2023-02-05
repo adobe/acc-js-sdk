@@ -36,6 +36,7 @@ const request = require('./transport.js').request;
 const Application = require('./application.js').Application;
 const EntityAccessor = require('./entityAccessor.js').EntityAccessor;
 const { Util } = require('./util.js');
+const { XtkJobInterface } = require('./xtkJob.js');
 const { QueryDefSchemaInferer, EntityCaster } = require('./entityCaster.js');
 const qsStringify = require('qs-stringify');
 
@@ -61,6 +62,13 @@ const qsStringify = require('qs-stringify');
  * @memberOf Campaign
 */
 
+/**
+ * @typedef {Object} XtkMethodParam
+    * @property {string} name - the name of the parameter
+    * @property {string} type - the type of the parameter
+    * @property {*} value - the values of the parameter in the expected representation
+    * @memberOf Campaign
+ */
 
 /**
  * Java Script Proxy handler for an XTK object. An XTK object is one constructed with the following syntax:
@@ -174,16 +182,7 @@ const clientHandler = (representation, headers, pushDownOptions) => {
                         return callContext;
 
                     // get Schema id from namespace (find first upper case letter)
-                    var schemaId = "";
-                    for (var i=0; i<namespace.length; i++) {
-                        const c = namespace[i];
-                        if (c >='A' && c<='Z') {
-                            schemaId = schemaId + ":" + c.toLowerCase() + namespace.substr(i+1);
-                            break;
-                        }
-                        schemaId = schemaId + c;
-                    }
-                    callContext.schemaId = schemaId;
+                    callContext.schemaId = Util.schemaIdFromNamespace(namespace);
 
                     const caller = function(thisArg, argumentsList) {
                         const callContext = thisArg["."];
@@ -198,8 +197,7 @@ const clientHandler = (representation, headers, pushDownOptions) => {
                             var promise = callContext.client._callMethod(methodName, callContext, argumentsList);
                             return promise.then(function(optionAndValue) {
                                 const optionName = argumentsList[0];
-                                client._optionCache.put(optionName, optionAndValue);
-                                return optionAndValue;
+                                return client._optionCache.put(optionName, optionAndValue).then(() => optionAndValue);
                             });
                         }
                         // static method
@@ -310,6 +308,7 @@ class Credentials {
     * @property {boolean} noSDKHeaders - set to disable "ACC-SDK" HTTP headers
     * @property {boolean} noMethodInURL - Can be set to true to remove the method name from the URL
     * @property {number} timeout - Can be set to change the HTTP call timeout. Value is passed in ms.
+    * @property {string} cacheRootKey - "default" or "none" - determine the prefix to use for the keys in the caches of schemas, options, etc.
     * @property {entityCasterOptions} entityCasterOptions - Options for the entity caster
     * @memberOf Campaign
  */
@@ -382,6 +381,7 @@ class ConnectionParameters {
         this._options.clientApp = options.clientApp;
         this._options.noSDKHeaders = !!options.noSDKHeaders;
         this._options.noMethodInURL = !!options.noMethodInURL;
+        this._options.cacheRootKey = options.cacheRootKey === undefined ? "default": options.cacheRootKey;
     }
 
     /**
@@ -648,13 +648,29 @@ class Client {
         var instanceKey = connectionParameters._endpoint || "";
         if (instanceKey.startsWith("http://")) instanceKey = instanceKey.substr(7);
         if (instanceKey.startsWith("https://")) instanceKey = instanceKey.substr(8);
-        const rootKey = `acc.js.sdk.${sdk.getSDKVersion().version}.${instanceKey}.cache`;
 
-        this._entityCache = new XtkEntityCache(this._storage, `${rootKey}.XtkEntityCache`, connectionParameters._options.entityCacheTTL);
-        this._entityCacheRefresher = new CacheRefresher(this._entityCache, this, "xtk:schema", `${rootKey}.XtkEntityCache`);
-        this._methodCache = new MethodCache(this._storage, `${rootKey}.MethodCache`, connectionParameters._options.methodCacheTTL);
-        this._optionCache = new OptionCache(this._storage, `${rootKey}.OptionCache`, connectionParameters._options.optionCacheTTL);
-        this._optionCacheRefresher = new CacheRefresher(this._optionCache, this, "xtk:option", `${rootKey}.OptionCache`);
+        // Determine the cache root key. There are 3 possible values:
+        // * no value or "default" is the default behavior, i.e. all cache keys are prefixed with "acc.js.sdk.${sdk.getSDKVersion().version}.${instanceKey}.cache."
+        // * "none" (or actually anything else for now), where cache keys are not prefixed by anything
+        const rootKeyType = connectionParameters._options.cacheRootKey;
+        let rootKey = "";
+        if (!rootKeyType || rootKeyType === "default")
+            rootKey = `acc.js.sdk.${sdk.getSDKVersion().version}.${instanceKey}.cache.`;
+
+        // Clear storage cache if the sdk versions or the instances are different
+        if (this._storage && typeof this._storage.removeItem === 'function') {
+          for (let key in this._storage) {
+            if (key.startsWith("acc.js.sdk.") && !key.startsWith(rootKey)) {
+              this._storage.removeItem(key);
+            }
+          }
+        }
+
+        this._entityCache = new XtkEntityCache(this._storage, `${rootKey}XtkEntityCache`, connectionParameters._options.entityCacheTTL);
+        this._entityCacheRefresher = new CacheRefresher(this._entityCache, this, "xtk:schema", `${rootKey}XtkEntityCache`);
+        this._methodCache = new MethodCache(this._storage, `${rootKey}MethodCache`, connectionParameters._options.methodCacheTTL);
+        this._optionCache = new OptionCache(this._storage, `${rootKey}OptionCache`, connectionParameters._options.optionCacheTTL);
+        this._optionCacheRefresher = new CacheRefresher(this._optionCache, this, "xtk:option", `${rootKey}OptionCache`);
         this.NLWS = new Proxy(this, clientHandler());
 
         this._transport = connectionParameters._options.transport;
@@ -954,17 +970,19 @@ class Client {
      * @private
      * @param {string} urn is the API name space, usually the schema. For instance xtk:session
      * @param {string} method is the method to call, for instance Logon
+     * @param {boolean} isStatic is a boolean indicating if the method is static or not
      * @param {boolean} internal is a boolean indicating whether the SOAP call is performed by the SDK (internal = true) or on behalf of a user
      * @return {SOAP.SoapMethodCall} a SoapMethodCall which have been initialized with security tokens... and to which the method
      * parameters should be set
      */
-    _prepareSoapCall(urn, method, internal, extraHttpHeaders, pushDownOptions) {
+    _prepareSoapCall(urn, method, isStatic, internal, extraHttpHeaders, pushDownOptions) {
         const soapCall = new SoapMethodCall(this._transport, urn, method,
                                             this._sessionToken, this._securityToken,
                                             this._getUserAgentString(),
                                             Object.assign({}, this._connectionParameters._options, pushDownOptions),
                                             extraHttpHeaders);
         soapCall.internal = !!internal;
+        soapCall.isStatic = isStatic;
         return soapCall;
     }
 
@@ -1015,6 +1033,236 @@ class Client {
     _soapEndPoint() {
         return this._connectionParameters._endpoint + "/nl/jsp/soaprouter.jsp";
     }
+
+    // Serializes parameters for a SOAP call
+    // @param {string} entitySchemaId is the id of the schema of the entity underlying the SOAP call
+    // @param {DOMDocument} schema is the XML schema of the method call
+    // @param {SOAP.SoapMethodCall} soapCall is the SOAP call being performed
+    // @param {Campaign.XtkMethodParam[]} inputParameters is the list of input parameters. The first paramater in the array is the "this" parameter for non-static method calls
+    // @param {string} representation is the representation to use to interpret the input parameters
+    async _writeSoapCallParameters(entitySchemaId, schema, soapCall, inputParameters, representation) {
+        const methodName = soapCall.methodName;
+        var isThisParam = !soapCall.isStatic;
+
+        for (const ip of inputParameters) {
+            const type = ip.type;
+            const paramName = ip.name;
+            var paramValue = ip.value;
+
+            if (type == "string")
+                soapCall.writeString(ip.name, XtkCaster.asString(ip.value));    
+            else if (type == "primarykey")
+                soapCall.writeString(ip.name, XtkCaster.asString(ip.value));
+            else if (type == "boolean")
+                soapCall.writeBoolean(ip.name, XtkCaster.asBoolean(ip.value));
+            else if (type == "byte")
+                soapCall.writeByte(ip.name, XtkCaster.asByte(ip.value));
+            else if (type == "short")
+                soapCall.writeShort(ip.name, XtkCaster.asShort(ip.value));
+            else if (type == "int")
+                soapCall.writeLong(ip.name, XtkCaster.asLong(ip.value));
+            else if (type == "long")
+                soapCall.writeLong(ip.name, XtkCaster.asLong(ip.value));
+            else if (type == "int64")
+                soapCall.writeInt64(ip.name, XtkCaster.asInt64(ip.value));
+            else if (type == "datetime")
+                soapCall.writeTimestamp(ip.name, XtkCaster.asTimestamp(ip.value));
+            else if (type == "date")
+                soapCall.writeDate(ip.name, XtkCaster.asDate(ip.value));
+            else if (type == "DOMDocument" || type == "DOMElement") {
+                var docName = undefined;    
+                let paramRepresentation = representation;
+                if (paramValue.__xtkProxy) {
+                    // A xtk proxy object is passed as a parameter. The call context contains the schema so we
+                    // can use it to determine the XML document root (docName)
+                    const paramValueContext = paramValue["."];
+                    paramValue = paramValueContext.object;
+                    const xtkschema = paramValueContext.schemaId;
+                    const index = xtkschema.indexOf(":");
+                    docName = xtkschema.substring(index+1);
+                    paramRepresentation = paramValueContext.representation; // xtk proxy may have it's own representation
+                }
+                else {
+                    // Hack for workflow API. The C++ code checks that the name of the XML element is <variables>. When
+                    // using xml representation at the SDK level, it's ok since the SDK caller will set that. But this does
+                    // not work when using "BadgerFish" representation where we do not know the root element name.
+                    if (entitySchemaId == "xtk:workflow" && methodName == "StartWithParameters" && paramName == "parameters")
+                        docName = "variables";
+                    if (entitySchemaId == "nms:rtEvent" && methodName == "PushEvent")
+                        docName = "rtEvent";
+                    // Try to guess the document name. This is usually available in the xtkschema attribute
+                    var xtkschema = EntityAccessor.getAttributeAsString(paramValue, "xtkschema");
+                    if (!xtkschema) xtkschema = paramValue["@xtkschema"];
+                    if (xtkschema) {
+                        const index = xtkschema.indexOf(":");
+                        docName = xtkschema.substring(index+1);
+                    }
+                    if (!docName) docName = paramName; // Use te parameter name as the XML root element
+                }
+                var xmlValue = this._fromRepresentation(docName, paramValue, paramRepresentation || representation);
+                if (type == "DOMDocument") {
+                    if (isThisParam) {
+                        isThisParam = false;
+                        // The xtk:persist#NewInstance requires a xtkschema attribute which we can compute here
+                        // Actually, we're always adding it, for all non-static methods
+                        const xmlRoot = xmlValue.nodeType === 9 ? xmlValue.documentElement : xmlValue;
+                        if (!xmlRoot.hasAttribute("xtkschema"))
+                            xmlRoot.setAttribute("xtkschema", entitySchemaId);
+                        soapCall.writeDocument("document", xmlValue);
+                    }
+                    else
+                        soapCall.writeDocument(paramName, xmlValue);
+                }
+                else
+                    soapCall.writeElement(paramName, xmlValue);
+            }
+            else
+                throw CampaignException.BAD_SOAP_PARAMETER(soapCall, paramName, paramValue, `Unsupported parameter type '${type}' for parameter '${paramName}' of method '${methodName}' of schema '${entitySchemaId}`);
+        }
+    }
+
+    // Deserializes results for a SOAP call
+    // @param {string} entitySchemaId is the id of the schema of the entity underlying the SOAP call
+    // @param {DOMDocument} schema is the XML schema of the method call
+    // @param {SOAP.SoapMethodCall} soapCall is the SOAP call being performed
+    // @param {Campaign.XtkMethodParam[]}  outputParameters is the list of output parameters. The first paramater in the array is the "this" parameter for non-static method calls
+    // @param {string} representation is the representation to use to interpret the parameters
+    async _readSoapCallResult(entitySchemaId, schema, soapCall, outputParameters, representation, callContext) {
+        const methodName = soapCall.methodName;
+        var isThisParam = !soapCall.isStatic;
+        for (const op of outputParameters) {
+            const type = op.type;
+            const paramName = op.name;
+            var returnValue = op.value;
+
+            if (isThisParam) {
+                isThisParam = false;
+                // Non static methods, such as xtk:query#SelectAll return a element named "entity" which is the object itself on which
+                // the method is called. This is the new version of the object (in XML form)
+                const entity = soapCall.getEntity();
+                if (entity)
+                    returnValue = await this._toRepresentation(entity, representation);
+            }
+            else if (type == "string")
+                returnValue = soapCall.getNextString();
+            else if (type == "primarykey")
+                returnValue = soapCall.getNextPrimaryKey();
+            else if (type == "boolean")
+                returnValue = soapCall.getNextBoolean();
+            else if (type == "byte")
+                returnValue = soapCall.getNextByte();
+            else if (type == "short")
+                returnValue = soapCall.getNextShort();
+            else if (type == "long")
+                returnValue = soapCall.getNextLong();
+            else if (type == "int64")
+                // int64 are represented as strings to make sure no precision is lost
+                returnValue = soapCall.getNextInt64();
+            else if (type == "datetime")
+                returnValue = soapCall.getNextDateTime();
+            else if (type == "date")
+                returnValue = soapCall.getNextDate();
+            else if (type == "DOMDocument") {
+                returnValue = soapCall.getNextDocument();
+                var schemaHint;
+                if (callContext) {
+                    const callRepresentation = callContext.representation || this._representation;
+                    if (entitySchemaId === "xtk:queryDef" && methodName === "ExecuteQuery" && paramName === "output") {
+                        if (callRepresentation === 'SimpleJson') {
+                            const inferer = new QueryDefSchemaInferer(this, callContext.object, this._entityCasterOptions);
+                            schemaHint = await inferer.getSchema();
+                        }
+                    }
+                }
+                returnValue = await this._toRepresentation(returnValue, representation, schemaHint);
+            }
+            else if (type == "DOMElement") {
+                returnValue = soapCall.getNextElement();
+                returnValue = await this._toRepresentation(returnValue, representation);
+            }
+            else {
+                const schemaName = entitySchemaId.substring(entitySchemaId.indexOf(':') + 1);
+                // type can reference a schema element. The naming convension is that the type name
+                // is {schemaName}{elementNameCamelCase}. For instance, the type "sessionUserInfo"
+                // matches the "userInfo" element of the "xtkSession" schema
+                let element;
+                if (type.substr(0, schemaName.length) == schemaName) {
+                    const shortTypeName = type.substr(schemaName.length, 1).toLowerCase() + type.substr(schemaName.length + 1);
+                    element = DomUtil.getFirstChildElement(schema, "element");
+                    while (element) {
+                        if (element.getAttribute("name") == shortTypeName) {
+                            // Type found in schema: Process as a DOM element
+                            returnValue = soapCall.getNextElement();
+                            returnValue = await this._toRepresentation(returnValue, representation);
+                            break;
+                        }
+                        element = DomUtil.getNextSiblingElement(element, "element");
+                    }
+
+                }
+                if (!element)
+                    throw CampaignException.UNEXPECTED_SOAP_RESPONSE(soapCall, `Unsupported return type '${type}' for parameter '${paramName}' of method '${methodName}' of schema '${entitySchemaId}'`);
+            }
+            op.value = returnValue;
+        }
+        soapCall.checkNoMoreArgs();
+    }
+
+    /**
+     * Serialize input parameters, make a SOAP call and deserialize result parameters. Calls observer when necessary.
+     * 
+     * The inputParams and outputParams arrays contain prepopulated parameter lists with the name, type (and value for
+     * input params). This function does not return anything but will populate the outputParams array with the actual result.
+     *
+     * @private
+     * @param {string} entitySchemaId is the id of the schema of the entity underlying the SOAP call
+     * @param {DOMDocument} schema is the XML schema of the method call
+     * @param {SOAP.SoapMethodCall} soapCall is the SOAP call being performed
+     * @param {Campaign.XtkMethodParam[]}  inputParams is the list of input parameters. The first paramater in the array is the "this" parameter for non-static method calls
+     * @param {Campaign.XtkMethodParam[]}  outputParams is the list of output parameters. The first paramater in the array is the "this" parameter for non-static method calls
+     * @param {string} representation is the representation to use to interpret the parameters 
+     * @param {} callContext
+     */
+    async _makeInterceptableSoapCall(entitySchemaId, schema, soapCall, inputParams, outputParams, representation, callContext) {
+        // Call observers and give them a chance to modify the parameters before the call is actually made
+        if (!soapCall.internal) {
+            await this._beforeSoapCall({
+                urn: soapCall.urn,
+                name: soapCall.methodName,
+            }, inputParams, representation);
+        }
+
+        // Make SOAP call
+        await this._writeSoapCallParameters(entitySchemaId, schema, soapCall, inputParams, representation);
+        await this._makeSoapCall(soapCall);
+        await this._readSoapCallResult(entitySchemaId, schema, soapCall, outputParams, representation, callContext);
+        
+        // Specific handling of query results
+        // https://github.com/adobe/acc-js-sdk/issues/3 
+        if (entitySchemaId === "xtk:queryDef" && soapCall.methodName === "ExecuteQuery") {
+            const returnValue = outputParams[1].value; // first parameter is the "this", second one (index 1) is the query result
+            const emptyResult = Object.keys(returnValue).length == 0;
+            const object = inputParams[0].value; // first parmater is the "this"
+            const operation = EntityAccessor.getAttributeAsString(object, "operation");
+            if (operation == "getIfExists" && emptyResult)
+                outputParams[1].value = null;
+            else if (operation == "select" && emptyResult) {
+                const querySchemaId = EntityAccessor.getAttributeAsString(object, "schema");
+                const index = querySchemaId.indexOf(':');
+                const querySchemaName = querySchemaId.substr(index + 1);
+                outputParams[1].value[querySchemaName] = [];
+            }
+        }
+
+        // Call observers and give them a chance to modify the results
+        if (!soapCall.internal) {
+            await this._afterSoapCall({
+                urn: soapCall.urn,
+                name: soapCall.methodName
+            }, inputParams, representation, outputParams);
+        }
+    }
+
     /**
      * After a SOAP method call has been prepared with '_prepareSoapCall', and parameters have been added,
      * this function actually executes the SOAP call
@@ -1137,7 +1385,7 @@ class Client {
             return Promise.resolve();
         }
         else if (credentials._type == "UserPassword" || credentials._type == "BearerToken") {
-            const soapCall = that._prepareSoapCall("xtk:session", credentials._type === "UserPassword" ? "Logon" : "BearerTokenLogon", false, this._connectionParameters._options.extraHttpHeaders);
+            const soapCall = that._prepareSoapCall("xtk:session", credentials._type === "UserPassword" ? "Logon" : "BearerTokenLogon", true, false, this._connectionParameters._options.extraHttpHeaders);
             // No retry for logon SOAP methods
             soapCall.retry = false;
             if (credentials._type == "UserPassword") {
@@ -1216,7 +1464,7 @@ class Client {
             this.stopRefreshCaches();
             const credentials = this._connectionParameters._credentials;
             if (credentials._type != "SessionToken" && credentials._type != "AnonymousUser") {
-                var soapCall = that._prepareSoapCall("xtk:session", "Logoff", false, this._connectionParameters._options.extraHttpHeaders);
+                var soapCall = that._prepareSoapCall("xtk:session", "Logoff", true, false, this._connectionParameters._options.extraHttpHeaders);
                 return this._makeSoapCall(soapCall).then(function() {
                     that._sessionToken = "";
                     that._securityToken = "";
@@ -1245,11 +1493,11 @@ class Client {
     async getOption(name, useCache = true) {
       var value;
       if (useCache) {
-        value = this._optionCache.get(name);
+        value = await this._optionCache.get(name);
       }
       if (value === undefined) {
         const option = await this.NLWS.xtkSession.getOption(name);
-        value = this._optionCache.put(name, option);
+        value = await this._optionCache.put(name, option);
       }
       return value;
     }
@@ -1265,7 +1513,7 @@ class Client {
     async setOption(name, rawValue, description) {
         // First, read the current option value to make sure we have the right type
         await this.getOption(name, true);
-        const option = this._optionCache.getOption(name);
+        const option = await this._optionCache.getOption(name);
         // Note: option is never null or undefined there: Campaign will return a value of type 0 and value ""
         var type = option.type;
         var value = XtkCaster.as(rawValue, type);
@@ -1281,40 +1529,41 @@ class Client {
         if (description != null && description != undefined)
             doc.description = description;
         doc[attName] = value;
-        return this.NLWS.xtkSession.write(doc).then(() => {
-            // Once set, cache the value
-            this._optionCache.put(name, [value, type]);
-        });
+        await this.NLWS.xtkSession.write(doc);
+        // Once set, cache the value
+        await this._optionCache.put(name, [value, type]);
     }
 
     /**
      * Clears the options cache
      */
-    clearOptionCache() {
-        this._optionCache.clear();
+    async clearOptionCache() {
+        await this._optionCache.clear();
     }
 
     /**
      * Clears the method cache
      */
-    clearMethodCache() {
-        this._methodCache.clear();
+    async clearMethodCache() {
+        await this._methodCache.clear();
     }
 
     /**
      * Clears the entity cache
      */
-    clearEntityCache() {
-        this._entityCache.clear();
+    async clearEntityCache() {
+        await this._entityCache.clear();
     }
 
     /**
      * Clears all caches (options, methods, entities)
      */
-    clearAllCaches() {
-        this.clearEntityCache();
-        this.clearMethodCache();
-        this.clearOptionCache();
+    async clearAllCaches() {
+        return Promise.all([
+            this.clearEntityCache(),
+            this.clearMethodCache(),
+            this.clearOptionCache(),
+        ]);
     }
 
     /**
@@ -1405,16 +1654,17 @@ class Client {
      * @return {XML.XtkObject} A DOM or JSON representation of the entity, or null if the entity is not found
      */
      async getEntityIfMoreRecent(entityType, fullName, representation, internal) {
-        const that = this;
-        const soapCall = this._prepareSoapCall("xtk:persist", "GetEntityIfMoreRecent", internal, this._connectionParameters._options.extraHttpHeaders);
-        soapCall.writeString("pk", entityType + "|" + fullName);
-        soapCall.writeString("md5", "");
-        soapCall.writeBoolean("mustExist", false);
-        await this._makeSoapCall(soapCall);
-        var doc = soapCall.getNextDocument();
-        soapCall.checkNoMoreArgs();
-        doc = await that._toRepresentation(doc, representation, entityType);
-        return doc;
+        const soapCall = this._prepareSoapCall("xtk:persist", "GetEntityIfMoreRecent", true, internal, this._connectionParameters._options.extraHttpHeaders);
+        const inputParams = [
+            { name: "pk", type: "string", value: entityType + "|" + fullName },
+            { name: "md5", type: "string", value: "" },
+            { name: "mustExist", type: "boolean", value: false },
+        ];
+        const outputParams = [
+            { name: "doc", type: "DOMDocument" },
+        ];
+        await this._makeInterceptableSoapCall("xtk:session", undefined, soapCall, inputParams, outputParams, representation, undefined);
+        return outputParams[0].value;
     }
 
     /**
@@ -1426,7 +1676,7 @@ class Client {
      * @returns {XML.XtkObject}  the schema definition, as either a DOM document or a JSON object
      */
     async getSchema(schemaId, representation, internal) {
-        var entity = this._entityCache.get("xtk:schema", schemaId);
+        var entity = await this._entityCache.get("xtk:schema", schemaId);
         if (!entity) {
           entity = await this.getEntityIfMoreRecent("xtk:schema", schemaId, "xml", internal);
           await this._cacheEntity(schemaId, entity);
@@ -1446,8 +1696,8 @@ class Client {
                 // Ensure xtk:persist is present by loading the xtk:session schema
                 await this.getSchema("xtk:session", "xml", true);
             }
-            this._entityCache.put("xtk:schema", schemaId, entity);
-            this._methodCache.put(entity);
+            await this._entityCache.put("xtk:schema", schemaId, entity);
+            await this._methodCache.put(entity);
         }
     }
 
@@ -1508,28 +1758,41 @@ class Client {
         const that = this;
         const schemaId = callContext.schemaId;
 
-        var schema = await that.getSchema(schemaId, "xml", true);
+        var entitySchemaId = schemaId;
+        if (schemaId === 'xtk:jobInterface')
+            entitySchemaId = callContext.entitySchemaId;
+
+        // Get the schema which contains the method call. Methods of the xtk:jobInterface interface are handled specificaaly
+        // because xtk:jobInterface is not actually a schema, but just an interface. In practice, it's used as an xtk template
+        // rather that an xtk inheritance mechanism
+        const methodSchemaId = schemaId === 'xtk:jobInterface' ? 'xtk:job' : schemaId;
+        var schema = await that.getSchema(methodSchemaId, "xml", true);
         if (!schema)
             throw CampaignException.SOAP_UNKNOWN_METHOD(schemaId, methodName, `Schema '${schemaId}' not found`);
-        var schemaName = schema.getAttribute("name");
-        var method = that._methodCache.get(schemaId, methodName);
+
+        // Lookup the method to call
+        var method = await that._methodCache.get(methodSchemaId, methodName);
         if (!method) {
             // first char of the method name may be lower case (ex: nms:seedMember.getAsModel) but the methodName 
             // variable has been capitalized. Make an attempt to lookup method name without capitalisation
             const methodNameLC = methodName.substring(0, 1).toLowerCase() + methodName.substring(1);
-            method = that._methodCache.get(schemaId, methodNameLC);
+            method = await that._methodCache.get(schemaId, methodNameLC);
             if (method) methodName = methodNameLC;
         }
         if (!method) {
-            this._methodCache.put(schema);
-            method = that._methodCache.get(schemaId, methodName);
+            await this._methodCache.put(schema);
+            method = await that._methodCache.get(methodSchemaId, methodName);
         }
         if (!method)
             throw CampaignException.SOAP_UNKNOWN_METHOD(schemaId, methodName, `Method '${methodName}' of schema '${schemaId}' not found`);
-        // console.log(method.toXMLString());
 
-        var urn = that._methodCache.getSoapUrn(schemaId, methodName);
-        var soapCall = that._prepareSoapCall(urn, methodName, false, callContext.headers, callContext.pushDownOptions);
+        // Compute the SOAP URN. Again, specically handle xtk:jobInterface as it's not a real schema. The actual entity schema
+        // would be available as the entitySchemaId property of the callContext
+        var urn = schemaId !== 'xtk:jobInterface' ? await that._methodCache.getSoapUrn(schemaId, methodName)
+            : `xtk:jobInterface|${entitySchemaId}`;
+
+        const isStatic = DomUtil.getAttributeAsBoolean(method, "static");
+        var soapCall = that._prepareSoapCall(urn, methodName, isStatic, false, callContext.headers, callContext.pushDownOptions);
 
         // If method is called with one parameter which is a function, then we assume it's a hook: the function will return
         // the actual list of parameters
@@ -1539,96 +1802,61 @@ class Client {
         if (isfunc)
             parameters = parameters[0](method, callContext);
 
-        const isStatic = DomUtil.getAttributeAsBoolean(method, "static");
-        var object = callContext.object;
-        if (!isStatic) {
-            if (!object)
-                throw CampaignException.SOAP_UNKNOWN_METHOD(schemaId, methodName, `Cannot call non-static method '${methodName}' of schema '${schemaId}' : no object was specified`);
+        // Create input and output parameters arrays. Each array will contain elements for the corresponding parameter name, type and value
+        const inputParams = [];
+        const outputParams = [];
 
-            const rootName = schemaId.substr(schemaId.indexOf(':') + 1);
-            object = that._fromRepresentation(rootName, object, callContext.representation);
-            // The xtk:persist#NewInstance requires a xtkschema attribute which we can compute here
-            // Actually, we're always adding it, for all non-static methods
-            const xmlRoot = object.nodeType === 9 ? object.documentElement : object;
-            if (!xmlRoot.hasAttribute("xtkschema"))
-                xmlRoot.setAttribute("xtkschema", schemaId);
-            soapCall.writeDocument("document", object);
+        // For non static methods, the first input and the first output parameters represent the entity itself. The name of the corresponding
+        // parameter is set the the entity schema name.
+        if (!isStatic) {
+            var schemaName = entitySchemaId.substring(entitySchemaId.indexOf(':') + 1);
+            if (!callContext.object)
+                throw CampaignException.SOAP_UNKNOWN_METHOD(schemaId, methodName, `Cannot call non-static method '${methodName}' of schema '${schemaId}' : no object was specified`);
+            inputParams.push({
+                name: schemaName,
+                type: "DOMDocument",
+                value: callContext.object
+            });
+            outputParams.push({
+                name: schemaName,
+                type: "DOMDocument"
+            });
         }
+
+        // Traverse the <parameters> object and create the corresponding parameter objects
         const parametersIsArray = (typeof parameters == "object") && parameters.length;
         const params = DomUtil.getFirstChildElement(method, "parameters");
         if (params) {
             var param = DomUtil.getFirstChildElement(params, "param");
             var paramIndex = 0;
             while (param) {
-                   const inout = DomUtil.getAttributeAsString(param, "inout");
+                const inout = DomUtil.getAttributeAsString(param, "inout");
+                const type = DomUtil.getAttributeAsString(param, "type");
+                const paramName = DomUtil.getAttributeAsString(param, "name");
                 if (!inout || inout=="in") {
-                    const type = DomUtil.getAttributeAsString(param, "type");
-                    const paramName = DomUtil.getAttributeAsString(param, "name");
                     let paramValue = parametersIsArray ? parameters[paramIndex] : parameters;
+                    const inputParam = {
+                        name: paramName,
+                        type: type,
+                        value: paramValue
+                    };
+                    inputParams.push(inputParam);
                     paramIndex = paramIndex + 1;
-                    if (type == "string")
-                        soapCall.writeString(paramName, XtkCaster.asString(paramValue));
-                    else if (type == "primarykey")
-                        soapCall.writeString(paramName, XtkCaster.asString(paramValue));
-                    else if (type == "boolean")
-                        soapCall.writeBoolean(paramName, XtkCaster.asBoolean(paramValue));
-                    else if (type == "byte")
-                        soapCall.writeByte(paramName, XtkCaster.asByte(paramValue));
-                    else if (type == "short")
-                        soapCall.writeShort(paramName, XtkCaster.asShort(paramValue));
-                    else if (type == "int")
-                        soapCall.writeLong(paramName, XtkCaster.asLong(paramValue));
-                    else if (type == "long")
-                        soapCall.writeLong(paramName, XtkCaster.asLong(paramValue));
-                    else if (type == "int64")
-                        soapCall.writeInt64(paramName, XtkCaster.asInt64(paramValue));
-                    else if (type == "datetime")
-                        soapCall.writeTimestamp(paramName, XtkCaster.asTimestamp(paramValue));
-                    else if (type == "date")
-                        soapCall.writeDate(paramName, XtkCaster.asDate(paramValue));
-                    else if (type == "DOMDocument" || type == "DOMElement") {
-                        var docName = undefined;
-                        let representation = callContext.representation;
-                        if (paramValue.__xtkProxy) {
-                            // A xtk proxy object is passed as a parameter. The call context contains the schema so we
-                            // can use it to determine the XML document root (docName)
-                            const paramValueContext = paramValue["."];
-                            paramValue = paramValueContext.object;
-                            const xtkschema = paramValueContext.schemaId;
-                            const index = xtkschema.indexOf(":");
-                            docName = xtkschema.substring(index+1);
-                            representation = paramValueContext.representation; // xtk proxy may have it's own representation
-                        }
-                        else {
-                            // Hack for workflow API. The C++ code checks that the name of the XML element is <variables>. When
-                            // using xml representation at the SDK level, it's ok since the SDK caller will set that. But this does
-                            // not work when using "BadgerFish" representation where we do not know the root element name.
-                            if (schemaId == "xtk:workflow" && methodName == "StartWithParameters" && paramName == "parameters")
-                                docName = "variables";
-                            if (schemaId == "nms:rtEvent" && methodName == "PushEvent")
-                                docName = "rtEvent";
-                            // Try to guess the document name. This is usually available in the xtkschema attribute
-                            var xtkschema = EntityAccessor.getAttributeAsString(paramValue, "xtkschema");
-                            if (!xtkschema) xtkschema = paramValue["@xtkschema"];
-                            if (xtkschema) {
-                                const index = xtkschema.indexOf(":");
-                                docName = xtkschema.substring(index+1);
-                            }
-                            if (!docName) docName = paramName; // Use te parameter name as the XML root element
-                        }
-                        var xmlValue = that._fromRepresentation(docName, paramValue, representation);
-                        if (type == "DOMDocument")
-                            soapCall.writeDocument(paramName, xmlValue);
-                        else
-                            soapCall.writeElement(paramName, xmlValue);
-                    }
-                    else
-                        throw CampaignException.BAD_SOAP_PARAMETER(soapCall, paramName, paramValue, `Unsupported parameter type '${type}' for parameter '${paramName}' of method '${methodName}' of schema '${schemaId}`);
+                }
+                else if (inout=="out") {
+                    outputParams.push({
+                        name: paramName,
+                        type: type,
+                    });
+                }
+                else {
+                    throw CampaignException.BAD_PARAMETER("inout", inout, `Parameter '${paramName}' of schema '${entitySchemaId}' is not correctly defined as an input or output parameter`);
                 }
                 param = DomUtil.getNextSiblingElement(param, "param");
             }
         }
 
+/*
         await that._makeSoapCall(soapCall);
 
         if (!isStatic) {
@@ -1731,6 +1959,22 @@ class Client {
         if (result.length == 0) return null;
         if (result.length == 1) return result[0];
         return result;    
+*/
+        // Make the SOAP call
+        await this._makeInterceptableSoapCall(entitySchemaId, schema, soapCall, inputParams, outputParams, callContext.representation, callContext);
+        
+        // Simplify the result when there's 0 or 1 return value
+        if (!isStatic) {
+            const newObject = outputParams.shift().value;
+            if (newObject) callContext.object = newObject;
+        }
+        if (outputParams.length == 0) return null;
+        if (outputParams.length == 1) return outputParams[0].value;
+        const result = [];
+        for (var i=0; i<outputParams.length; i++) {
+            result.push(outputParams[i].value);
+        }
+        return result;
     }
 
     async _makeHttpCall(request) {
@@ -1797,6 +2041,7 @@ class Client {
             url: `${this._connectionParameters._endpoint}/nl/jsp/ping.jsp`,
             headers: {
                 'X-Security-Token': this._securityToken,
+                'X-Session-Token': this._sessionToken,
                 'Cookie': '__sessiontoken=' + this._sessionToken
             }
         };
@@ -1867,6 +2112,7 @@ class Client {
             url: `${this._connectionParameters._endpoint}/nl/jsp/mcPing.jsp`,
             headers: {
                 'X-Security-Token': this._securityToken,
+                'X-Session-Token': this._sessionToken,
                 'Cookie': '__sessiontoken=' + this._sessionToken
             }
         };
@@ -1912,6 +2158,7 @@ class Client {
         const result = await this._toRepresentation(doc);
         return result;
     }
+
 /*
     async _adjustResult(resultNames, result, representation, schemaId, methodName, object, options) {
         options = options || this._entityCasterOptions;
@@ -1950,6 +2197,56 @@ class Client {
         return casted;
     }
 */
+
+    /**
+     * Creates a Job object which can be used to submit jobs, retrieve status, logs and progress, etc.
+     * @param {Campaign.XtkSoapCallSpec} soapCallSpec the definition of the SOAP call
+     * @returns {Campaign.XtkJobInterface} a job
+     */
+    jobInterface(soapCallSpec) {
+        return new XtkJobInterface(this, soapCallSpec);
+    }
+
+    // Calls the beforeSoapCall method on all observers which have this method. Ignore any exception
+    // that may occur in the callbacks. This function does not return anything but may modify the object
+    // or parameters before the SOAP call is performed
+    // @param {*} method is an object decribing the method
+    // @param {Array<*>} inputParameters is an array containing the method parameters
+    // @param {string} representation is the representation (SimpleJson, xml, etc.) used for this method and in which the object and parameters are set
+    async _beforeSoapCall(method, inputParameters, representation) {
+        if (!representation) representation = this._representation;
+        for (const observer of this._observers) {
+            if (observer.beforeSoapCall) {
+                try {
+                    await observer.beforeSoapCall(method, inputParameters, representation);
+                }
+                catch (any) {
+                    // Ignore errors occuring in observers
+                }
+            }
+        }
+    }
+
+    // Calls the afterSoapCall method on all observers which have this method. Ignore any exception
+    // that may occur in the callbacks. This function does not return anything but may modify the return
+    // value of a SOAP call bedore it is returned to the called
+    // @param {*} method is an object decribing the method
+    // @param {Array<*>} inputParameters is an array containing the method parameters
+    // @param {string} representation is the representation (SimpleJson, xml, etc.) used for this method and in which the object and parameters are set
+    // @param {Array<*>} outputParameters an array (possibly) empty of the values returned by the SOAP call
+    async _afterSoapCall(method, inputParameters, representation, outputParameters) {
+        if (!representation) representation = this._representation;
+        for (const observer of this._observers) {
+            if (observer.afterSoapCall) {
+                try {
+                    await observer.afterSoapCall(method, inputParameters, representation, outputParameters);
+                }
+                catch (any) {
+                    // Ignore errors occuring in observers
+                }
+            }
+        }
+    }
 }
 
 

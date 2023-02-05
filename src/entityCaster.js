@@ -108,8 +108,11 @@ governing permissions and limitations under the License.
 
       if (xml.nodeType == 9)
         xml = xml.documentElement;
-      const json = { };
+      var json = {};
       await this._toJSON(xml, json, schema.root);
+      if (schema.root.unbound) {
+        json = XtkCaster.asArray(json[schema.name]);
+      }
       
       if (this._options && this._options.addEmptyArrays)
         await this._addEmptyArrays(json, schema.root);
@@ -142,7 +145,7 @@ governing permissions and limitations under the License.
         while (child && !isXmlAnyLocalizableWithChildren) {
             if (child.nodeType == 1) {
                 const childName = child.nodeName;
-                var isArray = isCollection || countByTag[childName] > 1;
+                var isArray = /*isCollection ||*/ countByTag[childName] > 1;
 
                 const elNodeDef = nodeDef ? nodeDef.children[childName] : undefined;
                 if (elNodeDef && elNodeDef.unbound) isArray = true;
@@ -454,7 +457,7 @@ governing permissions and limitations under the License.
     // @param {*} root - the root of the intermediate node tree
     // @returns {Promise<XtkSchema>} - the resulting schema
     async _convertToSchema(schemaName, unbound, root) {
-      const name = schemaName + (unbound ? "-collection": "");
+      const name = schemaName;// + (unbound ? "-collection": "");
       const doc = DomUtil.parse(`<schema name="${name}" namespace="temp"></schema>`);
       const eSchema = doc.documentElement;
       const eRoot = doc.createElement("element");

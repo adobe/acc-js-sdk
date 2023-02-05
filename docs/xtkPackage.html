@@ -3,7 +3,9 @@ layout: page
 title: Packages
 ---
 
-<p>Test if a package is installed. Expects to be connected to an instance. Available since version 0.1.20</p>
+<h1>Test if a package is installed</h1>
+
+<p>Expects to be connected to an instance. Available since version 0.1.20</p>
 
 <pre class="code">
 var hasAmp = client.hasPackage("nms:amp");
@@ -13,4 +15,70 @@ var hasAmp = client.hasPackage("nms:amp");
 
 <pre class="code">
 var hasAmp = client.hasPackage("nms", "amp");
+</pre>
+
+
+<h1>Install a package</h1>
+
+<p>
+  A package can be installed with the <b>xtk:builder#installPackage</b> method. 
+  This method take a single argument which is the package definition, in XML or in JSON.
+</p>
+
+<p>
+  This is what a XML package looks like. Note the presence of the <b>&lt;pkgDesc&gt; root element</b>
+</p>
+<pre class="code">
+  
+  &lt;pkgDesc&gt;
+    &lt;package namespace="cus" name="sdk" buildNumber="*" buildVersion="*" 
+             label="Test package for ACC JS SDK" vendor="acc-js-sdk"&gt;
+      &lt;entities schema="xtk:option"&gt;
+        &lt;option name="AccJsSdk" dataType="6" stringValue="8.5.0"/&gt;
+      &lt;/entities&gt;
+    &lt;/package&gt;
+  &lt;/pkgDesc&gt;
+  
+</pre>
+
+<p>
+  In JSON, we have an objet containing a <b>package</b> object
+</p>
+<pre class="code">
+  { 
+    package: {
+      buildNumber: "*",
+      buildVersion: "*",
+      entities: {
+        schema:"nms:service",
+        service: {
+          label: "NewsletterTest",
+          name: "newsletterTest", 
+          folder: {
+            _operation: "none",
+            name: "nmsSetOfServices"
+          },
+          visitorFolder: {
+            _operation: "none",
+            name: "nmsVisitor"
+          }
+        }
+      }
+    }
+  }
+</pre>
+
+<p>
+  Installing package is a heavy operation which can involve database changes, and the call will often time out
+  if using the default settings. The best practice here is to keep short default timeouts, and explicitely increase
+  the timeout for the installPackage call.
+</p>
+
+<p>
+  This can be done using the <a href="{{ site.baseurl }}/pushDown.html">Push Down mechanism</a> as follows:
+</p>
+
+
+<pre class="code">
+  await NLWS.pushDown({ timeout: 5*60*1000 }).xtkBuilder.installPackage(jsonPackage);
 </pre>

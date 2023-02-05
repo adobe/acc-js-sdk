@@ -92,6 +92,7 @@ class SoapMethodCall {
         // Current URN and method (for error reporting)
         this.urn = urn;
         this.methodName = methodName;
+        this.isStatic = false;
 
         // Soap calls marked as internal are calls performed by the framework internally
         // (such as GetEntityIfMoreRecent calls needed to lookup schemas)
@@ -341,7 +342,7 @@ class SoapMethodCall {
     getEntity() {
         if (!this.elemCurrent)
             return null;
-            if (this.elemCurrent.getAttribute("xsi:type") != "ns:Element")
+        if (this.elemCurrent.getAttribute("xsi:type") != "ns:Element")
             return null;
         if (this.elemCurrent.tagName != "entity")
             return null;
@@ -537,7 +538,8 @@ class SoapMethodCall {
         const headers = {
             'Content-type': `application/soap+xml${this._charset ? ";charset=" + this._charset : ""}`,
             'SoapAction': `${this.urn}#${this.methodName}`,
-            'X-Security-Token': this._securityToken
+            'X-Security-Token': this._securityToken,
+            'X-Session-Token': this._sessionToken,
         };
 
         // Add HTTP headers specific to the SOAP call for better tracing/troubleshooting
@@ -612,7 +614,7 @@ class SoapMethodCall {
             this._method.prepend(sessionTokenElem);
         }
         const noMethodInURL = !!this._pushDownOptions.noMethodInURL;
-        const actualUrl = noMethodInURL ? url : `${url}?${this.urn}:${this.methodName}`;
+        const actualUrl = noMethodInURL ? url : `${url}?soapAction=${encodeURIComponent(this.urn + "#" + this.methodName)}`;
 
         // Prepare request and empty response objects
         [this.request, this.requestOptions] = this._createHTTPRequest(actualUrl);
