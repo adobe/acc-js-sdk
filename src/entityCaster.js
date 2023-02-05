@@ -110,9 +110,6 @@ governing permissions and limitations under the License.
         xml = xml.documentElement;
       var json = {};
       await this._toJSON(xml, json, schema.root);
-      if (schema.root.unbound) {
-        json = XtkCaster.asArray(json[schema.name]);
-      }
       
       if (this._options && this._options.addEmptyArrays)
         await this._addEmptyArrays(json, schema.root);
@@ -457,18 +454,19 @@ governing permissions and limitations under the License.
     // @param {*} root - the root of the intermediate node tree
     // @returns {Promise<XtkSchema>} - the resulting schema
     async _convertToSchema(schemaName, unbound, root) {
-      const name = schemaName;// + (unbound ? "-collection": "");
+      const name = schemaName + (unbound ? "-collection": "");
       const doc = DomUtil.parse(`<schema name="${name}" namespace="temp"></schema>`);
       const eSchema = doc.documentElement;
       const eRoot = doc.createElement("element");
       eRoot.setAttribute("name", `${name}`);
-      eRoot.setAttribute("unbound", unbound ? "true": "false");
+      //eRoot.setAttribute("unbound", unbound ? "true": "false");
       eSchema.appendChild(eRoot);
 
       var eEntity = eRoot;
       if (unbound) {
         eEntity = doc.createElement("element");
         eEntity.setAttribute("name", schemaName);
+        eEntity.setAttribute("unbound", "true");
         eRoot.appendChild(eEntity);
       }
 

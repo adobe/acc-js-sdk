@@ -1164,7 +1164,7 @@ describe('ACC Client', function () {
             // Select should return empty array
             var query = client.NLWS.xtkQueryDef.create(queryDef);
             var extAccount = await query.executeQuery();
-            expect(extAccount).toMatchObject([]);
+            expect(extAccount).toMatchObject({"extAccount":[]});
         });
 
         it("getIfExists with a result of exactly one element", async () => {
@@ -1231,7 +1231,7 @@ describe('ACC Client', function () {
 
             var query = client.NLWS.xtkQueryDef.create(queryDef);
             var extAccount = await query.executeQuery();
-            expect(extAccount).toEqual([{ "id": 1 }]);
+            expect(extAccount).toEqual({"extAccount":[{ "id": 1 }]});
         });
     })
 
@@ -2766,7 +2766,7 @@ describe('ACC Client', function () {
             const query = client.NLWS.json.xtkQueryDef.create(queryDef);
             const result = await query.executeQuery();
             const json = JSON.stringify(result);
-            expect(json).toBe('[{"id":1816,"name":"defaultPopAccount"},{"id":1818,"name":"defaultOther"},{"id":1849,"name":"billingReport"},{"id":12070,"name":"TST_EXT_ACCOUNT_POSTGRESQL"},{"id":1817,"name":"defaultEmailBulk"},{"id":2087,"name":"ffda"},{"id":2088,"name":"defaultEmailMid"}]');
+            expect(json).toBe('{"extAccount":[{"id":1816,"name":"defaultPopAccount"},{"id":1818,"name":"defaultOther"},{"id":1849,"name":"billingReport"},{"id":12070,"name":"TST_EXT_ACCOUNT_POSTGRESQL"},{"id":1817,"name":"defaultEmailBulk"},{"id":2087,"name":"ffda"},{"id":2088,"name":"defaultEmailMid"}]}');
         });
     });
 
