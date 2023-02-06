@@ -195,7 +195,7 @@ governing permissions and limitations under the License.
                 await this._client._makeSoapCall(soapCall);
                 let doc = soapCall.getNextDocument();
                 soapCall.checkNoMoreArgs();
-                doc = that._client._toRepresentation(doc, 'xml');
+                doc = await that._client._toRepresentation(doc, 'xml');
                 that._lastTime = DomUtil.getAttributeAsString(doc, "time"); // save time to be able to send it as an attribute in the next soap call
                 that._buildNumber = DomUtil.getAttributeAsString(doc, "buildNumber");
                 await that._refresh(doc, event);

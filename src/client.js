@@ -740,6 +740,17 @@ class Client {
     }
 
     /**
+     * Verify that a representation is valid
+     * @param {string} representation 
+     * @returns 
+     */
+    _ensureValidRepresentation(representation) {
+        representation = representation || this._representation;
+        if (representation != "SimpleJson" && representation != "xml" && representation != "BadgerFish")
+            throw CampaignException.INVALID_REPRESENTATION(this._representation, "Cannot convert to/from this representation");
+    }
+
+    /**
      * Convert an XML object into a representation
      *
      * @private
@@ -749,9 +760,9 @@ class Client {
      * @returns {XML.XtkObject} the object converted in the requested representation
      */
     async _toRepresentation(xml, representation, schemaHint) {
-        if (!xml || (!xml.nodeType && !xml.tagName)) return xml;
         representation = representation || this._representation;
         if (representation == "SimpleJson") {
+            if (!xml || (!xml.nodeType && !xml.tagName)) return xml;
             const caster = new EntityCaster(this, schemaHint, this._entityCasterOptions);
             return await caster.toJSON(xml);
         }
@@ -1709,7 +1720,6 @@ class Client {
      * @returns {XML.XtkObject} the enumeration definition in the current representation
      */
     async getSysEnum(enumName, optionalStartSchemaOrSchemaName) {
-
         // Called with one parameter: enumName must be the fully qualified enumeration name
         // as <namespace>:<schema>:<enum>, for instance "nms:extAccount:encryptionType"
         if (!optionalStartSchemaOrSchemaName) {
@@ -1728,13 +1738,14 @@ class Client {
             const index = optionalStartSchemaOrSchemaName.lastIndexOf(':');
             if (index == -1)
                 throw CampaignException.BAD_PARAMETER("optionalStartSchemaOrSchemaName", optionalStartSchemaOrSchemaName, `getEnum expects a valid schema name. '${optionalStartSchemaOrSchemaName}' is not a valid name.`);
-            optionalStartSchemaOrSchemaName = await this.getSchema(optionalStartSchemaOrSchemaName, undefined, true);
+            optionalStartSchemaOrSchemaName = await this.getSchema(optionalStartSchemaOrSchemaName, "xml", true);
             if (!optionalStartSchemaOrSchemaName)
                 throw CampaignException.BAD_PARAMETER("optionalStartSchemaOrSchemaName", optionalStartSchemaOrSchemaName, `Schema '${optionalStartSchemaOrSchemaName}' not found.`);
         }
         else
             throw CampaignException.BAD_PARAMETER("optionalStartSchemaOrSchemaName", optionalStartSchemaOrSchemaName, `getEnum expects a valid schema name wich is a string. Given ${typeof optionalStartSchemaOrSchemaName} instead`);
 
+        this._ensureValidRepresentation();
         const schema = optionalStartSchemaOrSchemaName;
         for (const e of EntityAccessor.getChildElements(schema, "enumeration")) {
             const n = EntityAccessor.getAttributeAsString(e, "name");
