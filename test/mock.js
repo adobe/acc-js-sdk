@@ -65,8 +65,6 @@ async function mockGetCasterSchema(client) {
     await casterClient.application.getSchema("xtk:entityCasterCountry");
 
     client._getCasterSchema = async (schemaId) => {
-      //if (schemaId === "xtk:notFound")
-      //  return null;
       let schema = casterClient.application._schemaCache._schemas[schemaId];
       // undefined means the schema is not in the cache, but null means the schema is in the cache
       // but does not exist
@@ -83,7 +81,8 @@ async function makeClient(options) {
   const client = await sdk.init(connectionParameters);
   if (!options || !options.transport) // allow tests to explicitely set the transport
     client._transport = jest.fn();
-  await mockGetCasterSchema(client);
+  if (!options || !options.noMockCasterSchema)
+    await mockGetCasterSchema(client);
   return client;
 }
 

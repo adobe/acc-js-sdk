@@ -153,7 +153,8 @@ describe('EntityCaster', function() {
     describe("XML to JSON with Schema help", () => {
     
         async function toJSON(xml, options, beforeCastHook) {
-            xml = DomUtil.parse(xml);
+            if (xml && typeof xml === "string")
+                xml = DomUtil.parse(xml);
 
             const client = await Mock.makeClient();
             client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
@@ -170,6 +171,24 @@ describe('EntityCaster', function() {
             await client.NLWS.xtkSession.logoff();
             return result;
         }
+
+        it("Should support null and undefined", async () => {
+            await expect(toJSON(undefined)).resolves.toEqual(undefined);
+            await expect(toJSON(null)).resolves.toEqual(null);
+        });
+
+        it("Should support text nodes with/without child elements", async () => {
+            await expect(toJSON('<root><textOnly>Hello</textOnly></root>')).resolves.toEqual({ $textOnly: "Hello" });
+            await expect(toJSON('<root><textOnly> Hello</textOnly></root>')).resolves.toEqual({ $textOnly: " Hello" });
+            await expect(toJSON('<root><textOnly x="1">Hello</textOnly></root>')).resolves.toEqual({ textOnly: { $:"Hello", x:"1" } });
+            await expect(toJSON('<root><textOnly x="1"> Hello</textOnly></root>')).resolves.toEqual({ textOnly: { $:" Hello", x:"1" } });
+        });
+
+        it("Should support consecutive CDATA nodes", async () => {
+            await expect(toJSON('<root><![CDATA[Hello]]><![CDATA[ World]]></root>')).resolves.toEqual({ $: "Hello World" });
+            await expect(toJSON('<root><![CDATA[Hello]]><![CDATA[]]></root>')).resolves.toEqual({ $: "Hello" });
+            await expect(toJSON('<root><![CDATA[]]><![CDATA[Hello]]></root>')).resolves.toEqual({ $: "Hello" });
+        });
 
         it("Should convert XML to SimpleJSON", async () => {
             await expect(toJSON('<root/>')).resolves.toEqual({});
@@ -190,6 +209,8 @@ describe('EntityCaster', function() {
         });
 
         it("Should support CDATA elements", async () => {
+            await expect(toJSON('<root><![CDATA[Hello]]></root>')).resolves.toEqual({ $: "Hello" });
+            await expect(toJSON('<root><![CDATA[ Hello ]]></root>')).resolves.toEqual({ $: " Hello " });
             await expect(toJSON('<root><cdata></cdata></root>')).resolves.toEqual({ $cdata: "" });
             await expect(toJSON('<root><cdata>Hello</cdata></root>')).resolves.toEqual({ $cdata: "Hello" });
             await expect(toJSON('<root><cdata> Hello </cdata></root>')).resolves.toEqual({ $cdata: " Hello " });
@@ -218,6 +239,15 @@ describe('EntityCaster', function() {
             await expect(toJSON('<root><static width="3">Hello <b>World</b></static></root>')).resolves.toEqual({ static: { $:"Hello <b>World</b>", width: 3 } });
         });
 
+        it("Should support unfound schemas", async () => {
+            const client = await Mock.makeClient();
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+            client._transport.mockReturnValueOnce(Mock.GET_MISSING_SCHEMA_RESPONSE);
+            const schema = await client.getSchema("xtk:notFound", "xml");   // preload schema
+            const caster = new EntityCaster(client, "xtk:notFound", { enabled: true });
+            await expect(caster.toJSON(DomUtil.parse('<root></root>'))).rejects.toMatchObject({ errorCode: "SDK-000016" });
+        });
     });
     
     describe("Infer query schema", () => {
@@ -528,6 +558,22 @@ describe('EntityCaster', function() {
                     }
                 });
             });
+        });
+    });
+
+    describe("Caster Schema", () => {
+        it("Should load caster schema", async () => {
+            jest.resetAllMocks();
+            const client = await Mock.makeClient({ noMockCasterSchema: true }); // do not mock the _getCasterSchema function
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+            client._transport.mockReturnValueOnce(Mock.GET_XTK_ENTITYCASTER_SCHEMA_RESPONSE);
+            const caster = new EntityCaster(client, "xtk:entityCaster", { enabled: true });
+            const result = await caster.cast({ id: "123" });
+            expect(result).toEqual({ id: 123 });
+            client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
+            await client.NLWS.xtkSession.logoff();
+            return result;
         });
     });
 

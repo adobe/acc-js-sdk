@@ -20,6 +20,7 @@ governing permissions and limitations under the License.
 const sdk = require('../src/index.js');
 const { Client, ConnectionParameters } = require('../src/client.js');
 const DomUtil = require('../src/domUtil.js').DomUtil;
+const BadgerFishObject = require('../src/domUtil.js').DomUtil;
 const Mock = require('./mock.js').Mock;
 const { HttpError } = require('../src/transport.js');
 const { Cipher } = require('../src/crypto.js');
@@ -198,6 +199,12 @@ describe('ACC Client', function () {
             expect(sessionInfo.serverInfo['@buildNumber']).toBe("9219");
         });
 
+        it('Should fail for invalid representations', async () => {
+            const client = await Mock.makeClient({ rememberMe: true });
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+            expect(() => { client.getSessionInfo("invalid") }).toThrow('SDK-000004');
+        });
     })
 
     describe('API calls', () => {
@@ -1264,8 +1271,6 @@ describe('ACC Client', function () {
                 var to = await client._convertToRepresentation(from, "BadgerFish", "SimpleJson");
                 expect(to).toStrictEqual({ id: "1", child: {} });
             })
-
-
         });
 
         it("Compare representations", async () => {
@@ -1284,7 +1289,20 @@ describe('ACC Client', function () {
             expect(() => { client._isSameRepresentation("", "xml") }).toThrow("SDK-000004");
             expect(() => { client._isSameRepresentation("xml", "") }).toThrow("SDK-000004");
             expect(() => { client._isSameRepresentation("xml", null) }).toThrow("SDK-000004");
-        })
+        });
+
+        it("toRepresentation should support non-xml argument", async () => {
+            const client = await Mock.makeClient();
+            await expect(client._toRepresentation(undefined, "SimpleJson")).resolves.toBeUndefined();
+            await expect(client._toRepresentation(null, "SimpleJson")).resolves.toBeNull();
+            await expect(client._toRepresentation(new BadgerFishObject(), "SimpleJson")).resolves.toMatchObject({});
+        });
+
+        it("_toRepresentationSync should inherit default representation", async () => {
+            const client = await Mock.makeClient();
+            expect(client._toRepresentationSync(DomUtil.parse('<root id="1"/>'))).toMatchObject({ id : "1" });
+            expect(client._toRepresentationSync(DomUtil.parse('<root id="1"/>'), "SimpleJson")).toMatchObject({ id : "1" });
+        });
     });
 
     describe("Call which returns a single DOM document", () => {
@@ -3709,5 +3727,4 @@ describe('ACC Client', function () {
             await client.NLWS.xtkSession.logoff();
         });
     });
-
 });

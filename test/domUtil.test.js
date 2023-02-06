@@ -943,5 +943,20 @@ describe('DomUtil', function() {
             expect(new XPathElement("..").isParent()).toBe(true);
             expect(new XPathElement(".").isParent()).toBe(false);
         })
-    })
+    });
+
+    describe("InnerHtml", () => {
+        it("Should get inner HTML of document", () => {
+            const xml = DomUtil.parse("<root>Hello</root>");
+            expect(DomUtil.innerHTML(xml)).toBe("Hello");
+        });
+        it("Should get inner HTML of element", () => {
+            const xml = DomUtil.parse("<root>Hello</root>");
+            expect(DomUtil.innerHTML(xml.documentElement)).toBe("Hello");
+        });
+        it("Should get inner HTML of null or undefined", () => {
+            expect(DomUtil.innerHTML(null)).toBe("");
+            expect(DomUtil.innerHTML(undefined)).toBe("");
+        });
+    });
 });

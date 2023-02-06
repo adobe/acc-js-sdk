@@ -101,7 +101,7 @@ governing permissions and limitations under the License.
       // We were given a schema id, let's lookup the schema
       if (typeof schema === "string") {
         const schemaId = schema;
-        schema = await this._client._getCasterSchema(schema);
+        schema = await this._client._getCasterSchema(schemaId);
         if (!schema) 
           throw CampaignException.UNKNOWN_SHEMA(schemaId);
       }
@@ -117,10 +117,7 @@ governing permissions and limitations under the License.
       return json;
     }
 
-    async _toJSON(xml, json, nodeDef, parentJson, forceTextAs$) {
-        // Heuristic to determine if element is an object or an array
-        const isCollection = (nodeDef && nodeDef.unbound) || (xml.tagName.length > 11 && xml.tagName.substr(xml.tagName.length-11) == '-collection');
-        
+    async _toJSON(xml, json, nodeDef, parentJson) {
         // Figure out which elements are arrays. Keep a count of elements for each tag name.
         // When count >1 we consider this tag name to be an array
         var hasChildElements = false; // Will be set if there is at least one child element
@@ -142,7 +139,7 @@ governing permissions and limitations under the License.
         while (child && !isXmlAnyLocalizableWithChildren) {
             if (child.nodeType == 1) {
                 const childName = child.nodeName;
-                var isArray = /*isCollection ||*/ countByTag[childName] > 1;
+                var isArray = countByTag[childName] > 1;
 
                 const elNodeDef = nodeDef ? nodeDef.children[childName] : undefined;
                 if (elNodeDef && elNodeDef.unbound) isArray = true;
@@ -173,7 +170,7 @@ governing permissions and limitations under the License.
                 }
                 else {
                     const jsonChild = {};
-                    await this._toJSON(child, jsonChild, elNodeDef, json, isArray);
+                    await this._toJSON(child, jsonChild, elNodeDef, json);
                     if (isArray) 
                         json[childName].push(jsonChild);
                     else
