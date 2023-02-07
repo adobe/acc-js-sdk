@@ -554,13 +554,11 @@ describe('SOAP', function() {
         });
 
         it("aborting pending HTTP calls to avoid unnecessary attempts to re-render.", function() {
-            const instance = new AbortController();
-            const signal = instance.signal;
             const transport = function() { 
                 return Promise.reject({name: 'AbortError'}); 
             };
             const call = makeSoapMethodCall(transport, "xtk:session", "Date", "$session$", "$security$");
-            instance.abort();
+            expect.assertions(1);
             return call.execute().catch((ex) => {
                 expect(ex.name).toBe('AbortError');
             });
