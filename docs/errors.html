@@ -6,25 +6,32 @@ title: Handling Errors
 
 <p>If an API call fails (SOAP fault or HTTP error), <b>CampaignException</b> object is thrown. This object contains the following attributes</p>
 
+<p></p>
+<ul>
 <li><b>message</b> a message describing the error</li>
-<li><b>statusCode</b> a HTTP status code. In case of a SOAP fault, the status code will be 500
-<li><b>errorCode</b> the Campaign error code if one is available (ex: XSV-350013)
+<li><b>statusCode</b> a HTTP status code. In case of a SOAP fault, the status code will be 500</li>
+<li><b>errorCode</b> the Campaign error code if one is available (ex: XSV-350013)</li>
 <li><b>methodCall</b> the SOAP call which caused the error. It will contain the following attributes
   <ul>
-    <li><b>type</b> the type of the API call ("SOAP" or "HTTP")
-    <li><b>urn</b> the SOAP call URN, i.e. the schema id. Will be empty for HTTP methods
-    <li><b>url</b> the HTTP URL
-    <li><b>methodName</b> the name of the SOAP method. For HTTP methods, the query path
-    <li><b>request</b> the raw SOAP request, as text. For HTTP requests, this is an option object containing details about the request
-    <li><b>response</b> the raw SOAP/HTTP response, as text
+    <li><b>type</b> the type of the API call ("SOAP" or "HTTP")</li>
+    <li><b>urn</b> the SOAP call URN, i.e. the schema id. Will be empty for HTTP methods</li>
+    <li><b>url</b> the HTTP URL</li>
+    <li><b>methodName</b> the name of the SOAP method. For HTTP methods, the query path</li>
+    <li><b>request</b> the raw SOAP request, as text. For HTTP requests, this is an option object containing details about the request</li>
+    <li><b>response</b> the raw SOAP/HTTP response, as text</li>
   </ul>
-<li><b>faultCode</b> for SOAP faults, the Campaign error code
-<li><b>faultString</b> the error message
-<li><b>detail</b> optional additional details about the error
+</li>
+<li><b>faultCode</b> for SOAP faults, the Campaign error code</li>
+<li><b>faultString</b> the error message</li>
+<li><b>detail</b> optional additional details about the error</li>
+</ul>
+<p></p>
 
 <p>
   In general all errors are mapped to a CampaignException and we try to keep the semantic of errors: for instance a call with an incorrect parameter will return an HTTP stauts of 400 even if it's not actually a, HTTP call. SDK specific errors will have an errorCode with the "SDK-######" format, using "SDK" as a prefix.
 </p>
+
+<p></p>
 
 <pre class="code">
 try {
@@ -44,4 +51,8 @@ try {
 
 <p>
   It's also noteworthy that all the data returned in a CampaignException is trimmed, i.e. session and security token values are hidden, so that the exception object can be safely logged.
+</p>
+
+<p class="info">
+  Note: The <a href="{{ site.baseurl }}/transport.html">transport</a> protocol returns errors of type HttpError which are wrapped into CampaignException objects.
 </p>
