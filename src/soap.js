@@ -554,7 +554,7 @@ class SoapMethodCall {
             url: url,
             method: 'POST',
             headers: headers,
-            data: DomUtil.toXMLString(this._doc),
+            data: DomUtil.toXMLString(this._doc)
         };
         if (this._sessionToken)
             request.headers.Cookie = '__sessiontoken=' + this._sessionToken;
