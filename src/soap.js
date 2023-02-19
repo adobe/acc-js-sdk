@@ -555,7 +555,6 @@ class SoapMethodCall {
             method: 'POST',
             headers: headers,
             data: DomUtil.toXMLString(this._doc),
-            ...(this._pushDownOptions && {signal : this._pushDownOptions.signal})
         };
         if (this._sessionToken)
             request.headers.Cookie = '__sessiontoken=' + this._sessionToken;
@@ -686,9 +685,6 @@ class SoapMethodCall {
             }
         })
         .catch(function(err) {
-            if(err.name === 'AbortError'){
-                throw err;
-            }
             if (that.response && that.response.indexOf(`XSV-350008`) != -1)
               throw CampaignException.SESSION_EXPIRED();
             else throw makeCampaignException(that, err);

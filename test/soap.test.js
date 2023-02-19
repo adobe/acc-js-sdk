@@ -553,17 +553,6 @@ describe('SOAP', function() {
           });
         });
 
-        it("aborting pending HTTP calls to avoid unnecessary attempts to re-render.", function() {
-            const transport = function() { 
-                return Promise.reject({name: 'AbortError'}); 
-            };
-            const call = makeSoapMethodCall(transport, "xtk:session", "Date", "$session$", "$security$");
-            expect.assertions(1);
-            return call.execute().catch((ex) => {
-                expect(ex.name).toBe('AbortError');
-            });
-      });
-
         it("Should should read Element response", function() {
             const xml = '<root att="Hello"><child/></root>';
             const transport = function() { 
@@ -863,6 +852,18 @@ describe("Campaign exception", () => {
         })
 
     })
+
+    it("aborting pending HTTP calls to avoid unnecessary attempts to re-render.", function() {
+        const transport = function() { 
+            return Promise.reject({name: 'AbortError'}); 
+        };
+        const call = makeSoapMethodCall(transport, "xtk:session", "Date", "$session$", "$security$");
+        return call.execute().catch((ex) => {
+            expect(ex.statusCode).toBe(500);
+            expect(ex.faultCode).toBe(-53);
+            expect(ex.message).toBe(`500 - Error -53: SDK-000016 Request was aborted by the client`);
+        });
+    });
 
     describe("User agent", () => {
         it("Should set user agent", () => {

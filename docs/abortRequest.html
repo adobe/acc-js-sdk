@@ -1,0 +1,31 @@
+---
+layout: page
+title: Handling abort requests
+---
+
+<p>When building applications, we make API requests to servers for different reasons; to authenticate user credentials, fetch resources, create resources, and so much more. In JavaScript,we can abort an API request i.e cancel a request before it is completed. There are many reasons why you may want to do this. One of them is to prevent a request from being sent to the server if the user has already navigated away from the page the request was made. Canceling requests can help you avoid unnecessary network traffic, save memory usage and resources, and improve performance.</p>
+
+<h3>Aborting API requests in fetch</h3>
+
+<p>The fetch method is a JavaScript function used to make API requests. It takes two arguments: the URL of the API endpoint and an object containing the request options.</p>
+
+<p>Here's the flow of how canceling a fetch call works:</p>
+<ul>
+    <li>Create an <b>AbortController</b> instance</li>
+    <li>That instance has a <b>signal</b> property</li>
+    <li>Pass the signal as a fetch option for signal</li>
+    <li>Call the AbortController's abort property to cancel all fetches that use that signal.</li>
+</ul>
+
+<h3>Aborting API requests in Axios</h3>
+
+<p>Axios is a JavaScript library that is used to make API requests. It has a very similar syntax to the fetch method. It also accepts a signal property in the request options object. When the aborted flag of the signal object is updated to true, axios expression is notified, and the request is canceled.</p>
+
+<h2>Passing AbortSignal via PushDown Mechanism</h2>
+
+<p>SDK provides the support to pass the signal directly to transport layer via <b>PushDown Mechanism</b></p>
+
+<pre class="code">
+client.NLWS.pushDown({ signal: instance.current.signal }).xtkQueryDef.create(queryDef)
+</pre>
+

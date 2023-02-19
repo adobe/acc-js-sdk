@@ -74,6 +74,7 @@ if (!Util.isBrowser()) {
       headers: options.headers,
       data: options.data,
       timeout: requestOptions.timeout || 5000,
+      signal: requestOptions.signal,
     };
     return axios(request)
     .then((response) => {
@@ -104,8 +105,8 @@ if (!Util.isBrowser()) {
  *********************************************************************************/
  else {
 
-  const request = function(options) {
-
+  const request = function(options, requestOptions) {
+    requestOptions = requestOptions || {};
     const headers = new Headers();
     for (var k in options.headers) {
         headers.append(k, options.headers[k]);
@@ -114,7 +115,7 @@ if (!Util.isBrowser()) {
         method: options.method,
         headers: headers,
         body: options.data,
-        ...(options.signal && {signal : options.signal})
+        signal : requestOptions.signal,
     });
 
     const p = fetch(r).then(async (response) => {
