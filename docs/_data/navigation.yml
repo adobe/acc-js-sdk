@@ -87,6 +87,8 @@
       link: xtkJob.html
     - name: Handling timeouts
       link: timeouts.html
+    - name: Handling abort requests
+      link: abortRequest.html
     - name: HTTP Headers
       link: httpHeaders.html
     - name: The Transport Protocol
