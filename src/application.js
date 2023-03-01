@@ -35,11 +35,14 @@ const PACKAGE_STATUS = { "never": 0, "always": 1, "default": 2, "preCreate": 3 }
 // ========================================================================================
 
 /**
-  * Creates a schema object from an XML representation
-  * This function is not intended to be used publicly.
+  * Creates a schema object from an XML representation.
+  * The returned XtkSchema object will not be added to the application schema cache.
+  * If you do not pass an application object, it will not be possible to follow
+  * references or get enumeration values from the returned XtkSchema
   * 
   * @private
   * @param {DOMElement|DOMDocument} xml the XML document or element representing the schema
+  * @param {Campaign.Application|undefined} the application object which will be used to follow links and references
   * @returns {XtkSchema} a schema object
   * @see {@link XtkSchema}
   * @memberof Campaign
@@ -1094,6 +1097,7 @@ class XtkEnumeration {
  * @private
  * @class
  * @constructor
+ * @param {Campaign.Application|undefined} the application object which will be used to follow links and references
  * @augments Campaign.XtkSchemaNode
  * @param {XML.XtkObject} xml the schema definition
  * @memberof Campaign

@@ -3702,4 +3702,72 @@ describe('ACC Client', function () {
         });
     });
 
+    describe("New schema", () => {
+        it("Should create XtkSchema from XML Document", async () => {
+            const client = await Mock.makeClient();
+            const xml = DomUtil.parse("<schema namespace='nms' name='recipient'></schema>");
+            const schema = client.newSchema(xml);
+            expect(client.application).toBeNull(); // client not logged. newSchema should support undefined application object
+            expect(schema.name).toBe('recipient');
+        });
+
+        it("Should create XtkSchema from XML Element", async () => {
+            const client = await Mock.makeClient();
+            const xml = DomUtil.parse("<schema namespace='nms' name='recipient'></schema>");
+            const schema = client.newSchema(xml.documentElement);
+            expect(client.application).toBeNull(); // client not logged. newSchema should support undefined application object
+            expect(schema.name).toBe('recipient');
+        });
+
+        it("Should create XtkSchema from XML Document on a logged client", async () => {
+            const client = await Mock.makeClient();
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+            expect(client.application).not.toBeNull();
+            const xml = DomUtil.parse("<schema namespace='nms' name='recipient'></schema>");
+            const schema = client.newSchema(xml);
+            expect(schema.name).toBe('recipient');
+        });
+
+        it("Should not add created XtkSchema to the application cache", async () => {
+            const client = await Mock.makeClient();
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+            const xml = DomUtil.parse("<schema namespace='nms' name='recipient'></schema>");
+            /*const schema = */client.newSchema(xml);
+            expect(client.application._schemaCache._schemas['nms:recipient']).toBeUndefined()
+        });
+
+        it("Should follow references", async () => {
+            const client = await Mock.makeClient();
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+            const xml = DomUtil.parse(`<schema namespace='nms' name='recipient'>
+                    <element name='recipient' label='Recipients'>
+                        <element name="jobs" target="xtk:job" type="link" unbound="true">
+                        </element>
+                    </element>
+                </schema>`);
+            const schema = client.newSchema(xml);
+            const jobs = schema.root.children["jobs"];
+            expect(jobs.target).toBe("xtk:job");
+            client._transport.mockReturnValueOnce(Mock.GET_XTK_JOB_SCHEMA_RESPONSE);
+            const target = await jobs.linkTarget();
+            expect(target.name).toBe("job");
+        });
+
+        it("Should not follow references if no application object", async () => {
+            const client = await Mock.makeClient();
+            const xml = DomUtil.parse(`<schema namespace='nms' name='recipient'>
+                    <element name='recipient' label='Recipients'>
+                        <element name="jobs" target="xtk:job" type="link" unbound="true">
+                        </element>
+                    </element>
+                </schema>`);
+            const schema = client.newSchema(xml);
+            const jobs = schema.root.children["jobs"];
+            expect(jobs.target).toBe("xtk:job");
+            await expect(jobs.linkTarget()).rejects.toThrow("Cannot read property 'getSchema' of null");
+        });
+    });
 });
