@@ -33,7 +33,7 @@ const MethodCache = require('./methodCache.js').MethodCache;
 const OptionCache = require('./optionCache.js').OptionCache;
 const CacheRefresher = require('./cacheRefresher.js').CacheRefresher;
 const request = require('./transport.js').request;
-const Application = require('./application.js').Application;
+const { Application, newSchema } = require('./application.js');
 const EntityAccessor = require('./entityAccessor.js').EntityAccessor;
 const { Util } = require('./util.js');
 const { XtkJobInterface } = require('./xtkJob.js');
@@ -1627,6 +1627,20 @@ class Client {
         ];
         await this._makeInterceptableSoapCall("xtk:session", undefined, soapCall, inputParams, outputParams, representation);
         return outputParams[0].value;
+    }
+
+    /**
+     * Creates a schema object from an XML representation.
+     * The returned XtkSchema object will not be added to the application schema cache.
+     * If you do not pass an application object, it will not be possible to follow
+     * references or get enumeration values from the returned XtkSchema
+     * 
+     * @param {DOMElement|DOMDocument} xml the XML document or element representing the schema
+     * @returns {Campaign.XtkSchema} a schema object
+     * @see {@link Campaign.XtkSchema}
+     */
+    newSchema(xml) {
+        return newSchema(xml, this.application);
     }
 
     /**
