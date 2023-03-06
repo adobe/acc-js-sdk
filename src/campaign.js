@@ -42,6 +42,7 @@ const { Util } = require("./util.js");
   static REPORT_FETCH_FAILED(name, details)               { return new CampaignException(undefined, 500, 16384, `SDK-000014 Failed to fetch report ${name}`, details); }
   static FEATURE_NOT_SUPPORTED(name)                      { return new CampaignException(undefined, 500, 16384, `SDK-000015 ${name} feature is not supported by the ACC instance`); }
   static UNKNOWN_SHEMA(schemaId, details)                 { return new CampaignException(undefined, 400, 16384, `SDK-000016 Unknown schema '${schemaId}'`, details); }
+  static REQUEST_ABORTED( )                               { return new CampaignException(undefined, 500,   -53, `SDK-000016 Request was aborted by the client`); }
 
   /**
    * Returns a short description of the exception
@@ -214,6 +215,9 @@ function makeCampaignException(call, err) {
   if (err instanceof CampaignException)
       return err;
 
+  if (err && err.name == "AbortError") 
+        throw CampaignException.REQUEST_ABORTED();
+ 
   // Wraps DOM exceptions which can occur when dealing with malformed XML
   const ctor = Object.getPrototypeOf(err).constructor;
   if (ctor && ctor.name == "DOMException") {

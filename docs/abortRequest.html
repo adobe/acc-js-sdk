@@ -1,0 +1,46 @@
+---
+layout: page
+title: Handling abort requests
+---
+
+<p>During development of an application, API requests are made for a variety of reasons, like user credential authentication, resource creation and fetching, etc. For multiple reasons though, sometimes aborting an API request might be required, which can also be done using Javascript. One such scenario where cancelling a request could be required would be the case when a user has navigated away from the page from which the request was made. Cancelling requests in appropriate scenarios could greatly enhance performance, reduce network traffic, and save crucial resources.</p>
+
+<h1>Aborting API requests in fetch</h1>
+
+<p>The fetch method in Javascript, which is used to make API requests, takes two arguments: the URL of the API endpoint and an object containing the request options.</p>
+
+<p>Canceling a fetch call works in the following step by step manner:</p>
+<ul>
+    <li>An <b>AbortController</b> instance is created</li>
+    <li>That instance has a <b>signal</b> property</li>
+    <li>The signal is passed as a fetch option for signal</li>
+    <li>AbortController's abort property is called to cancel all fetches that use that signal.</li>
+</ul>
+
+<h1>Aborting API requests in Axios</h1>
+
+<p>Axios is a JavaScript library that is used to make API requests. It has a very similar syntax to the fetch method. In the request options object, a signal property can also be set. On updating the aborted flag of the signal object to true, axios expression is notified, and the request is canceled.</p>
+
+<h1>Passing AbortSignal via PushDown Mechanism</h1>
+
+<p>SDK provides the support to pass the signal directly to transport layer via <b>PushDown Mechanism</b></p>
+
+<pre class="code">
+// Creating instance of abort controller    
+const instance = useRef<any>(new AbortController());
+
+// Lets say the new request is been made, so checking if the previously created instance is active
+// If yes, abort the previous request    
+if (instance.current) {
+    instance.current.abort();
+    instance.current = null;
+}
+
+// Reinitializing the instance 
+instance.current = new AbortController();
+
+// Pushing down the AbortSignal to the transport layer
+// signal.aborted is set to true if the previously made api request is currently active and that request is aborted 
+client.NLWS.pushDown({ signal: instance.current.signal }).xtkQueryDef.create(queryDef)
+</pre>
+
