@@ -838,14 +838,14 @@ class XtkSchemaNode {
      * @param {string} indent indentation string, will be "" for the first, level, "   " for the next level, etc.
      * @returns {string} a multi-line string representing the schema definition in a human readable form for troubleshooting purposes
      */
-    /*toString(indent) {
+    toString(indent) {
         indent = indent || "";
         var s = `${indent}${this.label} (${this.name})\n`;
         for (var child of this.children) {
             s = s + child.toString(`    ${indent}`);
         }
         return s;
-    }*/
+    }
 
     /**
      * Return the XtkSchemaNodes making up the join of a link-type node

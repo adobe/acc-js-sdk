@@ -1288,12 +1288,17 @@ describe('ACC Client', function () {
             expect(() => { client._isSameRepresentation("xml", "") }).toThrow("SDK-000004");
             expect(() => { client._isSameRepresentation("xml", null) }).toThrow("SDK-000004");
         });
-/*
-        it("toRepresentation should support non-xml argument", async () => {
+
+        //it("toRepresentation should support non-xml argument", async () => {
+        //    const client = await Mock.makeClient();
+        //    await expect(client._toRepresentation(undefined, "SimpleJson")).resolves.toBeUndefined();
+        //    await expect(client._toRepresentation(null, "SimpleJson")).resolves.toBeNull();
+        //    await expect(client._toRepresentation(new BadgerFishObject(), "SimpleJson")).resolves.toMatchObject({});
+        //});
+
+        it("Safeguards for typedJson", async () => {
             const client = await Mock.makeClient();
-            await expect(client._toRepresentation(undefined, "SimpleJson")).resolves.toBeUndefined();
-            await expect(client._toRepresentation(null, "SimpleJson")).resolves.toBeNull();
-            await expect(client._toRepresentation(new BadgerFishObject(), "SimpleJson")).resolves.toMatchObject({});
+            await expect(client._toRepresentation({}, "TypedJson")).resolves.toStrictEqual({});
         });
 
         it("_toRepresentationSync should inherit default representation", async () => {
@@ -1301,7 +1306,11 @@ describe('ACC Client', function () {
             expect(client._toRepresentationSync(DomUtil.parse('<root id="1"/>'))).toMatchObject({ id : "1" });
             expect(client._toRepresentationSync(DomUtil.parse('<root id="1"/>'), "SimpleJson")).toMatchObject({ id : "1" });
         });
-*/
+
+        it("_toRepresentationSync is not compatible with TypedJson", async () => {
+            const client = await Mock.makeClient();
+            expect(() => { client._toRepresentationSync(DomUtil.parse('<root id="1"/>'), "TypedJson") }).toThrow("SDK-000004");
+        });
     });
 
     describe("Call which returns a single DOM document", () => {

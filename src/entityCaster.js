@@ -107,7 +107,7 @@ governing permissions and limitations under the License.
       if (xml.nodeType == 9)
         xml = xml.documentElement;
       var json = {};
-      await this._toJSON(xml, json, schema.root);
+      await this._toJSON(xml, json, schema.root, true);
       
       if (this._options.addEmptyArrays)
         await this._addEmptyArrays(json, schema.root);
@@ -115,120 +115,132 @@ governing permissions and limitations under the License.
       return json;
     }
 
-    async _toJSON(xml, json, nodeDef, parentJson) {
-        // Figure out which elements are arrays. Keep a count of elements for each tag name.
-        // When count >1 we consider this tag name to be an array
-        var hasChildElements = false; // Will be set if there is at least one child element
-        const countByTag = {};
-        var child = xml.firstChild;
-        while (child) {
-            if (child.nodeType == 1) {
-                const childName = child.nodeName;
-                if (countByTag[childName] === undefined) countByTag[childName] = 1;
-                else countByTag[childName] = countByTag[childName] + 1;
-                hasChildElements = true;
-            }
-            child = child.nextSibling;
-        }
+    // Converts document "xml" to json object "json" using schema node "nodeDef"
+    async _toJSON(xml, json, nodeDef, isRoot) {
+      const isCDATA = nodeDef && nodeDef.isCDATA;
+      const isHTML = nodeDef && nodeDef.type === "html";
+      const isANY = !nodeDef || nodeDef.type === "ANY";
+      const isAnyLocalizable = nodeDef && isANY && nodeDef.localizable;
+      let text = '';
+      let inlineText = true; // inline text means that text attribute will be presented as $element on the parent json instead of a $ attribute
+      let ignoreEmptyText = true;
 
-        const isAnyLocChildren = nodeDef && nodeDef.type === "ANY"/* && nodeDef.childrenCount > 0 && nodeDef.localizable === true*/;
-        child = xml.firstChild;
-        while (child && !isAnyLocChildren) {
-            if (child.nodeType == 1) {
-                const childName = child.nodeName;
-                var isArray = countByTag[childName] > 1;
-
-                const elNodeDef = nodeDef ? nodeDef.children[childName] : undefined;
-                if (elNodeDef && elNodeDef.unbound) isArray = true;
-                const isCDATA = elNodeDef && elNodeDef.isCDATA;
-                const isHTML = elNodeDef && elNodeDef.type === "html";
-                const isAnyLocalizable = elNodeDef && elNodeDef.type === "ANY" && elNodeDef.localizable;
-
-                // Does the ANY schema has child attributes (or elements), just like the <static> element in form has
-                const isAnyLocalizableWithChildren = isAnyLocalizable && elNodeDef.childrenCount > 0;
-
-                if (isArray && !json[childName]) json[childName] = [];
-
-                // In TypedJson representation, ensure we have proper transformation
-                // of text and CDATA nodes. For instance, the following
-                //  <workflow><desc>Hello</desc></workflow>
-                // should be transformed into { "$desc": "Hello" }
-                // Note that an empty element such as
-                //  <workflow><desc></desc></workflow>
-                // will be transformed into { "desc": {} }
-                // because there is an ambiguity and, unless we have information
-                // from the schema, we cannot know if <desc></desc> should be
-                // transformed into "$desc": "" or into "desc": {}
-                let text = DomUtil._getTextIfTextNode(child);
-                if (!isArray && (text !== null || isCDATA || isHTML || isAnyLocalizable) && !isAnyLocalizableWithChildren) {
-                    if (elNodeDef && elNodeDef.type)
-                        text = XtkCaster.as(text, !isAnyLocalizable ? elNodeDef.type : "string");
-                    json[`$${childName}`] = text;
-                }
-                else {
-                    const jsonChild = {};
-                    await this._toJSON(child, jsonChild, elNodeDef, json);
-                    if (isArray) 
-                        json[childName].push(jsonChild);
-                    else
-                        json[childName] = jsonChild;
-                }
-            }
-            child = child.nextSibling;
-        }
-
-        // Proceed with text nodes in TypedJson format. 
-        if (isAnyLocChildren) {
-          const text = DomUtil.innerHTML(xml);
-          json.$ = text;
-        }
-        else {
-          var text = "";
-          child = xml.firstChild;
-          while (child) {
-              if (child.nodeType === 3) { // text 
-                  var nodeText = child.nodeValue;
-                  // Whitespace trimming rule: always trim for the root node, and trim for non-root nodes
-                  // which actually have children elements
-                  // Never trim CDATA nodes (nodeType 4)
-                  if (!parentJson || hasChildElements)
-                      nodeText = nodeText.trim(); 
-                  if (nodeText) text = text + nodeText;
-              }    
-              else if (child.nodeType === 4) { // CDATA    
-                  const cdataText = child.nodeValue;
-                  if (cdataText) text = text + cdataText;
-              }    
-              child = child.nextSibling;
+      // Will be set if there is at least one child element
+      var hasChildElements = false;
+      let child = xml.firstChild;
+      while (child) {
+          if (child.nodeType == 1) {
+              hasChildElements = true;
+              break;
           }
-          if (text) {
-              json.$ = text;
+          child = child.nextSibling;
+      }
+
+      // Figure out which elements are arrays. Keep a count of elements for each tag name.
+      // When count >1 we consider this tag name to be an array
+      const countByTag = {};
+      child = xml.firstChild;
+      while (child) {
+          if (child.nodeType == 1) {
+              const childName = child.nodeName;
+              if (countByTag[childName] === undefined) countByTag[childName] = 1;
+              else countByTag[childName] = countByTag[childName] + 1;
+          }
+          else if (child.nodeType == 3 || child.nodeType == 4) {
+            let nodeText = child.nodeValue;
+            if (child.nodeType == 4)
+              ignoreEmptyText = false;
+            else if (!isCDATA && (isRoot || hasChildElements)) {
+              // Whitespace trimming rule: always trim for the root node, and trim for non-root nodes
+              // which actually have children elements
+              // Never trim CDATA nodes (nodeType 4)
+              nodeText = nodeText.trim();
+            }
+            text = text + nodeText;
+          }
+          child = child.nextSibling;
+      }
+
+      // HTML, CDATA and ANY localisable elements have their text content in XML form
+      const contentAsText = isHTML || isAnyLocalizable;
+      if (contentAsText) {
+        text = DomUtil.innerHTML(xml);
+        ignoreEmptyText = false;
+      }
+      else if (isCDATA) {
+        ignoreEmptyText = false;
+      }
+      else {
+        const shouldCast = nodeDef && !nodeDef.localizable && nodeDef.type !== 'ANY' && nodeDef.type !== '' && !XtkCaster.isStringType(nodeDef.type);
+        if (shouldCast)
+          text = XtkCaster.as(text, nodeDef.type);
+      }
+      if (inlineText && text && xml.hasAttributes())
+        inlineText = false;
+      if (inlineText && nodeDef && nodeDef.childrenCount > 0)
+        inlineText = false;
+
+      child = xml.firstChild;
+      while (child && !contentAsText) {
+        if (child.nodeType == 1) {
+          const childName = child.nodeName;
+          const elNodeDef = nodeDef ? nodeDef.children[childName] : undefined;
+          const jsonChild = {};
+          const result = await this._toJSON(child, jsonChild, elNodeDef, false);
+          if (result.text !== undefined && result.text !== null) {
+            json[`$${childName}`] = result.text; // inline text
+          }
+          else {
+            const isCollection = xml.tagName.length > 11 && xml.tagName.substr(xml.tagName.length-11) == '-collection';
+            const isArray = (elNodeDef && elNodeDef.unbound) || countByTag[childName] > 1 || isCollection;
+            if (isArray) {
+                if (!json[childName]) 
+                  json[childName] = [ jsonChild ];
+                else
+                  json[childName].push(jsonChild);
+            }
+            else
+              json[childName] = jsonChild;
           }
         }
+        //else if (child.nodeType == 4) {
+        //  // CDATA
+        //  if (!text) text = '';
+        //  const cdataText = child.nodeValue;
+        //  text = text + cdataText;
+        //}
+        child = child.nextSibling;
+      }
 
-        // Finally proceed with attributes. They are processed last so that we get a chance to prefix
-        // the attribute name with "@" in TypedJson format if there's already an element with the
-        // same name
-        if (xml.hasAttributes()) {
-            const attributes = xml.attributes;
-            for (var i=0; i<attributes.length; i++) {
-                const att = attributes[i];
-                var attName = att.name;
-                var attValue = att.value;
+      if (!text && ignoreEmptyText)
+        text = undefined;
+      if (!inlineText)
+        json.$ = text;
 
-                var prependAtChar = json[attName] !== undefined; // There's already an element with the same name as the attribute
-                const attNodeDef = nodeDef ? nodeDef.children[`@${attName}`] : undefined;
-                if (attNodeDef) {
-                  attValue = XtkCaster.as(attValue, attNodeDef.type);
-                  // preppend @ char if element and att exist with same name in schema
-                  prependAtChar = prependAtChar || nodeDef.children[attName];
-                }
+      if (xml.hasAttributes()) {
+        const attributes = xml.attributes;
+        for (var i=0; i<attributes.length; i++) {
+          const att = attributes[i];
+          var attName = att.name;
+          var attValue = att.value;
 
-                if (prependAtChar)
-                    attName = "@" + attName;
-                json[attName] = attValue;
-            }
+          var prependAtChar = json[attName] !== undefined; // There's already an element with the same name as the attribute
+          const attNodeDef = nodeDef ? nodeDef.children[`@${attName}`] : undefined;
+          if (attNodeDef) {
+            attValue = XtkCaster.as(attValue, attNodeDef.type);
+            // preppend @ char if element and att exist with same name in schema
+            prependAtChar = prependAtChar || nodeDef.children[attName];
+          }
+
+          if (prependAtChar)
+              attName = "@" + attName;
+          json[attName] = attValue;
         }
+      }
+
+      return {
+        text: inlineText ? text : undefined,
+      };
     }
 
     // Adds empty array after an entity has been casted

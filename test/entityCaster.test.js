@@ -175,6 +175,7 @@ describe('EntityCaster', function() {
             await expect(toJSON('<root><textOnly> Hello</textOnly></root>')).resolves.toEqual({ $textOnly: " Hello" });
             await expect(toJSON('<root><textOnly x="1">Hello</textOnly></root>')).resolves.toEqual({ textOnly: { $:"Hello", x:"1" } });
             await expect(toJSON('<root><textOnly x="1"> Hello</textOnly></root>')).resolves.toEqual({ textOnly: { $:" Hello", x:"1" } });
+            await expect(toJSON("<extAccount-collection xmlns=\"urn:xtk:queryDef\">\n            <extAccount id=\"1816\" name=\"defaultPopAccount\"/>\n        </extAccount-collection>")).resolves.toEqual({ xmlns:"urn:xtk:queryDef", extAccount: [ { id:"1816", name:"defaultPopAccount" } ] });
         });
 
         it("Should support consecutive CDATA nodes", async () => {
@@ -215,22 +216,21 @@ describe('EntityCaster', function() {
             await expect(toJSON('<root><html></html></root>')).resolves.toEqual({ $html: "" });
             await expect(toJSON('<root><html>Hello</html></root>')).resolves.toEqual({ $html: "Hello" });
             await expect(toJSON('<root><html> Hello </html></root>')).resolves.toEqual({ $html: " Hello " });
-            await expect(toJSON('<root><html><![CDATA[Hello]]></html></root>')).resolves.toEqual({ $html: "Hello" });
-            await expect(toJSON('<root><html><![CDATA[ Hello ]]></html></root>')).resolves.toEqual({ $html: " Hello " });
-            await expect(toJSON('<root><html>&lt;!DOCTYPE html&gt;\n&lt;html&gt;\n&lt;head&gt;\n&lt;/head&gt;\n&lt;body&gt;\n&lt;p&gt;Hello &lt;strong&gt;World&lt;/strong&gt;&lt;/p&gt;\n&lt;/body&gt;\n&lt;/html&gt;</html></root>')).resolves.toEqual({ $html: "<!DOCTYPE html>\n<html>\n<head>\n</head>\n<body>\n<p>Hello <strong>World</strong></p>\n</body>\n</html>" });
+            await expect(toJSON('<root><html><![CDATA[Hello]]></html></root>')).resolves.toEqual({ $html: "<![CDATA[Hello]]>" });
+            await expect(toJSON('<root><html><![CDATA[ Hello ]]></html></root>')).resolves.toEqual({ $html: "<![CDATA[ Hello ]]>" });
+            await expect(toJSON('<root><html><html>\n<head>\n</head>\n<body>\n<p>Hello <strong>World</strong></p>\n</body>\n</html></html></root>')).resolves.toEqual({ $html: "<html>\n<head>\n</head>\n<body>\n<p>Hello <strong>World</strong></p>\n</body>\n</html>" });
         });
 
         it("Should support ANY elements which are localizable (such as schema help)", async () => {
-            /*await expect(toJSON('<root><anyLocalizable></anyLocalizable></root>')).resolves.toEqual({ $anyLocalizable: "" });
+            await expect(toJSON('<root><anyLocalizable></anyLocalizable></root>')).resolves.toEqual({ $anyLocalizable: "" });
             await expect(toJSON('<root><anyLocalizable>Hello</anyLocalizable></root>')).resolves.toEqual({ $anyLocalizable: "Hello" });
             await expect(toJSON('<root><anyLocalizable> Hello </anyLocalizable></root>')).resolves.toEqual({ $anyLocalizable: " Hello " });
-            await expect(toJSON('<root><anyLocalizable><![CDATA[Hello]]></anyLocalizable></root>')).resolves.toEqual({ $anyLocalizable: "Hello" });
-            await expect(toJSON('<root><anyLocalizable><![CDATA[ Hello ]]></anyLocalizable></root>')).resolves.toEqual({ $anyLocalizable: " Hello " });
-            */
-           await expect(toJSON('<root><static>Hello</static></root>')).resolves.toEqual({ static: { $:"Hello" } });
-           /* await expect(toJSON('<root><static></static></root>')).resolves.toEqual({ static: { $:"" } });
+            await expect(toJSON('<root><anyLocalizable><![CDATA[Hello]]></anyLocalizable></root>')).resolves.toEqual({ $anyLocalizable: "<![CDATA[Hello]]>" });
+            await expect(toJSON('<root><anyLocalizable><![CDATA[ Hello ]]></anyLocalizable></root>')).resolves.toEqual({ $anyLocalizable: "<![CDATA[ Hello ]]>" });
+            await expect(toJSON('<root><static>Hello</static></root>')).resolves.toEqual({ static: { $:"Hello" } });
+            await expect(toJSON('<root><static></static></root>')).resolves.toEqual({ static: { $:"" } });
             await expect(toJSON('<root><static>Hello <b>World</b></static></root>')).resolves.toEqual({ static: { $:"Hello <b>World</b>" } });
-            await expect(toJSON('<root><static width="3">Hello <b>World</b></static></root>')).resolves.toEqual({ static: { $:"Hello <b>World</b>", width: 3 } });*/
+            await expect(toJSON('<root><static width="3">Hello <b>World</b></static></root>')).resolves.toEqual({ static: { $:"Hello <b>World</b>", width: 3 } });
         });
 
         it("Should support unfound schemas", async () => {
@@ -245,12 +245,24 @@ describe('EntityCaster', function() {
 
         it("Should support XML attributes not present in the caster schema", async () => {
             await expect(toJSON('<root notFoundAttribute="123"></root>')).resolves.toEqual({ notFoundAttribute: "123" });
-            await expect(toJSON('<root><static notFoundAttribute="123"></static></root>')).resolves.toEqual({ static: {  notFoundAttribute: "123" } });
+            await expect(toJSON('<root><any notFoundAttribute="123"></any></root>')).resolves.toEqual({ any: {  notFoundAttribute: "123" } });
+            await expect(toJSON('<root><static notFoundAttribute="123"></static></root>')).resolves.toEqual({ static: {  notFoundAttribute: "123", $: "" } });
         });
 
         it("Should support XML elements not present in the caster schema", async () => {
-            //await expect(toJSON('<root><notFoundElement>123</notFoundElement></root>')).resolves.toEqual({ $notFoundElement: "123" });
-            await expect(toJSON('<root><static><notFoundElement>123</notFoundElement></static></root>')).resolves.toEqual({ static: { $notFoundElement: "123" } });
+            await expect(toJSON('<root><notFoundElement>123</notFoundElement></root>')).resolves.toEqual({ $notFoundElement: "123" });
+            await expect(toJSON('<root><notFoundElement><x>123</x></notFoundElement></root>')).resolves.toEqual({ notFoundElement: { $x: "123" } });
+
+            // <static> is of type any and is localizable => we consider it's HTML
+            // As the static element has attributes in the schema, we'll also create a JSON object even if the XML does not have the attributes set
+            await expect(toJSON('<root><static><notFoundElement>123</notFoundElement></static></root>')).resolves.toEqual({ static: { $: "<notFoundElement>123</notFoundElement>" } });
+
+            // The <anyLocalizable> however does not have attributes => we use the $anyLocalizable syntax
+            await expect(toJSON('<root><anyLocalizable><notFoundElement>123</notFoundElement></anyLocalizable></root>')).resolves.toEqual({ $anyLocalizable: "<notFoundElement>123</notFoundElement>" });
+        });
+
+        it("Should skip comments", async () => {
+            await expect(toJSON('<root id="1">\n  <!-- Ignore me -->\n</root>')).resolves.toEqual({ id:1 });
         });
     });
     
@@ -288,6 +300,38 @@ describe('EntityCaster', function() {
               };
             const infer = new QueryDefSchemaInferer(client, queryDef);
             await expect(infer.getSchema()).rejects.toMatchObject({ errorCode: "SDK-000016" });
+        });
+
+        it("Should support query without a select element", async () => {
+            const client = await Mock.makeClient({ representation: "TypedJson" });
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+            client._transport.mockReturnValueOnce(Mock.GET_MISSING_SCHEMA_RESPONSE);
+            const queryDef = {
+                schema: "xtk:entityCaster",
+                operation: "get",
+                select: undefined,
+                where: { condition: [ { expr:`@internalName='DM19'` } ] }
+              };
+            const infer = new QueryDefSchemaInferer(client, queryDef);
+            const schema = await infer.getSchema();
+            expect(schema.root.childrenCount).toBe(0);
+        });
+
+        it("Should support query with a select element with no nodes", async () => {
+            const client = await Mock.makeClient({ representation: "TypedJson" });
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+            client._transport.mockReturnValueOnce(Mock.GET_MISSING_SCHEMA_RESPONSE);
+            const queryDef = {
+                schema: "xtk:entityCaster",
+                operation: "get",
+                select: { node: undefined },
+                where: { condition: [ { expr:`@internalName='DM19'` } ] }
+              };
+            const infer = new QueryDefSchemaInferer(client, queryDef);
+            const schema = await infer.getSchema();
+            expect(schema.root.childrenCount).toBe(0);
         });
 
         describe("Create nodes on the fly", () => {
