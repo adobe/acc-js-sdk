@@ -18,6 +18,7 @@ governing permissions and limitations under the License.
  *********************************************************************************/
 const sdk = require('../src/index.js');
 const crypto = require("crypto");
+const Application = require('../src/application.js').Application;
 
 const makeKey = () => {
   const a = [];
@@ -37,11 +38,51 @@ async function makeAnonymousClient(options) {
   return client;
 }
 
+async function mockGetCasterSchema(client) {
+    const casterConnectionParameters = sdk.ConnectionParameters.ofUserAndPassword("http://acc-sdk:8080", "admin", "admin");
+    const casterClient = await sdk.init(casterConnectionParameters);
+    casterClient._transport = jest.fn();
+    casterClient._transport.mockReturnValueOnce(LOGON_RESPONSE);
+    await casterClient.NLWS.xtkSession.logon();
+
+    casterClient._transport.mockReturnValueOnce(GET_MISSING_SCHEMA_RESPONSE);
+    await casterClient.application.getSchema("xtk:notFound");
+    casterClient._transport.mockReturnValueOnce(GET_XTK_SESSION_SCHEMA_RESPONSE);
+    await casterClient.application.getSchema("xtk:session");
+    casterClient._transport.mockReturnValueOnce(GET_XTK_SCHEMA_SCHEMA_RESPONSE);
+    await casterClient.application.getSchema("xtk:schema");
+    casterClient._transport.mockReturnValueOnce(GET_NMS_DELIVERY_SCHEMA_RESPONSE);
+    await casterClient.application.getSchema("nms:delivery");
+    casterClient._transport.mockReturnValueOnce(GET_NMS_EXTACCOUNT_SCHEMA_RESPONSE);
+    await casterClient.application.getSchema("nms:extAccount");
+    casterClient._transport.mockReturnValueOnce(GET_XTK_ENUM_SCHEMA_RESPONSE);
+    await casterClient.application.getSchema("xtk:enum");
+    casterClient._transport.mockReturnValueOnce(GET_XTK_QUERY_SCHEMA_RESPONSE);
+    await casterClient.application.getSchema("xtk:queryDef");
+    casterClient._transport.mockReturnValueOnce(GET_XTK_ENTITYCASTER_SCHEMA_RESPONSE);
+    await casterClient.application.getSchema("xtk:entityCaster");
+    casterClient._transport.mockReturnValueOnce(GET_XTK_ENTITYCASTER_COUNTRY_SCHEMA_RESPONSE);
+    await casterClient.application.getSchema("xtk:entityCasterCountry");
+
+    client._getCasterSchema = async (schemaId) => {
+      let schema = casterClient.application._schemaCache._schemas[schemaId];
+      // undefined means the schema is not in the cache, but null means the schema is in the cache
+      // but does not exist
+      if (schema === undefined) 
+          throw new Error(`Missing mock implementation to get caster schema ${schemaId}`);
+      return schema;
+    }
+  if (!client._entityCasterOptions) client._entityCasterOptions = { enabled: true, addEmptyArrays: true };
+}
+
 async function makeClient(options) {
+  options = options || {};
   const connectionParameters = sdk.ConnectionParameters.ofUserAndPassword("http://acc-sdk:8080", "admin", "admin", options);
   const client = await sdk.init(connectionParameters);
   if (!options || !options.transport) // allow tests to explicitely set the transport
     client._transport = jest.fn();
+  if (options.representation == "TypedJson")
+    await mockGetCasterSchema(client);
   return client;
 }
 
@@ -453,6 +494,19 @@ const GET_XTK_QUERY_SCHEMA_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
     </SOAP-ENV:Body>
     </SOAP-ENV:Envelope>`);
 
+const GET_XTK_ENUM_SCHEMA_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
+<SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:wpp:default' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
+<SOAP-ENV:Body>
+    <GetEntityIfMoreRecentResponse xmlns='urn:wpp:default' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
+        <pdomDoc xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
+            <schema name="enum" namespace="xtk" implements="xtk:persist">
+                <element name="enum"></element>
+            </schema>
+        </pdomDoc>
+    </GetEntityIfMoreRecentResponse>
+</SOAP-ENV:Body>
+</SOAP-ENV:Envelope>`);
+
 const GET_NMS_DELIVERY_SCHEMA_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
 <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:wpp:default' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
 <SOAP-ENV:Body>
@@ -558,12 +612,29 @@ const GET_NMS_EXTACCOUNT_SCHEMA_RESPONSE = Promise.resolve(`<?xml version='1.0'?
                         <value name="none" value="0"/>
                         <value name="ssl" value="1"/>
                     </enumeration>
-                    <element name="extAccount"></element>
+                    <element name="extAccount">
+                        <attribute name="id" type="long"/>
+                    </element>
                 </schema>
             </pdomDoc>
         </GetEntityIfMoreRecentResponse>
     </SOAP-ENV:Body>
     </SOAP-ENV:Envelope>`);
+
+const GET_XTK_SCHEMA_SCHEMA_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
+    <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:wpp:default' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
+    <SOAP-ENV:Body>
+        <GetEntityIfMoreRecentResponse xmlns='urn:wpp:default' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
+            <pdomDoc xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
+                <schema name="schema" namespace="xtk" xtkschema="xtk:schema">
+                    <element name="schema">
+                    </element>
+                </schema>
+            </pdomDoc>
+        </GetEntityIfMoreRecentResponse>
+    </SOAP-ENV:Body>
+    </SOAP-ENV:Envelope>`);
+    
 
 const GET_XTK_ALL_SCHEMA_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
     <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:wpp:default' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
@@ -968,12 +1039,96 @@ const GETMODIFIEDENTITIES_ERROR_RESPONSE = Promise.resolve(`<?xml version='1.0'?
 
 const GET_DELIVERY_NEW_INSTANCE_RESPONSE = Promise.resolve(`<?xml version='1.0'?><SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:nms:delivery' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'><SOAP-ENV:Body><NewInstanceResponse xmlns='urn:nms:delivery' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'><entity xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'><delivery _operation="insert" analysisStep="0" budgetStatus="0" builtIn="false" contentStatus="0" created="2022-09-26 03:13:36.480Z" createdBy-id="6043" deleteStatus="0" deliveryMode="0" deliveryProvider-id="1855" extractionStatus="0" folder-id="1186" folderProcess-id="1206" id="9790" internalName="DM554" isModel="1" jobType="delivery" keepResult="false" label="Email" lastModified="2022-09-26 03:13:36.480Z" launchFCP="0" mapping-id="1775" maxPropositionCount="1" messageType="0" modifiedBy-id="6043" outOfProcess="false" priority="10" sandboxStatus="0" state="0" status="0" targetStatus="0" typology-id="1852" useTargetOffers="false" xtkschema="nms:delivery"><folder _cs="Delivery templates"/><folderProcess _cs="Deliveries"/><createdBy _cs="Gaurav Makkar (gmakkar@adobe.com)"/><modifiedBy _cs="Gaurav Makkar (gmakkar@adobe.com)"/><properties deliveryState="0" warning="false"/><deliveryProvider EMailFunction="0" NChar="0" _cs="Internal email delivery" account="" activationMode="2" active="1" activity="signal" awsKey="" awsRegion="" awsSecret="" azureTenant="" callbackServer="" clientId="" clientSecret="" created="2022-09-16 07:39:50.796Z" createdBy-id="0" dbName="" deliveryMode="1" deployed="0" encryptionType="0" fdaExtAccount-id="0" fileMethod="uploadFile" folder-id="1035" folderSetOfServices-id="0" httpRelayTarget="false" id="1855" imsOrgId="" imsRightsMask="" imsServer="" label="Internal email delivery" lastModified="2022-09-16 07:42:37.469Z" lastMultiUsed="" messageType="0" mirrorURL="" mobileConnector="127" modifiedBy-id="1062" multiMidMode="0" multiMidProvider="0" name="defaultEmailBulk" oAuth="0" onEveryRun="0" packageAutoExport="0" partner="1" password="" port="" productContext="" provider="Snowflake" redirectUrl="" server="" tenant="" timezone="_server_" timezoneName="Europe/Paris" type="3" unicodeData="0" useServerSideEncryption="0" userScope=""><analyticsConfig integrationName="defaultEmailBulk" persistence="7" purge="180" status="3"></analyticsConfig><webAnalyticsParams partner="1" persistence="7" purge="180"><integrationDetails integrationName="defaultEmailBulk" integrationValue="7281015239823888aa73636c74217b84"></integrationDetails></webAnalyticsParams><params allowTranslit="false" bindTimeout="60" dataInOptionalField="false" dataInTextField="false" defaultMoCharset="X-Gsm7Bit" defaultMtCharset="X-Gsm7Bit" deliverIdEncode="default" deliverIdEncode2="0" enableTLS="false" enquireLinkPeriod="30" errorExtractionRegex="\\b[eE][rR][rR]:([a-zA-Z0-9]{3})\\b" errorStatusRegex="^(?:EXPIRED|DELETED|UNDELIV|UNKNOWN|REJECT)" idExtractionRegex="\\b[iI][dD]:([a-fA-F0-9]{1,10})\\b" invalidIdAckLimit="0" maxBinds="1" maxWindow="10" messagePayload="false" messageTimeout="30" rateLimit="0" reconnectPeriod="10" sendFullPhoneNumber="false" skipTLSCertCheck="0" smscName="Generic" statusExtractionRegex="\\b[sS][tT][aA][tT]:([a-zA-Z0-9]{5,15})\\b" submitRespIdEncode="default" submitRespIdEncode2="0" successStatusRegex="^DELIV"><wapPush oAuth="0"/><mms oAuth="0"/><oauthParams thirdPartyApplication="true"/><facebookParams marketingURL="http://www.adobe.com" realtimeSubStatus="0"/><mscrm crmApiVersion="'auto'" crmDeploymentType="webapi" crmGrantType="0"/><salesforce apiVersion="'21.0'"/></params><ffda isFFDA="0" replicationWarehouse="" xxlSchemaSuffix=""/></deliveryProvider><forecast simuResponseType="0" weight="5" weightType="0"><weightFormula>$(deliveryWeight)</weightFormula></forecast><volume duration="1" rate="100"/><scheduling delayExtraction="0" validationMode="manual" webResPurged="false"><waves mode="0" splitDelay="86400" splitSize="20%"/><messagePreparation priority="0"/></scheduling><validation sandboxMode="0" sandboxModeEnforced="0" useBudgetValidation="true" useContentValidation="true" useExtractionValidation="true" useFCPValidation="true" useTargetValidation="true" validationMode="0"><target><validation delay="259200" type="0"/></target><content><validation delay="259200" type="0"/></content><budget><validation delay="259200" type="0"/></budget><extraction><validation delay="259200" type="0"/></extraction><forecast><validation delay="259200" type="0"/></forecast><starting><validation delay="259200" type="0"/></starting><edition><validation delay="259200" type="0"/></edition><external><validation delay="259200" type="0"/></external></validation><execution maxPersoTime="5" maxRetry="5" retryPeriod="3600"><controlGroup type="3"/></execution><typology _cs="Default typology"/><mapping _cs="Recipients (nms:recipient)" blackListAgency="@blackList" blackListEmail="Iif(@blackList!=0, 1, @blackListEmail)" blackListFax="Iif(@blackList!=0, 1,@blackListFax)" blackListPaper="Iif(@blackList!=0, 1,@blackListPostalMail)" blackListPhone="Iif(@blackList!=0, 1,@blackListPhone)" blackListSms="Iif(@blackList!=0, 1,@blackListMobile)" builtIn="1" countryCode="[location/@countryCode]" created="2022-09-16 07:39:50.496Z" createdBy-id="0" defaultOrigin-id="1861" email="Lower(@email)" facebook="" fax="@fax" folder-id="1171" format="@emailFormat" id="1775" isFfda="0" label="Recipients" lastModified="2022-09-16 07:39:52.859Z" modifiedBy-id="0" name="mapRecipient" paper="postalAddress" phone="@phone" recipientLink="" schema="nms:recipient" sms="@mobilePhone" targetSchema="nms:recipient" twitter=""><storage broadLogExclSchema="nms:excludeLogRcp" broadLogFilterKeys="" broadLogRcpKeys="" broadLogSchema="nms:broadLogRcp" broadLogTable="" exclusionType="2" trackingHasDeviceIP="0" trackingLogFilterKeys="" trackingLogRcpKeys="" trackingLogSchema="nms:trackingLogRcp" trackingLogTable=""></storage><social birthDate="@birthDate" email="@email" firstName="@firstName" gender="@gender" lastName="@lastName" locale="@language"/></mapping><scenario validityDuration="432000" webValidityDuration="5184000"/><fcpParameters addFormatInPrefix="true" fcpMailFormat="normal" fcpMode="specificTarget" ignoreBlacklist="true" ignoreDeduplicate="true" ignoreQuarantaine="false" keepDeliveryCode="false" labelPrefix="Proof" useSpecificOutputFile="false"/><mailParameters mirrorPagePolicy="default" needMirrorPage="0" useDefaultErrorAddress="true"><senderName><![CDATA[Automation Inc.]]></senderName><senderAddress><![CDATA[no-reply@Customer.rd.campaign.adobe.com]]></senderAddress><replyAddress><![CDATA[no-reply@Customer.rd.campaign.adobe.com]]></replyAddress><replyName><![CDATA[Automation Inc.]]></replyName></mailParameters><smsParameters mobileMsgType="0" smsAppType="2" smsMode="1" smsPriority="0"/><paperParameters addressPos="ownPage" colorSupport="bw" envelope="C6SW" priceCategory="letterPrio" rectoVerso="recto"/><targets addressField="__db__" allowUnchecked="true" blackListField="__db__" deduplicate="true" excludeOnMissingOffer="0" externalIdField="__db__" formatField="__db__" fromExternalSource="false" maxErrorCount="3" noRcpIdDedup="false" noReconciliation="false" qualityRequired="3" segmentCodeField="__db__" targetMode="0" useBlackList="true" useQuality="1" useQuarantine="1"><deliveryTarget nonEmpty="false"/><proofTarget nonEmpty="false"/><deliveryFile autoDelete="false" upload="true"/><proofFile autoDelete="false" upload="true"/><postalAddress addrDefinedField="__none__" addrErrorCountField="__none__" addrLastCheckField="__none__" addrQualityField="__none__" line1Field="__db__" line2Field="__db__" line3Field="__db__" line4Field="__db__" line5Field="__db__" line6Field="__db__" line7Field="__db__"/></targets><remoteContent remoteValidation="false"/><content IsImagePublished="false" embedImages="false" fcbContentType="0" formatSelection="preferences" htmlCompression="false" ignoreScripts="false" pdfCompression="true" pdfType="simple"><lineContentType><source>text</source></lineContentType><lineVersion><source>line</source></lineVersion><lineDeliveryType><source>pushMsg</source></lineDeliveryType><lineImageType><source>manual</source></lineImageType><lineMultiRegionLayoutType><source>1</source></lineMultiRegionLayoutType></content><output enableLinkDelivery="true" feedbackMode="none"><seedList insertMode="0"/><extraction><source batchSize="200" format="text" rejectsFromTextConnector="false" startPath="/" upload="true"><dataSourceConfig codepage="1252" colType="0" ignoreConfigCheck="false" textQualifier="none" timezone="_inherit_" useCR="false" useLF="false"/><dataSourceConfigDest codepage="1252" colType="0" ignoreConfigCheck="false" textQualifier="none" timezone="_inherit_" useCR="false" useLF="false"/></source><destination downloadDestFile="true" endRecord="0" progressLines="20" putUnmappedCols="true" splitOverOrigin="false" startPath="/" startRecord="0" transactionLines="200"><exportFormat allAsString="false" analyze="false" codepage="1252" delEscaping="duplicateDel" delimitor="delNone" format="text" lineEnd="0" saveTitle="true" separator="sepTab" timezone="_inherit_"><dataFormat decimalCount="-1" hideTime="false" orderDate="ymd" sepDate="/" sepDateTime=" " sepNumber="." sepThousand="false" sepTime=":" showMs="false" showSec="true" yearShort="false"/></exportFormat></destination></extraction></output><tracking enabled="true" openEnabled="true"><clickFormula><![CDATA[<%@ include option='NmsTracking_ClickFormula' %>]]></clickFormula><openFormula><![CDATA[<%@ include option='NmsTracking_OpenFormula' %>]]></openFormula></tracking><advancedParameters DBPreparationMode="0" codepage="65001" emailArchiving="false" emailBCCEmta="false" forceCodepage="false" outOfProcessMode="false" showSQL="false" useDBPreparation="false" useDataManagement="false" verifyMode="false"/><budgetParameters commitmentLevel="0" computationState="0"/></delivery></entity></NewInstanceResponse></SOAP-ENV:Body></SOAP-ENV:Envelope>`);
 
+const GET_XTK_ENTITYCASTER_SCHEMA_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
+        <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:wpp:default' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
+        <SOAP-ENV:Body>
+            <GetEntityIfMoreRecentResponse xmlns='urn:wpp:default' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
+                <pdomDoc xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
+                    <schema name="entityCaster" namespace="xtk">
+                        <enumeration basetype="byte" default="edit" name="state">
+                            <value name="edit" value="0"/>
+                            <value name="live" value="17"/>
+                        </enumeration>
+                        <element name="entityCaster">
+                            <attribute name="id" type="long"/>
+                            <attribute name="internalName" type="string"/>
+                            <element name="textOnly" type="string" length="100"/>
+                            <attribute name="recipient-id" type="long"/>
+                            <attribute name="state" type="byte" enum="state"/>
+
+                            <attribute name="attAndElem" type="long"/>
+                            <element name="attAndElem" type="string" length="100"/>
+
+                            <element name="struct">
+                                <attribute name="count" type="long"/>
+                                <attribute name="created" type="datetime"/>
+                                <element name="child">
+                                    <attribute name="enabled" type="boolean"/>
+                                </element>
+                            </element>
+
+                            <!-- unbound collection directly in the root node -->
+                            <element name="coll" unbound="true">
+                                <attribute name="count" type="long"/>
+                                <attribute name="created" type="datetime"/>
+                            </element>
+                            <!-- unbound collection is a child element -->
+                            <element name="book">
+                                <element name="chapter" unbound="true">
+                                    <attribute name="idx" type="long"/>
+                                    <attribute name="name" type="string"/>
+                                    <element name="notes">
+                                        <element name="idx" type="long"/>
+                                        <element name="note" type="string" unbound="true"/>
+                                    </element>
+                                </element>
+                            </element>
+
+                            <element name="sourceId" type="long"/>
+
+                            <element name="cdata" type="CDATA"/>
+                            <element name="html" type="html"/>
+                            <element name="anyLocalizable" type="ANY" localizable="true"/>
+                            <element name="any" type="ANY"/>
+
+                            <element name="static" localizable="true" type="ANY">
+                                <attribute name="style" type="string"/>
+                                <attribute name="width" type="short"/>
+                            </element> 
+
+                            <element name="country" type="link" target="xtk:entityCasterCountry"/>
+                            <element name="notFound" type="link" target="xtk:notFound"/>
+                        </element>
+                    </schema>
+                </pdomDoc>
+            </GetEntityIfMoreRecentResponse>
+        </SOAP-ENV:Body>
+        </SOAP-ENV:Envelope>`);
+
+
+const GET_XTK_ENTITYCASTER_COUNTRY_SCHEMA_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
+        <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:wpp:default' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
+        <SOAP-ENV:Body>
+            <GetEntityIfMoreRecentResponse xmlns='urn:wpp:default' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
+                <pdomDoc xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
+                    <schema name="entityCasterCountry" namespace="xtk">
+                        <element name="entityCasterCountry">
+                            <attribute name="id" type="long"/>
+                            <attribute name="name" type="string"/>
+                        </element>
+                    </schema>
+                </pdomDoc>
+            </GetEntityIfMoreRecentResponse>
+        </SOAP-ENV:Body>
+        </SOAP-ENV:Envelope>`);
+ 
 // Public exports
 exports.Mock = {
   makeClient: makeClient,
   makeAnonymousClient: makeAnonymousClient,
   withMockConsole: withMockConsole,
   makeKey: makeKey,
+  mockGetCasterSchema: mockGetCasterSchema,
   R_TEST: R_TEST,
   PING: PING,
   MC_PING: MC_PING,
@@ -998,6 +1153,7 @@ exports.Mock = {
   GET_LOGON_MID_RESPONSE: GET_LOGON_MID_RESPONSE,
   GET_TSTCNX_RESPONSE: GET_TSTCNX_RESPONSE,
   GET_NMS_EXTACCOUNT_SCHEMA_RESPONSE: GET_NMS_EXTACCOUNT_SCHEMA_RESPONSE,
+  GET_XTK_SCHEMA_SCHEMA_RESPONSE: GET_XTK_SCHEMA_SCHEMA_RESPONSE,
   GET_XTK_ALL_SCHEMA_RESPONSE: GET_XTK_ALL_SCHEMA_RESPONSE,
   GET_XTK_ALL_TYPES_RESPONSE: GET_XTK_ALL_TYPES_RESPONSE,
   GET_XTK_TYPE_UNSUPPORTED_TYPE_RESPONSE: GET_XTK_TYPE_UNSUPPORTED_TYPE_RESPONSE,
@@ -1024,5 +1180,7 @@ exports.Mock = {
   FILE_RES_WRITE_RESPONSE: FILE_RES_WRITE_RESPONSE,
   PUBLISH_IF_NEEDED_RESPONSE: PUBLISH_IF_NEEDED_RESPONSE,
   GET_URL_RESPONSE: GET_URL_RESPONSE,
-  GET_DELIVERY_NEW_INSTANCE_RESPONSE: GET_DELIVERY_NEW_INSTANCE_RESPONSE
+  GET_DELIVERY_NEW_INSTANCE_RESPONSE: GET_DELIVERY_NEW_INSTANCE_RESPONSE,
+  GET_XTK_ENTITYCASTER_SCHEMA_RESPONSE: GET_XTK_ENTITYCASTER_SCHEMA_RESPONSE,
+  GET_XTK_ENTITYCASTER_COUNTRY_SCHEMA_RESPONSE: GET_XTK_ENTITYCASTER_COUNTRY_SCHEMA_RESPONSE  
 }

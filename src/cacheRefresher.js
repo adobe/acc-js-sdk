@@ -191,12 +191,11 @@ governing permissions and limitations under the License.
 
             // Do a soap call GetModifiedEntities instead of xtksession.GetModifiedEnties because we don't want to go through methodCache 
             // which might not contain the method GetModifiedEntities just after a build updgrade from a old version of acc 
-            // This is an internal SOAP call that cannot be intercepted by observers onBeforeCall / onAfterCall
             try {
                 await this._client._makeSoapCall(soapCall);
                 let doc = soapCall.getNextDocument();
                 soapCall.checkNoMoreArgs();
-                doc = that._client._toRepresentation(doc, 'xml');
+                doc = await that._client._toRepresentation(doc, 'xml');
                 that._lastTime = DomUtil.getAttributeAsString(doc, "time"); // save time to be able to send it as an attribute in the next soap call
                 that._buildNumber = DomUtil.getAttributeAsString(doc, "buildNumber");
                 await that._refresh(doc, event);

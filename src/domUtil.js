@@ -295,6 +295,16 @@ class DomUtil {
         return s;
     }
 
+    static innerHTML(node) {
+        var s = "";
+        if (node) {
+            if (node.nodeType == 9) // documentElement 
+                node = node.documentElement;
+            s = node.innerHTML;
+        }
+        return s;
+    }
+
     /**
      * Internal recursive method to convert a object literal (JSON) to an XML element/document.
      * This function does not return anything. Instead it creates children elements in the passed 'xmlRoot' element
@@ -314,7 +324,7 @@ class DomUtil {
             var isAtt = att[0] == '@';
             var attFirstIndex = 1;
 
-            if (flavor == "SimpleJson") {
+            if (flavor == "SimpleJson" || flavor == "TypedJson") {
                 if ((t == "string" || t == "number" || t == "boolean") && att[0] != '$') {
                     isAtt = true;
                     attFirstIndex = 0;
@@ -336,7 +346,7 @@ class DomUtil {
                 if (att == "$") {
                     xmlRoot.textContent = value;
                 }
-                else if (flavor == "SimpleJson" && att[0] == '$') {
+                else if ((flavor == "SimpleJson" || flavor == "TypedJson") && att[0] == '$') {
                     att = att.substr(1);
                     const xmlElement = doc.createElement(att);
                     xmlElement.textContent = value;
@@ -373,8 +383,8 @@ class DomUtil {
      */
     static fromJSON(docName, json, flavor) {
         flavor = flavor || "SimpleJson";
-        if (flavor != "SimpleJson" && flavor != "BadgerFish")
-            throw new DomException(`Invalid JSON flavor '${flavor}'. Should be 'SimpleJson' or 'BadgerFish'`);
+        if (flavor != "SimpleJson" && flavor != "TypedJson" && flavor != "BadgerFish")
+            throw new DomException(`Invalid JSON flavor '${flavor}'. Should be 'SimpleJson', 'TypedJson', or 'BadgerFish'`);
         if (!docName)
             throw new DomException(`Cannot transform entity of flavor '${flavor}' to xml because no XML root name was given`);
         const doc = this.newDocument(docName);
@@ -400,13 +410,10 @@ class DomUtil {
      * @private
      * @param {Element} xml the DOM element to convert to JSON
      * @param {Object} json the object literal to write to
-     * @param {string} flavor the JSON flavor: "SimpleJson" or "BadgerFish"
+     * @param {string} flavor the JSON flavor: "SimpleJson", "TypedJson" or "BadgerFish"
      * @param {Object} parentJson parent JSON node during recursion. Is undefined for first call
-     * @param {boolean} forceTextAs is set during recursion (SimpleJson format) to force serialization of text nodes using "$: value" syntax 
-     *                  instead of "$name: value" syntax. This is necessary to process collections and arrays of elements which only 
-     *                  contain text nodes.
      */
-    static _toJSON(xml, json, flavor, parentJson, forceTextAs$) {
+    static _toJSON(xml, json, flavor, parentJson) {
 
         // Heuristic to determine if element is an object or an array
         const isCollection = xml.tagName.length > 11 && xml.tagName.substr(xml.tagName.length-11) == '-collection';
@@ -443,12 +450,12 @@ class DomUtil {
                 // from the schema, we cannot know if <desc></desc> should be
                 // transformed into "$desc": "" or into "desc": {}
                 const text = this._getTextIfTextNode(child);
-                if (!isArray && text !== null && flavor == "SimpleJson") {
+                if (!isArray && text !== null && (flavor == "SimpleJson" || flavor == "TypedJson")) {
                     json[`$${childName}`] = text;
                 }
                 else {
                     const jsonChild = flavor == "BadgerFish" ? new BadgerFishObject() : {};
-                    this._toJSON(child, jsonChild, flavor, json, isArray);
+                    this._toJSON(child, jsonChild, flavor, json);
                     if (isArray) 
                         json[childName].push(jsonChild);
                     else
@@ -468,7 +475,7 @@ class DomUtil {
         }
 
         // Proceed with text nodes in SimpleJson format. 
-        if (flavor === "SimpleJson") {
+        if (flavor === "SimpleJson" || flavor === "TypedJson") {
             var text = "";
             child = xml.firstChild;
             while (child) {
@@ -500,7 +507,7 @@ class DomUtil {
             for (var i=0; i<attributes.length; i++) {
                 const att = attributes[i];
                 var attName = (flavor == "BadgerFish" ? "@" : "") + att.name;
-                if (json[attName] !== undefined && flavor === "SimpleJson")
+                if (json[attName] !== undefined && (flavor === "SimpleJson" || flavor === "TypedJson"))
                     // There's already an element with the same name as the attribute
                     attName = "@" + attName;
                 json[attName] = att.value;
@@ -512,19 +519,19 @@ class DomUtil {
      * Convert an XML element to a object literal (JSON)
      * 
      * @param {Element|Document} xml the DOM element or document to convert to JSON
-     * @param {string} flavor the JSON flavor: "SimpleJson" or "BadgerFish"
+     * @param {string} flavor the JSON flavor: "SimpleJson", "TypedJson" or "BadgerFish"
      * @returns {Object} an object literal corresponding to the XML element or document
      */
     static toJSON(xml, flavor) {
         if (xml === null || xml === undefined) return xml;
         flavor = flavor || "SimpleJson";
-        if (flavor != "SimpleJson" && flavor != "BadgerFish")
-            throw new DomException(`Invalid JSON flavor '${flavor}'. Should be 'SimpleJson' or 'BadgerFish'`);
+        if (flavor != "SimpleJson" && flavor != "TypedJson" && flavor != "BadgerFish")
+            throw new DomException(`Invalid JSON flavor '${flavor}'. Should be 'SimpleJson', 'TypedJson', or 'BadgerFish'`);
         if (xml.nodeType == 9)
             xml = xml.documentElement;
-            var json = flavor == "BadgerFish" ? new BadgerFishObject() : {};
-            this._toJSON(xml, json, flavor);
-            return json;
+        var json = flavor == "BadgerFish" ? new BadgerFishObject() : {};
+        this._toJSON(xml, json, flavor);
+        return json;
     }
 
 }
@@ -584,6 +591,22 @@ class XPathElement {
      */
     isParent() {
         return this._pathElement == "..";
+    }
+
+    /**
+     * Get the the name of this xpath element (attributes will have the @ prefix)
+     * @returns {string} the name of the xpath element
+     */
+    name() {
+        return this._pathElement;
+    }
+
+    /**
+     * Returns true if this xpath item is an attribute (as opposed to an xml element)
+     * @returns {boolean} true if this xpath item is an attribute
+     */
+    isAttribute() {
+        return this._pathElement.startsWith("@");
     }
 
     /**

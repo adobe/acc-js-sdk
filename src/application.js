@@ -618,6 +618,11 @@ class XtkSchemaNode {
         this.packageStatus = PACKAGE_STATUS[this.packageStatusString];
 
         /**
+         * Is the value of the attribute a string that is localizable
+         */
+        this.localizable = EntityAccessor.getAttributeAsBoolean(xml, "localizable");
+
+        /**
          * Returns a string (a schema id) which indicates the custom/extended entity, attribute belongs to.
          */
         this.belongsTo = EntityAccessor.getAttributeAsString(xml, "belongsTo");

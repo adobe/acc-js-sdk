@@ -37,6 +37,7 @@ const { Application, newSchema } = require('./application.js');
 const EntityAccessor = require('./entityAccessor.js').EntityAccessor;
 const { Util } = require('./util.js');
 const { XtkJobInterface } = require('./xtkJob.js');
+const { QueryDefSchemaInferer, EntityCaster } = require('./entityCaster.js');
 const qsStringify = require('qs-stringify');
 
 /**
@@ -141,6 +142,7 @@ const clientHandler = (representation, headers, pushDownOptions) => {
             // Force XML or JSON representation (NLWS.xml or NLWS.json)
             if (namespace == "xml") return new Proxy(client, clientHandler("xml", headers, pushDownOptions));
             if (namespace == "json") return new Proxy(client, clientHandler("SimpleJson", headers, pushDownOptions));
+            if (namespace == "typedJson") return new Proxy(client, clientHandler("TypedJson", headers, pushDownOptions));
 
             // Override HTTP headers (NLWS.headers({...}))
             // Unlike NLWS.xml or NLWS.json, NLWS.headers returns a function. This function takes key/value
@@ -291,7 +293,7 @@ class Credentials {
 
 /**
  * @typedef {Object} ConnectionOptions
-    * @property {string} representation - the representation to use, i.e. "SimpleJson" (the default), "BadgerFish", or "xml"
+    * @property {string} representation - the representation to use, i.e. "SimpleJson" (the default), "BadgerFish", or "xml", or "TypedJson"
     * @property {boolean} rememberMe - The Campaign `rememberMe` attribute which can be used to extend the lifetime of session tokens
     * @property {number} entityCacheTTL - The TTL (in milliseconds) after which cached XTK entities expire. Defaults to 5 minutes
     * @property {number} methodCacheTTL - The TTL (in milliseconds) after which cached XTK methods expire. Defaults to 5 minutes
@@ -308,6 +310,7 @@ class Credentials {
     * @property {boolean} noMethodInURL - Can be set to true to remove the method name from the URL
     * @property {number} timeout - Can be set to change the HTTP call timeout. Value is passed in ms.
     * @property {string} cacheRootKey - "default" or "none" - determine the prefix to use for the keys in the caches of schemas, options, etc.
+    * @property {entityCasterOptions} entityCasterOptions - Options for the entity caster
     * @memberOf Campaign
  */
 
@@ -344,7 +347,7 @@ class ConnectionParameters {
         if (this._options.representation === undefined || this._options.representation === null)
             this._options.representation = "SimpleJson";
 
-        if (this._options.representation != "xml" && this._options.representation != "BadgerFish" && this._options.representation != "SimpleJson")
+        if (this._options.representation != "xml" && this._options.representation != "BadgerFish" && this._options.representation != "SimpleJson" && this._options.representation != "TypedJson")
             throw CampaignException.INVALID_REPRESENTATION(this._options.representation, "Cannot create Campaign client");
 
         // Defaults for rememberMe
@@ -498,7 +501,7 @@ class ConnectionParameters {
             }
         };
         // Convert to current representation
-        queryDef = client._convertToRepresentation(queryDef, "SimpleJson");
+        queryDef = await client._convertToRepresentation(queryDef, "SimpleJson");
         const query = client.NLWS.xtkQueryDef.create(queryDef);
         const extAccount = await query.executeQuery();
 
@@ -657,11 +660,11 @@ class Client {
 
         // Clear storage cache if the sdk versions or the instances are different
         if (this._storage && typeof this._storage.removeItem === 'function') {
-          for (let key in this._storage) {
-            if (key.startsWith("acc.js.sdk.") && !key.startsWith(rootKey)) {
-              this._storage.removeItem(key);
+            for (let key in this._storage) {
+                if (key.startsWith("acc.js.sdk.") && !key.startsWith(rootKey)) {
+                this._storage.removeItem(key);
+                }
             }
-          }
         }
 
         this._entityCache = new XtkEntityCache(this._storage, `${rootKey}XtkEntityCache`, connectionParameters._options.entityCacheTTL);
@@ -676,6 +679,8 @@ class Client {
         this._observers = [];
         this._cacheChangeListeners = [];
         this._refreshClient = connectionParameters._options.refreshClient;
+
+        this._entityCasterOptions = connectionParameters._options.entityCasterOptions;
 
         // expose utilities
         /**
@@ -736,19 +741,55 @@ class Client {
     }
 
     /**
+     * Verify that a representation is valid
+     * @param {string} representation 
+     * @returns 
+     */
+    _ensureValidRepresentation(representation) {
+        representation = representation || this._representation;
+        if (representation != "SimpleJson" && representation != "xml" && representation != "BadgerFish" && representation != "TypedJson")
+            throw CampaignException.INVALID_REPRESENTATION(this._representation, "Cannot convert to/from this representation");
+    }
+
+    /**
      * Convert an XML object into a representation
      *
      * @private
      * @param {DOMElement} xml the XML DOM element to convert
-     * @param {string} representation the expected representation ('xml', 'BadgerFish', or 'SimpleJson'). If not set, will use the current representation
+     * @param {string} representation the expected representation ('xml', 'BadgerFish', or 'SimpleJson', or 'TypedJson'). If not set, will use the current representation
+     * @param {string|XtkSchemaNode} schemaHint
      * @returns {XML.XtkObject} the object converted in the requested representation
      */
-    _toRepresentation(xml, representation) {
+    async _toRepresentation(xml, representation, schemaHint) {
+        representation = representation || this._representation;
+        if (representation == "TypedJson") {
+            if (!xml || (!xml.nodeType && !xml.tagName)) return xml;
+            const caster = new EntityCaster(this, schemaHint, this._entityCasterOptions);
+            return await caster.toJSON(xml);
+        }
+        if (representation == "xml")
+            return xml;
+        if (representation == "BadgerFish"  || representation == "SimpleJson")
+            return DomUtil.toJSON(xml, representation);
+        throw CampaignException.INVALID_REPRESENTATION(this._representation, "Cannot convert XML document to this representation");
+    }
+
+    /**
+     * Convert an XML object into a representation
+     *
+     * @private
+     * @param {DOMElement} xml the XML DOM element to convert
+     * @param {string} representation the expected representation ('xml', 'BadgerFish', or 'SimpleJson', or 'TypedJson'). If not set, will use the current representation
+     * @returns {XML.XtkObject} the object converted in the requested representation
+     */
+    _toRepresentationSync(xml, representation) {
         representation = representation || this._representation;
         if (representation == "xml")
             return xml;
         if (representation == "BadgerFish" || representation == "SimpleJson")
             return DomUtil.toJSON(xml, representation);
+        if (representation == "TypedJson")
+            throw CampaignException.INVALID_REPRESENTATION(this._representation, "Convertion to this representation cannot be done synchronously");
         throw CampaignException.INVALID_REPRESENTATION(this._representation, "Cannot convert XML document to this representation");
     }
 
@@ -758,14 +799,14 @@ class Client {
      * @private
      * @param {string} rootName the name of the root XML element
      * @param {XML.XtkObject} entity the object to convert
-     * @param {string} representation the expected representation ('xml', 'BadgerFish', or 'SimpleJson'). If not set, will use the current representation
+     * @param {string} representation the expected representation ('xml', 'BadgerFish', or 'SimpleJson', or 'TypedJson'). If not set, will use the current representation
      * @returns {DOMElement} the object converted to XML
      */
     _fromRepresentation(rootName, entity, representation) {
         representation = representation || this._representation;
         if (representation == "xml")
             return entity;
-        if (representation == "BadgerFish" || representation == "SimpleJson") {
+        if (representation == "BadgerFish" || representation == "SimpleJson" || representation == "TypedJson") {
             var xml = DomUtil.fromJSON(rootName, entity, representation);
             return xml;
         }
@@ -777,16 +818,16 @@ class Client {
      *
      * @private
      * @param {XML.XtkObject} entity the object to convert
-     * @param {string} fromRepresentation the source representation ('xml', 'BadgerFish', or 'SimpleJson').
-     * @param {string} toRepresentation the target representation ('xml', 'BadgerFish', or 'SimpleJson'). If not set, will use the current representation
+     * @param {string} fromRepresentation the source representation ('xml', 'BadgerFish', or 'SimpleJson', or 'TypedJson').
+     * @param {string} toRepresentation the target representation ('xml', 'BadgerFish', or 'SimpleJson', or 'TypedJson'). If not set, will use the current representation
      * @returns {DOMElement} the converted object
      */
-    _convertToRepresentation(entity, fromRepresentation, toRepresentation) {
+    async _convertToRepresentation(entity, fromRepresentation, toRepresentation) {
         toRepresentation = toRepresentation || this._representation;
         if (this._isSameRepresentation(fromRepresentation, toRepresentation))
             return entity;
         var xml = this._fromRepresentation("root", entity, fromRepresentation);
-        entity = this._toRepresentation(xml, toRepresentation);
+        entity = await this._toRepresentation(xml, toRepresentation);
         return entity;
     }
 
@@ -794,14 +835,14 @@ class Client {
      * Compare two representations
      *
      * @private
-     * @param {string} rep1 the first representation ('xml', 'BadgerFish', or 'SimpleJson')
-     * @param {string} rep2 the second representation ('xml', 'BadgerFish', or 'SimpleJson')
+     * @param {string} rep1 the first representation ('xml', 'BadgerFish', or 'SimpleJson', or 'TypedJson')
+     * @param {string} rep2 the second representation ('xml', 'BadgerFish', or 'SimpleJson', or 'TypedJson')
      * @returns a boolean indicating if the 2 representations are the same or not
      */
     _isSameRepresentation(rep1, rep2) {
         if (!rep1 || !rep2) throw CampaignException.INVALID_REPRESENTATION(undefined, "Cannot compare to undefined representation");
-        if (rep1 != "xml" && rep1 != "SimpleJson" && rep1 != "BadgerFish") throw CampaignException.INVALID_REPRESENTATION(rep1, "Cannot compare to invalid representation");
-        if (rep2 != "xml" && rep2 != "SimpleJson" && rep2 != "BadgerFish") throw CampaignException.INVALID_REPRESENTATION(rep2, "Cannot compare to invalid representation");
+        if (rep1 != "xml" && rep1 != "SimpleJson" && rep1 != "TypedJson" && rep1 != "BadgerFish") throw CampaignException.INVALID_REPRESENTATION(rep1, "Cannot compare to invalid representation");
+        if (rep2 != "xml" && rep2 != "SimpleJson" && rep2 != "TypedJson" && rep2 != "BadgerFish") throw CampaignException.INVALID_REPRESENTATION(rep2, "Cannot compare to invalid representation");
         if (rep1 == rep2) return true;
         return rep1 == rep2;
     }
@@ -1100,7 +1141,7 @@ class Client {
     // @param {SOAP.SoapMethodCall} soapCall is the SOAP call being performed
     // @param {Campaign.XtkMethodParam[]}  outputParameters is the list of output parameters. The first paramater in the array is the "this" parameter for non-static method calls
     // @param {string} representation is the representation to use to interpret the parameters
-    async _readSoapCallResult(entitySchemaId, schema, soapCall, outputParameters, representation) {
+    async _readSoapCallResult(entitySchemaId, schema, soapCall, outputParameters, representation, callContext) {
         const methodName = soapCall.methodName;
         var isThisParam = !soapCall.isStatic;
         for (const op of outputParameters) {
@@ -1114,7 +1155,7 @@ class Client {
                 // the method is called. This is the new version of the object (in XML form)
                 const entity = soapCall.getEntity();
                 if (entity)
-                    returnValue = this._toRepresentation(entity, representation);
+                    returnValue = await this._toRepresentation(entity, representation);
             }
             else if (type == "string")
                 returnValue = soapCall.getNextString();
@@ -1137,11 +1178,21 @@ class Client {
                 returnValue = soapCall.getNextDate();
             else if (type == "DOMDocument") {
                 returnValue = soapCall.getNextDocument();
-                returnValue = this._toRepresentation(returnValue, representation);
+                var schemaHint;
+                if (callContext) {
+                    const callRepresentation = callContext.representation || this._representation;
+                    if (entitySchemaId === "xtk:queryDef" && methodName === "ExecuteQuery" && paramName === "output") {
+                        if (callRepresentation === 'TypedJson') {
+                            const inferer = new QueryDefSchemaInferer(this, callContext.object, this._entityCasterOptions);
+                            schemaHint = await inferer.getSchema();
+                        }
+                    }
+                }
+                returnValue = await this._toRepresentation(returnValue, representation, schemaHint);
             }
             else if (type == "DOMElement") {
                 returnValue = soapCall.getNextElement();
-                returnValue = this._toRepresentation(returnValue, representation);
+                returnValue = await this._toRepresentation(returnValue, representation);
             }
             else {
                 const schemaName = entitySchemaId.substring(entitySchemaId.indexOf(':') + 1);
@@ -1156,7 +1207,7 @@ class Client {
                         if (element.getAttribute("name") == shortTypeName) {
                             // Type found in schema: Process as a DOM element
                             returnValue = soapCall.getNextElement();
-                            returnValue = this._toRepresentation(returnValue, representation);
+                            returnValue = await this._toRepresentation(returnValue, representation);
                             break;
                         }
                         element = DomUtil.getNextSiblingElement(element, "element");
@@ -1184,8 +1235,9 @@ class Client {
      * @param {Campaign.XtkMethodParam[]}  inputParams is the list of input parameters. The first paramater in the array is the "this" parameter for non-static method calls
      * @param {Campaign.XtkMethodParam[]}  outputParams is the list of output parameters. The first paramater in the array is the "this" parameter for non-static method calls
      * @param {string} representation is the representation to use to interpret the parameters 
+     * @param {} callContext
      */
-    async _makeInterceptableSoapCall(entitySchemaId, schema, soapCall, inputParams, outputParams, representation) {
+    async _makeInterceptableSoapCall(entitySchemaId, schema, soapCall, inputParams, outputParams, representation, callContext) {
         // Call observers and give them a chance to modify the parameters before the call is actually made
         if (!soapCall.internal) {
             await this._beforeSoapCall({
@@ -1197,7 +1249,7 @@ class Client {
         // Make SOAP call
         await this._writeSoapCallParameters(entitySchemaId, schema, soapCall, inputParams, representation);
         await this._makeSoapCall(soapCall);
-        await this._readSoapCallResult(entitySchemaId, schema, soapCall, outputParams, representation);
+        await this._readSoapCallResult(entitySchemaId, schema, soapCall, outputParams, representation, callContext);
         
         // Specific handling of query results
         // https://github.com/adobe/acc-js-sdk/issues/3 
@@ -1411,7 +1463,9 @@ class Client {
      */
     getSessionInfo(representation) {
         representation = representation || this._representation;
-        return this._toRepresentation(this._sessionInfo, representation);
+        // sync function getSessionInfo cannot use async representation TypedJson
+        if (representation == "TypedJson") representation = "SimpleJson";
+        return this._toRepresentationSync(this._sessionInfo, representation);
     }
 
     /**
@@ -1625,7 +1679,7 @@ class Client {
         const outputParams = [
             { name: "doc", type: "DOMDocument" },
         ];
-        await this._makeInterceptableSoapCall("xtk:session", undefined, soapCall, inputParams, outputParams, representation);
+        await this._makeInterceptableSoapCall("xtk:session", undefined, soapCall, inputParams, outputParams, representation, undefined);
         return outputParams[0].value;
     }
 
@@ -1655,7 +1709,18 @@ class Client {
         var entity = await this._entityCache.get("xtk:schema", schemaId);
         if (!entity) {
           entity = await this.getEntityIfMoreRecent("xtk:schema", schemaId, "xml", internal);
-          if (entity) {
+          await this._cacheEntity(schemaId, entity);
+        }
+        entity = await this._toRepresentation(entity, representation, "xtk:schema");
+        return entity;
+    }
+
+    async _getCasterSchema(schemaId) {
+        return this.application.getSchema(schemaId);
+    }
+
+    async _cacheEntity(schemaId, entity) {
+        if (entity) {
             const impls = DomUtil.getAttributeAsString(entity, "implements");
             if (impls === "xtk:persist" && schemaId !== "xtk:session" && schemaId !== "xtk:persist") {
                 // Ensure xtk:persist is present by loading the xtk:session schema
@@ -1663,10 +1728,7 @@ class Client {
             }
             await this._entityCache.put("xtk:schema", schemaId, entity);
             await this._methodCache.put(entity);
-          }
         }
-        entity = this._toRepresentation(entity, representation);
-        return entity;
     }
 
     /**
@@ -1677,7 +1739,6 @@ class Client {
      * @returns {XML.XtkObject} the enumeration definition in the current representation
      */
     async getSysEnum(enumName, optionalStartSchemaOrSchemaName) {
-
         // Called with one parameter: enumName must be the fully qualified enumeration name
         // as <namespace>:<schema>:<enum>, for instance "nms:extAccount:encryptionType"
         if (!optionalStartSchemaOrSchemaName) {
@@ -1696,18 +1757,21 @@ class Client {
             const index = optionalStartSchemaOrSchemaName.lastIndexOf(':');
             if (index == -1)
                 throw CampaignException.BAD_PARAMETER("optionalStartSchemaOrSchemaName", optionalStartSchemaOrSchemaName, `getEnum expects a valid schema name. '${optionalStartSchemaOrSchemaName}' is not a valid name.`);
-            optionalStartSchemaOrSchemaName = await this.getSchema(optionalStartSchemaOrSchemaName, undefined, true);
+            optionalStartSchemaOrSchemaName = await this.getSchema(optionalStartSchemaOrSchemaName, "xml", true);
             if (!optionalStartSchemaOrSchemaName)
                 throw CampaignException.BAD_PARAMETER("optionalStartSchemaOrSchemaName", optionalStartSchemaOrSchemaName, `Schema '${optionalStartSchemaOrSchemaName}' not found.`);
         }
         else
             throw CampaignException.BAD_PARAMETER("optionalStartSchemaOrSchemaName", optionalStartSchemaOrSchemaName, `getEnum expects a valid schema name wich is a string. Given ${typeof optionalStartSchemaOrSchemaName} instead`);
 
+        this._ensureValidRepresentation();
         const schema = optionalStartSchemaOrSchemaName;
         for (const e of EntityAccessor.getChildElements(schema, "enumeration")) {
             const n = EntityAccessor.getAttributeAsString(e, "name");
-            if (n == enumName)
-                return e;
+            if (n == enumName) {
+                const casted = await this._toRepresentation(e, undefined, "xtk:enum");
+                return casted;
+            }
         }
     }
 
@@ -1823,7 +1887,7 @@ class Client {
         }
 
         // Make the SOAP call
-        await this._makeInterceptableSoapCall(entitySchemaId, schema, soapCall, inputParams, outputParams, callContext.representation);
+        await this._makeInterceptableSoapCall(entitySchemaId, schema, soapCall, inputParams, outputParams, callContext.representation, callContext);
         
         // Simplify the result when there's 0 or 1 return value
         if (!isStatic) {
@@ -1837,7 +1901,6 @@ class Client {
             result.push(outputParams[i].value);
         }
         return result;
-
     }
 
     async _makeHttpCall(request) {
@@ -1890,7 +1953,7 @@ class Client {
             request.headers[h] = this._connectionParameters._options.extraHttpHeaders[h];
         const body = await this._makeHttpCall(request);
         const xml = DomUtil.parse(body);
-        const result = this._toRepresentation(xml);
+        const result = await this._toRepresentation(xml);
         return result;
     }
 
@@ -1921,14 +1984,14 @@ class Client {
             const timestamp = lines[1].trim();
             if (timestamp != "") root.setAttribute("timestamp", timestamp);
         }
-        const result = this._toRepresentation(doc);
+        const result = await this._toRepresentation(doc);
         return result;
     }
 
     /**
      * This is the exposed/public method to request context data for a specific report.
      * @param {*} callContext: {reportName: string, schema: string, context: string, selection: string, formData: any}
-     * @param {string} representation the expected representation ('xml', 'BadgerFish', or 'SimpleJson'). If not set, will use the current representation
+     * @param {string} representation the expected representation ('xml', 'BadgerFish', or 'SimpleJson', or 'TypedJson'). If not set, will use the current representation
      *
      * @returns {Campaign.ReportContext} an object containing the context data for a specific report
      */
@@ -1957,7 +2020,7 @@ class Client {
             if(!body.startsWith("<ctx"))
                 throw CampaignException.FEATURE_NOT_SUPPORTED("Reports Data");
             const xml = DomUtil.parse(body);
-            const result = this._toRepresentation(xml, representation);
+            const result = await this._toRepresentation(xml, representation);
             return result;
         } catch(ex) {
              throw CampaignException.REPORT_FETCH_FAILED(callContext.reportName, ex);
@@ -2018,7 +2081,7 @@ class Client {
         }
         if (rtCount !== undefined && rtCount.trim() != "") root.setAttribute("eventQueueSize", rtCount);
         if (threshold !== undefined && rtCount.trim() != "") root.setAttribute("eventQueueMaxSize", threshold);
-        const result = this._toRepresentation(doc);
+        const result = await this._toRepresentation(doc);
         return result;
     }
 

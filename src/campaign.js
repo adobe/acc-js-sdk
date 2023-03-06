@@ -41,8 +41,8 @@ const { Util } = require("./util.js");
   static FILE_UPLOAD_FAILED(name, details)                { return new CampaignException(undefined, 500, 16384, `SDK-000013 "Failed to upload file ${name}`, details); }
   static REPORT_FETCH_FAILED(name, details)               { return new CampaignException(undefined, 500, 16384, `SDK-000014 Failed to fetch report ${name}`, details); }
   static FEATURE_NOT_SUPPORTED(name)                      { return new CampaignException(undefined, 500, 16384, `SDK-000015 ${name} feature is not supported by the ACC instance`); }
+  static UNKNOWN_SHEMA(schemaId, details)                 { return new CampaignException(undefined, 400, 16384, `SDK-000016 Unknown schema '${schemaId}'`, details); }
   static REQUEST_ABORTED( )                               { return new CampaignException(undefined, 500,   -53, `SDK-000016 Request was aborted by the client`); }
-
 
   /**
    * Returns a short description of the exception

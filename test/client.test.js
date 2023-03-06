@@ -198,7 +198,13 @@ describe('ACC Client', function () {
             expect(sessionInfo.serverInfo['@buildNumber']).toBe("9219");
         });
 
-    })
+        it('Should fail for invalid representations', async () => {
+            const client = await Mock.makeClient({ rememberMe: true });
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+            expect(() => { client.getSessionInfo("invalid") }).toThrow('SDK-000004');
+        });
+    });
 
     describe('API calls', () => {
         it('Should getEntityIfMoreRecent', async () => {
@@ -711,7 +717,6 @@ describe('ACC Client', function () {
             await client.NLWS.xtkSession.logoff();
         });
     });
-
 
     describe("SOAP call with all parameters and return types", () => {
 
@@ -1254,18 +1259,16 @@ describe('ACC Client', function () {
             it("Should convert from BadgerFish to BadgerFish", async () => {
                 const client = await Mock.makeClient();
                 var from = { "@id": "1", "child": {} };
-                var to = client._convertToRepresentation(from, "BadgerFish", "BadgerFish");
+                var to = await client._convertToRepresentation(from, "BadgerFish", "BadgerFish");
                 expect(to).toStrictEqual(from);
             })
 
             it("Should convert from BadgerFish to SimpleJson", async () => {
                 const client = await Mock.makeClient();
                 var from = { "@id": "1", "child": {} };
-                var to = client._convertToRepresentation(from, "BadgerFish", "SimpleJson");
+                var to = await client._convertToRepresentation(from, "BadgerFish", "SimpleJson");
                 expect(to).toStrictEqual({ id: "1", child: {} });
             })
-
-
         });
 
         it("Compare representations", async () => {
@@ -1284,7 +1287,30 @@ describe('ACC Client', function () {
             expect(() => { client._isSameRepresentation("", "xml") }).toThrow("SDK-000004");
             expect(() => { client._isSameRepresentation("xml", "") }).toThrow("SDK-000004");
             expect(() => { client._isSameRepresentation("xml", null) }).toThrow("SDK-000004");
-        })
+        });
+
+        //it("toRepresentation should support non-xml argument", async () => {
+        //    const client = await Mock.makeClient();
+        //    await expect(client._toRepresentation(undefined, "SimpleJson")).resolves.toBeUndefined();
+        //    await expect(client._toRepresentation(null, "SimpleJson")).resolves.toBeNull();
+        //    await expect(client._toRepresentation(new BadgerFishObject(), "SimpleJson")).resolves.toMatchObject({});
+        //});
+
+        it("Safeguards for typedJson", async () => {
+            const client = await Mock.makeClient();
+            await expect(client._toRepresentation({}, "TypedJson")).resolves.toStrictEqual({});
+        });
+
+        it("_toRepresentationSync should inherit default representation", async () => {
+            const client = await Mock.makeClient();
+            expect(client._toRepresentationSync(DomUtil.parse('<root id="1"/>'))).toMatchObject({ id : "1" });
+            expect(client._toRepresentationSync(DomUtil.parse('<root id="1"/>'), "SimpleJson")).toMatchObject({ id : "1" });
+        });
+
+        it("_toRepresentationSync is not compatible with TypedJson", async () => {
+            const client = await Mock.makeClient();
+            expect(() => { client._toRepresentationSync(DomUtil.parse('<root id="1"/>'), "TypedJson") }).toThrow("SDK-000004");
+        });
     });
 
     describe("Call which returns a single DOM document", () => {
@@ -1338,7 +1364,6 @@ describe('ACC Client', function () {
         })
     })
 
-
     describe("Anonymous login", () => {
         // With anonymous login, one is always logged
 
@@ -1360,7 +1385,6 @@ describe('ACC Client', function () {
         expect(ua.startsWith("@adobe/acc-js-sdk/")).toBeTruthy();
         expect(ua.endsWith(" ACC Javascript SDK")).toBeTruthy();
     })
-
 
     describe("PushEvent API", () => {
         it("Should generate the corect document root", async () => {
@@ -1960,7 +1984,7 @@ describe('ACC Client', function () {
             expect(transport.mock.calls.length).toBe(2);
         })
 
-        it("Call SAOP method", async () => {
+        it("Call SOAP method", async () => {
             const connectionParameters = sdk.ConnectionParameters.ofBearerToken("http://acc-sdk:8080", "$token$");
             const client = await sdk.init(connectionParameters);
             client._transport = jest.fn();

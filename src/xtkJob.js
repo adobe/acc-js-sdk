@@ -194,8 +194,8 @@ class XtkJobInterface {
         if (maxLogCount === null || maxLogCount === undefined) maxLogCount = this._maxLogCount;
         var status = await this._client.NLWS.xtkJob.getStatus(this.jobId, lastLogId, maxLogCount);
         if (this._client._representation === "xml") {
-            status[1] = this._client._toRepresentation(status[1], "SimpleJson");
-            status[2] = this._client._toRepresentation(status[2], "SimpleJson");
+            status[1] = await this._client._toRepresentation(status[1], "SimpleJson");
+            status[2] = await this._client._toRepresentation(status[2], "SimpleJson");
         }
         status = this._makeJobStatus(status);
         this._updateStatus(status);
