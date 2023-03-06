@@ -29,7 +29,7 @@ const { Util } = require("./util.js");
  * The XtkObject type is a Campaign entity, represented either as a DOM element, or as a JavaScript
  * literal object, depending on the selected representation (xml, SimpleJson or BadgerFish)
  * 
- * @typedef {DOMElement|SimpleJson|BadgerFish} XtkObject
+ * @typedef {DOMElement|SimpleJson|TypedJson|BadgerFish} XtkObject
  * @memberOf XML
  */
 

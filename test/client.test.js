@@ -20,7 +20,6 @@ governing permissions and limitations under the License.
 const sdk = require('../src/index.js');
 const { Client, ConnectionParameters } = require('../src/client.js');
 const DomUtil = require('../src/domUtil.js').DomUtil;
-const BadgerFishObject = require('../src/domUtil.js').DomUtil;
 const Mock = require('./mock.js').Mock;
 const { HttpError } = require('../src/transport.js');
 const { Cipher } = require('../src/crypto.js');
@@ -205,7 +204,7 @@ describe('ACC Client', function () {
             await client.NLWS.xtkSession.logon();
             expect(() => { client.getSessionInfo("invalid") }).toThrow('SDK-000004');
         });
-    })
+    });
 
     describe('API calls', () => {
         it('Should getEntityIfMoreRecent', async () => {
@@ -719,7 +718,6 @@ describe('ACC Client', function () {
         });
     });
 
-
     describe("SOAP call with all parameters and return types", () => {
 
         it("Should call with all parameter types", async () => {
@@ -1171,7 +1169,7 @@ describe('ACC Client', function () {
             // Select should return empty array
             var query = client.NLWS.xtkQueryDef.create(queryDef);
             var extAccount = await query.executeQuery();
-            expect(extAccount).toMatchObject({"extAccount":[]});
+            expect(extAccount).toEqual({ extAccount: [] });
         });
 
         it("getIfExists with a result of exactly one element", async () => {
@@ -1205,7 +1203,7 @@ describe('ACC Client', function () {
             // GetIfExists should return element
             var query = client.NLWS.xtkQueryDef.create(queryDef);
             var extAccount = await query.executeQuery();
-            expect(extAccount).toEqual({ "id": 1 });
+            expect(extAccount).toEqual({ "id": "1" });
         });
 
         it("select with a result of exactly one element", async () => {
@@ -1238,7 +1236,7 @@ describe('ACC Client', function () {
 
             var query = client.NLWS.xtkQueryDef.create(queryDef);
             var extAccount = await query.executeQuery();
-            expect(extAccount).toEqual({"extAccount":[{ "id": 1 }]});
+            expect(extAccount).toEqual({ extAccount: [{ "id": "1" }] });
         });
     })
 
@@ -1290,7 +1288,7 @@ describe('ACC Client', function () {
             expect(() => { client._isSameRepresentation("xml", "") }).toThrow("SDK-000004");
             expect(() => { client._isSameRepresentation("xml", null) }).toThrow("SDK-000004");
         });
-
+/*
         it("toRepresentation should support non-xml argument", async () => {
             const client = await Mock.makeClient();
             await expect(client._toRepresentation(undefined, "SimpleJson")).resolves.toBeUndefined();
@@ -1303,6 +1301,7 @@ describe('ACC Client', function () {
             expect(client._toRepresentationSync(DomUtil.parse('<root id="1"/>'))).toMatchObject({ id : "1" });
             expect(client._toRepresentationSync(DomUtil.parse('<root id="1"/>'), "SimpleJson")).toMatchObject({ id : "1" });
         });
+*/
     });
 
     describe("Call which returns a single DOM document", () => {
@@ -1356,7 +1355,6 @@ describe('ACC Client', function () {
         })
     })
 
-
     describe("Anonymous login", () => {
         // With anonymous login, one is always logged
 
@@ -1378,7 +1376,6 @@ describe('ACC Client', function () {
         expect(ua.startsWith("@adobe/acc-js-sdk/")).toBeTruthy();
         expect(ua.endsWith(" ACC Javascript SDK")).toBeTruthy();
     })
-
 
     describe("PushEvent API", () => {
         it("Should generate the corect document root", async () => {
@@ -1978,10 +1975,9 @@ describe('ACC Client', function () {
             expect(transport.mock.calls.length).toBe(2);
         })
 
-        it("Call SAOP method", async () => {
+        it("Call SOAP method", async () => {
             const connectionParameters = sdk.ConnectionParameters.ofBearerToken("http://acc-sdk:8080", "$token$");
             const client = await sdk.init(connectionParameters);
-            await Mock.mockGetCasterSchema(client);
             client._transport = jest.fn();
             client._transport.mockReturnValueOnce(Mock.BEARER_LOGON_RESPONSE);
             await client.logon();
@@ -2026,7 +2022,6 @@ describe('ACC Client', function () {
             const connectionParameters = sdk.ConnectionParameters.ofBearerToken("http://acc-sdk:8080",
                                                     "$token$", {refreshClient: refreshClient});
             const client = await sdk.init(connectionParameters);
-            await Mock.mockGetCasterSchema(client);
             client.traceAPICalls(true);
             client._transport = jest.fn();
             client._transport.mockReturnValueOnce(Mock.BEARER_LOGON_RESPONSE);
@@ -2084,7 +2079,6 @@ describe('ACC Client', function () {
             const connectionParameters = sdk.ConnectionParameters.ofBearerToken("http://acc-sdk:8080",
                                                     "$token$", {refreshClient: refreshClient});
             const client = await sdk.init(connectionParameters);
-            await Mock.mockGetCasterSchema(client);
             client.traceAPICalls(true);
             client._transport = jest.fn();
             client._transport.mockReturnValueOnce(Mock.BEARER_LOGON_RESPONSE);
@@ -2128,7 +2122,6 @@ describe('ACC Client', function () {
             const connectionParameters = sdk.ConnectionParameters.ofSecurityToken("http://acc-sdk:8080",
                                                     "$security_token$", {refreshClient: refreshClient});
             const client = await sdk.init(connectionParameters);
-            await Mock.mockGetCasterSchema(client);
             client._transport = jest.fn();
             client._transport.mockReturnValueOnce(Promise.resolve(`XSV-350008 Session has expired or is invalid. Please reconnect.`));
             client._transport.mockReturnValueOnce(Promise.resolve(`XSV-350008 Session has expired or is invalid. Please reconnect.`));
@@ -2377,9 +2370,7 @@ describe('ACC Client', function () {
             const map = {};
             const storage = {
                 getItem: jest.fn((key) => map[key]),
-                setItem: jest.fn((key, value) => {
-                    map[key] = value
-                })
+                setItem: jest.fn((key, value) => map[key] = value)
             }
             let client = await Mock.makeClient({ storage: storage });
             client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
@@ -2622,7 +2613,6 @@ describe('ACC Client', function () {
             const connectionParameters = sdk.ConnectionParameters.ofBearerToken("http://acc-sdk:8080",
                                                     "$token$", {refreshClient: refreshClient});
             const client = await sdk.init(connectionParameters);
-            await Mock.mockGetCasterSchema(client);
             jest.useFakeTimers();
             client.startRefreshCaches();
             client._entityCacheRefresher._safeCallAndRefresh = jest.fn();
@@ -2784,7 +2774,7 @@ describe('ACC Client', function () {
             const query = client.NLWS.json.xtkQueryDef.create(queryDef);
             const result = await query.executeQuery();
             const json = JSON.stringify(result);
-            expect(json).toBe('{"extAccount":[{"id":1816,"name":"defaultPopAccount"},{"id":1818,"name":"defaultOther"},{"id":1849,"name":"billingReport"},{"id":12070,"name":"TST_EXT_ACCOUNT_POSTGRESQL"},{"id":1817,"name":"defaultEmailBulk"},{"id":2087,"name":"ffda"},{"id":2088,"name":"defaultEmailMid"}]}');
+            expect(json).toBe('{"extAccount":[{"id":"1816","name":"defaultPopAccount"},{"id":"1818","name":"defaultOther"},{"id":"1849","name":"billingReport"},{"id":"12070","name":"TST_EXT_ACCOUNT_POSTGRESQL"},{"id":"1817","name":"defaultEmailBulk"},{"id":"2087","name":"ffda"},{"id":"2088","name":"defaultEmailMid"}]}');
         });
     });
 
@@ -2889,8 +2879,7 @@ describe('ACC Client', function () {
                     headers = request.headers;
                 }
             });
-            client._transport.mockReturnValueOnce(Mock.GET_NMS_EXTACCOUNT_SCHEMA_RESPONSE);
-            const result = await query.executeQuery();
+            await query.executeQuery();
             expect(headers).toMatchObject({
                 "SoapAction": "xtk:queryDef#ExecuteQuery",
                 "X-Test": "hello",

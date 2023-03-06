@@ -81,7 +81,7 @@ async function makeClient(options) {
   const client = await sdk.init(connectionParameters);
   if (!options || !options.transport) // allow tests to explicitely set the transport
     client._transport = jest.fn();
-  if (!options || !options.noMockCasterSchema)
+  if (options.representation == "TypedJson")
     await mockGetCasterSchema(client);
   return client;
 }

@@ -216,6 +216,36 @@ describe('DomUtil', function() {
         });
     });
 
+    describe('toJSON (TypedJson)', function() {
+
+        function toJSON(xml) {
+            xml = DomUtil.parse(xml);
+            var json = DomUtil.toJSON(xml, "TypedJson");
+            return json;
+        }
+
+        it("Should convert XML to TypedJson", () => {
+            assert.deepStrictEqual(toJSON('<root/>'), {});
+            assert.deepStrictEqual(toJSON('<root a="1"/>'), { a:"1" });
+            assert.deepStrictEqual(toJSON('<root a="1" b="2"/>'), { a:"1", b:"2" });
+            assert.deepStrictEqual(toJSON('<root><a/></root>'), { a:{} });
+            assert.deepStrictEqual(toJSON('<root><a/><a/></root>'), { a:[{},{}] });
+            assert.deepStrictEqual(toJSON('<root>Hello</root>'), { $: "Hello" });
+            assert.deepStrictEqual(toJSON('<root x="3"><x>2</x></root>'), { $x: "2", "x": "3" });
+        });
+        
+        it("Should support attribute and element with same name (TypedJson)", () => {
+            expect(toJSON('<ctx lang="en" timezone="Europe/Paris"><timezone current="Europe/Paris" changed="false"/></ctx>')).toEqual({
+                lang: "en",
+                "@timezone": "Europe/Paris",
+                "timezone": {
+                    current: "Europe/Paris",
+                    changed: "false",
+                }
+            });
+        });
+    });
+
     describe('fromJSON (invalid flavor)', function() {
         it("Should fail", () => {
             expect(() => {
@@ -455,7 +485,7 @@ describe('DomUtil', function() {
             });
         });
 
-        it("Should support attribute and element with same name", () => {
+        it("Should support attribute and element with same name (SimpleJson)", () => {
             expect(toJSON('<ctx lang="en" timezone="Europe/Paris"><timezone current="Europe/Paris" changed="false"/></ctx>')).toEqual({
                 lang: "en",
                 "@timezone": "Europe/Paris",
@@ -465,7 +495,6 @@ describe('DomUtil', function() {
                 }
             });
         });
-
     });
 
     describe('toXMLString', function() {

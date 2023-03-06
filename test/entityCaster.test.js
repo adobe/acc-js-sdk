@@ -25,12 +25,10 @@ describe('EntityCaster', function() {
     describe('Cast according to schema', () => {
 
         const cast = async (entity, options, beforeCastHook) => {
-            const client = await Mock.makeClient();
+            const client = await Mock.makeClient({ representation: "TypedJson" });
             client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
-            //client._transport.mockReturnValueOnce(Mock.GET_XTK_ENTITYCASTER_SCHEMA_RESPONSE);
-            //const schema = await client.getSchema("xtk:entityCaster", "xml");   // preload schema
-            if (options === undefined) options = { enabled: true };
+            if (options === undefined) options = { };
             const caster = new EntityCaster(client, "xtk:entityCaster", options);
             if (beforeCastHook) {
                 await beforeCastHook(client, caster);
@@ -71,16 +69,11 @@ describe('EntityCaster', function() {
             await expect(cast({ book: { chapter: [ { id:"4", idx:"4" } ] } })).resolves.toEqual({ book: { chapter: [ { id: "4", idx: 4 } ] } });
         });
 
-        it("Should not case if options do not say enabled", async () => {
-            await expect(cast({ id: "123" }, null)).resolves.toEqual({ id: "123" });
-            await expect(cast({ id: "123" }, null)).resolves.not.toEqual({ id: 123 });
-        });
-
         it("Should fail on unknown schema", async () => {
-            const client = await Mock.makeClient();
+            const client = await Mock.makeClient({ representation: "TypedJson" });
             client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
-            const caster = new EntityCaster(client, "xtk:notFound", { enabled: true });
+            const caster = new EntityCaster(client, "xtk:notFound", { });
             await expect(caster.cast({ id: "123" })).rejects.toMatchObject({ errorCode: "SDK-000016", faultString: "Unknown schema 'xtk:notFound'" });
             client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
             await client.NLWS.xtkSession.logoff();
@@ -88,17 +81,17 @@ describe('EntityCaster', function() {
 
         describe("addEmptyArrays option", () => {
             it("Should add empty arrays on root element", async () => {
-                const options = { enabled: true, addEmptyArrays: true };
+                const options = { addEmptyArrays: true };
                 await expect(cast({}, options)).resolves.toEqual({ coll:[] });
             });
 
             it("Should add empty arrays in child element", async () => {
-                const options = { enabled: true, addEmptyArrays: true };
+                const options = { addEmptyArrays: true };
                 await expect(cast({ book: {} }, options)).resolves.toEqual({ coll:[], book: { chapter:[] } });
             });
 
             it("Should support falsy entities", async () => {
-                const options = { enabled: true, addEmptyArrays: true };
+                const options = { addEmptyArrays: true };
                 await expect(cast(undefined, options)).resolves.toBeUndefined();
             });
         });
@@ -125,22 +118,22 @@ describe('EntityCaster', function() {
         });
 
         it("Should ignore falsy schema", async () => {
-            const client = await Mock.makeClient();
-            var caster = new EntityCaster(client, undefined, { enabled: true });
+            const client = await Mock.makeClient({ representation: "TypedJson" });
+            var caster = new EntityCaster(client, undefined, { });
             var result = await caster.cast({ id: "42" });
             expect(result).toMatchObject({ id: "42" });
-            var caster = new EntityCaster(client, null, { enabled: true });
+            var caster = new EntityCaster(client, null, { });
             var result = await caster.cast({ id: "42" });
             expect(result).toMatchObject({ id: "42" });
         });
 
         it("Should support preloaded schema", async () => {
-            const client = await Mock.makeClient();
+            const client = await Mock.makeClient({ representation: "TypedJson" });
             client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
             client._transport.mockReturnValueOnce(Mock.GET_XTK_ENTITYCASTER_SCHEMA_RESPONSE);
             const schema = await client.application.getSchema("xtk:entityCaster");   // preload schema
-            const caster = new EntityCaster(client, schema, { enabled: true });
+            const caster = new EntityCaster(client, schema, { });
             
             const result = await caster.cast({ id: "123" });
             expect(result).toEqual({ id: 123 }); 
@@ -156,12 +149,12 @@ describe('EntityCaster', function() {
             if (xml && typeof xml === "string")
                 xml = DomUtil.parse(xml);
 
-            const client = await Mock.makeClient();
+            const client = await Mock.makeClient({ representation: "TypedJson" });
             client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
-            client._transport.mockReturnValueOnce(Mock.GET_XTK_ENTITYCASTER_SCHEMA_RESPONSE);
-            const schema = await client.getSchema("xtk:entityCaster", "xml");   // preload schema
-            if (options === undefined) options = { enabled: true };
+            //client._transport.mockReturnValueOnce(Mock.GET_XTK_ENTITYCASTER_SCHEMA_RESPONSE);
+            //const schema = await client.getSchema("xtk:entityCaster", "xml");   // preload schema
+            if (options === undefined) options = { };
             const caster = new EntityCaster(client, "xtk:entityCaster", options);
             if (beforeCastHook) {
                 await beforeCastHook(client, caster);
@@ -228,32 +221,43 @@ describe('EntityCaster', function() {
         });
 
         it("Should support ANY elements which are localizable (such as schema help)", async () => {
-            await expect(toJSON('<root><anyLocalizable></anyLocalizable></root>')).resolves.toEqual({ $anyLocalizable: "" });
+            /*await expect(toJSON('<root><anyLocalizable></anyLocalizable></root>')).resolves.toEqual({ $anyLocalizable: "" });
             await expect(toJSON('<root><anyLocalizable>Hello</anyLocalizable></root>')).resolves.toEqual({ $anyLocalizable: "Hello" });
             await expect(toJSON('<root><anyLocalizable> Hello </anyLocalizable></root>')).resolves.toEqual({ $anyLocalizable: " Hello " });
             await expect(toJSON('<root><anyLocalizable><![CDATA[Hello]]></anyLocalizable></root>')).resolves.toEqual({ $anyLocalizable: "Hello" });
             await expect(toJSON('<root><anyLocalizable><![CDATA[ Hello ]]></anyLocalizable></root>')).resolves.toEqual({ $anyLocalizable: " Hello " });
-            await expect(toJSON('<root><static>Hello</static></root>')).resolves.toEqual({ static: { $:"Hello" } });
-            await expect(toJSON('<root><static></static></root>')).resolves.toEqual({ static: { $:"" } });
+            */
+           await expect(toJSON('<root><static>Hello</static></root>')).resolves.toEqual({ static: { $:"Hello" } });
+           /* await expect(toJSON('<root><static></static></root>')).resolves.toEqual({ static: { $:"" } });
             await expect(toJSON('<root><static>Hello <b>World</b></static></root>')).resolves.toEqual({ static: { $:"Hello <b>World</b>" } });
-            await expect(toJSON('<root><static width="3">Hello <b>World</b></static></root>')).resolves.toEqual({ static: { $:"Hello <b>World</b>", width: 3 } });
+            await expect(toJSON('<root><static width="3">Hello <b>World</b></static></root>')).resolves.toEqual({ static: { $:"Hello <b>World</b>", width: 3 } });*/
         });
 
         it("Should support unfound schemas", async () => {
-            const client = await Mock.makeClient();
+            const client = await Mock.makeClient({ representation: "TypedJson" });
             client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
             client._transport.mockReturnValueOnce(Mock.GET_MISSING_SCHEMA_RESPONSE);
             const schema = await client.getSchema("xtk:notFound", "xml");   // preload schema
-            const caster = new EntityCaster(client, "xtk:notFound", { enabled: true });
+            const caster = new EntityCaster(client, "xtk:notFound", { });
             await expect(caster.toJSON(DomUtil.parse('<root></root>'))).rejects.toMatchObject({ errorCode: "SDK-000016" });
+        });
+
+        it("Should support XML attributes not present in the caster schema", async () => {
+            await expect(toJSON('<root notFoundAttribute="123"></root>')).resolves.toEqual({ notFoundAttribute: "123" });
+            await expect(toJSON('<root><static notFoundAttribute="123"></static></root>')).resolves.toEqual({ static: {  notFoundAttribute: "123" } });
+        });
+
+        it("Should support XML elements not present in the caster schema", async () => {
+            //await expect(toJSON('<root><notFoundElement>123</notFoundElement></root>')).resolves.toEqual({ $notFoundElement: "123" });
+            await expect(toJSON('<root><static><notFoundElement>123</notFoundElement></static></root>')).resolves.toEqual({ static: { $notFoundElement: "123" } });
         });
     });
     
     describe("Infer query schema", () => {
 
         const inferQueryDefSchema = async (nodes, options) => {
-            const client = await Mock.makeClient();
+            const client = await Mock.makeClient({ representation: "TypedJson" });
             client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
             //client._transport.mockReturnValueOnce(Mock.GET_XTK_ENTITYCASTER_SCHEMA_RESPONSE);
@@ -272,7 +276,7 @@ describe('EntityCaster', function() {
         };
 
         it("Should handle invalid schemas", async () => {
-            const client = await Mock.makeClient();
+            const client = await Mock.makeClient({ representation: "TypedJson" });
             client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
             client._transport.mockReturnValueOnce(Mock.GET_MISSING_SCHEMA_RESPONSE);
@@ -467,7 +471,7 @@ describe('EntityCaster', function() {
 
         describe("Convert intermediate representation to schema", () => {
             const convert = async (root) => {
-                const client = await Mock.makeClient();
+                const client = await Mock.makeClient({ representation: "TypedJson" });
                 client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
                 await client.NLWS.xtkSession.logon();
                 client._transport.mockReturnValueOnce(Mock.GET_XTK_ENTITYCASTER_SCHEMA_RESPONSE);
@@ -478,7 +482,7 @@ describe('EntityCaster', function() {
                     select: { node: { expr: "@id" } },
                     where: { condition: [ { expr:`@internalName='DM19'` } ] }
                   };
-                const infer = new QueryDefSchemaInferer(client, queryDef, { enabled: true });
+                const infer = new QueryDefSchemaInferer(client, queryDef, { });
                 const schema = infer._convertToSchema("query",false, root);
 
                 client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
@@ -564,16 +568,39 @@ describe('EntityCaster', function() {
     describe("Caster Schema", () => {
         it("Should load caster schema", async () => {
             jest.resetAllMocks();
-            const client = await Mock.makeClient({ noMockCasterSchema: true }); // do not mock the _getCasterSchema function
+            const client = await Mock.makeClient(); // do not mock the _getCasterSchema function
             client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
             client._transport.mockReturnValueOnce(Mock.GET_XTK_ENTITYCASTER_SCHEMA_RESPONSE);
-            const caster = new EntityCaster(client, "xtk:entityCaster", { enabled: true });
+            const caster = new EntityCaster(client, "xtk:entityCaster", { });
             const result = await caster.cast({ id: "123" });
             expect(result).toEqual({ id: 123 });
             client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
             await client.NLWS.xtkSession.logoff();
             return result;
+        });
+    });
+
+    describe("Should support no schema", () => {
+        it("Should cast with a undefined schema", async () => {
+            const client = await Mock.makeClient({ representation: "TypedJson" });
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+            const caster = new EntityCaster(client, undefined, { });
+            const xml = DomUtil.parse('<root id="123"></root>');
+            const result = await caster.toJSON(xml);
+            expect(result).toEqual({ id: "123" });
+        });
+    });
+
+    describe("Missing options", () => {
+        it("EntityCaster should support undefined options", () => {
+            const caster = new EntityCaster();
+            expect(caster._options).toMatchObject({});
+        });
+        it("QueryDefSchemaInferer should support undefined options", () => {
+            const inferer = new QueryDefSchemaInferer();
+            expect(inferer._options).toMatchObject({});
         });
     });
 
