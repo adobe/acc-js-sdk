@@ -655,7 +655,8 @@ class XtkSchemaNode {
                 if(this.unbound) {
                     // Default value for a collection of elements
                     const xml = DomUtil.parse(`<xml>${child.textContent}</xml>`);
-                    this.default = DomUtil.toJSON(xml)?.[this.name];
+                    const json = DomUtil.toJSON(xml);
+                    if (json) this.default = json[this.name];
                 } else {
                     this.default = child.textContent;
                 }
