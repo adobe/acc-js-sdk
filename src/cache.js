@@ -12,7 +12,7 @@ governing permissions and limitations under the License.
 (function() {
 "use strict";    
   
-const { Util } = require("./util");
+const { Util } = require("./util.js");
 
 
 /**********************************************************************************

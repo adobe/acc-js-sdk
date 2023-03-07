@@ -943,5 +943,5 @@ describe('DomUtil', function() {
             expect(new XPathElement("..").isParent()).toBe(true);
             expect(new XPathElement(".").isParent()).toBe(false);
         })
-    })
+    });
 });

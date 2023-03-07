@@ -114,7 +114,6 @@ class DomUtil {
         const doc = dom.window.document;
         doc.__jsdom__ = dom;
         return doc;
-        //return parseXML(xmlString);
     }
 
     /**
