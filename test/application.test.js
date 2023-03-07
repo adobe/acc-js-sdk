@@ -1939,6 +1939,86 @@ describe('Application', () => {
             });
         });
 
+        describe("default values", () => {
+            
+            it("Should extract default", async () => {
+                var xml = DomUtil.parse(`<schema namespace='xtk' name='workflow'>
+                    <element name='workflow' label='Workflow'>
+                        <attribute default="true" label="In simulation mode:  execute" name="runOnsimulation" type="boolean" xml="true"/>
+                    </element>
+                </schema>`);
+                var schema = newSchema(xml);
+
+                var node = await schema.root.findNode("@runOnsimulation");
+                expect(node).toMatchObject({ name:"@runOnsimulation", childrenCount:0, default: 'true' });
+            });
+
+            it("Should extract default values of a collection of elements", async () => {
+                var xml = DomUtil.parse(`<schema namespace='xtk' name='workflow'>
+                    <element name='workflow' label='Workflow'>
+                        <element name="fork" label="Fork">
+                            <element label="Transitions" name="transitions" xml="true">
+                                <element label="transition" name="transition" ref="transition" unbound="true" xml="true">
+                                    <default>
+                                       &lt;transition name="transition1" enabled="true"/&gt;
+                                       &lt;transition name="transition2" enabled="true"/&gt;
+                                    </default>
+                                </element>
+                            </element>
+                        </element>
+                    </element>
+                </schema>`);
+                var schema = newSchema(xml);
+
+                var node = await schema.root.findNode("fork/transitions/transition");
+                expect(node).toMatchObject({ name:"transition", childrenCount:0, default: [
+                    {
+                      "enabled": "true",
+                      "name": "transition1"
+                    },
+                    {
+                      "enabled": "true",
+                      "name": "transition2"
+                    }
+                  ] });
+            });
+
+            it("Should extract default values of a memo", async () => {
+                var xml = DomUtil.parse(`<schema namespace='xtk' name='workflow'>
+                    <element name='workflow' label='Workflow'>
+                        <element name="directorywatcher" label="File collector">
+                            <element name="period" type="memo" label="Schedule">
+                                <default>"m_abDay='7' m_abDay[0]='0' m_abDay[1]='0'"</default>
+                            </element>
+                        </element>
+                    </element>
+                </schema>`);
+                var schema = newSchema(xml);
+
+                var node = await schema.root.findNode("directorywatcher/period");
+                expect(node).toMatchObject({ name:"period", childrenCount:0, default: "\"m_abDay='7' m_abDay[0]='0' m_abDay[1]='0'\"" });
+            });
+
+            it("Should extract translatedDefault", async () => {
+                var xml = DomUtil.parse(`<schema namespace='xtk' name='workflow'>
+                    <element name='workflow' label='Workflow'>
+                        <element name="delivery" label="Delivery">
+                            <element label="Transitions" name="transitions" xml="true">
+                                <element label="transition" name="done" xml="true">
+                                    <attribute label="Label" name="label" type="string" translatedDefault="'Ok'" xml="true"/>
+                                </element>
+                            </element>
+                        </element>
+                    </element>
+                </schema>`);
+                var schema = newSchema(xml);
+
+                var node = await schema.root.findNode("delivery/transitions/done/@label");
+                expect(node).toMatchObject({ name:"@label", childrenCount:0, translatedDefault: "'Ok'" });
+            });
+
+        });
+
         describe("toString", () => {
             var xml = DomUtil.parse(`<schema namespace='nms' name='recipient' label="Recipients" labelSingular="Recipient">
                     <element name='recipient'>
