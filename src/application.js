@@ -19,7 +19,7 @@ governing permissions and limitations under the License.
  * https://docs.adobe.com/content/help/en/campaign-classic/technicalresources/api/c-Application.html
  * 
  *********************************************************************************/
-const { DomException, XPath } = require('./domUtil.js');
+const { DomException, DomUtil, XPath } = require('./domUtil.js');
 const XtkCaster = require('./xtkCaster.js').XtkCaster;
 const EntityAccessor = require('./entityAccessor.js').EntityAccessor;
 const { ArrayMap } = require('./util.js');
@@ -420,6 +420,18 @@ class XtkSchemaNode {
         this.childrenCount = 0;
 
         /**
+         * Get the default value of a node
+         * @type {string}
+         */
+        this.default = EntityAccessor.getAttributeAsString(xml, "default");
+
+        /**
+         * Get the default translation for the default value of a node
+         * @type {string}
+         */
+        this.translatedDefault = EntityAccessor.getAttributeAsString(xml, "translatedDefault");
+
+        /**
          * Indicates if the node is the root node, i.e. the first child node of the schema, whose name is the same as the schema name
          * @type {boolean}
          */
@@ -638,6 +650,15 @@ class XtkSchemaNode {
             if (child.tagName === "compute-string") {
                 this.expr = EntityAccessor.getAttributeAsString(child, "expr");
                 this.isCalculated = false;
+            }
+            if (child.tagName === "default") {
+                if(this.ref && this.unbound) {
+                    // Default value for a collection of elements
+                    const xml = DomUtil.parse(`<xml>${child.textContent}</xml>`);
+                    this.default = DomUtil.toJSON(xml)?.[this.name];
+                } else {
+                    this.default = child.textContent;
+                }
             }
         }
         for (const childNode of childNodes) {
