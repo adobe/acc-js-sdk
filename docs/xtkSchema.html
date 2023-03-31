@@ -36,4 +36,13 @@ var srcSchema = await NLWS.xtkPersist.getEntityIfMoreRecent("xtk:srcSchema|nms:r
 console.log(JSON.stringify(srcSchema));
 </pre>
 
-
+<p>Particular case of schema for the groups:</p>
+<p>There are two types of schema :
+<ul>
+    <li>classic schema like nms:extAccount, nms:delivery, nms:recipient ...</li>
+    <li>schema of type group : the schema of the type group is a schema used to for the data of a group of type List or File
+      the schema id is build has followed : prefix temp:group: + id of the group in mms:group (example temp:group:1234 )
+      the structure of the schema temp:group:* is stored in extension part of the schema nms:group
+      this schema temp:group:* can be generated in a workflow by using the activity List update</li>
+</ul>
+</p>

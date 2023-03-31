@@ -95,7 +95,8 @@ class SchemaCache {
         if (schema === undefined) {
             schema = await this._client.application._getSchema(schemaId);
             if (!schema) schema = null; // null = not found
-            this._schemas[schemaId] = schema;
+            if (!schemaId.startsWith("temp:group:"))
+                this._schemas[schemaId] = schema;
         }
         return schema;
     }

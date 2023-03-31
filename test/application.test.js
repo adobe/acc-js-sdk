@@ -1499,6 +1499,66 @@ describe('Application', () => {
                 const isoA3 = await recipient.root.findNode("country/@isoA3");
                 expect(isoA3).toBeFalsy();
             });
+
+            it("Should not cache temp:group: schemas", async () => {
+                const client = await Mock.makeClient();
+                client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+                await client.NLWS.xtkSession.logon();
+               
+                client._transport.mockReturnValueOnce(Mock.GET_XTK_QUERY_SCHEMA_RESPONSE);
+                client._transport.mockReturnValueOnce(Promise.resolve(`<?xml version='1.0'?>
+                      <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:xtk:queryDef' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
+                        <SOAP-ENV:Body>
+                            <ExecuteQueryResponse xmlns='urn:xtk:queryDef' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
+                                <pdomOutput xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
+                                <group expirationDate="" folder-id="1199" id="2200" label="testlist" name="LST260" schema="nms:recipient" type="1">
+                                  <extension label="email is not empty" mappingType="sql" name="query" namespace="temp">
+                                    <element advanced="false" dataSource="nms:extAccount:ffda" label="email is not empty" name="query" pkSequence="" sqltable="grp2200" unbound="false">
+                                      <compute-string expr=""/>
+                                      <key internal="true" name="internal">
+                                        <keyfield xpath="@id"/>
+                                      </key>
+                                      <attribute advanced="false" belongsTo="@id" label="Primary key" length="0" name="id" notNull="false" sql="true" sqlname="uId" type="uuid" xml="false"/>
+                                      <element advanced="false" externalJoin="true" label="Targeting dimension" name="target" revLink="" target="nms:recipient" type="link" unbound="false">
+                                        <join xpath-dst="@id" xpath-src="@id"/>
+                                      </element>
+                                    </element>
+                                  </extension>
+                                </group>
+                                </pdomOutput>
+                            </ExecuteQueryResponse>
+                        </SOAP-ENV:Body>
+                      </SOAP-ENV:Envelope>`));
+                const group = await client.application.getSchema('temp:group:2200');
+                expect(group.label).toBe("email is not empty");
+
+                // return updated schema with label changed
+                client._transport.mockReturnValueOnce(Promise.resolve(`<?xml version='1.0'?>
+                      <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:xtk:queryDef' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
+                        <SOAP-ENV:Body>
+                            <ExecuteQueryResponse xmlns='urn:xtk:queryDef' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
+                                <pdomOutput xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
+                                <group expirationDate="" folder-id="1199" id="2200" label="testlist" name="LST260" schema="nms:recipient" type="1">
+                                  <extension label="email is empty" mappingType="sql" name="query" namespace="temp">
+                                    <element advanced="false" dataSource="nms:extAccount:ffda" label="email is empty" name="query" pkSequence="" sqltable="grp2200" unbound="false">
+                                      <compute-string expr=""/>
+                                      <key internal="true" name="internal">
+                                        <keyfield xpath="@id"/>
+                                      </key>
+                                      <attribute advanced="false" belongsTo="@id" label="Primary key" length="0" name="id" notNull="false" sql="true" sqlname="uId" type="uuid" xml="false"/>
+                                      <element advanced="false" externalJoin="true" label="Targeting dimension" name="target" revLink="" target="nms:recipient" type="link" unbound="false">
+                                        <join xpath-dst="@id" xpath-src="@id"/>
+                                      </element>
+                                    </element>
+                                  </extension>
+                                </group>
+                                </pdomOutput>
+                            </ExecuteQueryResponse>
+                        </SOAP-ENV:Body>
+                      </SOAP-ENV:Envelope>`));
+                const group2 = await client.application.getSchema('temp:group:2200');
+                expect(group2.label).toBe("email is empty");
+            });
         });
 
         describe("Ref nodes", () => {

@@ -1740,16 +1740,55 @@ class Client {
     async getSchema(schemaId, representation, internal) {
         var entity = await this._entityCache.get("xtk:schema", schemaId);
         if (!entity) {
-          entity = await this.getEntityIfMoreRecent("xtk:schema", schemaId, "xml", internal);
-          if (entity) {
-            const impls = DomUtil.getAttributeAsString(entity, "implements");
-            if (impls === "xtk:persist" && schemaId !== "xtk:session" && schemaId !== "xtk:persist") {
-                // Ensure xtk:persist is present by loading the xtk:session schema
-                await this.getSchema("xtk:session", "xml", true);
+              // special case of "temp:group:*" schemas for nms:group
+              // Schema "temp:group:*" is not cached because life cycle of this kind of schema is not the same as the others schemas
+              if (schemaId.startsWith("temp:group:")) {
+                  const parts = schemaId.split(":");
+                  let queryDef = {
+                    "schema": "nms:group",
+                    "operation": "get",
+                    "select": {
+                      "node": [
+                        { "expr": "@id" },
+                        { "expr": "extension" }
+                      ]
+                    },
+                    "where": {
+                      "condition": [
+                        { "expr": "@id=" + XtkCaster.asLong(parts[2]) }
+                      ]
+                    }
+                  };
+                  // Convert to current representation
+                  queryDef = this._convertToRepresentation(queryDef, "SimpleJson", "xml");
+                  const query = this.NLWS.xml.xtkQueryDef.create(queryDef);
+                  try {
+                      const groupSchema = await query.executeQuery();
+                      const extension = DomUtil.findElement(groupSchema, "extension");
+                      if (extension) {
+                          entity = extension;
+                      } else {
+                          entity = null;
+                      }
+                  } catch (ex) {
+                      if (ex.name == 'CampaignException' && ex.errorCode == 'SOP-330011') {
+                          entity = null;
+                      } else {
+                          throw ex;
+                      }
+                  }
+              } else {
+                  entity = await this.getEntityIfMoreRecent("xtk:schema", schemaId, "xml", internal);
+                  if (entity) {
+                      const impls = DomUtil.getAttributeAsString(entity, "implements");
+                      if (impls === "xtk:persist" && schemaId !== "xtk:session" && schemaId !== "xtk:persist") {
+                        // Ensure xtk:persist is present by loading the xtk:session schema
+                        await this.getSchema("xtk:session", "xml", true);
+                      }
+                      await this._entityCache.put("xtk:schema", schemaId, entity);
+                      await this._methodCache.put(entity);
+                  }
             }
-            await this._entityCache.put("xtk:schema", schemaId, entity);
-            await this._methodCache.put(entity);
-          }
         }
         entity = this._toRepresentation(entity, representation);
         return entity;
