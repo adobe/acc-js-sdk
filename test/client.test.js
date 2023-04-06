@@ -3549,7 +3549,7 @@ describe('ACC Client', function () {
             const result = await client.fileUploader.upload({
                 type: 'text/html',
                 size: 12345
-            }, "publishIfNeeded");
+            }, { action: "publishIfNeeded" });
 
             expect(result).toMatchObject({
                 md5: "d8e8fca2dc0f896fd7cb4cb0031ba249",
@@ -3581,7 +3581,7 @@ describe('ACC Client', function () {
             const result = await client.fileUploader.upload({
                 type: 'text/html',
                 size: 12345
-            }, "none");
+            }, { action: "none" });
 
             expect(result).toMatchObject({
                 md5: "d8e8fca2dc0f896fd7cb4cb0031ba249",
@@ -3613,7 +3613,7 @@ describe('ACC Client', function () {
             await expect(client.fileUploader.upload({
                 type: 'text/html',
                 size: 12345
-            }, "invalid")).rejects.toMatchObject({
+            }, { action: "invalid" })).rejects.toMatchObject({
                 errorCode: "SDK-000006", 
                 "faultCode": 16384, 
                 "faultString": "Bad parameter 'action' with value 'invalid'", 

@@ -521,6 +521,13 @@ class ConnectionParameters {
 // ========================================================================================
 
 /**
+ * @typedef {Object} FileUploadOptions
+ * @property {"publishIfNeeded"|"none"|undefined} the post-processing action to execute. Defaults to "publishIfNeeded"
+ * @memberOf Campaign
+ */
+
+
+/**
  * File Uploader API for JS SDK(Currently available only in browsers)
  * @private
  * @ignore
@@ -535,13 +542,13 @@ const fileUploader = (client) => {
          * This is the exposed/public method for fileUploader instance which will do all the processing related to the upload process internally and returns the promise containing all the required data.
          * @ignore
          * @param file, where file is an instance of [File](https://developer.mozilla.org/en-US/docs/Web/API/File)
-         * @parma {"publishIfNeeded"|"none"|undefined} the post-processing action to execute. Defaults to "publishIfNeeded"
+         * @param {FileUploadOptions|undefined} options
          * @returns {Promise<{name: string, md5: string, type: string, size: string, url: string}>}
          */
-        upload: (file, action) => {
+        upload: (file, options) => {
             console.log(`fileuploader.upload is an experimental feature and is not currently fully functional. It is work in progress and will change in the future.`);
-            if (!action) action = "publishIfNeeded";
             return new Promise((resolve, reject) => {
+                const action = (options && options.action) ? options.action : "publishIfNeeded";
                 if (action !== "publishIfNeeded" && action !== "none")
                     reject(CampaignException.BAD_PARAMETER("action", action, "The 'action' parameter of the upload API should be 'publishIfNeeded' or 'none'"));
                 try {
