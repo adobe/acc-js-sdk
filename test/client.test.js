@@ -3511,8 +3511,115 @@ describe('ACC Client', function () {
             }).catch((ex) => {
                 expect(ex.message).toMatch('500 - Error 16384: SDK-000013 "Failed to upload file abcd.txt. Malformed data:');
             })
+        });
 
-        })
+        it("Should support 'publishIfNeeded' action", async () => {
+            // Create a mock client and logon
+            const client = await Mock.makeClient();
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+
+            // Mock the upload protocol
+            // - the upload.jsp (which returns the content of an iframe and JS to eval)
+            // - call to xtk:counter#IncreaseValue (first, retrieve the schema xtk:counter then call the function)
+            // - call to xtk:session#Write
+            // - call to xtk:fileRes#PublishIfNeeded
+            // - call to xtk:fileRes#GetURL
+
+            client._transport.mockReturnValueOnce(Promise.resolve(`Ok 
+        <html xmlns="http://www.w3.org/1999/xhtml">
+            <head>
+              <script type="text/javascript">if(window.parent&&window.parent.document.controller&&"function"==typeof window.parent.document.controller.uploadFileCallBack){var aFilesInfo=new Array;aFilesInfo.push({paramName:"file",fileName:"test.txt",newFileName:"d8e8fca2dc0f896fd7cb4cb0031ba249.txt",md5:"d8e8fca2dc0f896fd7cb4cb0031ba249"}),window.parent.document.controller.uploadFileCallBack(aFilesInfo)}</script>
+            </head>
+        <body></body>
+        </html>`)); // upload.jsp
+
+            client._transport.mockReturnValueOnce(Promise.resolve(Mock.GET_XTK_COUNTER_RESPONSE)); // GetEntityIfMoreRecentResponse - counter
+            client._transport.mockReturnValueOnce(Mock.INCREASE_VALUE_RESPONSE); // xtk:counter#IncreaseValue
+
+            client._transport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE); // GetEntityIfMoreRecentResponse - session
+            client._transport.mockReturnValueOnce(Mock.FILE_RES_WRITE_RESPONSE); // xtk:session#Write
+
+            client._transport.mockReturnValueOnce(Promise.resolve(Mock.GET_FILERES_QUERY_SCHEMA_RESPONSE)); // GetEntityIfMoreRecentResponse - fileRes
+            client._transport.mockReturnValueOnce(Promise.resolve(Mock.PUBLISH_IF_NEEDED_RESPONSE)); // xtk:fileRes#PublishIfNeeded
+
+            client._transport.mockReturnValueOnce(Promise.resolve(Mock.GET_URL_RESPONSE)); // xtk:fileRes#GetURL
+
+            // Call upload
+            const result = await client.fileUploader.upload({
+                type: 'text/html',
+                size: 12345
+            }, { action: "publishIfNeeded" });
+
+            expect(result).toMatchObject({
+                md5: "d8e8fca2dc0f896fd7cb4cb0031ba249",
+                name: "test.txt",
+                size: 12345,
+                type: "text/html",
+                url: "http://hello.com"
+            });
+        });
+
+        it("Should support 'none' action", async () => {
+            // Create a mock client and logon
+            const client = await Mock.makeClient();
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+
+            // Mock the upload protocol
+            // With the "none" action, we skip the counter & publication
+            // - the upload.jsp (which returns the content of an iframe and JS to eval)
+            client._transport.mockReturnValueOnce(Promise.resolve(`Ok 
+        <html xmlns="http://www.w3.org/1999/xhtml">
+            <head>
+              <script type="text/javascript">if(window.parent&&window.parent.document.controller&&"function"==typeof window.parent.document.controller.uploadFileCallBack){var aFilesInfo=new Array;aFilesInfo.push({paramName:"file",fileName:"test.txt",newFileName:"d8e8fca2dc0f896fd7cb4cb0031ba249.txt",md5:"d8e8fca2dc0f896fd7cb4cb0031ba249"}),window.parent.document.controller.uploadFileCallBack(aFilesInfo)}</script>
+            </head>
+        <body></body>
+        </html>`)); // upload.jsp
+
+            // Call upload
+            const result = await client.fileUploader.upload({
+                type: 'text/html',
+                size: 12345
+            }, { action: "none" });
+
+            expect(result).toMatchObject({
+                md5: "d8e8fca2dc0f896fd7cb4cb0031ba249",
+                name: "test.txt",
+                size: 12345,
+                type: "text/html",
+            });
+            expect(result.url).toBeUndefined();
+        });
+
+        it("Should failed with invalid action", async () => {
+            // Create a mock client and logon
+            const client = await Mock.makeClient();
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+
+            // Mock the upload protocol
+            // With the "none" action, we skip the counter & publication
+            // - the upload.jsp (which returns the content of an iframe and JS to eval)
+            client._transport.mockReturnValueOnce(Promise.resolve(`Ok 
+        <html xmlns="http://www.w3.org/1999/xhtml">
+            <head>
+              <script type="text/javascript">if(window.parent&&window.parent.document.controller&&"function"==typeof window.parent.document.controller.uploadFileCallBack){var aFilesInfo=new Array;aFilesInfo.push({paramName:"file",fileName:"test.txt",newFileName:"d8e8fca2dc0f896fd7cb4cb0031ba249.txt",md5:"d8e8fca2dc0f896fd7cb4cb0031ba249"}),window.parent.document.controller.uploadFileCallBack(aFilesInfo)}</script>
+            </head>
+        <body></body>
+        </html>`)); // upload.jsp
+
+            // Call upload
+            await expect(client.fileUploader.upload({
+                type: 'text/html',
+                size: 12345
+            }, { action: "invalid" })).rejects.toMatchObject({
+                errorCode: "SDK-000006", 
+                "faultCode": 16384, 
+                "faultString": "Bad parameter 'action' with value 'invalid'", 
+                "statusCode": 400
+            });
+        });
     });
 
     describe("Setting the xtkschema attribute", () => {
