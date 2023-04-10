@@ -75,7 +75,22 @@ const connectionParameters = sdk.ConnectionParameters.ofUserAndPassword(
 
 
 <h2>Login with IMS access token</h2>
-<p>The SDK supports IMS access token of an IMS user with the <b>ofBearerToken</b> function. Pass it a bearer token.</p>
+
+<p>In Campaign 8.5 and above, native support for IMS bearer tokens is avaiable and can be used in the SDK as the preferred connection method.</p>
+<pre class="code">
+    const connectionParameters = sdk.ConnectionParameters.ofImsBearerToken(
+                                    "https://myInstance.campaign.adobe.com", 
+                                    "ims_bearer_token");
+</pre>
+
+<p>With this authentication method, an IMS Bearer token is obtained outside of Campaing, for example using Adobe.io and is passed directly to 
+    all Campaign APIs. Campaigns itslef will verify the token and grant the corresponding access.
+</p>
+
+    
+<p>For older versions of Campaign, you can still use IMS tokens with the <b>ofBearerToken</b> function. The difference between ofImsBearerToken and ofBearerToken
+    is that ofBearerToken will internally call "xtk:session#BearerTokenLogon" to exchange the IMS token for Campaign session and security tokens. Subsequent
+    API calls will use Campaign tokens. It's recommended to us <b>ofImsBearerToken</b> logon whenever possible.</p>
 <pre class="code">
 const connectionParameters = sdk.ConnectionParameters.ofBearerToken(
                                 "https://myInstance.campaign.adobe.com", 
