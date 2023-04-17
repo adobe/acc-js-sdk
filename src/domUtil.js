@@ -341,19 +341,17 @@ class DomUtil {
                     xmlElement.textContent = value;
                     xmlRoot.appendChild(xmlElement);
                 }
-                else if (t == "object") {
-                    if (value.length !== undefined && value.length !== null) {
-                        for (var i=0; i<value.length; i++) {
-                            const xmlElement = doc.createElement(att);
-                            this._fromJSON(doc, xmlElement, value[i], flavor);
-                            xmlRoot.appendChild(xmlElement);
-                        }
-                    }
-                    else {
+                else if (Util.isArray(value)) {
+                    for (var i=0; i<value.length; i++) {
                         const xmlElement = doc.createElement(att);
-                        this._fromJSON(doc, xmlElement, value, flavor);
+                        this._fromJSON(doc, xmlElement, value[i], flavor);
                         xmlRoot.appendChild(xmlElement);
                     }
+                }
+                else if (t == "object") {
+                    const xmlElement = doc.createElement(att);
+                    this._fromJSON(doc, xmlElement, value, flavor);
+                    xmlRoot.appendChild(xmlElement);
                 }
                 else
                     throw new DomException(`Cannot cast JSON to XML: element '${att}' type '${t}' is unknown or not supported yet`);

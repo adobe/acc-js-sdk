@@ -157,6 +157,20 @@ describe('DomUtil', function() {
             assert.strictEqual(fromJSON({ "a": null }), '<root/>');
             assert.strictEqual(fromJSON({ "a": undefined }), '<root/>');
         });
+
+        it("Should support attributes named 'length'", () => {
+            const json = {
+                element: {
+                  attribute: {
+                    length: "256",
+                    name: "id",
+                  },
+              }
+            };
+            const doc = DomUtil.fromJSON("extension", json);
+            const xml = DomUtil.toXMLString(doc);
+            expect(xml).toEqual('<extension><element><attribute length="256" name="id"/></element></extension>');
+        });
     });
 
     describe('fromJSON (default)', function() {
