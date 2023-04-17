@@ -3,14 +3,28 @@ layout: page
 title: Change Log
 ---
 
-<section class="changelog"><h1>Version 1.1.25</h1>
-  <h2>2023/04/11</h2>
+<section class="changelog"><h1>Version 1.1.26</h1>
+  <h2>2023/04/17</h2>
 
   <li>
     Added support for IMS Bearer tokens without require any session and security tokens. See <a href="https://opensource.adobe.com/acc-js-sdk/connecting.html"> for more details.</a>
   </li>
+  <li>
+    Fixed a bug causing incorrect JSON to XML transformation when the JSON object has a property named 'length'
+  </li>
 </section>
 
+<section class="changelog"><h1>Version 1.1.25</h1>
+  <h2>2023/03/07</h2>
+
+  <li>
+    Added an (optional) parameter "options" to the file upload function. This parameter contains an "action" property whose value
+    can be "publishIfNeeded" or "none" and indicates which action the upload function should perform after it uploaded the file.
+    The default is "publishIfNeeded" which consists of creating a public resources with the file content and publishing it (making
+    it available publicly). The other action "none" means that no action is taken and that it is the responsibility of the caller
+    to post-process the uploaded file by calling the relevant APIs.
+  </li>
+</section>
 
 <section class="changelog"><h1>Version 1.1.24</h1>
   <h2>2023/04/07</h2>

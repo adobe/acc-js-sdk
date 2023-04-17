@@ -543,6 +543,13 @@ class ConnectionParameters {
 // ========================================================================================
 
 /**
+ * @typedef {Object} FileUploadOptions
+ * @property {"publishIfNeeded"|"none"|undefined} the post-processing action to execute. Defaults to "publishIfNeeded"
+ * @memberOf Campaign
+ */
+
+
+/**
  * File Uploader API for JS SDK(Currently available only in browsers)
  * @private
  * @ignore
@@ -557,11 +564,15 @@ const fileUploader = (client) => {
          * This is the exposed/public method for fileUploader instance which will do all the processing related to the upload process internally and returns the promise containing all the required data.
          * @ignore
          * @param file, where file is an instance of [File](https://developer.mozilla.org/en-US/docs/Web/API/File)
+         * @param {FileUploadOptions|undefined} options
          * @returns {Promise<{name: string, md5: string, type: string, size: string, url: string}>}
          */
-        upload: (file) => {
+        upload: (file, options) => {
             console.log(`fileuploader.upload is an experimental feature and is not currently fully functional. It is work in progress and will change in the future.`);
             return new Promise((resolve, reject) => {
+                const action = (options && options.action) ? options.action : "publishIfNeeded";
+                if (action !== "publishIfNeeded" && action !== "none")
+                    reject(CampaignException.BAD_PARAMETER("action", action, "The 'action' parameter of the upload API should be 'publishIfNeeded' or 'none'"));
                 try {
                     if (!Util.isBrowser()) {
                         throw 'File uploading is only supported in browser based calls.';
@@ -589,28 +600,31 @@ const fileUploader = (client) => {
                                     // https://git.corp.adobe.com/Campaign/ac/blob/v6-master/wpp/xtk/web/dce/uploader.js
                                     return reject(CampaignException.FILE_UPLOAD_FAILED(file.name, 'Malformed data:' + data.toString()));
                                 }
-                                const counter = await client.NLWS.xtkCounter.increaseValue({name: 'xtkResource'});
-                                const fileRes= {
-                                    internalName: 'RES' + counter,
-                                    md5: data[0].md5,
-                                    label: data[0].fileName,
-                                    fileName: data[0].fileName,
-                                    originalName: data[0].fileName,
-                                    useMd5AsFilename: '1',
-                                    storageType: 5,
-                                    xtkschema: 'xtk:fileRes'
-
-                                };
-                                await client.NLWS.xtkSession.write(fileRes);
-                                await client.NLWS.xtkFileRes.create(fileRes).publishIfNeeded();
-                                const url = await client.NLWS.xtkFileRes.create(fileRes).getURL();
-                                resolve({
+                                const result = {
                                     name: data[0].fileName,
                                     md5: data[0].md5,
                                     type: file.type,
                                     size: file.size,
-                                    url: url
-                                });
+                                };
+                                if (action === "publishIfNeeded") {
+                                    const counter = await client.NLWS.xtkCounter.increaseValue({name: 'xtkResource'});
+                                    const fileRes= {
+                                        internalName: 'RES' + counter,
+                                        md5: data[0].md5,
+                                        label: data[0].fileName,
+                                        fileName: data[0].fileName,
+                                        originalName: data[0].fileName,
+                                        useMd5AsFilename: '1',
+                                        storageType: 5,
+                                        xtkschema: 'xtk:fileRes'
+
+                                    };
+                                    await client.NLWS.xtkSession.write(fileRes);
+                                    await client.NLWS.xtkFileRes.create(fileRes).publishIfNeeded();
+                                    const url = await client.NLWS.xtkFileRes.create(fileRes).getURL();
+                                    result.url = url;
+                                }
+                                resolve(result);
                             }
                         };
                         const html = `<body>${okay}</body>`;

@@ -51,18 +51,7 @@ class Util {
    * @returns {boolean} true if the object is an array
    */
   static isArray(obj) {
-    if (obj === null || obj === undefined) return false;
-    // JavaScript arrays are objects
-    if (typeof obj != "object") return false;
-    // They also have a length property. But checking the length is not enough
-    // since, it can also be an object literal with a "length" property. Campaign
-    // schema attributes typically have a "length" attribute and are not arrays
-    if (obj.length === undefined || obj.length === null) return false;
-    // So check for a "push" function
-    if (obj.push === undefined || obj.push === null) return false;
-    if (typeof obj.push != "function") 
-        return false;
-    return true;
+    return Array.isArray(obj);
   }
 
   // Helper function for trim() to replace text between 2 indices
