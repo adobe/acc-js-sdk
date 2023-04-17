@@ -11,7 +11,7 @@ governing permissions and limitations under the License.
 */
 (function() {
 "use strict";    
-    
+/*jshint sub:true*/
 
 /**********************************************************************************
  * 
@@ -80,11 +80,12 @@ const NS_XSD = "http://www.w3.org/2001/XMLSchema";
  * @param {string} userAgentString The user agent string to use for HTTP requests
  * @param {string} pushDownOptions Options to push down to the request (comes from connectionParameters._options)
  * @param {{ name:string, value:string}} extraHttpHeaders key/value pair of HTTP header (will override any other headers)
+ * @param {string} bearerToken The bearer token to use for HTTP requests. Only required for ImsBearerToken authentication
  * @memberof SOAP
  */
 class SoapMethodCall {
     
-    constructor(transport, urn, methodName, sessionToken, securityToken, userAgentString, pushDownOptions, extraHttpHeaders) {
+    constructor(transport, urn, methodName, sessionToken, securityToken, userAgentString, pushDownOptions, extraHttpHeaders, bearerToken) {
         this.request = undefined;       // The HTTP request (object literal passed to the transport layer)
         this.requestOptions = undefined;
         this.response = undefined;      // The HTTP response object (in case of success)
@@ -103,6 +104,7 @@ class SoapMethodCall {
 
         this._sessionToken = sessionToken || "";
         this._securityToken = securityToken || "";
+        this._bearerToken = bearerToken; // may be undefined if not using bearer token authentication
         this._userAgentString = userAgentString;
         this._pushDownOptions = pushDownOptions || {};
         this._charset = this._pushDownOptions.charset || '';
@@ -538,9 +540,14 @@ class SoapMethodCall {
         const headers = {
             'Content-type': `application/soap+xml${this._charset ? ";charset=" + this._charset : ""}`,
             'SoapAction': `${this.urn}#${this.methodName}`,
-            'X-Security-Token': this._securityToken,
-            'X-Session-Token': this._sessionToken,
         };
+        if (this._bearerToken) {
+            headers['Authorization'] = `Bearer ${this._bearerToken}`;
+        }
+        else {
+            headers['X-Security-Token'] = this._securityToken;
+            headers['X-Session-Token'] = this._sessionToken;
+        }
 
         // Add HTTP headers specific to the SOAP call for better tracing/troubleshooting
         if (this._extraHttpHeaders && this._extraHttpHeaders['ACC-SDK-Version']) {
@@ -579,6 +586,7 @@ class SoapMethodCall {
         if (client) {
             this._sessionToken = client._sessionToken;
             this._securityToken = client._securityToken;
+            this._bearerToken = client._bearerToken;
         }
 
         var cookieHeader = DomUtil.findElement(this._header, "Cookie");

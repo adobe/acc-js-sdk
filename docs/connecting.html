@@ -51,19 +51,58 @@ await client.logoff();
     <li>Informations about the connected user, and it's privileges</li>
 </ul>
 
-<p>T
-    he most convenient way to access this information is by using the <a href="{{ site.baseurl }}/application.html">Application object</a>, but you can
+<p>The most convenient way to access this information is by using the <a href="{{ site.baseurl }}/application.html">Application object</a>, but you can
     also use the <b>client.getSessionInfo().serverInfo</b> and <b>client.getSessionInfo().sessionInfo</b> calls.
 </p>
 
+<p class="info">Note: depending on the type of credentials used, user and server info may not be returned.
+</p>
 
+<table>
+    <thead>
+        <tr>
+            <th>Credentials Type</th>
+            <th>Returns info</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>UserPassword</td>
+            <td>Yes</td>
+        </tr>
+        <tr>
+            <td>ImsServiceToken</td>
+            <td>Yes</td>
+        </tr>
+        <tr>
+            <td>SessionToken</td>
+            <td>No</td>
+        </tr>
+        <tr>
+            <td>AnonymousUser</td>
+            <td>No</td>
+        </tr>
+        <tr>
+            <td>SecurityToken</td>
+            <td>Yes</td>
+        </tr>
+        <tr>
+            <td>BearerToken</td>
+            <td>Yes</td>
+        </tr>
+        <tr>
+            <td>ImsBearerToken</td>
+            <td>No</td>
+        </tr>
+    </tbody>
+</table>
 
 <h1>Credentials</h1>
 
 <p>
     There are several methods of the <b>sdk.ConnectionParameters</b> depending on the type of authentication you want to use. They are
     described below.
-</p>>
+</p>
 
 <h2>Login with user and password</h2>
 <p>This is the most common method to log in to Campaign. User the <b>ofUserAndPassword</b> function and pass it the user name and password</p>
@@ -75,7 +114,26 @@ const connectionParameters = sdk.ConnectionParameters.ofUserAndPassword(
 
 
 <h2>Login with IMS access token</h2>
-<p>The SDK supports IMS access token of an IMS user with the <b>ofBearerToken</b> function. Pass it a bearer token.</p>
+
+<p>In Campaign 8.5 and above, native support for IMS bearer tokens is avaiable and can be used in the SDK as the preferred connection method.</p>
+<pre class="code">
+    const connectionParameters = sdk.ConnectionParameters.ofImsBearerToken(
+                                    "https://myInstance.campaign.adobe.com", 
+                                    "ims_bearer_token");
+</pre>
+
+
+<p class="info">Note: You still need to call Logon
+</p>
+
+<p>With this authentication method, an IMS Bearer token is obtained outside of Campaign, for example using IMS APIs and is passed directly to 
+    all Campaign APIs. Campaigns itslef will verify the token and grant the corresponding access.
+</p>
+
+    
+<p>For older versions of Campaign, you can still use IMS tokens with the <b>ofBearerToken</b> function. The difference between ofImsBearerToken and ofBearerToken
+    is that ofBearerToken will internally call "xtk:session#BearerTokenLogon" to exchange the IMS token for Campaign session and security tokens. Subsequent
+    API calls will use Campaign tokens. It's recommended to us <b>ofImsBearerToken</b> logon whenever possible.</p>
 <pre class="code">
 const connectionParameters = sdk.ConnectionParameters.ofBearerToken(
                                 "https://myInstance.campaign.adobe.com", 

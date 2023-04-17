@@ -11,7 +11,7 @@ governing permissions and limitations under the License.
 */
 (function() {
 "use strict";
-
+/*jshint sub:true*/
 
 /**********************************************************************************
  *
@@ -244,12 +244,12 @@ class Credentials {
      */
     constructor(type, sessionToken, securityToken) {
         if (type != "UserPassword" && type != "ImsServiceToken" && type != "SessionToken" &&
-            type != "AnonymousUser" && type != "SecurityToken" && type != "BearerToken")
+            type != "AnonymousUser" && type != "SecurityToken" && type != "BearerToken" && type != "ImsBearerToken")
             throw CampaignException.INVALID_CREDENTIALS_TYPE(type);
         this._type = type;
         this._sessionToken = sessionToken || "";
         this._securityToken = securityToken || "";
-        if (type == "BearerToken") {
+        if (type == "BearerToken" || type === "ImsBearerToken") {
             this._bearerToken = sessionToken || "";
             this._sessionToken = "";
         }
@@ -397,8 +397,13 @@ class ConnectionParameters {
     }
 
     /**
-     * Creates connection parameters for a Campaign instance from bearer token
-     *
+     * Creates connection parameters for a Campaign instance from bearer token.
+     * This authentication method uses an IMS Bearer token and calls the xtk:session#BearerTokenLogin method
+     * which will exchange the IMS bearer token with Campaign session and security tokens.
+     * This is a legacy method. Campaign 8.5 will has an authentication method which allows to directly
+     * use the IMS bearer token and which is recommended. 
+     * To avoid an extra call to "BearerTokenLogin", use the "ofImsBearerToken" method.
+     * 
      * @param {string} endpoint The campaign endpoint (URL)
      * @param {string} bearerToken IMS bearer token
      * @param {*} options connection options
@@ -408,6 +413,23 @@ class ConnectionParameters {
         const credentials = new Credentials("BearerToken", bearerToken);
         return new ConnectionParameters(endpoint, credentials, options);
     }
+
+    /**
+     * Creates connection parameters for a Campaign instance from a IMS bearer token.
+     * This authentication method does not require exchange the IMS token with session and security tokens
+     * and only works in ACC 8.5 and above.
+     * For older version of ACC or to use session/seurity tokens, use the "ofBearerToken" method.
+     * 
+     * @param {string} endpoint The campaign endpoint (URL)
+     * @param {string} bearerToken IMS bearer token
+     * @param {*} options connection options
+     * @returns {ConnectionParameters} a ConnectionParameters object which can be used to create a Client
+     */
+    static ofImsBearerToken(endpoint, bearerToken, options) {
+        const credentials = new Credentials("ImsBearerToken", bearerToken);
+        return new ConnectionParameters(endpoint, credentials, options);
+    }
+
     /**
      * Creates connection parameters for a Campaign instance, using an IMS service token and a user name (the user to impersonate)
      *
@@ -557,15 +579,13 @@ const fileUploader = (client) => {
                     }
                     const data = new FormData();
                     data.append('file_noMd5', file);
+                    const headers = client._getAuthHeaders(false);
                     client._makeHttpCall({
                         url: `${client._connectionParameters._endpoint}/nl/jsp/uploadFile.jsp`,
                         processData: false,
                         method: 'POST',
                         data: data,
-                        headers: {
-                            'X-Security-Token': client._securityToken,
-                            'X-Session-Token': client._sessionToken,
-                        }
+                        headers: headers
                     }).then((okay) => {
                         if (!okay.startsWith('Ok')) {
                             throw okay;
@@ -645,13 +665,28 @@ class Client {
      */
     constructor(sdk, connectionParameters) {
         this.sdk = sdk;
+        this.reinit(connectionParameters);
+
+        this._observers = [];
+        this._cacheChangeListeners = [];
+    }
+
+    /**
+     * Re-initialize a client with new connection parameters.
+     * Typically called from the refreshClient callback after a connection expires.
+     * Conserves observers
+     *
+     * @param {Campaign.ConnectionParameters} user user name, for instance admin
+     */
+    reinit(connectionParameters) {
         this._connectionParameters = connectionParameters; // ## TODO security concern (password kept in memory)
         this._representation = connectionParameters._options.representation;
 
         this._sessionInfo = undefined;
         this._sessionToken = undefined;
         this._securityToken = undefined;
-        this._installedPackages = {};     // package set (key and value = package id, ex: "nms:amp")
+        this._bearerToken = undefined;      // set when using Bearer authentication and "ImsBearer" credential type
+        this._installedPackages = {};       // package set (key and value = package id, ex: "nms:amp")
 
         this._secretKeyCipher = undefined;
 
@@ -667,7 +702,7 @@ class Client {
         const rootKeyType = connectionParameters._options.cacheRootKey;
         let rootKey = "";
         if (!rootKeyType || rootKeyType === "default")
-            rootKey = `acc.js.sdk.${sdk.getSDKVersion().version}.${instanceKey}.cache.`;
+            rootKey = `acc.js.sdk.${this.sdk.getSDKVersion().version}.${instanceKey}.cache.`;
 
         // Clear storage cache if the sdk versions or the instances are different
         if (this._storage && typeof this._storage.removeItem === 'function') {
@@ -687,8 +722,6 @@ class Client {
 
         this._transport = connectionParameters._options.transport;
         this._traceAPICalls = connectionParameters._options.traceAPICalls;
-        this._observers = [];
-        this._cacheChangeListeners = [];
         this._refreshClient = connectionParameters._options.refreshClient;
 
         // expose utilities
@@ -747,6 +780,26 @@ class Client {
     _getUserAgentString() {
         const version = this.sdk.getSDKVersion();
         return `${version.name}/${version.version} ${version.description}`;
+    }
+
+    /**
+     * Get HTTP authentication headers
+     * @param
+     * @returns {Object} the headers
+     */
+    _getAuthHeaders(setCookie) {
+        const headers = {};
+        if (this._bearerToken) {
+            headers['Authorization'] = `Bearer ${this._bearerToken}`;
+        }
+        else {
+            headers['X-Security-Token'] = this._securityToken;
+            headers['X-Session-Token'] = this._sessionToken;
+            if (setCookie) {
+                headers['Cookie'] = '__sessiontoken=' + this._sessionToken;
+            }
+        }
+        return headers;
     }
 
     /**
@@ -929,6 +982,9 @@ class Client {
         const credentialsType = this._connectionParameters._credentials._type;
         if (credentialsType == "AnonymousUser")
             return true;
+        else if (credentialsType == "ImsBearerToken") {
+            return !!this._bearerToken;
+        }
 
         // When using bearer token authentication we are considered logged only after
         // the bearer token has been converted into session token and security token
@@ -967,7 +1023,8 @@ class Client {
                                             this._sessionToken, this._securityToken,
                                             this._getUserAgentString(),
                                             Object.assign({}, this._connectionParameters._options, pushDownOptions),
-                                            extraHttpHeaders);
+                                            extraHttpHeaders,
+                                            this._bearerToken);
         soapCall.internal = !!internal;
         soapCall.isStatic = isStatic;
         return soapCall;
@@ -1324,6 +1381,7 @@ class Client {
         this.application = null;
         this._sessionToken = "";
         this._securityToken = "";
+        this._bearerToken = undefined;
         const credentials = this._connectionParameters._credentials;
 
         const sdkVersion = this.sdk.getSDKVersion();
@@ -1349,6 +1407,7 @@ class Client {
             that._installedPackages = {};
             that._sessionToken = credentials._sessionToken;
             that._securityToken = "";
+            that._bearerToken = undefined;
             that._onLogon();
             return Promise.resolve();
         }
@@ -1357,6 +1416,16 @@ class Client {
             that._installedPackages = {};
             that._sessionToken = "";
             that._securityToken = credentials._securityToken;
+            that._bearerToken = undefined;
+            that._onLogon();
+            return Promise.resolve();
+        }
+        else if (credentials._type == "ImsBearerToken") {
+            that._sessionInfo = undefined;
+            that._installedPackages = {};
+            that._sessionToken = "";
+            that._securityToken = "";
+            that._bearerToken = credentials._bearerToken;
             that._onLogon();
             return Promise.resolve();
         }
@@ -1407,6 +1476,7 @@ class Client {
                 // store member variables after all parameters are decode the ensure atomicity
                 that._sessionToken = sessionToken;
                 that._securityToken = securityToken;
+                that._bearerToken = undefined;
 
                 that._onLogon();
             });
@@ -1444,6 +1514,7 @@ class Client {
                 return this._makeSoapCall(soapCall).then(function() {
                     that._sessionToken = "";
                     that._securityToken = "";
+                    that._bearerToken = undefined;
                     that.application = null;
                     soapCall.checkNoMoreArgs();
                 });
@@ -1451,6 +1522,7 @@ class Client {
             else {
                 that._sessionToken = "";
                 that._securityToken = "";
+                that._bearerToken = undefined;
                 that.application = null;
             }
         } finally {
@@ -1914,13 +1986,10 @@ class Client {
      * @returns {Campaign.PingStatus} an object describing the server status
      */
     async ping() {
+        const headers = this._getAuthHeaders(true);
         const request = {
             url: `${this._connectionParameters._endpoint}/nl/jsp/ping.jsp`,
-            headers: {
-                'X-Security-Token': this._securityToken,
-                'X-Session-Token': this._sessionToken,
-                'Cookie': '__sessiontoken=' + this._sessionToken
-            }
+            headers: headers,
         };
         for (let h in this._connectionParameters._options.extraHttpHeaders)
             request.headers[h] = this._connectionParameters._options.extraHttpHeaders[h];
@@ -1953,14 +2022,12 @@ class Client {
                 callContext.formData.ctx = DomUtil.toXMLString(xmlCtx);
             }
             const selectionCount = callContext.selection.split(',').length;
-
+            
+            const headers = this._getAuthHeaders(false);
+            headers['Content-Type'] = 'application/x-www-form-urlencoded';
             const request = {
                 url: `${this._connectionParameters._endpoint}/report/${callContext.reportName}?${encodeURI(`_noRender=true&_schema=${callContext.schema}&_context=${callContext.context}&_selection=${callContext.selection}`)}&_selectionCount=${selectionCount}`,
-                headers: {
-                    'X-Security-Token': this._securityToken,
-                    'X-Session-Token': this._sessionToken,
-                    'Content-Type': 'application/x-www-form-urlencoded'
-                },
+                headers: headers,
                 method: 'POST',
                 data : qsStringify(callContext.formData)
             };
@@ -1985,13 +2052,10 @@ class Client {
      * @returns {Campaign.McPingStatus} an object describing Message Center server status
      */
     async mcPing() {
+        const headers = this._getAuthHeaders(true);
         const request = {
             url: `${this._connectionParameters._endpoint}/nl/jsp/mcPing.jsp`,
-            headers: {
-                'X-Security-Token': this._securityToken,
-                'X-Session-Token': this._sessionToken,
-                'Cookie': '__sessiontoken=' + this._sessionToken
-            }
+            headers: headers
         };
         for (let h in this._connectionParameters._options.extraHttpHeaders)
             request.headers[h] = this._connectionParameters._options.extraHttpHeaders[h];
