@@ -37,8 +37,8 @@ describe('IMS Bearer Toekn', function () {
         expect(client.isLogged()).toBe(true);
     });
 
-    // TODO: double check what LogOff means for IMS Bearer Token
-    // TODO: check if the Bearer token is passed to the Logoff API call
+    // The logoff API invalidates the session created on the server side and does not invalidate 
+    // the bearer token. To invalidate the bearer token, IMS should be used
     it('Should logoff', async () => {
         const client = await makeImsClient();
         await client.NLWS.xtkSession.logon();
