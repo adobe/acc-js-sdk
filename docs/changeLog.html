@@ -4,10 +4,13 @@ title: Change Log
 ---
 
 <section class="changelog"><h1>Version 1.1.27</h1>
-  <h2>2023/04/17</h2>
-
+  <h2>2023/05/10</h2>
   <li>
     Fixed a unit test which was failing in Node 16 but succeeding on node 14. The reason is that the error message thrown by Node when accessing a property of a null object changed between the 2 versions.
+  </li>
+  <li>
+    The `client.getSchema` and `application.getSchema` functions are now able to return group schemas 
+    (using the temp:group:{id} format for the schema id). See <a href="https://opensource.adobe.com/acc-js-sdk/xtkSchema.html"></a> for more information.
   </li>
 </section>
 

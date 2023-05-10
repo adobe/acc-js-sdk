@@ -36,13 +36,20 @@ var srcSchema = await NLWS.xtkPersist.getEntityIfMoreRecent("xtk:srcSchema|nms:r
 console.log(JSON.stringify(srcSchema));
 </pre>
 
-<p>Particular case of schema for the groups:</p>
-<p>There are two types of schema :
-<ul>
-    <li>classic schema like nms:extAccount, nms:delivery, nms:recipient ...</li>
-    <li>schema of type group : the schema of the type group is a schema used to for the data of a group of type List or File
-      the schema id is build has followed : prefix temp:group: + id of the group in mms:group (example temp:group:1234 )
-      the structure of the schema temp:group:* is stored in extension part of the schema nms:group
-      this schema temp:group:* can be generated in a workflow by using the activity List update</li>
-</ul>
+<h1>Group schemas</h1>
+
+<p>
+Campaign groups represent marketing lists or audiences. Each group can have it's own specific schema, 
+stored in the `extension` XML element of the group entity. This schema can be generated in a workflow by 
+using the List Update activity.
+</p>
+<p>
+The schema of a group can be retrieved using the `getSchema` method of the client or application objects.
+</p>
+<p>
+The schema id is build as followed: prefix `temp:group:` + id of the group in mms:group (example `temp:group:1234` )
+</p>
+
+<p>Note: group schemas are not cached. The rationale is that they are not accessed as frequently as other,
+  regular schemas, but more importantly that they can change more often that regular schemas.
 </p>
