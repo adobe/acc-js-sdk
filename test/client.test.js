@@ -3874,7 +3874,9 @@ describe('ACC Client', function () {
             const schema = client.newSchema(xml);
             const jobs = schema.root.children["jobs"];
             expect(jobs.target).toBe("xtk:job");
-            await expect(jobs.linkTarget()).rejects.toThrow("Cannot read property 'getSchema' of null");
+            // node 14 throws "Cannot read property 'getSchema' of null"
+            // node 16+ throws "Cannot read properties of null (reading 'getSchema')"
+            await expect(jobs.linkTarget()).rejects.toThrow(/Cannot read (.*getSchema.*of null)|(.*of null.*getSchema)/);
         });
     });
 });

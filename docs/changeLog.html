@@ -2,7 +2,15 @@
 layout: page
 title: Change Log
 ---
- 
+
+<section class="changelog"><h1>Version 1.1.27</h1>
+  <h2>2023/04/17</h2>
+
+  <li>
+    Fixed a unit test which was failing in Node 16 but succeeding on node 14. The reason is that the error message thrown by Node when accessing a property of a null object changed between the 2 versions.
+  </li>
+</section>
+
 <section class="changelog"><h1>Version 1.1.26</h1>
   <h2>2023/04/17</h2>
 
