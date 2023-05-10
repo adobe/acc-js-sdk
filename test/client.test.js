@@ -434,6 +434,129 @@ describe('ACC Client', function () {
             await client.NLWS.xtkSession.logoff();
         });
 
+        it("Should return temp group schema definition", async () => {
+            const client = await Mock.makeClient();
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+           
+            client._transport.mockReturnValueOnce(Mock.GET_XTK_QUERY_SCHEMA_RESPONSE);
+            client._transport.mockReturnValueOnce(Promise.resolve(`<?xml version='1.0'?>
+              <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:xtk:queryDef' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
+              <SOAP-ENV:Body>
+              <ExecuteQueryResponse xmlns='urn:xtk:queryDef' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
+                  <pdomOutput xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
+                  <group expirationDate="" folder-id="1199" id="2200" label="testlist" name="LST260" schema="nms:recipient" type="1">
+                    <extension label="email is not empty" mappingType="sql" name="query" namespace="temp">
+                      <element advanced="false" dataSource="nms:extAccount:ffda" label="email is not empty" name="query" pkSequence="" sqltable="grp2200" unbound="false">
+                        <compute-string expr=""/>
+                        <key internal="true" name="internal">
+                          <keyfield xpath="@id"/>
+                        </key>
+                        <attribute advanced="false" belongsTo="@id" label="Primary key" length="0" name="id" notNull="false" sql="true" sqlname="uId" type="uuid" xml="false"/>
+                        <element advanced="false" externalJoin="true" label="Targeting dimension" name="target" revLink="" target="nms:recipient" type="link" unbound="false">
+                          <join xpath-dst="@id" xpath-src="@id"/>
+                        </element>
+                      </element>
+                    </extension>
+                    <desc><![CDATA[]]></desc>
+                    <folder _cs="Lists" fullName="/Profiles and Targets/Lists/" id="1199"/>
+                  </group>
+                  </pdomOutput></ExecuteQueryResponse>
+              </SOAP-ENV:Body>
+              </SOAP-ENV:Envelope>`));
+          
+            var schema = await client.getSchema("temp:group:2200");
+            expect(schema["namespace"]).toBe("temp");
+            expect(schema["name"]).toBe("query");
+            expect(schema["element"].label).toBe("email is not empty");
+
+            // Update label of first element
+            client._transport.mockReturnValueOnce(Promise.resolve(`<?xml version='1.0'?>
+              <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:xtk:queryDef' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
+              <SOAP-ENV:Body>
+              <ExecuteQueryResponse xmlns='urn:xtk:queryDef' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
+                  <pdomOutput xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
+                  <group expirationDate="" folder-id="1199" id="2200" label="testlist" name="LST260" schema="nms:recipient" type="1">
+                    <extension label="email is not empty" mappingType="sql" name="query" namespace="temp">
+                      <element advanced="false" dataSource="nms:extAccount:ffda" label="email is empty" name="query" pkSequence="" sqltable="grp2200" unbound="false">
+                        <compute-string expr=""/>
+                        <key internal="true" name="internal">
+                          <keyfield xpath="@id"/>
+                        </key>
+                        <attribute advanced="false" belongsTo="@id" label="Primary key" length="0" name="id" notNull="false" sql="true" sqlname="uId" type="uuid" xml="false"/>
+                        <element advanced="false" externalJoin="true" label="Targeting dimension" name="target" revLink="" target="nms:recipient" type="link" unbound="false">
+                          <join xpath-dst="@id" xpath-src="@id"/>
+                        </element>
+                      </element>
+                    </extension>
+                    <desc><![CDATA[]]></desc>
+                    <folder _cs="Lists" fullName="/Profiles and Targets/Lists/" id="1199"/>
+                  </group>
+                  </pdomOutput></ExecuteQueryResponse>
+              </SOAP-ENV:Body>
+              </SOAP-ENV:Envelope>`));
+             var schema = await client.getSchema("temp:group:2200");
+             expect(schema["namespace"]).toBe("temp");
+             expect(schema["name"]).toBe("query");
+             //check that we have the updated label
+             expect(schema["element"].label).toBe("email is empty");
+        });
+
+        it("Should return null when temp group schema definition is empty", async () => {
+            const client = await Mock.makeClient();
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+           
+            client._transport.mockReturnValueOnce(Mock.GET_XTK_QUERY_SCHEMA_RESPONSE);
+            client._transport.mockReturnValueOnce(Promise.resolve(`<?xml version='1.0'?>
+                <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:xtk:queryDef' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
+                  <SOAP-ENV:Body>
+                    <ExecuteQueryResponse xmlns='urn:xtk:queryDef' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
+                      <pdomOutput xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
+                        <group />
+                      </pdomOutput></ExecuteQueryResponse>
+                  </SOAP-ENV:Body>
+                </SOAP-ENV:Envelope>`));
+           
+            var schema = await client.getSchema("temp:group:2200");
+            expect(schema).toBeNull();
+        });
+
+        it("Should return null when temp group schema definition does not exist", async () => {
+            const client = await Mock.makeClient();
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+          
+            client._transport.mockReturnValueOnce(Mock.GET_XTK_QUERY_SCHEMA_RESPONSE);
+            client._transport.mockReturnValueOnce(Promise.resolve(`<?xml version='1.0' encoding='UTF-8'?>
+                <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/' xmlns:ns='http://xml.apache.org/xml-soap'>
+                  <SOAP-ENV:Body>
+                    <SOAP-ENV:Fault>
+                        <faultcode>faultcode</faultcode>
+                        <faultstring>SOP-330011</faultstring>
+                        <detail>"Error while executing the method 'ExecuteQuery' of service 'xtk:queryDef'."</detail>
+                    </SOAP-ENV:Fault>
+                  </SOAP-ENV:Body>
+                </SOAP-ENV:Envelope>`));
+                
+            var schema = await client.getSchema("temp:group:2200");
+            expect(schema).toBeNull();
+        });
+
+        it("Should rethrow exception when exception is not related to not existing group", async () => {
+            const client = await Mock.makeClient();
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+            
+            client._transport.mockReturnValueOnce(Mock.GET_XTK_QUERY_SCHEMA_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
+
+            try {
+                var schema = await client.getSchema("temp:group:2200");
+                expect(schema).toBe('not be called')
+            } catch (ex) {}
+        });
+      
         it("Should return sys enum definition", async () => {
             const client = await Mock.makeClient({ representation: "BadgerFish" });
             client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
