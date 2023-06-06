@@ -380,13 +380,22 @@ class DomUtil {
         return doc;
     }
 
+    // Get the text of a node. Will return the text if the xml node contains
+    // only text and cdata nodes. Otherwise will return null
     static _getTextIfTextNode(xml) {
-        const child = xml.firstChild;
+        let child = xml.firstChild;
         if (!child) return null;                   // no children
         if (xml.hasAttributes()) return null;      // no attributes
-        if (child.nextSibling) return null;        // more than 1 child
-        if (child.nodeType !== 3 && child.nodeType !== 4) return null;
-        const text = child.nodeValue;
+        let text = "";
+        while (child) {
+            // if child node is not text or cdata, it means we have a mix
+            // of text children and non-text children => we do not consider
+            // the xml node to be a text-only node
+            if (child.nodeType !== 3 && child.nodeType !== 4) 
+                return null;
+            text = text + child.nodeValue;
+            child = child.nextSibling;
+        }
         return text;
     }
 

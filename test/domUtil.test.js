@@ -958,4 +958,21 @@ describe('DomUtil', function() {
             expect(new XPathElement(".").isParent()).toBe(false);
         })
     });
+
+    it("Should handle content made of CDATA text", () => {
+        const xml = DomUtil.parse(`<delivery>
+        <source><![CDATA[<head></head>]]></source>
+        </delivery>`);
+        const json = DomUtil.toJSON(xml, "SimpleJson");
+        expect(json.$source).toBe("<head></head>")
+    });
+    it("Should handle content made of multiple CDATA text", () => {
+        const xml = DomUtil.parse(`<delivery>
+        <source><![CDATA[<head>]]><![CDATA[</head>]]></source>
+        </delivery>`);
+        const json = DomUtil.toJSON(xml, "SimpleJson");
+        expect(json.$source).toBe("<head></head>")
+    });
 });
+
+
