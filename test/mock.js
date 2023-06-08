@@ -570,7 +570,7 @@ const GET_XTK_ALL_SCHEMA_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
     <SOAP-ENV:Body>
         <GetEntityIfMoreRecentResponse xmlns='urn:wpp:default' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
             <pdomDoc xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
-                <schema name="all" namespace="xtk" xtkschema="xtk:schema">
+                <schema name="all" namespace="xtk" xtkschema="xtk:schema" implements="xtk:persist">
                     <element name="all"></element>
                     <methods>
                         <method name="AllTypes" static="true">
