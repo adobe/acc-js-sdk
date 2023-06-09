@@ -219,6 +219,8 @@ const GET_XTK_SESSION_SCHEMA_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
                 <interface name="persist">
                     <method name="NewInstance">
                     </method>
+                    <method name="Duplicate" static="true">
+                    </method>
                     <method name="Write" static="true">
                         <parameters>
                             <param name="doc" type="DOMDocument"/>

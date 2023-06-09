@@ -972,14 +972,21 @@ describe('ACC Client', function () {
             await client.NLWS.xtkSession.logoff();
         });
 
-        it("Should reload session schema when looking for a not existing method", async () => {
+        it("Should reload xtk:session methods when a method is not found", async () => {
             const client = await Mock.makeClient();
             client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
 
+            client._transport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_USER_INFO_RESPONSE);
+            const userInfo = await client.NLWS.xtkSession.getUserInfo();
+            
+            // simulate expiration of methodCache only (entityCache not expired)
+            client._methodCache.clear();
+
             client._transport.mockReturnValueOnce(Mock.GET_XTK_ALL_SCHEMA_RESPONSE);
             client._transport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
-            await expect(client.NLWS.xtkAll.Duplicate()).rejects.toMatchObject({ errorCode: "SDK-000009" });
+            await client.NLWS.xtkAll.Duplicate();
 
             client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
             await client.NLWS.xtkSession.logoff();
