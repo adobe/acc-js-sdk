@@ -972,14 +972,15 @@ describe('ACC Client', function () {
             await client.NLWS.xtkSession.logoff();
         });
 
-        it("Should reload xtk:session methods when a method is not found", async () => {
+        it("Should always put in cache methods of schema to avoid a method is not found", async () => {
             const client = await Mock.makeClient();
             client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
 
             client._transport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
             client._transport.mockReturnValueOnce(Mock.GET_USER_INFO_RESPONSE);
-            const userInfo = await client.NLWS.xtkSession.getUserInfo();
+            // call a method of xtk:session to have the schema xt:session in memory and in entityCache
+            await client.NLWS.xtkSession.getUserInfo();
             
             // simulate expiration of methodCache only (entityCache not expired)
             client._methodCache.clear();
@@ -991,6 +992,28 @@ describe('ACC Client', function () {
             client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
             await client.NLWS.xtkSession.logoff();
         });
+
+        it("Should always put in memory methods of schema to avoid a method is not found", async () => {
+            const client = await Mock.makeClient();
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+
+            client._transport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_USER_INFO_RESPONSE);
+            // call a method of xtk:session to have the schema xt:session in memory and in entityCache
+            await client.NLWS.xtkSession.getUserInfo();
+
+            // simulate empty cache method in memory
+            client._methodCache._cache = {};
+
+            client._transport.mockReturnValueOnce(Mock.GET_XTK_ALL_SCHEMA_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
+            await client.NLWS.xtkAll.Duplicate();
+
+            client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
+            await client.NLWS.xtkSession.logoff();
+        });
+
 
         it("Should fail if method parameter inout attribute is not correct", async () => {
             const client = await Mock.makeClient();
