@@ -911,7 +911,7 @@ class Client {
         this._observers.map((observer) => callback(observer));
     }
 
-    _trackEvent(eventName, parentEvent, payload) {
+    _trackEvent(eventName, parentEvent, payload, pushDownOptions) {
         try {
             if (payload && payload.name === 'CampaignException') {
                 payload = {
@@ -932,8 +932,10 @@ class Client {
                 eventName: eventName,
                 payload: payload,
                 timestamp: now,
-                pushDownOptions: payload.pushDownOptions
             };
+            if (pushDownOptions) {
+                event.pushDownOptions = pushDownOptions;
+            }
             if (parentEvent) event.parentEventId = parentEvent.eventId;
             this._notifyObservers((observer) => observer.event && observer.event(event, parentEvent));
 
@@ -1055,18 +1057,16 @@ class Client {
             retry: true,
             retryCount: soapCall._retryCount,
             safeCallData: safeCallData,
-            pushDownOptions
-        });
+        }, pushDownOptions);
         try {
             await soapCall.execute();
             const safeCallResponse = Util.trim(soapCall.response);
             if (this._traceAPICalls) {
                 console.log(`SOAP//response ${safeCallResponse}`);
             }
-            this._trackEvent('SOAP//response', event, { safeCallResponse: safeCallResponse, pushDownOptions });
+            this._trackEvent('SOAP//response', event, { safeCallResponse: safeCallResponse }, pushDownOptions);
         } catch(error) {
-            error.pushDownOptions = pushDownOptions;
-            this._trackEvent('SOAP//failure', event, error);
+            this._trackEvent('SOAP//failure', event, error, pushDownOptions);
             throw error;
         }
         return;
@@ -1326,23 +1326,21 @@ class Client {
             retry: false,
             retryCount: soapCall._retryCount,
             safeCallData: safeCallData,
-            pushDownOptions
-        });
+        }, pushDownOptions);
         return soapCall.execute()
             .then(() => {
                 const safeCallResponse = Util.trim(soapCall.response);
                 if (that._traceAPICalls)
                     console.log(`SOAP//response ${safeCallResponse}`);
                 that._notifyObservers((observer) => observer.onSOAPCallSuccess && observer.onSOAPCallSuccess(soapCall, safeCallResponse) );
-                this._trackEvent('SOAP//response', event, { safeCallResponse: safeCallResponse, pushDownOptions });
+                this._trackEvent('SOAP//response', event, { safeCallResponse: safeCallResponse }, pushDownOptions);
                 return Promise.resolve();
             })
             .catch((ex) => {
-                ex.pushDownOptions = pushDownOptions;
                 if (that._traceAPICalls)
                     console.log(`SOAP//failure ${ex.toString()}`);
                 that._notifyObservers((observer) => observer.onSOAPCallFailure && observer.onSOAPCallFailure(soapCall, ex) );
-                this._trackEvent('SOAP//failure', event, ex);
+                this._trackEvent('SOAP//failure', event, ex, pushDownOptions);
                 // Call session expiration callback in case of 401
                 if (ex.statusCode == 401 && that._refreshClient && soapCall.retry) {
                     return this._retrySoapCall(soapCall);
