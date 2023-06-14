@@ -621,7 +621,6 @@ describe('ACC Client', function () {
             await client.NLWS.xtkSession.logon();
 
             client._transport.mockReturnValueOnce(Mock.GET_XTK_ALL_SCHEMA_RESPONSE);
-            client._transport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
             var sysEnum = await client.getSysEnum("xtk:all:encryptionType");
             expect(sysEnum).toBeUndefined();
         });
@@ -633,7 +632,6 @@ describe('ACC Client', function () {
             await client.NLWS.xtkSession.logon();
 
             client._transport.mockReturnValueOnce(Mock.GET_XTK_ALL_SCHEMA_RESPONSE);
-            client._transport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
             var sysEnum = await client.getSysEnum("xtk:all:encryptionType");
             expect(sysEnum).toBeUndefined();
         });
@@ -644,7 +642,6 @@ describe('ACC Client', function () {
             await client.NLWS.xtkSession.logon();
 
             client._transport.mockReturnValueOnce(Mock.GET_XTK_ALL_SCHEMA_RESPONSE);
-            client._transport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
             var sysEnum = await client.getSysEnum("xtk:all:encryptionType");
             expect(sysEnum).toBeUndefined();
         });
@@ -663,7 +660,6 @@ describe('ACC Client', function () {
             client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
             client._transport.mockReturnValueOnce(Mock.GET_XTK_ALL_SCHEMA_RESPONSE);
-            client._transport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
             await client.getSysEnum("xtk:all:encryptionType"); // cache schema before setting invalid representation
             client._representation = "Dummy";
             await expect(client.getSysEnum("xtk:all:encryptionType")).rejects.toMatchObject({ errorCode: "SDK-000004" });
@@ -849,7 +845,6 @@ describe('ACC Client', function () {
             await client.NLWS.xtkSession.logon();
 
             client._transport.mockReturnValueOnce(Mock.GET_XTK_ALL_SCHEMA_RESPONSE);
-            client._transport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
             client._transport.mockReturnValueOnce(Mock.GET_XTK_ALL_TYPES_RESPONSE);
 
             const element = { "@type": "element", "@xtkschema": "nms:recipient" };          // @xtkschema needed to determine root name
@@ -883,7 +878,6 @@ describe('ACC Client', function () {
             await client.NLWS.xtkSession.logon();
 
             client._transport.mockReturnValueOnce(Mock.GET_XTK_ALL_SCHEMA_RESPONSE);
-            client._transport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
             client._transport.mockReturnValueOnce(Mock.GET_XTK_ALL_TYPES_RESPONSE);
 
             const element = { "@type": "element" };          // @xtkschema needed to determine root name, missing on purpose
@@ -902,7 +896,6 @@ describe('ACC Client', function () {
             await client.NLWS.xtkSession.logon();
 
             client._transport.mockReturnValueOnce(Mock.GET_XTK_ALL_SCHEMA_RESPONSE);
-            client._transport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
 
             // unsupported input parameter
             await expect(client.NLWS.xtkAll.unsupportedInput()).rejects.toMatchObject({ errorCode: "SDK-000008" });
@@ -985,9 +978,9 @@ describe('ACC Client', function () {
             // simulate expiration of methodCache only (entityCache not expired)
             client._methodCache.clear();
 
-            client._transport.mockReturnValueOnce(Mock.GET_XTK_ALL_SCHEMA_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_XTK_IMPL_SCHEMA_RESPONSE);
             client._transport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
-            await client.NLWS.xtkAll.Duplicate();
+            await client.NLWS.xtkImpl.Duplicate();
 
             client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
             await client.NLWS.xtkSession.logoff();
@@ -1006,9 +999,9 @@ describe('ACC Client', function () {
             // simulate empty cache method in memory
             client._methodCache._cache = {};
 
-            client._transport.mockReturnValueOnce(Mock.GET_XTK_ALL_SCHEMA_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_XTK_IMPL_SCHEMA_RESPONSE);
             client._transport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
-            await client.NLWS.xtkAll.Duplicate();
+            await client.NLWS.xtkImpl.Duplicate();
 
             client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
             await client.NLWS.xtkSession.logoff();

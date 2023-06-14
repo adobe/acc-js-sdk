@@ -567,12 +567,25 @@ const GET_NMS_EXTACCOUNT_SCHEMA_RESPONSE = Promise.resolve(`<?xml version='1.0'?
     </SOAP-ENV:Body>
     </SOAP-ENV:Envelope>`);
 
+const GET_XTK_IMPL_SCHEMA_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
+    <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:wpp:default' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
+    <SOAP-ENV:Body>
+        <GetEntityIfMoreRecentResponse xmlns='urn:wpp:default' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
+            <pdomDoc xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
+                <schema name="impl" namespace="xtk" xtkschema="xtk:schema" implements="xtk:persist">
+                    <element name="one"></element>
+                </schema>
+            </pdomDoc>
+        </GetEntityIfMoreRecentResponse>
+    </SOAP-ENV:Body>
+    </SOAP-ENV:Envelope>`);
+
 const GET_XTK_ALL_SCHEMA_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
     <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:wpp:default' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
     <SOAP-ENV:Body>
         <GetEntityIfMoreRecentResponse xmlns='urn:wpp:default' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
             <pdomDoc xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
-                <schema name="all" namespace="xtk" xtkschema="xtk:schema" implements="xtk:persist">
+                <schema name="all" namespace="xtk" xtkschema="xtk:schema">
                     <element name="all"></element>
                     <methods>
                         <method name="AllTypes" static="true">
@@ -1001,6 +1014,7 @@ exports.Mock = {
   GET_TSTCNX_RESPONSE: GET_TSTCNX_RESPONSE,
   GET_NMS_EXTACCOUNT_SCHEMA_RESPONSE: GET_NMS_EXTACCOUNT_SCHEMA_RESPONSE,
   GET_XTK_ALL_SCHEMA_RESPONSE: GET_XTK_ALL_SCHEMA_RESPONSE,
+  GET_XTK_IMPL_SCHEMA_RESPONSE: GET_XTK_IMPL_SCHEMA_RESPONSE,
   GET_XTK_ALL_TYPES_RESPONSE: GET_XTK_ALL_TYPES_RESPONSE,
   GET_XTK_TYPE_UNSUPPORTED_TYPE_RESPONSE: GET_XTK_TYPE_UNSUPPORTED_TYPE_RESPONSE,
   GET_USER_INFO_RESPONSE: GET_USER_INFO_RESPONSE,
