@@ -911,7 +911,7 @@ class Client {
         this._observers.map((observer) => callback(observer));
     }
 
-    _trackEvent(eventName, parentEvent, payload) {
+    _trackEvent(eventName, parentEvent, payload, pushDownOptions) {
         try {
             if (payload && payload.name === 'CampaignException') {
                 payload = {
@@ -933,6 +933,9 @@ class Client {
                 payload: payload,
                 timestamp: now,
             };
+            if (pushDownOptions) {
+                event.pushDownOptions = pushDownOptions;
+            }
             if (parentEvent) event.parentEventId = parentEvent.eventId;
             this._notifyObservers((observer) => observer.event && observer.event(event, parentEvent));
 
@@ -1046,6 +1049,7 @@ class Client {
         if (this._traceAPICalls) {
             console.log(`RETRY SOAP//request ${safeCallData}`);
         }
+        const pushDownOptions = soapCall._pushDownOptions;
         const event = this._trackEvent('SOAP//request', undefined, {
             urn: soapCall.urn,
             methodName: soapCall.methodName,
@@ -1053,16 +1057,16 @@ class Client {
             retry: true,
             retryCount: soapCall._retryCount,
             safeCallData: safeCallData,
-        });
+        }, pushDownOptions);
         try {
             await soapCall.execute();
             const safeCallResponse = Util.trim(soapCall.response);
             if (this._traceAPICalls) {
                 console.log(`SOAP//response ${safeCallResponse}`);
             }
-            this._trackEvent('SOAP//response', event, { safeCallResponse: safeCallResponse });
+            this._trackEvent('SOAP//response', event, { safeCallResponse: safeCallResponse }, pushDownOptions);
         } catch(error) {
-            this._trackEvent('SOAP//failure', event, error);
+            this._trackEvent('SOAP//failure', event, error, pushDownOptions);
             throw error;
         }
         return;
@@ -1314,6 +1318,7 @@ class Client {
             console.log(`SOAP//request ${safeCallData}`);
         that._notifyObservers((observer) => observer.onSOAPCall && observer.onSOAPCall(soapCall, safeCallData) );
 
+        const pushDownOptions = soapCall._pushDownOptions;
         const event = this._trackEvent('SOAP//request', undefined, {
             urn: soapCall.urn,
             methodName: soapCall.methodName,
@@ -1321,21 +1326,21 @@ class Client {
             retry: false,
             retryCount: soapCall._retryCount,
             safeCallData: safeCallData,
-        });
+        }, pushDownOptions);
         return soapCall.execute()
             .then(() => {
                 const safeCallResponse = Util.trim(soapCall.response);
                 if (that._traceAPICalls)
                     console.log(`SOAP//response ${safeCallResponse}`);
                 that._notifyObservers((observer) => observer.onSOAPCallSuccess && observer.onSOAPCallSuccess(soapCall, safeCallResponse) );
-                this._trackEvent('SOAP//response', event, { safeCallResponse: safeCallResponse });
+                this._trackEvent('SOAP//response', event, { safeCallResponse: safeCallResponse }, pushDownOptions);
                 return Promise.resolve();
             })
             .catch((ex) => {
                 if (that._traceAPICalls)
                     console.log(`SOAP//failure ${ex.toString()}`);
                 that._notifyObservers((observer) => observer.onSOAPCallFailure && observer.onSOAPCallFailure(soapCall, ex) );
-                this._trackEvent('SOAP//failure', event, ex);
+                this._trackEvent('SOAP//failure', event, ex, pushDownOptions);
                 // Call session expiration callback in case of 401
                 if (ex.statusCode == 401 && that._refreshClient && soapCall.retry) {
                     return this._retrySoapCall(soapCall);
@@ -1680,7 +1685,7 @@ class Client {
      * @private
      * @deprecated since version 1.0.0
      */
-     async _getSecretKeyCipher() {
+    async _getSecretKeyCipher() {
         var that = this;
         if (this._secretKeyCipher) return this._secretKeyCipher;
         return that.getOption("XtkSecretKey").then(function(secretKey) {
@@ -1701,7 +1706,7 @@ class Client {
      * @param {boolean} internal indicates an "internal" call, i.e. a call performed by the SDK itself rather than the user of the SDK. For instance, the SDK will dynamically load schemas to find method definitions
      * @return {XML.XtkObject} A DOM or JSON representation of the entity, or null if the entity is not found
      */
-     async getEntityIfMoreRecent(entityType, fullName, representation, internal) {
+    async getEntityIfMoreRecent(entityType, fullName, representation, internal) {
         const soapCall = this._prepareSoapCall("xtk:persist", "GetEntityIfMoreRecent", true, internal, this._connectionParameters._options.extraHttpHeaders);
         const inputParams = [
             { name: "pk", type: "string", value: entityType + "|" + fullName },
@@ -2080,7 +2085,7 @@ class Client {
             const result = this._toRepresentation(xml, representation);
             return result;
         } catch(ex) {
-             throw CampaignException.REPORT_FETCH_FAILED(callContext.reportName, ex);
+            throw CampaignException.REPORT_FETCH_FAILED(callContext.reportName, ex);
         }
     }
 
