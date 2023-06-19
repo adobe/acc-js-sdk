@@ -1787,8 +1787,11 @@ class Client {
                   if (entity) {
                       const impls = DomUtil.getAttributeAsString(entity, "implements");
                       if (impls === "xtk:persist" && schemaId !== "xtk:session" && schemaId !== "xtk:persist") {
-                        // Ensure xtk:persist is present by loading the xtk:session schema
-                        await this.getSchema("xtk:session", "xml", true);
+                          // Ensure xtk:persist is present by loading the xtk:session schema
+                          const xtkSession = await this.getSchema("xtk:session", "xml", true);
+                          // it is possible that methodCache content has not be loaded in memory
+                          // so we re-put the methods 
+                          await this._methodCache.put(xtkSession);
                       }
                       await this._entityCache.put("xtk:schema", schemaId, entity);
                       await this._methodCache.put(entity);
