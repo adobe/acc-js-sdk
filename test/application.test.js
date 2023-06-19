@@ -700,6 +700,43 @@ describe('Application', () => {
                     expect(enumeration).toBeFalsy();
                 });
             });
+
+            it("Should support numeric enumeration with implicit value", async () => {
+                // Example in xtk:dataTransfer:decimalCount
+                const client = await Mock.makeClient();
+                client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+                await client.NLWS.xtkSession.logon();
+                client._transport.mockReturnValueOnce(Promise.resolve(`<?xml version='1.0'?>
+                <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:wpp:default' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
+                <SOAP-ENV:Body>
+                    <GetEntityIfMoreRecentResponse xmlns='urn:wpp:default' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
+                        <pdomDoc xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
+                            <schema name="dataTransfer" namespace="xtk" xtkschema="xtk:schema">
+                                <enumeration name="decimalCount" basetype="short">
+                                    <value value="-1" name="all" label="All"/>
+                                    <value name="0"/>
+                                    <value name="1"/>
+                                    <value name="2"/>
+                                    <value name="3"/>
+                                    <value name="4"/>
+                                    <value name="5"/>
+                                    <value name="6"/>
+                                    <value name="7"/>
+                                    <value name="8"/>
+                                    <value name="9"/>
+                                </enumeration>
+                            </schema>
+                        </pdomDoc>
+                    </GetEntityIfMoreRecentResponse>
+                </SOAP-ENV:Body>
+                </SOAP-ENV:Envelope>`));
+                const enumeration = await client.application.getSysEnum("decimalCount", "xtk:dataTransfer");
+                expect(enumeration.label).toBe("DecimalCount");
+                const values = enumeration.values;
+                expect(values["all"].value).toBe(-1)
+                expect(values["0"].value).toBe(0)
+                expect(values["1"].value).toBe(1)
+            });
         });
 
         describe("Keys", () => {

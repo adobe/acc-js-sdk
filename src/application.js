@@ -1021,7 +1021,12 @@ function XtkEnumerationValue(xml, baseType, parentTranslationId) {
      * @type {string}
      */
     this.applicableIf = EntityAccessor.getAttributeAsString(xml, "applicableIf");
-    const stringValue = EntityAccessor.getAttributeAsString(xml, "value");
+    let stringValue = EntityAccessor.getAttributeAsString(xml, "value");
+    if (stringValue == "" && XtkCaster.isNumericType(baseType)) {
+        // Some enumerations (ex: xtk:dataTransfer:decimalCount) are of numeric type but do
+        // not have a "value" defined. In this case, we try to cas the name as the value
+        stringValue = this.name;
+    }
     /**
      * The enumeration value, casted according to the enumeration type
      * @type {*}
@@ -1082,31 +1087,46 @@ class XtkEnumeration {
          * The enumerations values 
          * @type {Utils.ArrayMap<Campaign.XtkEnumerationValue>}
          */
-         this.values = new ArrayMap();
+        this.values = new ArrayMap();
 
-         var defaultValue = EntityAccessor.getAttributeAsString(xml, "default");
-         this._localizationId = `${schemaId}__${this.name}`.replace(':','__');
+        var defaultValue = EntityAccessor.getAttributeAsString(xml, "default");
+        this._localizationId = `${schemaId}__${this.name}`.replace(':','__');
 
-         for (var child of EntityAccessor.getChildElements(xml, "value")) {
-             const e = new XtkEnumerationValue(child, this.baseType, this._localizationId);
-             this.values._push(e.name, e);
-             if (e.image != "") this.hasImage = true;
-             const stringValue = EntityAccessor.getAttributeAsString(child, "name");
-             if (defaultValue == stringValue)
-                 this.default = e;
-         }
+         // Determine if the enumeration can support both access by name and by index.
+         // Some enumerations, such as xtk:dataTransfer:decimalCount are ambiguous since
+         // they have names which are string reprensentation of their values (ex: name="0").
+         // In this case enumValue[0] may mean either the first enumeration value (index 0)
+         // or the enumeration value with value "0" which happens to be the second
+        let supportsIndexing = true;
+        const values = []
+        for (var child of EntityAccessor.getChildElements(xml, "value")) {
+            const e = new XtkEnumerationValue(child, this.baseType, this._localizationId);
+            values.push(e);
+            const numericName = +e.name;
+            if (numericName === numericName) {
+                // Name is a number
+                supportsIndexing = false;
+            }
+        }
 
-         this.labelLocalizationId = this._localizationId + "__@label";
-         this.descriptionLocalizationId = this._localizationId + "__@desc";
-         propagateImplicitValues(this, true);
+        for (const e of values) {
+            this.values._push(e.name, e, !supportsIndexing);
+            if (e.image != "") this.hasImage = true;
+            const stringValue = e.name;
+            if (defaultValue == stringValue)
+                this.default = e;
+        }
+
+        this.labelLocalizationId = this._localizationId + "__@label";
+        this.descriptionLocalizationId = this._localizationId + "__@desc";
+        propagateImplicitValues(this, true);
 
         /**
          * The system enumeration name, without the schema id prefix
          * @type {string}
          */
-         this.shortName = this.name;
-         this.name = `${schemaId}:${this.shortName}`;
-         
+        this.shortName = this.name;
+        this.name = `${schemaId}:${this.shortName}`;
     }
 }
 
