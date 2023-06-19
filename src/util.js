@@ -194,14 +194,15 @@ class ArrayMap {
       });
   }
 
-  _push(key, value) {
+  _push(key, value, withoutIndexing) {
       let isNumKey = false;
       if (key) {
         // reserved keyworkds
         const isReserved = key === "_items" || key === "length" || key === "_push" || key === "forEach" || key === "map" || key === "_map" || key === "get" || key === "find" || key === "flatMap" || key === "filter";
 
         // already a child with the name => there's a problem with the schema
-        if (!isReserved && this[key]) throw new Error(`Failed to add element '${key}' to ArrayMap. There's already an item with the same name`);
+        if (!isReserved && this[key]) 
+          throw new Error(`Failed to add element '${key}' to ArrayMap. There's already an item with the same name`);
 
         // Set key as a enumerable property, so that elements can be accessed by key, 
         // but also iterated on with a for ... in loop
@@ -218,7 +219,7 @@ class ArrayMap {
         }
       }
 
-      if (!isNumKey) {
+      if (!withoutIndexing && !isNumKey) {
         // Set the index property so that items can be accessed by array index.
         // However, make it non-enumerable to make sure indexes do not show up in a for .. in loop
         Object.defineProperty(this, this._items.length, {
