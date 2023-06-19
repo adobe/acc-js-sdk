@@ -1098,7 +1098,7 @@ class XtkEnumeration {
          // In this case enumValue[0] may mean either the first enumeration value (index 0)
          // or the enumeration value with value "0" which happens to be the second
         let supportsIndexing = true;
-        const values = []
+        const values = [];
         for (var child of EntityAccessor.getChildElements(xml, "value")) {
             const e = new XtkEnumerationValue(child, this.baseType, this._localizationId);
             values.push(e);
