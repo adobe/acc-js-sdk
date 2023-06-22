@@ -2096,6 +2096,22 @@ describe('Application', () => {
                 expect(node).toMatchObject({ name:"period", childrenCount:0, default: "\"m_abDay='7' m_abDay[0]='0' m_abDay[1]='0'\"" });
             });
 
+            it("Should extract translated default values of a memo", async () => {
+                var xml = DomUtil.parse(`<schema namespace='xtk' name='workflow'>
+                    <element name='workflow' label='Workflow'>
+                        <element name="directorywatcher" label="File collector">
+                            <element name="period" type="memo" label="Schedule">
+                                <translatedDefault>"m_abDay='7' m_abDay[0]='0' m_abDay[1]='0'"</translatedDefault>
+                            </element>
+                        </element>
+                    </element>
+                </schema>`);
+                var schema = newSchema(xml);
+
+                var node = await schema.root.findNode("directorywatcher/period");
+                expect(node).toMatchObject({ name:"period", childrenCount:0, translatedDefault: "\"m_abDay='7' m_abDay[0]='0' m_abDay[1]='0'\"" });
+            });
+
             it("Should extract translatedDefault attribute", async () => {
                 var xml = DomUtil.parse(`<schema namespace='xtk' name='workflow'>
                     <element name='workflow' label='Workflow'>
