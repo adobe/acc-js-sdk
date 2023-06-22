@@ -2096,7 +2096,7 @@ describe('Application', () => {
                 expect(node).toMatchObject({ name:"period", childrenCount:0, default: "\"m_abDay='7' m_abDay[0]='0' m_abDay[1]='0'\"" });
             });
 
-            it("Should extract translatedDefault", async () => {
+            it("Should extract translatedDefault attribute", async () => {
                 var xml = DomUtil.parse(`<schema namespace='xtk' name='workflow'>
                     <element name='workflow' label='Workflow'>
                         <element name="delivery" label="Delivery">
@@ -2112,6 +2112,37 @@ describe('Application', () => {
 
                 var node = await schema.root.findNode("delivery/transitions/done/@label");
                 expect(node).toMatchObject({ name:"@label", childrenCount:0, translatedDefault: "'Ok'" });
+            });
+
+            it("Should extract translatedDefault element", async () => {
+                var xml = DomUtil.parse(`<schema namespace='xtk' name='workflow'>
+                    <element name='workflow' label='Workflow'>
+                        <element name="extract" label="Split">
+                            <element label="Transitions" name="transitions" xml="true">
+                                <element name="extractOutput" ordered="true" template="nms:workflow:extractOutput" unbound="true">
+                                     <translatedDefault>&lt;extractOutput enabled="true" label="Segment" name="subSet" &gt;
+                                     &lt;limiter type="percent" percent="10" random="true"/&gt;
+                                     &lt;filter enabled="true"/&gt;
+                                     &lt;/extractOutput&gt;</translatedDefault>
+                                </element>
+                            </element>
+                        </element>
+                    </element>
+                </schema>`);
+                var schema = newSchema(xml);
+
+                var node = await schema.root.findNode("extract/transitions/extractOutput");
+                expect(node).toMatchObject(
+                    { translatedDefault: [
+                        {
+                            enabled: "true", name:"subSet", 
+                            limiter: { 
+                                type: 'percent',
+                                percent: '10',
+                                random: 'true'
+                            }
+                        }] 
+                    });
             });
 
         });
