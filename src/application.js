@@ -652,14 +652,22 @@ class XtkSchemaNode {
                 this.expr = EntityAccessor.getAttributeAsString(child, "expr");
                 this.isCalculated = false;
             }
-            if (child.tagName === "default") {
+            if (child.tagName === "default" || child.tagName === "translatedDefault") {
                 if(this.unbound) {
                     // Default value for a collection of elements
                     const xml = DomUtil.parse(`<xml>${child.textContent}</xml>`);
                     const json = DomUtil.toJSON(xml);
-                    this.default = XtkCaster.asArray(json[this.name]);
+                    if(child.tagName === "translatedDefault") {
+                        this.translatedDefault = XtkCaster.asArray(json[this.name]);
+                    } else {
+                        this.default = XtkCaster.asArray(json[this.name]);
+                    }
                 } else {
-                    this.default = child.textContent;
+                    if(child.tagName === "translatedDefault") {
+                        this.translatedDefault = child.textContent;
+                    } else {
+                        this.default = child.textContent;
+                    }
                 }
             }
         }
