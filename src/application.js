@@ -1224,7 +1224,9 @@ class XtkSchema extends XtkSchemaNode {
          this.enumerations = new ArrayMap();
          for (var child of EntityAccessor.getChildElements(xml, "enumeration")) {
              const e = new XtkEnumeration(this.id, child);
-             this.enumerations._push(e.shortName, e);
+             if (this.enumerations.get(e.shortName) === undefined) {
+                 this.enumerations._push(e.shortName, e);
+             }
          }
      }
 

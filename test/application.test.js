@@ -345,6 +345,19 @@ describe('Application', () => {
                 expect(enumerations[1].label).toBe("Status code");
             });
 
+            it("Should support duplicate  enumerations", () => {
+                var xml = DomUtil.parse(`<schema namespace='nms' name='recipient'>
+                                            <enumeration name="duplicated" basetype="byte"/>
+                                            <enumeration name="duplicated" basetype="byte"/>
+                                            <element name='recipient' label='Recipients'></element>
+                                        </schema>`);
+                var schema = newSchema(xml);
+                var enumerations = schema.enumerations;
+                expect(enumerations.duplicated.dummy).toBeFalsy();
+                expect(enumerations[0].label).toBe("Duplicated");
+                expect(enumerations[1]).toBeUndefined();
+            });
+
             it("Should test images", () => {
                 var xml = DomUtil.parse(`<schema namespace='nms' name='recipient'>
                                             <enumeration name="gender" basetype="byte">
