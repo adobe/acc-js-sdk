@@ -639,6 +639,38 @@ const fileUploader = (client) => {
                     reject(CampaignException.FILE_UPLOAD_FAILED(file.name, ex));
                 }
             });
+        },
+
+        /**
+         * Exposed method to call aemAssetDownload.jssp which will
+         * download the asset from AEM and upload it to Campaign.
+         */
+        uploadAemAsset: async (assetDownloadUrl) => {
+            const url = `${client._connectionParameters._endpoint}/nms/aemAssetDownload.jssp`;
+            const urlWithParams = new URL(url);
+            const headers = client._getAuthHeaders(false);
+            headers['Content-Type'] = 'application/json';
+
+            // We need to pass the Authorization header to AEM to download the asset from AEM
+            // as well as authenticating campaign server.
+            // A user token having access to campaign as well as AEM is required
+            if(headers['Authorization'] === undefined || headers['Authorization'] === '' || headers['Authorization'] === 'null') {
+                throw CampaignException.AEM_ASSET_UPLOAD_FAILED('Authorization header is missing');
+            }
+            try {
+                const response = await client._makeHttpCall({
+                    url: urlWithParams,
+                    method: 'POST',
+                    data: {assetDownloadUrl: assetDownloadUrl},
+                    headers: headers
+                });
+                if(response.publishedURL)
+                  return response
+                else
+                  throw "Publishing failed";
+            } catch (ex) {
+                throw CampaignException.AEM_ASSET_UPLOAD_FAILED(ex);
+            }
         }
     };
 };
