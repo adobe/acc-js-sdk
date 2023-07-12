@@ -26,6 +26,7 @@ const { Cipher } = require('../src/crypto.js');
 const { EntityAccessor } = require('../src/entityAccessor.js');
 const { JSDOM } = require('jsdom');
 const dom = new JSDOM();
+const { CampaignException } = require('../src/campaign.js');
 
 describe('ACC Client', function () {
 
@@ -1745,6 +1746,83 @@ describe('ACC Client', function () {
             await client.NLWS.xtkSession.logoff();
         });
     });
+
+    // write unit test for client.fileUploader.uploadAemAsset method
+    describe("Tests for client.fileUploader.uploadAemAsset method", () => {
+        // Case 1: uploadAemAsset method should return a valid response
+        it("Should return correct response", async () => {
+            const client = await Mock.makeClient();
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+
+            const mockResponse = {
+                "publishedURL" : "http://trk-inst-xyz.campaign.adobe.com/res/trk-inst/409afb8798180a36591456e152b6c406.jpeg"
+            };
+            client._bearerToken = 'Bearer 1234567890';
+            client._transport.mockReturnValueOnce(mockResponse);
+            const response = await client.fileUploader.uploadAemAsset("https://author-p74953-e183988-cmstg.adobeaemcloud.com/adobe/repository/content/dam/projects/children-kids-group-eating-ice-cream-funny-party-72701973%20%281%29%20%2812%29%20%282%29%20%283%29.jpg;api=block_download");
+            expect(response).toBe(mockResponse);
+
+            client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
+            await client.NLWS.xtkSession.logoff();
+        });
+
+        // Case 2: Bearertoken is not provided, but the client is already authenticated with session token
+        it("Should throw error for missing authentication token", async () => {
+            const client = await Mock.makeClient();
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+
+            await (client.fileUploader.uploadAemAsset("https://author-p74953-e183988-cmstg.adobeaemcloud.com/adobe/repository/content/dam/projects/children-kids-group-eating-ice-cream-funny-party-72701973%20%281%29%20%2812%29%20%282%29%20%283%29.jpg;api=block_download"))
+                  .catch( e => { expect(e).toMatchObject(CampaignException.AEM_ASSET_UPLOAD_FAILED('Bearer token is missing'))});
+
+            client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
+            await client.NLWS.xtkSession.logoff();
+        });
+
+        // Case 3: 200 response but publishedURL is not returned
+        // It shouldn't occur as API also checks non-emptiness of publishedURL before returning the response.
+        it("Should throw error for missing publishedURL", async () => {
+            const client = await Mock.makeClient();
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+
+            const mockResponse = {};
+            client._transport.mockReturnValueOnce(mockResponse);
+            client._bearerToken = 'Bearer 1234567890';
+
+            await (client.fileUploader.uploadAemAsset("https://author-p74953-e183988-cmstg.adobeaemcloud.com/adobe/repository/content/dam/projects/children-kids-group-eating-ice-cream-funny-party-72701973%20%281%29%20%2812%29%20%282%29%20%283%29.jpg;api=block_download"))
+                  .catch( e => { console.log(e); expect(e).toMatchObject(CampaignException.AEM_ASSET_UPLOAD_FAILED('Publishing failed'))});
+
+            client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
+            await client.NLWS.xtkSession.logoff();
+        });
+
+        // Case 4: AEM Asset upload failed (reason maybe aem not reachable, assetlink not reachable, etc)
+        it("Should throw error when AEM Asset upload failed", async () => {
+            const client = await Mock.makeClient();
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+
+            //const mockResponse = {};
+            client._transport.mockImplementation(() => {
+                var ex = CampaignException.AEM_ASSET_UPLOAD_FAILED('The requested content does not exist', 400);
+                ex.faultString = 'The requested content does not exist';
+                ex.detail = 'Failed to upload AEM asset';
+                throw ex;
+              });
+              client._bearerToken = 'Bearer 1234567890';
+
+            var ex = CampaignException.AEM_ASSET_UPLOAD_FAILED('The requested content does not exist', 400);
+            await (client.fileUploader.uploadAemAsset("https://author-p74953-e183988-cmstg.adobeaemcloud.com/adobe/repository/content/dam/projects/children-kids-group-eating-ice-cream-funny-party-72701973%20%281%29%20%2812%29%20%282%29%20%283%29.jpg;api=block_download"))
+                    .catch( e => { console.log(e); expect(e).toMatchObject(ex)});
+
+            client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
+            await client.NLWS.xtkSession.logoff();
+        });
+
+    });
+
 
     describe("Observers", () => {
 

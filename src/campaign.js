@@ -42,6 +42,7 @@ const { Util } = require("./util.js");
   static REPORT_FETCH_FAILED(name, details)               { return new CampaignException(undefined, 500, 16384, `SDK-000014 Failed to fetch report ${name}`, details); }
   static FEATURE_NOT_SUPPORTED(name)                      { return new CampaignException(undefined, 500, 16384, `SDK-000015 ${name} feature is not supported by the ACC instance`); }
   static REQUEST_ABORTED( )                               { return new CampaignException(undefined, 500,   -53, `SDK-000016 Request was aborted by the client`); }
+  static AEM_ASSET_UPLOAD_FAILED(details, statusCode=500) { return new CampaignException(undefined, statusCode, 16384, `SDK-000017 Failed to upload AEM asset`, details); }
 
 
   /**
@@ -226,13 +227,14 @@ function makeCampaignException(call, err) {
 
   if (err.statusCode && ctor && ctor.name == "HttpError") {
     var faultString = err.statusText;
-    var details = err.data;
+    var details = typeof err.data == 'object' ? JSON.stringify(err.data) : err.data
     if (!faultString) {
-      faultString = err.data;
+      faultString = typeof err.data == 'object' ? JSON.stringify(err.data) : err.data;
       details = undefined;
     }
+
     // Session expiration case must return a 401
-    if (err.data && err.data.indexOf(`XSV-350008`) != -1)
+    if (err.data && typeof err.data == 'string' && err.data.indexOf(`XSV-350008`) != -1)
         return CampaignException.SESSION_EXPIRED();
     return new CampaignException(call, err.statusCode, "", faultString, details, err);
   }
