@@ -665,7 +665,7 @@ const fileUploader = (client) => {
                     headers: headers
                 });
                 if(response.publishedURL)
-                  return response
+                  return response;
                 else
                   throw 'Publishing failed';
             } catch (ex) {

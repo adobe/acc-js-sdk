@@ -227,7 +227,7 @@ function makeCampaignException(call, err) {
 
   if (err.statusCode && ctor && ctor.name == "HttpError") {
     var faultString = err.statusText;
-    var details = typeof err.data == 'object' ? JSON.stringify(err.data) : err.data
+    var details = typeof err.data == 'object' ? JSON.stringify(err.data) : err.data;
     if (!faultString) {
       faultString = typeof err.data == 'object' ? JSON.stringify(err.data) : err.data;
       details = undefined;
