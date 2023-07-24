@@ -4,10 +4,7 @@ title: AEM asset upload API
 ---
 
 <p>Campaign API for downloading & uploading(publishing) AEM cloud asset on campaign publication server. Just like all APIs in the SDK, it's been wrapped into a function and will return a JSON object containing publishedUrl.</p>
-<p class="warning">Note: This API is restricted to be used from acc-web-ui only. It is used when an asset is selected from
-    AEM repository using asset-picker inside email-designer(acrite).
-    The API with different params/version will be extended to be used without acc-web-ui to download & publish AEM assets
-    in campaign in future.  
+<p class="warning">Note: This API can be used only with assetInfo url of AEM asset. AssetInfo url returns signed download url when called with GET API.
 </p>
 <h1>/nms/aemAssetDownload.jssp</h1>
 <p>This API is authenticated only using ims user token and run directly on the Apache front server.</p>
@@ -22,22 +19,15 @@ console.log(connectionParameters);
 const client = await sdk.init(connectionParameters);
 await client.logon();
 
-<span class="comment">// This url is download url link provided by acrite from selection handlebar</span>
-<span class="comment">// when asset is selected in asset-picker UI component.</span>
-const url = "https://abcd.adobeaemcloud/asset/xyz.png";
-
-try {
-  const response = await client.fileUploader.uploadAemAsset(url);
-  console.log(response);
-}catch(e){
-    console.log(e);
-}
+const url = "https://abcd.adobexyzcloud.domain.com/asset/xyz.png";
+const response = await client.fileUploader.uploadAemAsset(url);
+console.log(response);
 </pre>
 
 <p>will return in this format</p>
 <pre class="code">
 {
-    "publishedURL": "http://trk-inst-panyadav.corp.adobe.com/res/trk-inst/12f6710969d74ad965a333d31cf8c06d.jpeg"
+    "publishedURL": "http://trk-my-instance.my.domain.com/res/trk-inst/12f6710969d74ad965a333d31cf8c06d.jpeg"
 }
 </pre>
 
