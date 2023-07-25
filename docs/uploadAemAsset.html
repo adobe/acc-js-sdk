@@ -1,0 +1,45 @@
+---
+layout: page
+title: AEM asset upload API
+---
+
+<p>Campaign API for downloading & uploading(publishing) AEM cloud asset on campaign publication server. Just like all APIs in the SDK, it's been wrapped into a function and will return a JSON object containing publishedUrl.</p>
+<p class="warning">Note: This API can be used only with assetInfo url of AEM asset. AssetInfo url returns signed download url when called with GET API.
+</p>
+<h1>/nms/aemAssetDownload.jssp</h1>
+<p>This API is authenticated only using ims user token and run directly on the Apache front server.</p>
+<pre class="code">
+const version = sdk.getSDKVersion();
+console.log(`${version.description} version ${version.version}`);
+
+<span class="comment">// Logon to a Campaign instance with ImsBearerToken</span>
+const connectionParameters = sdk.ConnectionParameters.ofImsBearerToken("http://acc-sdk:8080", "ey...", options);
+console.log(connectionParameters);
+
+const client = await sdk.init(connectionParameters);
+await client.logon();
+
+const url = "https://abcd.adobexyzcloud.domain.com/asset/xyz.png";
+const response = await client.fileUploader.uploadAemAsset(url);
+console.log(response);
+</pre>
+
+<p>will return in this format</p>
+<pre class="code">
+{
+    "publishedURL": "http://trk-my-instance.my.domain.com/res/trk-inst/12f6710969d74ad965a333d31cf8c06d.jpeg"
+}
+</pre>
+
+<p class="warning">Note: This API can only be authenticated using ImsBearerToken because the same Ims user token
+    is used to authenticate AEM asset GET call. 
+</p>
+<pre class="code">
+const connectionParameters = sdk.ConnectionParameters.ofImsBearerToken("http://acc-sdk:8080", "ey...", options);
+console.log(connectionParameters);
+</pre>
+
+<p class="info">The API returns error with error code whenever it fails.<br>
+    The sdk error is "SDK-000017 Failed to upload AEM asset". It will also include specific reason for failure
+    and error code.
+</p>

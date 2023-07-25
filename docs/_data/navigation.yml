@@ -64,6 +64,8 @@
       link: messageCenter.html
     - name: Reports Data API
       link: reportData.html
+    - name: AEM asset upload API
+      link: uploadAemAsset.html
 - name: --
 - name: Advanced Topics
   children:

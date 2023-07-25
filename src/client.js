@@ -639,6 +639,41 @@ const fileUploader = (client) => {
                     reject(CampaignException.FILE_UPLOAD_FAILED(file.name, ex));
                 }
             });
+        },
+
+        /**
+         * Exposed method to call aemAssetDownload.jssp which will
+         * download the asset from AEM and upload it to Campaign.
+         */
+        uploadAemAsset: async (assetDownloadUrl) => {
+            const url = `${client._connectionParameters._endpoint}/nms/aemAssetDownload.jssp`;
+            const headers = client._getAuthHeaders(false);
+            headers['Content-Type'] = 'application/json';
+
+            try {
+                // We need to pass the Authorization header to AEM to download the asset from AEM
+                // as well as authenticating campaign server.
+                // A user token having access to campaign as well as AEM is required
+                if(headers['Authorization'] === undefined || headers['Authorization'] === '' || headers['Authorization'] === 'null') {
+                    throw 'Bearer token is missing';
+                }
+
+                const response = await client._makeHttpCall({
+                    url: url,
+                    method: 'POST',
+                    data: {assetDownloadUrl: assetDownloadUrl},
+                    headers: headers
+                });
+                if(response.publishedURL)
+                  return response;
+                else
+                  throw 'Publishing failed';
+            } catch (ex) {
+                if(ex instanceof CampaignException)
+                    throw CampaignException.AEM_ASSET_UPLOAD_FAILED(ex.faultString, ex.statusCode);
+                else
+                  throw CampaignException.AEM_ASSET_UPLOAD_FAILED(ex, ex.statusCode);
+            }
         }
     };
 };
@@ -2002,7 +2037,7 @@ class Client {
             if (this._traceAPICalls)
                 console.log("HTTP//failure", err);
             this._notifyObservers((observer) => observer.onHTTPCallFailure && observer.onHTTPCallFailure(request, err) );
-            const ex = makeCampaignException({ request:request, reqponse:err.response }, err);
+            const ex = makeCampaignException({ request:request, response:err.response }, err);
             this._trackEvent('HTTP//failure', event, { }, ex);
             throw ex;
         }
