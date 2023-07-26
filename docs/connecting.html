@@ -140,6 +140,23 @@ const connectionParameters = sdk.ConnectionParameters.ofBearerToken(
                                 "ims_bearer_token");
 </pre>
 
+<p>
+    One caveat with ofImsBearerToken mechanism is that logon will not actually call any SOAP logon APIs. The bearer token is just stored in memory and will be passed along with subsequent calls.
+</p>
+<p>
+    This can be a concern because "xtk:session#Logon" and "xtk:session#BearerTokenLogon" return a session info object containing information about the server and the logged user. 
+    This includes the server version and build number, the list of active packages, etc. This information is not available when using ofImsBearerToken.
+</p>
+<p>
+    In Version 1.1.35 of the SDK, it is possible to get this information consistently with other Logon method by passing the "sessionInfo" option to the ofImsBearerToken call.
+</p>
+<pre class="code">
+    const connectionParameters = sdk.ConnectionParameters.ofImsBearerToken(
+                                    "https://myInstance.campaign.adobe.com", 
+                                    "ims_bearer_token", 
+                                    { sessionInfo: true });
+</pre>
+
 
 <h2>Login with Session token</h2>
 <p>
