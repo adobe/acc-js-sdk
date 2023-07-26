@@ -171,4 +171,65 @@ describe('IMS Bearer Toekn', function () {
         // when using one of the Logon methods (Logno or BearertokenLogon)
         expect(application.packages).toBeUndefined();
     });
+
+    it('Should logon with IMS Bearer Token and return session info. No version string or date', async () => {
+        const client = await makeImsClient({ sessionInfo: true });
+        // As session info is asked, GetUserInfo and /r/test will be called
+        client._transport.mockReturnValueOnce(Promise.resolve(`<redir status='OK' build='9236' sha1='cc45440' instance='xxx_mkt_prod1' sourceIP='193.104.215.11' host='xxxol.campaign.adobe.com' localHost='xxxol-mkt-prod1-1'/>`));
+        client._transport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
+        client._transport.mockReturnValueOnce(Mock.GET_USER_INFO_RESPONSE);
+        await client.NLWS.xtkSession.logon();
+        expect(client.isLogged()).toBe(true);
+        expect(client.application.buildNumber).toBe("9236");
+        expect(client.application.version).toBe(undefined);
+        expect(client.application.instanceName).toBe("xxx_mkt_prod1");
+        expect(client.application.operator.login).toBe("admin");
+    });
+
+    it('Should logon with IMS Bearer Token and return session info', async () => {
+        const client = await makeImsClient({ sessionInfo: true });
+        // As session info is asked, GetUserInfo and /r/test will be called
+        client._transport.mockReturnValueOnce(Promise.resolve(`<redir status='OK' date='2021-08-27 08:02:07.963-07' version='8.5.1' build='9236' sha1='cc45440' instance='xxx_mkt_prod1' sourceIP='193.104.215.11' host='xxxol.campaign.adobe.com' localHost='xxxol-mkt-prod1-1'/>`));
+        client._transport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
+        client._transport.mockReturnValueOnce(Mock.GET_USER_INFO_RESPONSE);
+        await client.NLWS.xtkSession.logon();
+        expect(client.isLogged()).toBe(true);
+        expect(client.application.buildNumber).toBe("9236");
+        expect(client.application.version).toBe("8.5.1");
+    });
+
+    it('Should logon with IMS Bearer Token and return session info. Build number is missing from /r/test', async () => {
+        const client = await makeImsClient({ sessionInfo: true });
+        // As session info is asked, GetUserInfo and /r/test will be called
+        client._transport.mockReturnValueOnce(Promise.resolve(`<redir status='OK' date='2021-08-27 08:02:07.963-07'/>`));
+        client._transport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
+        client._transport.mockReturnValueOnce(Mock.GET_USER_INFO_RESPONSE);
+        client._transport.mockReturnValueOnce(Promise.resolve(`<?xml version='1.0'?>
+        <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:xtk:session' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
+        <SOAP-ENV:Body>
+            <GetOptionResponse xmlns='urn:xtk:session' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
+                <pstrValue xsi:type='xsd:string'>9999</pstrValue>
+                <pbtType xsi:type='xsd:byte'>6</pbtType>
+            </GetOptionResponse>
+        </SOAP-ENV:Body>
+        </SOAP-ENV:Envelope>`));
+        // As build number is missing getOption will be called
+        await client.NLWS.xtkSession.logon();
+        expect(client.isLogged()).toBe(true);
+        expect(client.application.buildNumber).toBe("9999");
+    });
+
+    it('Should fail to logon with IMS Bearer Token because build number is missing', async () => {
+        const client = await makeImsClient({ sessionInfo: true });
+        // As session info is asked, GetUserInfo and /r/test will be called
+        client._transport.mockReturnValueOnce(Promise.resolve(`<redir status='OK' date='2021-08-27 08:02:07.963-07'/>`));
+        client._transport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
+        client._transport.mockReturnValueOnce(Mock.GET_USER_INFO_RESPONSE);
+        client._transport.mockReturnValueOnce(Mock.GET_OPTION_NOTFOUND_RESPONSE);
+        // As build number is missing getOption will be called
+        await expect(async() => {
+            await client.NLWS.xtkSession.logon();
+        }).rejects.toMatchObject({ errorCode: "SDK-000007" });
+    });
+
 });

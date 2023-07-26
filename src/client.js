@@ -1412,6 +1412,52 @@ class Client {
         delete this._observabilityContext.session;
     }
 
+    _updateSessionInfo(sessionInfo, soapCall) {
+        this._sessionInfo = sessionInfo;
+        this._installedPackages = {};
+        const userInfo = DomUtil.findElement(sessionInfo, "userInfo");
+        if (!userInfo)
+            throw CampaignException.UNEXPECTED_SOAP_RESPONSE(soapCall, `userInfo structure missing`);
+        let pack = DomUtil.getFirstChildElement(userInfo, "installed-package");
+        while (pack) {
+            const name = `${DomUtil.getAttributeAsString(pack, "namespace")}:${DomUtil.getAttributeAsString(pack, "name")}`;
+            this._installedPackages[name] = name;
+            pack = DomUtil.getNextSiblingElement(pack);
+        }
+    }
+
+    async _fetchSessionInfo() {
+        const userInfoPromise = this.NLWS.xml.xtkSession.getUserInfo();
+        const testPromise = this.test();
+        const all = Promise.all([userInfoPromise, testPromise]);
+        const values = await all;
+
+        const sessionInfo = DomUtil.newDocument("sessionInfo");
+        const sessionInfoRoot = sessionInfo.documentElement;
+        const userInfo = sessionInfo.importNode(values[0], true);
+        sessionInfoRoot.appendChild(userInfo);
+        const serverInfo = sessionInfo.createElement('serverInfo');
+        sessionInfoRoot.appendChild(serverInfo);
+        const test = values[1];
+        if (test["date"])
+            serverInfo.setAttribute("serverDate", new Date(Date.parse(test["date"])).toISOString());
+        serverInfo.setAttribute("instanceName", test["instance"]);
+        if (test["version"]) {
+            const versionParts = test["version"].split(".");
+            serverInfo.setAttribute("majNumber", versionParts[0]);
+            serverInfo.setAttribute("minNumber", versionParts[1]);
+            serverInfo.setAttribute("servicePack", versionParts[2]);
+        }
+        let buildNumber = test["build"];
+        // Alternative method to get the build number (not available unless server has been upgraded at least once)
+        if (!buildNumber)
+            buildNumber = await this.getOption("NmsServer_LastPostUpgrade", false);
+        if (!buildNumber)
+            throw CampaignException.UNEXPECTED_SOAP_RESPONSE(undefined, `buildNumber structure missing for both /r/test and NmsServer_LastPostUpgrade option`);
+        serverInfo.setAttribute("buildNumber", buildNumber);
+        return sessionInfoRoot;
+    }
+
     /**
      * Login to an instance
      */
@@ -1466,8 +1512,18 @@ class Client {
             that._sessionToken = "";
             that._securityToken = "";
             that._bearerToken = credentials._bearerToken;
-            that._onLogon();
-            return Promise.resolve();
+
+            // With IMS Bearer token, we do not call the Logon or BearerTokenLogon method any more. As a consequence,
+            // we do not have the user and server information returned by those methods, so we need to get the corresponding
+            // information by other means
+            if (!this._connectionParameters._options.sessionInfo) {
+                that._onLogon();
+                return Promise.resolve();
+            }
+            return that._fetchSessionInfo().then((sessionInfo) => {
+                that._updateSessionInfo(sessionInfo, undefined);
+                that._onLogon();
+            });
         }
         else if (credentials._type == "UserPassword" || credentials._type == "BearerToken") {
             const soapCall = that._prepareSoapCall("xtk:session", credentials._type === "UserPassword" ? "Logon" : "BearerTokenLogon", true, false, this._connectionParameters._options.extraHttpHeaders);
@@ -1493,19 +1549,8 @@ class Client {
             }
             return this._makeSoapCall(soapCall).then(function() {
                 const sessionToken = soapCall.getNextString();
-
-                that._sessionInfo = soapCall.getNextDocument();
-                that._installedPackages = {};
-                const userInfo = DomUtil.findElement(that._sessionInfo, "userInfo");
-                if (!userInfo)
-                    throw CampaignException.UNEXPECTED_SOAP_RESPONSE(soapCall, `userInfo structure missing`);
-                var pack = DomUtil.getFirstChildElement(userInfo, "installed-package");
-                while (pack) {
-                    const name = `${DomUtil.getAttributeAsString(pack, "namespace")}:${DomUtil.getAttributeAsString(pack, "name")}`;
-                    that._installedPackages[name] = name;
-                    pack = DomUtil.getNextSiblingElement(pack);
-                }
-
+                const sessionInfo = soapCall.getNextDocument();
+                that._updateSessionInfo(sessionInfo, soapCall);
                 const securityToken = soapCall.getNextString();
                 soapCall.checkNoMoreArgs();
                 // Sanity check: we should have both a session token and a security token.

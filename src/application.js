@@ -1365,9 +1365,11 @@ class Application {
              * The server version, formatted as major.minor.servicePack (ex: 8.2.10)
              * @type {string}
              */
-            this.version = EntityAccessor.getAttributeAsString(serverInfo, "majNumber") + "." +
-                           EntityAccessor.getAttributeAsString(serverInfo, "minNumber") + "." +
-                           EntityAccessor.getAttributeAsString(serverInfo, "servicePack");
+            const majNumber = EntityAccessor.getAttributeAsString(serverInfo, "majNumber");
+            const minNumber = EntityAccessor.getAttributeAsString(serverInfo, "minNumber");
+            const servicePack = EntityAccessor.getAttributeAsString(serverInfo, "servicePack");
+            if (majNumber && minNumber && servicePack)
+                this.version = majNumber + "." + minNumber + "." + servicePack;
             /**
              * The Campaign instance name
              * @type {string}
