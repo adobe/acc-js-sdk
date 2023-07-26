@@ -1418,7 +1418,7 @@ class Client {
         const userInfo = DomUtil.findElement(sessionInfo, "userInfo");
         if (!userInfo)
             throw CampaignException.UNEXPECTED_SOAP_RESPONSE(soapCall, `userInfo structure missing`);
-        var pack = DomUtil.getFirstChildElement(userInfo, "installed-package");
+        let pack = DomUtil.getFirstChildElement(userInfo, "installed-package");
         while (pack) {
             const name = `${DomUtil.getAttributeAsString(pack, "namespace")}:${DomUtil.getAttributeAsString(pack, "name")}`;
             this._installedPackages[name] = name;
@@ -1427,8 +1427,8 @@ class Client {
     }
 
     async _fetchSessionInfo() {
-        const userInfoPromise = this.NLWS.xml.xtkSession.getUserInfo()
-        const testPromise = this.test()
+        const userInfoPromise = this.NLWS.xml.xtkSession.getUserInfo();
+        const testPromise = this.test();
         const all = Promise.all([userInfoPromise, testPromise]);
         const values = await all;
 
@@ -1455,7 +1455,6 @@ class Client {
         if (!buildNumber)
             throw CampaignException.UNEXPECTED_SOAP_RESPONSE(undefined, `buildNumber structure missing for both /r/test and NmsServer_LastPostUpgrade option`);
         serverInfo.setAttribute("buildNumber", buildNumber);
-        console.log(DomUtil.toXMLString(sessionInfo))
         return sessionInfoRoot;
     }
 
