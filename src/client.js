@@ -657,13 +657,22 @@ const fileUploader = (client) => {
                 if(headers['Authorization'] === undefined || headers['Authorization'] === '' || headers['Authorization'] === 'null') {
                     throw 'Bearer token is missing';
                 }
+                // Serialize json data (required for fetch)
+                const jsonData = JSON.stringify({
+                    'assetDownloadUrl': assetDownloadUrl
+                });
 
-                const response = await client._makeHttpCall({
+                var response = await client._makeHttpCall({
                     url: url,
                     method: 'POST',
-                    data: {assetDownloadUrl: assetDownloadUrl},
+                    data: jsonData,
                     headers: headers
                 });
+
+                // response is returned as string when using fetch(in browser)
+                // & returned as json using axios(nodejs).
+                if(typeof response === 'string')
+                  response = JSON.parse(response);
                 if(response.publishedURL)
                   return response;
                 else
