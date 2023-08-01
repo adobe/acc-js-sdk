@@ -1756,11 +1756,11 @@ describe('ACC Client', function () {
             await client.NLWS.xtkSession.logon();
 
             const mockResponse = {
-                "publishedURL" : "http://trk-inst-xyz.campaign.adobe.com/res/trk-inst/409afb8798180a36591456e152b6c406.jpeg"
+                "publishedURL" : "http://trk-inst-xyz.camp.adobe.com/res/trk-inst/409afb8798180a36591456e152b6c406.jpeg"
             };
             client._bearerToken = 'Bearer 1234567890';
             client._transport.mockReturnValueOnce(mockResponse);
-            const response = await client.fileUploader.uploadAemAsset("https://author-p74953-e183988-cmstg.adobeaemcloud.com/adobe/repository/content/dam/projects/children-kids-group-eating-ice-cream-funny-party-72701973%20%281%29%20%2812%29%20%282%29%20%283%29.jpg;api=block_download");
+            const response = await client.fileUploader.uploadAemAsset("https://author-stg.aem.adobe.com/adobe/repository/content/dam/projects/children-kids-group-eating-ice-cream-funny-party-72701973%20%281%29%20%2812%29%20%282%29%20%283%29.jpg;api=block_download");
             expect(response).toBe(mockResponse);
 
             client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
@@ -1773,7 +1773,7 @@ describe('ACC Client', function () {
             client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
 
-            await (client.fileUploader.uploadAemAsset("https://author-p74953-e183988-cmstg.adobeaemcloud.com/adobe/repository/content/dam/projects/children-kids-group-eating-ice-cream-funny-party-72701973%20%281%29%20%2812%29%20%282%29%20%283%29.jpg;api=block_download"))
+            await (client.fileUploader.uploadAemAsset("https://author-stg.aem.adobe.com/adobe/repository/content/dam/projects/children-kids-group-eating-ice-cream-funny-party-72701973%20%281%29%20%2812%29%20%282%29%20%283%29.jpg;api=block_download"))
                   .catch( e => { expect(e).toMatchObject(CampaignException.AEM_ASSET_UPLOAD_FAILED('Bearer token is missing'))});
 
             client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
@@ -1791,7 +1791,7 @@ describe('ACC Client', function () {
             client._transport.mockReturnValueOnce(mockResponse);
             client._bearerToken = 'Bearer 1234567890';
 
-            await (client.fileUploader.uploadAemAsset("https://author-p74953-e183988-cmstg.adobeaemcloud.com/adobe/repository/content/dam/projects/children-kids-group-eating-ice-cream-funny-party-72701973%20%281%29%20%2812%29%20%282%29%20%283%29.jpg;api=block_download"))
+            await (client.fileUploader.uploadAemAsset("https://author-stg.aem.adobe.com/adobe/repository/content/dam/projects/children-kids-group-eating-ice-cream-funny-party-72701973%20%281%29%20%2812%29%20%282%29%20%283%29.jpg;api=block_download"))
                   .catch( e => { console.log(e); expect(e).toMatchObject(CampaignException.AEM_ASSET_UPLOAD_FAILED('Publishing failed'))});
 
             client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
@@ -1814,13 +1814,32 @@ describe('ACC Client', function () {
               client._bearerToken = 'Bearer 1234567890';
 
             var ex = CampaignException.AEM_ASSET_UPLOAD_FAILED('The requested content does not exist', 400);
-            await (client.fileUploader.uploadAemAsset("https://author-p74953-e183988-cmstg.adobeaemcloud.com/adobe/repository/content/dam/projects/children-kids-group-eating-ice-cream-funny-party-72701973%20%281%29%20%2812%29%20%282%29%20%283%29.jpg;api=block_download"))
+            await (client.fileUploader.uploadAemAsset("https://author-stg.aem.adobe.com/adobe/repository/content/dam/projects/children-kids-group-eating-ice-cream-funny-party-72701973%20%281%29%20%2812%29%20%282%29%20%283%29.jpg;api=block_download"))
                     .catch( e => { console.log(e); expect(e).toMatchObject(ex)});
 
             client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
             await client.NLWS.xtkSession.logoff();
         });
 
+        // Case 5: transport layer returns response as string instead of json when sdk
+        // used as package inside browser(Fetch API is used in browser while axios in node).
+        it("Should return correct response", async () => {
+            const client = await Mock.makeClient();
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+
+            const mockResponse = {
+                "publishedURL" : "http://trk-inst-xyz.camp.adobe.com/res/trk-inst/409afb8798180a36591456e152b6c406.jpeg"
+            };
+            const mockResponseString = JSON.stringify(mockResponse);
+            client._bearerToken = 'Bearer 1234567890';
+            client._transport.mockReturnValueOnce(mockResponseString);
+            const response = await client.fileUploader.uploadAemAsset("https://author-stg.aem.adobe.com/adobe/repository/content/dam/projects/children-kids-group-eating-ice-cream-funny-party-72701973%20%281%29%20%2812%29%20%282%29%20%283%29.jpg;api=block_download");
+            expect(response).toMatchObject(mockResponse);
+
+            client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
+            await client.NLWS.xtkSession.logoff();
+        });
     });
 
 
