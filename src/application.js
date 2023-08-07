@@ -62,7 +62,10 @@ function propagateImplicitValues(xtkDesc, labelOnly) {
         // Force first letter as uppercase
         xtkDesc.label = xtkDesc.label.substring(0, 1).toUpperCase() + xtkDesc.label.substring(1);
     }
-    if (!labelOnly && !xtkDesc.description) xtkDesc.description = xtkDesc.label;
+    if (!labelOnly && !xtkDesc.description) {
+        xtkDesc.description = xtkDesc.label;
+        xtkDesc.descriptionLocalizationId = xtkDesc.labelLocalizationId;
+    };
 }
 
 // ========================================================================================
