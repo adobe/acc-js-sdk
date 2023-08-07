@@ -65,7 +65,7 @@ function propagateImplicitValues(xtkDesc, labelOnly) {
     if (!labelOnly && !xtkDesc.description) {
         xtkDesc.description = xtkDesc.label;
         xtkDesc.descriptionLocalizationId = xtkDesc.labelLocalizationId;
-    };
+    }
 }
 
 // ========================================================================================
