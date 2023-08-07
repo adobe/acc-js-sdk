@@ -2400,7 +2400,15 @@ describe('Application', () => {
             expect(root.labelLocalizationId).toBe('nms__recipient__e____recipient__@label');
             expect(root.descriptionLocalizationId).toBe('nms__recipient__e____recipient__@desc');
           });
-
+            
+          it("root node should have the label localization id when label exist but description does not exist", () => {
+            const xml = DomUtil.parse("<schema namespace='nms' name='recipient'><element name='recipient' label='Recipients' /></schema>");
+            const schema = newSchema(xml);
+            const root = schema.root;
+            expect(root.labelLocalizationId).toBe('nms__recipient__e____recipient__@label');
+            expect(root.descriptionLocalizationId).toBe('nms__recipient__e____recipient__@label');
+          });
+            
           it("child node should have a correct label localization id", () => {
             const xml = DomUtil.parse("<schema namespace='nms' name='recipient'><element name='lib' label='library' desc='library'/><element name='recipient' label='Recipients'/></schema>");
             const schema = newSchema(xml);
