@@ -1,0 +1,41 @@
+---
+layout: page
+title: Anonymous SOAP calls
+---
+
+<p>
+    The ACC JS SDK uses schemas to dynamically discover available methods and their signature. 
+    But fetching schemas requires an authenticated user.
+    This means it's not directly possible to call anonymous SOAP methods from the SDK.
+</p>
+
+<p>
+    Anonymous SOAP methods are declared with the <b>access</b> attribute set to <b>anonymous</b>
+</p>
+
+<pre class="code">
+&lt;method name="GetServerTime" static="true" access="anonymous">
+    &lt;help>Returns the server date and time&lt;/help>
+    &lt;parameters>
+        &lt;param name="serverTime"  type="datetime"  inout="out"/>
+    &lt;/parameters>
+&lt;/method>
+</pre>
+
+<p>
+    In order to call anonymous SOAP methods, one therefore needs a different mechanism and the <b>makeSoapCall</b> method can be used
+</p>
+
+<pre class="code">
+const sdk = require('@adobe/acc-js-sdk');
+const connectionParameters = sdk.ConnectionParameters.ofAnonymousUser("https://myInstance.campaign.adobe.com");
+var client = await sdk.init(connectionParameters);
+
+client.traceAPICalls(true);
+
+
+var inputParams = [];
+var outputParams = [{ name: "serverTime", type: "datetime" }];
+var result = await client.makeSoapCall("xtk:session", "GetServerTime", true, inputParams, outputParams);
+console.log(result);
+</pre>
