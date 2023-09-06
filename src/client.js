@@ -2096,9 +2096,7 @@ class Client {
         // To support anonymous SOAP calls, we need to disable the logon check
         soapCall.requiresLogon = () => false;
         await this._makeInterceptableSoapCall(urn, null, soapCall, inputParams, outputParams, representation);
-        const results = [];
-        for (let i=0; i<outputParams.length; i++)
-            results.push(outputParams[i].value);
+        const results = outputParams.map((o)=> o.value);
         return results;
     }
 
