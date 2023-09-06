@@ -107,6 +107,8 @@
       link: passwords.html
     - name: Differences between the SDK and Campaign
       link: differences.html
+    - name: Anonymous SOAP calls
+      link: anonymous.html
 - name: --
 - name: Contributing
   children:

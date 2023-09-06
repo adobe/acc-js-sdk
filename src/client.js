@@ -243,7 +243,7 @@ class Credentials {
      * @param {string} securityToken the security token. Will use an empty token if not specified
      */
     constructor(type, sessionToken, securityToken) {
-        if (type != "UserPassword" && type != "ImsServiceToken" && type != "SessionToken" &&
+        if (type != "UserPassword" && type != "ImsServiceToken" && type != "SessionToken" && type != "SessionAndSecurityToken" &&
             type != "AnonymousUser" && type != "SecurityToken" && type != "BearerToken" && type != "ImsBearerToken")
             throw CampaignException.INVALID_CREDENTIALS_TYPE(type);
         this._type = type;
@@ -459,6 +459,21 @@ class ConnectionParameters {
     }
 
     /**
+     * Creates connection parameters for a Campaign instance, using a session token and a security token
+     *
+     * @static
+     * @param {string} endpoint The campaign endpoint (URL)
+     * @param {string} sessionToken The session token
+     * @param {string} securityToken The security token
+     * @param {Campaign.ConnectionOptions} options connection options
+     * @returns {ConnectionParameters} a ConnectionParameters object which can be used to create a Client
+     */
+    static ofSessionAndSecurityToken(endpoint, sessionToken, securityToken, options) {
+        const credentials = new Credentials("SessionAndSecurityToken", sessionToken, securityToken);
+        return new ConnectionParameters(endpoint, credentials, options);
+    }
+    
+    /**
      * Creates connection parameters for a Campaign instance, using a security token.
      * Typically, called when embedding the SDK in Campaign: the session token will be
      * passed automatically as a cookie, so only the security token is actually needed
@@ -466,7 +481,7 @@ class ConnectionParameters {
      *
      * @static
      * @param {string} endpoint The campaign endpoint (URL)
-     * @param {string} securityToken The session token
+     * @param {string} securityToken The security token
      * @param {Campaign.ConnectionOptions} options connection options
      * @returns {ConnectionParameters} a ConnectionParameters object which can be used to create a Client
      */
@@ -1497,11 +1512,11 @@ class Client {
         if (credentials._type != "SecurityToken" && typeof document != "undefined") {
             document.cookie = '__sessiontoken=;path=/;';
         }
-        if (credentials._type == "SessionToken" || credentials._type == "AnonymousUser") {
+        if (credentials._type == "SessionToken" || credentials._type == "AnonymousUser" || credentials._type == "SessionAndSecurityToken") {
             that._sessionInfo = undefined;
             that._installedPackages = {};
             that._sessionToken = credentials._sessionToken;
-            that._securityToken = "";
+            that._securityToken = credentials._type == "SessionAndSecurityToken" ? credentials._securityToken : "";
             that._bearerToken = undefined;
             that._onLogon();
             return Promise.resolve();
@@ -2059,7 +2074,30 @@ class Client {
             result.push(outputParams[i].value);
         }
         return result;
+    }
 
+    /**
+     * Public API to dynamically invoke SOAP calls. This API allows to call any SOAP calls, including anonyous
+     * SOAP calls such as xtk:session#GetServerTime
+     * 
+     * @param {string} urn is the schema id, such as "xtk:session"
+     * @param {string} methodName is the name of the method to call, for example "GetServerTime"
+     * @param {boolean} isStatic indicates if the method is static or not
+     * @param {array} inputParams is an array of input parameters. Each element of the array is an object with the following properties: name, type, value
+     * @param {array} outputParams is an array of output parameters. Each element of the array is an object with the following properties: name, type
+     * @param {string} representation the expected representation ('xml', 'BadgerFish', or 'SimpleJson'). If not set, will use the current representation
+     * 
+     * @returns {array} the method return values in the same order as was described in the outputParams array.
+     * In addition, the outputParams array will be modified, and the "value" property of each output param will be set
+     */
+    async makeSoapCall(urn, methodName, isStatic, inputParams, outputParams, representation) {
+        const soapCall = this._prepareSoapCall(urn, methodName, isStatic, false, 
+          this._connectionParameters._options.extraHttpHeaders);
+        // To support anonymous SOAP calls, we need to disable the logon check
+        soapCall.requiresLogon = () => false;
+        await this._makeInterceptableSoapCall(urn, null, soapCall, inputParams, outputParams, representation);
+        const results = outputParams.map((o)=> o.value);
+        return results;
     }
 
     async _makeHttpCall(request) {

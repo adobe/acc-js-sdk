@@ -2203,8 +2203,24 @@ describe('ACC Client', function () {
             expect(client.isLogged()).toBeFalsy();
             // Ensure logoff has been called
             expect(logoff.mock.calls.length).toBe(1);
-        })
-     })
+        });
+     });
+
+     describe("Session and security tokens authentication", () => {
+        it("Should create logged client", async() => {
+            const connectionParameters = sdk.ConnectionParameters.ofSessionAndSecurityToken("http://acc-sdk:8080", "$session_token$", "$security_token$");
+            const client = await sdk.init(connectionParameters);
+            client._transport = jest.fn();
+            expect(client.isLogged()).toBeFalsy();
+            await client.logon();
+            expect(client.isLogged()).toBeTruthy();
+            const logoff = client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
+            await client.logoff();
+            expect(client.isLogged()).toBeFalsy();
+            // Ensure logoff has been called
+            expect(logoff.mock.calls.length).toBe(1);
+        });
+     });
 
     describe("Bearer token authentication", () => {
         // Bearer token authentication is used when embedding IMS for authentication
@@ -4140,6 +4156,57 @@ describe('ACC Client', function () {
             // node 14 throws "Cannot read property 'getSchema' of null"
             // node 16+ throws "Cannot read properties of null (reading 'getSchema')"
             await expect(jobs.linkTarget()).rejects.toThrow(/Cannot read (.*getSchema.*of null)|(.*of null.*getSchema)/);
+        });
+    });
+
+    describe("Anonymous SOAP calls", () => {
+        it("Should call xtk:session#GetServerTime", async () => {
+            const connectionParameters = sdk.ConnectionParameters.ofAnonymousUser("http://acc-sdk:8080");
+            const client = await sdk.init(connectionParameters);
+            client._transport = jest.fn();
+            
+            client._transport.mockReturnValueOnce(Promise.resolve(`<?xml version='1.0'?>
+                <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:xtk:session' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
+                <SOAP-ENV:Body>
+                <GetServerTimeResponse xmlns='urn:xtk:session' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
+                    <ptmServerTime xsi:type='xsd:dateTime'>2023-08-25T13:58:11.477Z</ptmServerTime>
+                </GetServerTimeResponse>
+                </SOAP-ENV:Body>
+                </SOAP-ENV:Envelope>`));
+
+            const inputParams = [];
+            const outputParams = [{ name: "serverTime", type: "datetime" }];
+            const result = await client.makeSoapCall("xtk:session", "GetServerTime", true, inputParams, outputParams);
+            expect(result.length).toBe(1);
+            expect(result[0]).toEqual(new Date("2023-08-25T13:58:11.477Z"));
+            expect(outputParams[0].value).toEqual(new Date("2023-08-25T13:58:11.477Z"));
+        });
+
+        it("Should call xtk:session#Logon", async () => {
+            const connectionParameters = sdk.ConnectionParameters.ofAnonymousUser("http://acc-sdk:8080");
+            const client = await sdk.init(connectionParameters);
+            client._transport = jest.fn();
+            
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+
+            inputParams = [
+                { name: "login", type: "string", value: "admin" },
+                { name: "password", type: "string", value: "admin" },
+                { name: "parameters", type: "DOMElement", value: { rememberMe: true } },
+                
+              ];
+              outputParams = [
+                { name: "sessionToken", type: "string" },
+                { name: "session", type: "DOMElement" },
+                { name: "securityToken", type: "string" },
+              ];
+            const result = await client.makeSoapCall("xtk:session", "Logon", true, inputParams, outputParams);
+            expect(result.length).toBe(3);
+            expect(result[0]).toEqual("___$session_token$");
+            expect(outputParams[0].value).toEqual("___$session_token$");
+            expect(result[2]).toEqual("@$security_token$==");
+            expect(outputParams[2].value).toEqual("@$security_token$==");
+            expect(result[1].serverInfo.buildNumber).toBe("9219");
         });
     });
 });
