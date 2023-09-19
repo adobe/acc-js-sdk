@@ -1345,7 +1345,7 @@ class Client {
             else if (operation == "select" && emptyResult) {
                 const querySchemaId = EntityAccessor.getAttributeAsString(object, "schema");
                 const index = querySchemaId.indexOf(':');
-                const querySchemaName = querySchemaId.substr(index + 1);
+                const querySchemaName = querySchemaId.substr(index + 1).replace(':', '_');
                 outputParams[1].value[querySchemaName] = [];
             }
         }

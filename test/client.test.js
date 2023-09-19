@@ -1334,6 +1334,80 @@ describe('ACC Client', function () {
             expect(extAccount).toEqual({ extAccount: [] });
         });
 
+        it("select with empty result - temporary schema", async () => {
+          const client = await Mock.makeClient();
+          client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+          await client.NLWS.xtkSession.logon();
+
+          client._transport.mockReturnValueOnce(Mock.GET_XTK_QUERY_SCHEMA_RESPONSE);
+
+          client._transport.mockReturnValueOnce(Promise.resolve(`<?xml version='1.0'?>
+          <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:xtk:queryDef' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
+            <SOAP-ENV:Body>
+              <ExecuteQueryResponse xmlns='urn:xtk:queryDef' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
+                <pdomOutput xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
+                  <workflow_1047471_query2_result-collection/>
+                </pdomOutput>
+              </ExecuteQueryResponse>
+          </SOAP-ENV:Body></SOAP-ENV:Envelope>`));
+
+          var queryDef = {
+              "schema": "temp:workflow:1047471_query2_result",
+              "operation": "select",
+              "select": {
+                  "node": [
+                      { "expr": "@id" },
+                      { "expr": "@name" }
+                  ]
+              }
+          };
+
+          // Select should return empty array
+          var query = client.NLWS.xtkQueryDef.create(queryDef);
+          var temp = await query.executeQuery();
+          expect(temp).toEqual({ 'workflow_1047471_query2_result': [] });
+        });
+
+        it("select with results - temporary schema", async () => {
+          const client = await Mock.makeClient();
+          client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+          await client.NLWS.xtkSession.logon();
+
+          client._transport.mockReturnValueOnce(Mock.GET_XTK_QUERY_SCHEMA_RESPONSE);
+
+          client._transport.mockReturnValueOnce(Promise.resolve(`<?xml version='1.0'?>
+          <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:xtk:queryDef' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
+            <SOAP-ENV:Body>
+              <ExecuteQueryResponse xmlns='urn:xtk:queryDef' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
+                <pdomOutput xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
+                  <workflow_1047471_query2_result-collection>
+                    <workflow_1047471_query3_result _keyfield0="1195" id="1195">
+                      <target _cs="rner20 joewar (joewarner20@fake_domain.com)"></target>
+                    </workflow_1047471_query3_result>
+                    <workflow_1047471_query3_result _keyfield0="1198" id="1198">
+                      <target _cs="aliberte23 troyla (troylaliberte23@fake_domain.com)"></target>
+                    </workflow_1047471_query3_result>
+                  </workflow_1047471_query2_result-collection>
+                </pdomOutput>
+              </ExecuteQueryResponse>
+          </SOAP-ENV:Body></SOAP-ENV:Envelope>`));
+
+          var queryDef = {
+              "schema": "temp:workflow:1047471_query2_result",
+              "operation": "select",
+              "select": {
+                  "node": [
+                      { "expr": "@id" },
+                      { "expr": "target"}
+                  ]
+              }
+          };
+
+          var query = client.NLWS.xtkQueryDef.create(queryDef);
+          var temp = await query.executeQuery();
+          expect(temp.workflow_1047471_query3_result.length).toBe(2);
+        });
+
         it("getIfExists with a result of exactly one element", async () => {
             const client = await Mock.makeClient();
             client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
