@@ -609,7 +609,9 @@ const fileUploader = (client) => {
                         iframe.style.display = 'block';
                         iframe.style.height = 0;
                         iframe.style.width = 0;
-                        iframe.className = 'fileUploaderFrame';
+                        if(options && options.className) {
+                            iframe.className = options.className;
+                        }
                         document.controller = { // Written to  support https://git.corp.adobe.com/Campaign/ac/blob/v6-master/nl/datakit/nl/jsp/uploadFile.jsp
                             uploadFileCallBack: async (data) => {
                                 if (!data || data.length !== 1) {
