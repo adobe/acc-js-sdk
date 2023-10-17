@@ -160,23 +160,32 @@ class XtkJobInterface {
         var schema = await this._client.getSchema(entitySchemaId, "xml", true);
         if (!schema)
             throw CampaignException.SOAP_UNKNOWN_METHOD(entitySchemaId, methodName, `Schema '${entitySchemaId}' not found`);
-        var method = this._client._methodCache.get(entitySchemaId, methodName);
+        var method = await this._client._methodCache.get(entitySchemaId, methodName);
         if (!method)
             throw CampaignException.SOAP_UNKNOWN_METHOD(entitySchemaId, methodName, `Method '${methodName}' of schema '${entitySchemaId}' not found`);
-        // SubmitSoapCall does not support 
+
         const isStatic = DomUtil.getAttributeAsBoolean(method, "static");
-        if (isStatic) 
-            throw CampaignException.SOAP_UNKNOWN_METHOD(entitySchemaId, methodName, `Method '${methodName}' of schema '${entitySchemaId}' is static`);
 
-
-        var jobId = await callContext.client._callMethod("SubmitSoapCall", callContext, [ {
-            name: this._soapCall.method,
-            service: this._soapCall.xtkschema,
-            param: [
-                { name:"this", type:"DOMDocument", value: this._soapCall.object },
-                { name:"bStart", type:"boolean", value:"false" },
-            ]
-        } ]);
+        var jobId = null;
+        if ( !isStatic)
+            jobId = await callContext.client._callMethod("SubmitSoapCall", callContext, [ {
+                name: this._soapCall.method,
+                service: this._soapCall.xtkschema,
+                param: [
+                    { name:"this", type:"DOMDocument", value: this._soapCall.object },
+                    { name:"bStart", type:"boolean", value:"false" },
+                ]
+            } ]);
+        else
+            // SubmitSoapCall now supports static method
+            // no need parameter type as it's already present in API definition
+            jobId = await callContext.client._callMethod("SubmitSoapCall", callContext,
+                    {                
+                        name: this._soapCall.method,
+                        service: this._soapCall.xtkschema,
+                        param : this._soapCall.args
+                    },
+             );
         this.jobId = jobId;
         return jobId;
     }
