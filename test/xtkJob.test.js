@@ -347,7 +347,7 @@ describe('XRK Jobs', function () {
                   value: "10"
                 }
               ]
-            const job = new XtkJobInterface(client, { xtkschema: "nms:webApp", object: jobDescription, method: "Publish", args: soapCallArgs });
+            const job = new XtkJobInterface(client, { xtkschema: "nms:webApp", jobId: "9876", method: "Publish", args: soapCallArgs });
             client._callMethod.mockReturnValueOnce(Promise.resolve("9876"));
             client.getSchema.mockReturnValueOnce(Promise.resolve(true));
             client._methodCache.get.mockReturnValueOnce(DomUtil.parse('<method static="true"></method>').documentElement);

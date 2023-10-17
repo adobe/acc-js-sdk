@@ -176,7 +176,16 @@ class XtkJobInterface {
                     { name:"bStart", type:"boolean", value:"false" },
                 ]
             } ]);
-        else
+        else {
+            // for non-persistant job, override object to intialize job properties
+            callContext.object = {
+                doNotPersist: "true",
+                xtkschema: this._soapCall.xtkschema,
+                id: this._soapCall.jobId,
+                properties: {
+                    warning: false,
+                }
+            };
             // SubmitSoapCall now supports static method
             // no need parameter type as it's already present in API definition
             jobId = await callContext.client._callMethod("SubmitSoapCall", callContext,
@@ -186,6 +195,7 @@ class XtkJobInterface {
                         param : this._soapCall.args
                     },
              );
+        }
         this.jobId = jobId;
         return jobId;
     }
