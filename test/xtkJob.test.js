@@ -325,6 +325,48 @@ describe('XRK Jobs', function () {
             } ]);
         });
 
+        it("SubmitSoapCall a non-persistant and static job with success", async () => {
+            const client = { _callMethod: jest.fn(), getSchema: jest.fn(), _methodCache: { get: jest.fn()} };
+            const jobDescription = { 
+                doNotPersist: "true",
+                xtkschema: 'nms:webApp',
+                id: "9876",
+                properties: {
+                    warning: false,
+                }};
+            const soapCallArgs =  [
+                {
+                  where: {
+                    condition: {
+                      expr: "@id=9876"
+                    }
+                  }
+                },
+                {
+                  type: "byte",
+                  value: "10"
+                }
+              ]
+            const job = new XtkJobInterface(client, { xtkschema: "nms:webApp", jobId: "9876", method: "Publish", args: soapCallArgs });
+            client._callMethod.mockReturnValueOnce(Promise.resolve("9876"));
+            client.getSchema.mockReturnValueOnce(Promise.resolve(true));
+            client._methodCache.get.mockReturnValueOnce(DomUtil.parse('<method static="true"></method>').documentElement);
+            const jobId = await job.submitSoapCall();
+            expect(jobId).toBe("9876");
+            expect(client._callMethod.mock.calls.length).toBe(1);
+            expect(client._callMethod.mock.calls[0][0]).toBe("SubmitSoapCall");
+            expect(client._callMethod.mock.calls[0][1]).toMatchObject({
+                entitySchemaId: "nms:webApp",
+                schemaId: "xtk:jobInterface",
+                object: jobDescription,
+            });
+            expect(client._callMethod.mock.calls[0][2]).toEqual({                
+                name: "Publish",
+                service: "nms:webApp",
+                param : soapCallArgs
+            });
+        });
+
         it("Infer schema from objects", async () => {
             const client = { _callMethod: jest.fn(), getSchema: jest.fn(), _methodCache: { get: jest.fn()} };
             const job = new XtkJobInterface(client, { object: { xtkschema: "nms:delivery", name: "Hello World" }, method: "Prepare" });
@@ -386,23 +428,6 @@ describe('XRK Jobs', function () {
                 "faultCode": 16384,
                 "faultString": "Unknown method 'NotFound' of schema 'nms:delivery'",
                 "message": "400 - Error 16384: SDK-000009 Unknown method 'NotFound' of schema 'nms:delivery'. Method 'NotFound' of schema 'nms:delivery' not found",
-                "name": "CampaignException",
-                "statusCode": 400,
-            });
-        });
-
-        it("Should fail on static methods", async () => {
-            const client = { _callMethod: jest.fn(), getSchema: jest.fn(), _methodCache: { get: jest.fn()} };
-            const job = new XtkJobInterface(client, { object: { xtkschema: "nms:delivery", name: "Hello World" }, method: "StaticMethod" });
-            client._callMethod.mockReturnValueOnce(Promise.resolve("9876"));
-            client.getSchema.mockReturnValueOnce(Promise.resolve(true));
-            client._methodCache.get.mockReturnValueOnce(DomUtil.parse('<method static="true"></method>').documentElement);
-            await expect(job.submitSoapCall()).rejects.toMatchObject({
-                "detail": "Method 'StaticMethod' of schema 'nms:delivery' is static",
-                "errorCode": "SDK-000009",
-                "faultCode": 16384,
-                "faultString": "Unknown method 'StaticMethod' of schema 'nms:delivery'",
-                "message": "400 - Error 16384: SDK-000009 Unknown method 'StaticMethod' of schema 'nms:delivery'. Method 'StaticMethod' of schema 'nms:delivery' is static",
                 "name": "CampaignException",
                 "statusCode": 400,
             });

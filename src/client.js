@@ -2013,7 +2013,10 @@ class Client {
         const inputParams = [];
         const outputParams = [];
 
-        // For non static methods, the first input and the first output parameters represent the entity itself. The name of the corresponding
+        // For non static methods 
+        //   in case of persistent job: object represents the entity instance
+        //   in case of non-persistent job: object represents job description 
+        // the first output parameters represent the entity itself. The name of the corresponding
         // parameter is set the the entity schema name.
         if (!isStatic) {
             var schemaName = entitySchemaId.substring(entitySchemaId.indexOf(':') + 1);
