@@ -129,3 +129,28 @@ title: XTK Jobs (xkt:job, xkt:jobInterface)
 <pre class="code">
   var result = await job.getResult();
 </pre>
+
+
+<h1>Jobs & Static methods</h1>
+<p>
+  Version 1.1.41 and above support submitting jobs on static methods.
+</p>
+<ul>
+  <li>Set the jobId parameter with the entity primary key. In the example below, the jobId is the id of the webApp to publish</li>
+  <li>Do not pass an object parameter. The method is static, there's no object.</li>
+</ul>
+<pre class="code">
+  const job = await client.jobInterface({
+    xtkschema: 'nms:webApp',
+    jobId: 9876,
+    method: 'Publish',
+    args: [
+      { where: { condition: { expr: "@id=9876" } } },
+      { type: "byte", value: "10" }
+    ]
+  });
+
+  const jobId = await job.submitSoapCall();
+</pre>
+
+
