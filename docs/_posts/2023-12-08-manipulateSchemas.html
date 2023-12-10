@@ -1,0 +1,364 @@
+---
+layout: post
+title:  "Manipulating schemas"
+author: Alexandre Morin
+tags: schemas soap
+excerpt: Sequence of APIs to discover and create a FDA schema
+---
+
+
+<p>
+  This article will illustrate how to use APIs to create and manipulate schemas
+</p>
+
+<h1>Schemas</h1>
+
+<p>
+  There are 3 types of schemas in Campaign
+  <ul>
+    <li>Source schemas (xtk:srcSchema)</li>
+    <li>Schemas (xtk:schema)</li>
+    <li>SQL schemas (xtk:sqlSchema)</li>
+  </ul>
+</p>
+
+<p>
+  Users normally only create source schemas. Those are then "compiled" into schemas and SQL schemas.
+  The compilation process (called "build schemas") can take several seconds and is performed via an API call.
+  This means that the <b>xtk:builder#BuildSchema</b> (or similar API) must be called after schemas are 
+  modified or created, to ensure overall consistency.
+</p>
+
+<p> 
+  Once source schemas are created and compiled, you will usually use schemas and not source schemas because
+  source schemas are just the various elements that build up the final schemas. You will probably never need
+  to use sql schemas directly. They are used internally to map schemas to SQL tables.
+</p>
+<p>
+  Of course you can read and use source schemas as well but this is usually limited to schema authoring 
+  use cases. 
+</p>
+
+<table>
+  <thead>
+    <tr><th>Attribute/Method</th><th>Description</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Create or modify</td><td>Use source schemas and BuildSchema API</td></tr>
+    <tr><td>Delete</td><td></td></tr>
+    <tr><td>Use</td><td>Use schemas</td></tr>
+  </tbody>
+</table>
+
+
+<h1>Reading schemas</h1>
+
+<h2>Get a schema as a JSON object</h2>
+<p>
+  The simplest way to read a schema is to use the <b>getSchema</b> SDK APIs which also provide client-side caching.
+</p>
+
+<p>
+  The <b>client.getSchema()</b> API returns a JSON or XML object representing the (compiled) schema requested.
+  See the <a href="{{ site.baseurl }}/xtkSchema.html">Schema API</a> page for more details.
+</p>
+
+<pre class="code">
+const schema = await client.getSchema("nms:recipient");
+console.log(JSON.stringify(schema));
+</pre>
+
+<h2>Get a schema as a convenient JavaScript object</h2>
+<p>
+  The <b>application.getSchema()</b> API is built on top of the previous one and returns a schema object which
+  is more convenient to use that a raw JSON object. See the <a href="{{ site.baseurl }}/application.html">Application</a> object for more details.
+</p>
+
+<pre class="code">
+const schema = await client.application.getSchema("nms:recipient");
+</pre>
+  
+<h2>List schemas using a query</h2>
+<p>
+  It is also possible to use the <a href="{{ site.baseurl }}/xtkQueryDef.html">QueryDef</a> API to read schemas and source schemas.
+</p>
+<p>
+  Let's first get the list of source schemas in the custom namespace "cus". The following will return then
+  names and labels of 10 source schemas in the cus namespace.
+</p>
+
+<pre class="code">
+
+const queryDef = {
+  schema: "xtk:srcSchema",
+  operation: "select",
+  lineCount: 10,
+  select: {
+      node: [
+          { expr: "@name" },
+          { expr: "@namespace" },
+          { expr: "@label" }
+      ]
+  },
+  where: {
+    condition: [
+        { expr:`@namespace = 'cus'` }
+    ]
+  }
+};
+const query = client.NLWS.xtkQueryDef.create(queryDef);
+const srcSchemas = await query.executeQuery();
+</pre>
+
+<p>
+  To return schemas instead of source schemas, use "xtk:schema" instead of "xtk:srcSchema" in the QueryDef.
+</p>
+
+<p>
+  If you want both schemas and source schemas, you can query the "xtk:entity" schema instead. But this requires an
+  additional condition en the "@entitySchema" attribute. If not, you will also get custom forms, javascript, etc.
+</p>
+
+<pre class="code">
+
+  const queryDef = {
+    schema: "xtk:entity",
+    operation: "select",
+    lineCount: 10,
+    select: {
+        node: [
+            { expr: "@name" },
+            { expr: "@namespace" },
+            { expr: "@label" },
+            { expr: "@entitySchema" },
+        ]
+    },
+    where: {
+      condition: [
+        { expr:`@namespace = 'cus'` },
+        { expr:`@entitySchema IN ('xtk:schema', 'xtk:srcSchema')` }
+        ]
+    }
+  };
+  const query = client.NLWS.xtkQueryDef.create(queryDef);
+  const entities = await query.executeQuery();
+  </pre>
+  
+
+  <h2>Use a query to get schema details</h2>
+
+  <p>
+    Schemas are stored into the xtk:entity table. The main fields (@name, @label, @namespace) are stored directly
+    as SQL columns, but the schema definition is actually stored as XML. 
+    Getting the XML requires to query at least one of attibutes which is stored in XML, for example
+    the @library attribute.
+  </p>
+
+  <pre class="code">
+
+    const queryDef = {
+      schema: "xtk:schema",
+      operation: "get",
+      select: {
+          node: [
+              { expr: "@name" },
+              { expr: "@namespace" },
+              { expr: "@label" },
+              { expr: "@library" },
+          ]
+      },
+      where: {
+        condition: [
+          { expr:`@namespace = 'nms' and @name='recipient'` },
+        ]
+      }
+    };
+    const query = client.NLWS.xtkQueryDef.create(queryDef);
+    const schema = await query.executeQuery();
+  </pre>
+
+
+<p>
+  Note that querying for schemas (as opposed to srcSchemas) the id is the id of the top most src schema (i.e. "nms:recipient" and not "cus:recipient").
+  The reason is that all source schemas (nms:recipient, cus:recipient, etc.) are merged into a single schema (nms:recipient) when compiled.
+  You can, however, query individual source schemas even if they are extension schemas
+</p>
+
+<pre class="code">
+  const queryDef = {
+    schema: "xtk:srcSchema",
+    operation: "get",
+    select: {
+        node: [
+            { expr: "@name" },
+            { expr: "@namespace" },
+            { expr: "@label" },
+            { expr: "@library" },
+        ]
+    },
+    where: {
+      condition: [
+        { expr:`@namespace = 'gov' and @name='recipient'` },
+      ]
+    }
+  };
+  const query = client.NLWS.xtkQueryDef.create(queryDef);
+  const srcSchema = await query.executeQuery();
+</pre>
+
+<h2>Use GetEntityIfMoreRecent</h2>
+<p>
+  Last, but not least, you can use the <b>xtk:persist#GetEntityIfMoreRecent</b> method to return a (compiled) schema. This is the method internally
+  used by the SDK. This method is useful if you already have the schema but you are not sure it's up to date. Calling this method is usefull to
+  save network bandwidth as it will only return the schema if it has changed.
+</p>
+<p> 
+  For this, you need to keep both the schema and its md5 hash (@md5 attribute). Then you can call the method as follows:
+  <ul>
+    <li>Pass an identifier to the schema. As GetEntityIfMoreRecent works with any type of entities, the id is formatted as "xtk:srcSchema:{schemaId}" or "xtk:schema:{schemaId}" </li>
+    <li>Pass the MD5 of the schema if you have it. If you pass undefined, the API call will return the full schema. If you pass a md5, the API will only return a schema if it has changed</li>
+    <li>Pass a boolean indicating if you expect the requested entity to exist. If false, then the API will return null for non existent entities</li>
+  </ul>
+</p>
+
+<pre class="code">
+const schema = await client.NLWS.xtkSession.getEntityIfMoreRecent("xtk:srcSchema|nms:notFound", md5, mustExist);
+</pre>
+
+
+
+<h1>Creating and updating schemas</h1>
+
+<p>
+  The following API calls can be used to either create or update schemas. Note the builtin schemas cannot be updated. 
+  The operation is always a two-step process:
+  <ui>
+    <li>Create or modify a source schema</li>
+    <li>Call one of the <b>BuildSchema</b> methods</li>
+  </ui>
+</p>
+
+<p class="warning">Always work with source schemas for creation and update. Tampering with (compiled) schemas can lead to inconsistencies and unpredictable results.</p>
+
+<h2>Create (or modify) a custom schema</h2>
+
+<p>
+  In this example we'll create or update a simple custom schema. This is the simplest scenario, there's no schema extension, etc.
+</p>
+
+<pre class="code">
+await client.NLWS.xtkSession.write({ 
+  xtkschema: "xtk:srcSchema", 
+  namespace: "cus",
+  name: "foo",
+  label: "Foos",
+  labelSingular: "Foo",
+  desc: "This is a fooooo", 
+  mappingType: "sql",
+  element: [
+    {
+      name: "foo",
+      key: [
+        {
+          name: "id",
+          keyfield: [
+            {
+              xpath: "@id"
+            }
+          ]
+        }
+      ],
+      attribute: [
+        {
+          name: "id", 
+          label: "Id",
+          type: "string",
+          length: 100
+        }
+      ]
+    }
+  ]
+});
+</pre>
+
+<p>
+  <ul>
+    <li>Make sure to pass the attribute xtkschema: "xtk:srcSchema". This means that we are creating or updating a source schema</li>
+    <li>Do not modify (compiled) schemas directly</li>
+    <li>The function does not return anything. You can a queryDef to verify that the source schema was properly created</li>
+    <li>By convention, the schema name is <i>singular</i>, in camel case, starting with a lower case character</li>
+    <li>The label is the human friendly name and is plural, whereas labelSingular is for ... singular</li>
+    <li>It's important to set the mapping type to SQL, indicating that we want a SQL table created</li>
+    <li>Create a root element with the <i>same name</i> as the schema</li>
+    <li>Although it's not mandatory to have a primary key, it's a best practice. Create a <i>key</i> element</li>
+  </ul>
+</p>
+
+<p>
+  Now, build the schema. This operation may take a few seconds, adjust the timeout accordingly.
+</p>
+
+<pre class="code">
+await client.NLWS.pushDown({ timeout: 60000 }).xtkBuilder.BuildSchemaFromId("cus:foo");
+</pre>
+<p class="warning">
+  Do not forget to call one of the <b>xtk:builder#BuildSchema</b>
+</p>
+
+
+
+<h1>Deleting a schema</h1>
+
+<p>
+  Before you can delete a source schema you need to get it's <b>@extendedSchema</b> attribute. The following will
+  return the id of the parent schema if cus:foo is an extension schema, or undefined if cus:foo is not an extension schema.
+</p>
+
+<pre class="code">
+const queryDef = {
+  schema: "xtk:srcSchema",
+  operation: "get",
+  select: {
+      node: [
+          { expr: "@extendedSchema" },
+      ]
+  },
+  where: {
+    condition: [
+      { expr:`@namespace = 'cus' and @name='foo'` },
+    ]
+  }
+};
+const query = client.NLWS.xtkQueryDef.create(queryDef);
+const srcSchema = await query.executeQuery();
+const extendedSchema = srcSchema.extendedSchema;
+</pre>  
+
+<p>
+  To remove a schema, a writer to delete the source schema entities you want to delete. Make sure to pass the extendedSchema if there is one.
+</p>
+
+<pre class="code">
+await client.NLWS.xtkSession.writeCollection({ 
+  xtkschema: "xtk:srcSchema", 
+  srcSchema: [
+    {
+      _operation: "delete",
+      extendedSchema: extendedSchema,
+      namespace: "cus",
+      name: "foo"
+    }
+  ]
+});
+</pre>
+
+<p>
+  Now, call the <b>xtk:builder#RemoveSchemaLinkRef</b> method to remove the schema and reverse links. Make sure to pass the extendedSchema if there is one.
+</p>
+<pre class="code">
+await client.NLWS.xtkBuilder.RemoveSchemaLinkRef("cus:foo", extendedSchema);
+</pre>
+
+<p>
+  If the schema you want to delete has extension schema 
+</p>

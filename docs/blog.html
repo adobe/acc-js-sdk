@@ -8,7 +8,7 @@ title: Blog (latest posts)
     {% for post in site.posts %}
       <li>
         <div class="blog-expert">
-          <h2><a href="{{ post.url }}">{{ post.title }}</a></h2>
+          <h2><a href="{{ site.baseurl }}/{{ post.url }}">{{ post.title }}</a></h2>
           <div class="blog-header">{{ post.author }} - {{ post.date | date_to_string }}</div>
           {{ post.excerpt }}
         </div>

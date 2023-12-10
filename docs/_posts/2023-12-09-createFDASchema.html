@@ -1,0 +1,429 @@
+---
+layout: post
+title:  "Discover and create a FDA schema"
+author: Alexandre Morin
+tags: fda schemas soap
+excerpt: Sequence of APIs to discover and create a FDA schema
+---
+
+
+<p>
+  This article will illustrate the following flow and show the corresponding SOAP calls.
+  <ul>
+    <li>Create an external account corresponding to a FDA PostgreSQL database</li>
+    <li>Discover all the tables available in the FDA database</li>
+    <li>Choose a table and discover the schema</li>
+    <li>Annotate and save the schema</li>
+  </ul>
+</p>
+
+<h1>Create FDA external account</h1>
+
+<p>
+  We'll create (or update) an external acount for a FDA database. You need the server, port, database and schema name, user and password. 
+</p>
+
+<h2>Encrypt the password</h2>
+
+<p>
+  The first step is to encrypt the password. 
+  The <b>xtk:persist#EncryptPassword</b> API will by used to encrypt the password.
+</p>
+
+<p></p>
+
+<pre class="code">
+&lt;SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:xtk:persist' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'&gt;
+&lt;SOAP-ENV:Body&gt;
+
+&lt;EncryptPassword xmlns='urn:xtk:persist' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'&gt;
+&lt;__sessiontoken xsi:type='xsd:string'&gt;{{SESSION_TOKEN}}&lt;/__sessiontoken&gt;
+      
+	      &lt;strDecrypted xsi:type='xsd:string'&gt;admin&lt;/strDecrypted&gt;
+
+&lt;/EncryptPassword&gt;
+&lt;/SOAP-ENV:Body&gt;
+&lt;/SOAP-ENV:Envelope&gt;
+
+</pre>
+
+<p>
+  The API will return the encrypted password as follows.
+</p>
+
+<pre class="code">
+&lt;?xml version='1.0'?&gt;
+&lt;SOAP-ENV:Envelope
+	xmlns:xsd='http://www.w3.org/2001/XMLSchema'
+	xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance'
+	xmlns:ns='urn:xtk:session'
+	xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'&gt;
+	&lt;SOAP-ENV:Body&gt;
+		&lt;EncryptPasswordResponse
+			xmlns='urn:xtk:session' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'&gt;
+			&lt;pstrEncrypted xsi:type='xsd:string'&gt;@S/U/D7xOdZfRAwf3+WRM3w==&lt;/pstrEncrypted&gt;
+		&lt;/EncryptPasswordResponse&gt;
+	&lt;/SOAP-ENV:Body&gt;
+&lt;/SOAP-ENV:Envelope&gt;
+</pre>
+
+
+<h2>Create the external account</h2>
+
+<p>
+  Now the external account can be created using the <b>xtk:persist#Write</b> API. Give it a name, make sure it's active and set all connection parameters as follows. Make sure you provide the encrypted password
+</p>
+
+<pre class="code">
+  &lt;SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:xtk:persist' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'&gt;
+    &lt;SOAP-ENV:Body&gt;
+    
+    &lt;Write xmlns='urn:xtk:persist' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'&gt;
+    &lt;__sessiontoken xsi:type='xsd:string'&gt;{{SESSION_TOKEN}}&lt;/__sessiontoken&gt;
+          &lt;domDoc xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'&gt;
+    
+            &lt;extAccount xtkschema="nms:extAccount" 
+                name="pg2" label="Postgres (2)" provider="PostgreSQL" type="7" active="1"
+                server="localhost" port="" dbName="fda" dbSchema="public" 
+                account="postgres" password="@S/U/D7xOdZfRAwf3+WRM3w=="
+                timezone="_server_" unicodeData="1"&gt;
+            &lt;/extAccount&gt;
+    
+          &lt;/domDoc&gt;
+    &lt;/Write&gt;
+    &lt;/SOAP-ENV:Body&gt;
+    &lt;/SOAP-ENV:Envelope&gt;
+</pre>
+
+<p>
+  The API does not return anything. Note the the <b>name</b> attribute is a unique key in the nms:account schema. So the same API call can be used to update the account.
+</p>
+
+<h2>Test the connection</h2>
+
+<p>
+  Campaign provides the <b>nms:extAccount#TestAccount</b> API to test the connection. Unfortunately, this API cannot take an extAccount id, but it needs to be passed all the credentials settings again.
+  Note that the password is still encrypted.
+</p>
+
+<pre class="code">
+
+  &lt;SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:xtk:persist' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'&gt;
+    &lt;SOAP-ENV:Body&gt;
+    
+    &lt;TestAccount xmlns='urn:xtk:persist' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'&gt;
+    &lt;__sessiontoken xsi:type='xsd:string'&gt;{{SESSION_TOKEN}}&lt;/__sessiontoken&gt;
+    
+          &lt;param xsi:type='xsd:byte'&gt;7&lt;/param&gt;
+          &lt;param xsi:type='xsd:boolean'&gt;1&lt;/param&gt;
+          &lt;param xsi:type='xsd:string'&gt;PostgreSQL:localhost&lt;/param&gt;
+          &lt;param xsi:type='xsd:string'&gt;postgres&lt;/param&gt;
+          &lt;param xsi:type='xsd:string'&gt;@S/U/D7xOdZfRAwf3+WRM3w==&lt;/param&gt;
+          &lt;param xsi:type='xsd:string'&gt;fda&lt;/param&gt;
+          &lt;param xsi:type='xsd:string'&gt;NChar=0;unicodeData=1;timezone=_server_;dbSchema=public;fileMethod=uploadFile;filePath=;&lt;/param&gt;
+          &lt;param xsi:type='xsd:string'&gt;pg2&lt;/param&gt;
+          &lt;param xsi:type='xsd:boolean'&gt;0&lt;/param&gt;
+          &lt;param xsi:type='xsd:string'&gt;&lt;/param&gt;
+          &lt;param xsi:type='xsd:string'&gt;&lt;/param&gt;
+          &lt;param xsi:type='xsd:string'&gt;&lt;/param&gt;
+          &lt;param xsi:type='xsd:string'&gt;&lt;/param&gt;
+      
+      &lt;/TestAccount&gt;
+    &lt;/SOAP-ENV:Body&gt;
+    &lt;/SOAP-ENV:Envelope&gt;
+        
+</pre>
+
+<p>
+  This should return a string with version information.
+</p>
+
+<pre class="code">
+&lt;?xml version='1.0'?&gt;
+&lt;SOAP-ENV:Envelope
+	xmlns:xsd='http://www.w3.org/2001/XMLSchema'
+	xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance'
+	xmlns:ns='urn:nms:extAccount'
+	xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'&gt;
+	&lt;SOAP-ENV:Body&gt;
+		&lt;TestAccountResponse
+			xmlns='urn:nms:extAccount' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'&gt;
+			&lt;pstrServer xsi:type='xsd:string'&gt;localhost&lt;/pstrServer&gt;
+			&lt;pstrDbmsVer xsi:type='xsd:string'&gt;Database server version &#39;PostgreSQL 12.2, compiled by Visual C++ build 1914, 64-bit&#39;.&lt;/pstrDbmsVer&gt;
+			&lt;pstrWarehouse xsi:type='xsd:string'&gt;&lt;/pstrWarehouse&gt;
+			&lt;pstrTestDuration xsi:type='xsd:string'&gt;Test connection took: 0 ms&lt;/pstrTestDuration&gt;
+		&lt;/TestAccountResponse&gt;
+	&lt;/SOAP-ENV:Body&gt;
+&lt;/SOAP-ENV:Envelope&gt;
+</pre>
+
+
+<h2>Query the external account</h2>
+
+<p>
+  You can also use a query to get information about the external account.
+</p>
+
+<pre class="code">
+&lt;SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:xtk:persist' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'&gt;
+&lt;SOAP-ENV:Body&gt;
+
+&lt;ExecuteQuery xmlns='urn:xtk:queryDef' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'&gt;
+&lt;__sessiontoken xsi:type='xsd:string'&gt;{{SESSION_TOKEN}}&lt;/__sessiontoken&gt;
+
+      &lt;entity xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'&gt;
+        &lt;queryDef fullLoad="true" operation="get" schema="nms:extAccount" startPath="/" xtkschema="xtk:queryDef"&gt;
+          &lt;select&gt;
+            &lt;node expr="@id"/&gt;
+            &lt;node expr="@name"/&gt;
+            &lt;node expr="@label"/&gt;
+            &lt;node expr="@provider"/&gt;
+            &lt;node expr="@active"/&gt;
+            &lt;node expr="@server"/&gt;
+            &lt;node expr="@port"/&gt;
+            &lt;node expr="@dbName"/&gt;
+            &lt;node expr="@dbSchema"/&gt;
+            &lt;node expr="@account"/&gt;
+            &lt;node expr="@password"/&gt;
+            &lt;node expr="@timezone"/&gt;
+            &lt;node expr="@unicodeData"/&gt;
+          &lt;/select&gt;
+          &lt;where&gt;
+            &lt;condition expr="@name='pg2'"/&gt;
+          &lt;/where&gt;
+        &lt;/queryDef&gt;
+      &lt;/entity&gt;
+
+&lt;/ExecuteQuery&gt;
+
+
+&lt;/SOAP-ENV:Body&gt;
+&lt;/SOAP-ENV:Envelope&gt;
+
+</pre>
+
+<p>
+  It will return something like this
+</p>
+
+<pre class="code">
+&lt;?xml version='1.0'?&gt;
+&lt;SOAP-ENV:Envelope
+	xmlns:xsd='http://www.w3.org/2001/XMLSchema'
+	xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance'
+	xmlns:ns='urn:xtk:queryDef'
+	xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'&gt;
+	&lt;SOAP-ENV:Body&gt;
+		&lt;ExecuteQueryResponse
+			xmlns='urn:xtk:queryDef' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'&gt;
+			&lt;pdomOutput xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'&gt;
+				&lt;extAccount account="postgres" active="1" dbName="fda" dbSchema="public" id="4510" label="Postgres (2)" name="pg2" password="@S/U/D7xOdZfRAwf3+WRM3w==" port="" provider="PostgreSQL" server="localhost" timezone="_server_" unicodeData="1"&gt;&lt;/extAccount&gt;
+			&lt;/pdomOutput&gt;
+		&lt;/ExecuteQueryResponse&gt;
+	&lt;/SOAP-ENV:Body&gt;
+&lt;/SOAP-ENV:Envelope&gt;
+
+</pre>
+
+
+<h1>Discover the tables</h1>
+
+<p>
+  Now you can discover the tables available in the FDA database. The <b>xtk:sqlSchema#BuildTableList</b> API will return a list of tables.
+</p>
+
+<pre class="code">
+&lt;SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:xtk:persist' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'&gt;
+&lt;SOAP-ENV:Body&gt;
+
+&lt;BuildTableList xmlns='urn:xtk:queryDef' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'&gt;
+&lt;__sessiontoken xsi:type='xsd:string'&gt;{{SESSION_TOKEN}}&lt;/__sessiontoken&gt;
+
+			&lt;param xsi:type='xsd:string'&gt;nms:extAccount:pg2&lt;/param&gt;
+			&lt;param xsi:type='xsd:string'&gt;%%&lt;/param&gt;
+
+&lt;/BuildTableList&gt;
+
+&lt;/SOAP-ENV:Body&gt;
+&lt;/SOAP-ENV:Envelope&gt;
+</pre>
+
+<p>
+  Which returns the following. In this example, I only have one table named <b>x</b>.
+</p>
+
+<pre class="code">
+  &lt;?xml version='1.0'?&gt;
+  &lt;SOAP-ENV:Envelope
+    xmlns:xsd='http://www.w3.org/2001/XMLSchema'
+    xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance'
+    xmlns:ns='urn:xtk:sqlSchema'
+    xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'&gt;
+    &lt;SOAP-ENV:Body&gt;
+      &lt;BuildTableListResponse
+        xmlns='urn:xtk:sqlSchema' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'&gt;
+        &lt;pdomTableList xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'&gt;
+          &lt;sqlSchema&gt;
+            &lt;table name="public.x"/&gt;
+          &lt;/sqlSchema&gt;
+        &lt;/pdomTableList&gt;
+      &lt;/BuildTableListResponse&gt;
+    &lt;/SOAP-ENV:Body&gt;
+  &lt;/SOAP-ENV:Envelope&gt;
+</pre>  
+
+
+<h1>Create the schema</h1>
+
+<p>
+  Schema creation is a 3-step process
+  <ul>
+    <li>First, create a sql schema by discovering the table structure in the FDA database</li>
+    <li>Second, modify the schema if necessary and save it as a source schema</li>
+    <li>Finally, build the final schema</li>
+  </ul>
+</p>
+
+<h2>Discover the table structure</h2>
+
+<p>
+  We'll call the <b>xtk:builder#GenerateSchema</b> API. It's the API behind the schema creation wizard.
+  This API takes high level parameters and return an XML document which is the future schema. Note that
+  everything happens in memory. At this point, nothing is created in the database.
+</p>
+<p>
+  The rationale is that the discovery may not discover anything, so we return a source schema, give you
+  a chance to modify it before it is persisted.
+</p>
+
+<pre class="code">
+&lt;SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:xtk:persist' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'&gt;
+&lt;SOAP-ENV:Body&gt;
+
+&lt;GenerateSchema xmlns='urn:xtk:queryDef' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'&gt;
+&lt;__sessiontoken xsi:type='xsd:string'&gt;{{SESSION_TOKEN}}&lt;/__sessiontoken&gt;
+
+      &lt;param xsi:type='xsi:element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'&gt;
+        &lt;tmp type="extView" sqltable="public.x" removePrefix="0" advanced="0"&gt;
+        &lt;/tmp&gt;
+      &lt;/param&gt;
+
+	    &lt;param xsi:type='xsi:element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'&gt;
+        &lt;srcSchema dataSource="nms:extAccount:pg2" img="xtk:schema.png" label="NewAPI" mappingType="sql" name="new2" namespace="cus" xtkschema="xtk:srcSchema"&gt;
+        &lt;/srcSchema&gt;
+      &lt;/param&gt;
+
+&lt;/GenerateSchema&gt;
+
+&lt;/SOAP-ENV:Body&gt;
+&lt;/SOAP-ENV:Envelope&gt;
+</pre>
+
+<p>
+  Which returns
+</p>
+
+<pre class="code">
+&lt;?xml version='1.0'?&gt;
+&lt;SOAP-ENV:Envelope
+	xmlns:xsd='http://www.w3.org/2001/XMLSchema'
+	xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance'
+	xmlns:ns='urn:xtk:builder'
+	xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'&gt;
+	&lt;SOAP-ENV:Body&gt;
+		&lt;GenerateSchemaResponse
+			xmlns='urn:xtk:builder' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'&gt;
+			&lt;pdomSchema xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'&gt;
+
+      &lt;srcSchema img="xtk:schema.png" label="NewAPI" mappingType="sql" name="new2" namespace="cus" view="true" xtkschema="xtk:srcSchema"&gt;
+					&lt;element dataSource="nms:extAccount:pg2" label="NewAPI" name="new2" sqltable="public.x"&gt;
+						&lt;attribute advanced="false" label="i" name="i" sqlname="i" type="long"/&gt;
+					&lt;/element&gt;
+				&lt;/srcSchema&gt;
+
+        &lt;/pdomSchema&gt;
+		&lt;/GenerateSchemaResponse&gt;
+	&lt;/SOAP-ENV:Body&gt;
+&lt;/SOAP-ENV:Envelope&gt;
+</pre>
+
+<p>
+  As you can see a src schema is returned. In this case, my table only had one column named "i" which is a long.
+</p>
+
+<h2>Create the schema</h2>
+
+<p>
+  Let's extract the srcSchema object from the result of the previous API call. We can modify this XML document 
+  and, for example, define links, labels, keys, etc.
+
+  Typically, we'll create at least a key as follows
+</p>
+<pre class="code">
+  &lt;srcSchema img="xtk:schema.png" label="NewAPI" mappingType="sql" name="new2" namespace="cus" view="true" xtkschema="xtk:srcSchema"&gt;
+  &lt;element dataSource="nms:extAccount:pg2" label="NewAPI" name="new2" sqltable="public.x"&gt;
+    &lt;key name="pk"&gt;
+      &lt;keyfield xpath="@i"/&gt;
+    &lt;/key&gt;
+    &lt;attribute advanced="false" label="i" name="i" sqlname="i" type="long"/&gt;
+  &lt;/element&gt;
+&lt;/srcSchema&gt;
+</pre>
+<p>
+  When happy with the document, it's time to save it and persist the src schema in the database. This
+  can be done with a simple <b>xtk:persist#Write</b> API call.
+</p>
+
+<pre class="code">
+  &lt;SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:xtk:persist' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'&gt;
+    &lt;SOAP-ENV:Body&gt;
+    
+    &lt;Write xmlns='urn:xtk:persist' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'&gt;
+    &lt;__sessiontoken xsi:type='xsd:string'&gt;{{SESSION_TOKEN}}&lt;/__sessiontoken&gt;
+    
+          &lt;domDoc xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'&gt;
+    
+            &lt;srcSchema img="xtk:schema.png" label="NewAPI" mappingType="sql" name="new2" namespace="cus" view="true" xtkschema="xtk:srcSchema"&gt;
+              &lt;element dataSource="nms:extAccount:pg2" label="NewAPI" name="new2" sqltable="public.x"&gt;
+                &lt;key name="pk"&gt;
+                  &lt;keyfield xpath="@i"/&gt;
+                &lt;/key&gt;
+                &lt;attribute advanced="false" label="i" name="i" sqlname="i" type="long"/&gt;
+              &lt;/element&gt;
+            &lt;/srcSchema&gt;
+    
+          &lt;/domDoc&gt;
+    
+    &lt;/Write&gt;
+    
+    
+    &lt;/SOAP-ENV:Body&gt;
+    &lt;/SOAP-ENV:Envelope&gt;
+</pre>    
+
+<p>
+  This API call does not return anything. But you can check in the database, the schema is there.
+</p>
+
+<h2>Build the schema</h2>
+
+<p>
+  The last step is very important and consists of building a xtk:schema from the xtk:srcSchema which has
+  just been created. We can use the <b>xtk:builder#BuildSchemaFromId</b> API call.
+</p>
+
+<pre class="code">
+  &lt;SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:xtk:persist' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'&gt;
+    &lt;SOAP-ENV:Body&gt;
+    
+    &lt;BuildSchemaFromId xmlns='urn:xtk:builder' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'&gt;
+    &lt;__sessiontoken xsi:type='xsd:string'&gt;{{SESSION_TOKEN}}&lt;/__sessiontoken&gt;
+    
+      &lt;schemaId&gt;cus:new2&lt;/schemaId&gt;
+    
+    &lt;/BuildSchemaFromId&gt;
+    
+    
+    &lt;/SOAP-ENV:Body&gt;
+    &lt;/SOAP-ENV:Envelope&gt;
+</pre>      
