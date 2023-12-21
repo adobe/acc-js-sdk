@@ -45,13 +45,37 @@ describe('Application', () => {
             });
 
             it("Duplicate root nodes", () => {
-                expect(() => {
-                    var xml = DomUtil.parse(`<schema namespace='nms' name='recipient'>
-                                                <element name='recipient' label='Recipients'/>
-                                                <element name='recipient' label='Recipients2'/>
-                                            </schema>`);
-                    newSchema(xml);    
-                }).toThrow("Failed to add element 'recipient' to ArrayMap. There's already an item with the same name");
+                var xml = DomUtil.parse(`<schema namespace='nms' name='recipient'>
+                                            <element name='recipient' label='Recipients'/>
+                                            <element name='recipient' label='Recipients2'/>
+                                        </schema>`);
+                var schema = newSchema(xml);
+                var root = schema.root;
+                expect(root).toBeTruthy();
+                expect(root.name).toBe("recipient");
+                expect(root.label).toBe("Recipients2");
+            });
+
+            it("Duplicate enumeration value", () => {
+                const xml = DomUtil.parse(`<schema namespace='nms' name='recipient'>
+                                            <enumeration basetype="string" name="AKA">
+                                                <value name="PC" value="1"/>
+                                                <value name="CL2" value="2"/>
+                                                <value name="CL3" value="3"/>
+                                                <value name="Null" value="4"/>
+                                                <value name="Null" value="NULL"/>
+                                            </enumeration>
+                                            <element name='recipient' label='Recipients'/>
+                                        </schema>`);
+                const schema = newSchema(xml);
+                const enumerations = schema.enumerations;
+                const enumeration = enumerations.AKA.values;
+                expect(enumeration.length).toBe(4);
+                expect(enumeration[0].name).toBe("PC");
+                expect(enumeration[1].name).toBe("CL2");
+                expect(enumeration[2].name).toBe("CL3");
+                expect(enumeration[3].name).toBe("Null");
+                expect(enumeration[3].value).toBe("NULL");
             });
 
             it("Should find root node", () => {

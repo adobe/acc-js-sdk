@@ -196,13 +196,17 @@ class ArrayMap {
 
   _push(key, value, withoutIndexing) {
       let isNumKey = false;
+      let updateIndex = -1;
+
       if (key) {
         // reserved keyworkds
         const isReserved = key === "_items" || key === "length" || key === "_push" || key === "forEach" || key === "map" || key === "_map" || key === "get" || key === "find" || key === "flatMap" || key === "filter";
 
         // already a child with the name => there's a problem with the schema
-        if (!isReserved && this[key]) 
-          throw new Error(`Failed to add element '${key}' to ArrayMap. There's already an item with the same name`);
+        // it seems the current behavior is to replace the existing item with the new one
+        if (!isReserved && this[key]) {
+          updateIndex = this._items.indexOf(this[key]);
+        }
 
         // Set key as a enumerable property, so that elements can be accessed by key, 
         // but also iterated on with a for ... in loop
@@ -222,14 +226,19 @@ class ArrayMap {
       if (!withoutIndexing && !isNumKey) {
         // Set the index property so that items can be accessed by array index.
         // However, make it non-enumerable to make sure indexes do not show up in a for .. in loop
-        Object.defineProperty(this, this._items.length, {
+        const numKey = updateIndex == -1 ? this._items.length : updateIndex;
+        Object.defineProperty(this, numKey, {
           value: value,
           writable: false,
           enumerable: false,
+          configurable: true, // Allow to redefine the property later in case there's a duplicate key
         });
       }
       // Add to array and set length
-      this._items.push(value);
+      if (updateIndex == -1)
+        this._items.push(value);
+      else
+        this._items[updateIndex] = value;
       this.length = this._items.length;
   }
 

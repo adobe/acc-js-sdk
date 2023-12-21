@@ -371,10 +371,26 @@ describe('Util', function() {
             expect(cat).toBe("012");
         });
 
-        it("Should not support adding the same key twice", () => {
+        it("Should support adding the same key twice. The last value overwrites", () => {
             const am = new ArrayMap();
             am._push("hello", "Hello");
-            expect(() => { am._push("hello", "World"); }).toThrow("Failed to add element 'hello' to ArrayMap. There's already an item with the same name");
+            expect(am.length).toBe(1);
+            am._push("hello", "World");
+            expect(am.length).toBe(1);
+            expect(am.get(0)).toBe("World");
+        });
+
+        it("Should support adding the same key twice. The last value overwrites in the middle of the array", () => {
+            const am = new ArrayMap();
+            am._push("hello", "Hello");
+            am._push("cruel", "Cruel");
+            am._push("world", "World");
+            expect(am.length).toBe(3);
+            am._push("cruel", "*cruel*");
+            expect(am.length).toBe(3);
+            expect(am.get(0)).toBe("Hello");
+            expect(am.get(1)).toBe("*cruel*");
+            expect(am.get(2)).toBe("World");
         });
 
         it("Should support missing names", () => {
