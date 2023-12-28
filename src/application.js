@@ -387,6 +387,12 @@ class XtkSchemaNode {
         this.unbound = EntityAccessor.getAttributeAsBoolean(xml, "unbound");
 
         /**
+         * If children are ordered
+         * @type {boolean}
+         */
+        this.ordered = EntityAccessor.getAttributeAsBoolean(xml, "ordered");
+
+        /**
          * The expression controlling the visibility of the current node
          * @type {string}
          */
@@ -409,6 +415,12 @@ class XtkSchemaNode {
          * @type {boolean}
          */
         this.isAdvanced = EntityAccessor.getAttributeAsBoolean(xml, "advanced");
+
+        /**
+         * if returning the whole node when camparing difference
+         * @type {boolean}
+         */
+        this.doesNotSupportDiff = EntityAccessor.getAttributeAsBoolean(xml, "doesNotSupportDiff");
 
         /**
          * Children of the node. This is a object whose key are the names of the children nodes (without the "@"
