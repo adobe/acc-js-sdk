@@ -2,6 +2,19 @@
 layout: page
 title: Change Log
 ---
+<section class="changelog"><h1>Version 1.1.45</h1>
+  <h2>2024/01/15</h2>
+  <li>
+    Update follow-redirects 3rd party to fix a potential vulnerability
+  </li>
+  <li>
+    Calling non-static, non-const, and non-pkonly methods would fail with a parameter type mismatch error. 
+    The reason is that the entity returned by such methods is named &lt;this&gt; and not &lt;entity&gt;.
+    Note that const and non-pkonly methods are probably still not handled properly by the SDK.
+  </li>
+</section>
+
+
 <section class="changelog"><h1>Version 1.1.44</h1>
   <h2>2024/01/02</h2>
   <li>
