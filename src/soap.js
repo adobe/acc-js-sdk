@@ -337,6 +337,7 @@ class SoapMethodCall {
      * In Campaign, non static SOAP calls may return an "entity" DOM Element, which corresponds to the object on which
      * the method is called. A good example is the xtk:queryDef#SelectAll API call: the method definition does not have
      * any return parameters, but it still returns an <entity> element contains the queryDef with all select nodes.
+     * When the method is implemented in JavaScript instead of C++, then the entity element will actually be named "this".
      * 
      * @private
      * @returns the Entity DOM Element if there's one, or null if there isn't. The currentElement pointer will be  updated accordingly
@@ -346,7 +347,7 @@ class SoapMethodCall {
             return null;
         if (this.elemCurrent.getAttribute("xsi:type") != "ns:Element")
             return null;
-        if (this.elemCurrent.tagName != "entity")
+        if (this.elemCurrent.tagName != "entity" && this.elemCurrent.tagName != "this")
             return null;
         var entity = this.elemCurrent;
         entity = DomUtil.getFirstChildElement(entity);

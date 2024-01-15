@@ -3062,6 +3062,25 @@ describe('ACC Client', function () {
             // second parameter is the call context
             expect(paramsFn.mock.calls[0][1]).toMatchObject({ schemaId: "xtk:session", namespace: "xtkSession" });
         });
+
+        it("Should call non-static JS method", async() => {
+            // Unlike C++ methods, non-static JS method return a this element which is named "this" and not "entity"
+            const client = await Mock.makeClient();
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+
+            client._transport.mockReturnValueOnce(Mock.GET_DATCO_SCHEMA_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_DATCO_TEST_RESPONSE);
+
+            const dataModelDef = { "name": "testDataModel" };
+            const dataModel = client.NLWS.dacoDataModel.create(dataModelDef);
+            const res = await dataModel.test("hi from client");
+
+            expect(res).toBe("hi - hello from client");
+              
+            client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
+            await client.NLWS.xtkSession.logoff();
+        });
     });
 
     describe("Method-level representation", () => {
