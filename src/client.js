@@ -583,7 +583,6 @@ const fileUploader = (client) => {
          * @returns {Promise<{name: string, md5: string, type: string, size: string, url: string}>}
          */
         upload: (file, options) => {
-            console.log(`fileuploader.upload is an experimental feature and is not currently fully functional. It is work in progress and will change in the future.`);
             return new Promise((resolve, reject) => {
                 const action = (options && options.action) ? options.action : "publishIfNeeded";
                 if (action !== "publishIfNeeded" && action !== "none")
