@@ -2043,7 +2043,9 @@ class Client {
                 const inout = DomUtil.getAttributeAsString(param, "inout");
                 const type = DomUtil.getAttributeAsString(param, "type");
                 const paramName = DomUtil.getAttributeAsString(param, "name");
-                if (!inout || inout=="in") {
+                const isIn = !inout || inout=="in" || inout=="inout";
+                const isOut = inout=="out" || inout=="inout";
+                if (isIn) {
                     let paramValue = parametersIsArray ? parameters[paramIndex] : parameters;
                     const inputParam = {
                         name: paramName,
@@ -2053,13 +2055,13 @@ class Client {
                     inputParams.push(inputParam);
                     paramIndex = paramIndex + 1;
                 }
-                else if (inout=="out") {
+                if (isOut) {
                     outputParams.push({
                         name: paramName,
                         type: type,
                     });
                 }
-                else {
+                if( !isIn && !isOut) {
                     throw CampaignException.BAD_PARAMETER("inout", inout, `Parameter '${paramName}' of schema '${entitySchemaId}' is not correctly defined as an input or output parameter`);
                 }
                 param = DomUtil.getNextSiblingElement(param, "param");

@@ -4351,4 +4351,33 @@ describe('ACC Client', function () {
             expect(result[1].serverInfo.buildNumber).toBe("9219");
         });
     });
+
+    describe("Test inout parameter", () => {
+        it("Call testAccount with inout parameter", async () => {
+            const client = await Mock.makeClient();
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+
+            client._transport.mockReturnValueOnce(Mock.GET_NMS_EXTACCOUNT_SCHEMA_WITH_METHODS_RESPONSE);
+
+            client._transport.mockReturnValueOnce(Promise.resolve(`<?xml version='1.0'?>
+            <SOAP-ENV:Envelope
+                xmlns:xsd='http://www.w3.org/2001/XMLSchema'
+                xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance'
+                xmlns:ns='urn:nms:extAccount'
+                xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
+                <SOAP-ENV:Body>
+                    <TestAccountResponse
+                        xmlns='urn:nms:extAccount' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
+                        <pstrServer xsi:type='xsd:string'>localhost</pstrServer>
+                        <pstrDbmsVer xsi:type='xsd:string'>Database server version 'PostgreSQL 12.2, compiled by Visual C++ build 1914, 64-bit'.</pstrDbmsVer>
+                        <pstrWarehouse xsi:type='xsd:string'></pstrWarehouse>
+                        <pstrTestDuration xsi:type='xsd:string'>Test connection took: 0 ms</pstrTestDuration>
+                    </TestAccountResponse>
+                </SOAP-ENV:Body>
+            </SOAP-ENV:Envelope>`));
+
+            const result = await client.NLWS.nmsExtAccount.testAccount(7, true, "PostgreSQL:localhost", "postgres", "password", "NChar=0;unicodeData=1;timezone=_server_;dbSchema=public;fileMethod=uploadFile;filePath=", "pg2", 0);
+        });
+    });
 });

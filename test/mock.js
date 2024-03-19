@@ -567,6 +567,50 @@ const GET_NMS_EXTACCOUNT_SCHEMA_RESPONSE = Promise.resolve(`<?xml version='1.0'?
     </SOAP-ENV:Body>
     </SOAP-ENV:Envelope>`);
 
+const GET_NMS_EXTACCOUNT_SCHEMA_WITH_METHODS_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
+<SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:wpp:default' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
+<SOAP-ENV:Body>
+    <GetEntityIfMoreRecentResponse xmlns='urn:wpp:default' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
+        <pdomDoc xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
+            <schema name="extAccount" namespace="nms" xtkschema="xtk:schema">
+                <enumeration basetype="byte" default="delivery" name="type">
+                    <value name="bounces" value="0"/>
+                    <value name="hdfs" value="17"/>
+                </enumeration>
+                <enumeration basetype="byte" default="none" name="encryptionType">
+                    <value name="none" value="0"/>
+                    <value name="ssl" value="1"/>
+                </enumeration>
+                <element name="extAccount"></element>
+                <methods>
+                    <method name="TestAccount" static="true">
+                    <help>Performs a connection test</help>
+                    <parameters>
+                        <param name="type" type="byte" desc="Account type"/>
+                        <param name="active" type="boolean" desc="Is account active"/>
+                        <param name="server" type="string" desc="Server address" inout="inout"/>
+                        <param name="account" type="string" desc="Name (or login) of account"/>
+                        <param name="password" type="string" desc="Password associated with account"/>
+                        <param name="port" type="string" desc="Server port"/>
+                        <param name="options" type="string" desc="Connection options"/>
+                        <param name="name" type="string" desc="Account name" optional="true"/>
+                        <param name="oauth" type="boolean" desc="OAUth 2.0 activation"/>
+                        <param name="azureTenant" type="string" desc="Azure tenant" optional="true"/>
+                        <param name="clientId" type="string" desc="Azure client Id" optional="true"/>
+                        <param name="clientSecret" type="string" desc="Azure client secret" optional="true"/>
+                        <param name="redirectUrl" type="string" desc="Azure redirect url" optional="true"/>
+                        <param name="dbmsVer" type="string" desc="DBMS Version" inout="out" optional="true"/>
+                        <param name="warehouse" type="string" desc="Warehouse name" inout="out" optional="true"/>
+                        <param name="testDuration" type="string" desc="Formatted string displaying connection time in ms" inout="out" optional="true"/>
+                    </parameters>
+                    </method>
+                </methods>
+            </schema>
+        </pdomDoc>
+    </GetEntityIfMoreRecentResponse>
+</SOAP-ENV:Body>
+</SOAP-ENV:Envelope>`);
+
 const GET_XTK_IMPL_SCHEMA_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
     <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:wpp:default' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
     <SOAP-ENV:Body>
@@ -1061,6 +1105,7 @@ exports.Mock = {
   GET_LOGON_MID_RESPONSE: GET_LOGON_MID_RESPONSE,
   GET_TSTCNX_RESPONSE: GET_TSTCNX_RESPONSE,
   GET_NMS_EXTACCOUNT_SCHEMA_RESPONSE: GET_NMS_EXTACCOUNT_SCHEMA_RESPONSE,
+  GET_NMS_EXTACCOUNT_SCHEMA_WITH_METHODS_RESPONSE: GET_NMS_EXTACCOUNT_SCHEMA_WITH_METHODS_RESPONSE,
   GET_XTK_ALL_SCHEMA_RESPONSE: GET_XTK_ALL_SCHEMA_RESPONSE,
   GET_XTK_IMPL_SCHEMA_RESPONSE: GET_XTK_IMPL_SCHEMA_RESPONSE,
   GET_XTK_ALL_TYPES_RESPONSE: GET_XTK_ALL_TYPES_RESPONSE,
