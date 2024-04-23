@@ -1197,7 +1197,9 @@ class Client {
                     // Hack for workflow API. The C++ code checks that the name of the XML element is <variables>. When
                     // using xml representation at the SDK level, it's ok since the SDK caller will set that. But this does
                     // not work when using "BadgerFish" representation where we do not know the root element name.
-                    if (entitySchemaId == "xtk:workflow" && methodName == "StartWithParameters" && paramName == "parameters")
+                    if (entitySchemaId == "xtk:workflow" && paramName == "parameters" && (
+                        methodName == "StartWithParameters" || methodName == "PostEvent" || methodName == "SimulateWithParameters" ||
+                        methodName == "SpawnWithParameters" || methodName == "SpawnWithParametersEx") )
                         docName = "variables";
                     if (entitySchemaId == "nms:rtEvent" && methodName == "PushEvent")
                         docName = "rtEvent";

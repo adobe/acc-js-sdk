@@ -742,6 +742,34 @@ const GET_XTK_WORKFLOW_SCHEMA_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
                             <param name="parameters" type="DOMElement" inout="in"></param>
                         </parameters>
                     </method>
+                    <method name="SimulateWithParameters" static="true">
+                        <parameters>
+                            <param name="workflowId" type="string" inout="in" />
+                            <param name="parameters" type="DOMElement" inout="in"></param>
+                        </parameters>
+                    </method>
+                    <method name="PostEvent" static="true">              
+                        <parameters>
+                            <param name="workflowId" type="string" inout="in"/>
+                            <param name="activity" type="string" inout="in"/>
+                            <param name="transition"     type="string"      inout="in"/>
+                            <param name="parameters"     type="DOMElement"  inout="in"/>
+                            <param name="complete"       type="boolean"     inout="in"/>
+                        </parameters>
+                    </method>
+                    <method name="SpawnWithParameters" static="true">
+                        <parameters>
+                            <param name="workflowId" type="string" inout="in" />
+                            <param name="parameters" type="DOMElement" inout="in"></param>
+                        </parameters>
+                    </method>
+                    <method name="SpawnWithParametersEx" static="true">
+                        <parameters>
+                            <param name="workflowId" type="string" inout="in" />
+                            <param name="simulation" type="boolean" inout="in"/>
+                            <param name="parameters" type="DOMElement" inout="in"></param>
+                        </parameters>
+                    </method>
                 </methods>
             </schema>
             </pdomDoc>

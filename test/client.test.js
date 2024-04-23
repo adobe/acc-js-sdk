@@ -1061,26 +1061,44 @@ describe('ACC Client', function () {
             await client.NLWS.xtkSession.logon();
 
             client._transport.mockReturnValueOnce(Mock.GET_XTK_WORKFLOW_SCHEMA_RESPONSE);
-            client._transport.mockImplementationOnce(options => {
-                const doc = DomUtil.parse(options.data);
-                const body = DomUtil.findElement(doc.documentElement, "SOAP-ENV:Body");
-                const method = DomUtil.getFirstChildElement(body);
-                const parameters = DomUtil.findElement(method, "parameters");
-                const variables = DomUtil.getFirstChildElement(parameters, "variables");
-                if (!variables)
-                    throw new Error("Did not find 'variables' node");
-                if (variables.getAttribute("hello") != "world")
-                    throw new Error("Did not find 'hello' variable");
 
-                return Promise.resolve(`<?xml version='1.0'?>
-                    <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:xtk:workflow' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
-                        <SOAP-ENV:Body>
-                        <StartWithParametersResponse xmlns='urn:xtk:workflow' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
-                        </StartWithParametersResponse>
-                        </SOAP-ENV:Body>
-                    </SOAP-ENV:Envelope>`);
-            });
-            await client.NLWS.xtkWorkflow.startWithParameters(4900, { "hello": "world" });
+            const mockImpl = (methodName) => {
+                client._transport.mockImplementationOnce(options => {
+                    const doc = DomUtil.parse(options.data);
+                    const body = DomUtil.findElement(doc.documentElement, "SOAP-ENV:Body");
+                    const method = DomUtil.getFirstChildElement(body);
+                    const parameters = DomUtil.findElement(method, "parameters");
+                    const variables = DomUtil.getFirstChildElement(parameters, "variables");
+                    if (!variables)
+                        throw new Error("Did not find 'variables' node");
+                    if (variables.getAttribute("hello") != "world")
+                        throw new Error("Did not find 'hello' variable");
+
+                    const tagName = methodName + "Response";
+                    return Promise.resolve(`<?xml version='1.0'?>
+                        <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:xtk:workflow' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
+                            <SOAP-ENV:Body>
+                            <${tagName} xmlns='urn:xtk:workflow' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
+                            </${tagName}>
+                            </SOAP-ENV:Body>
+                        </SOAP-ENV:Envelope>`);
+                });
+            };
+
+            const variables = { "hello": "world" };
+
+            mockImpl("StartWithParameters");
+            await client.NLWS.xtkWorkflow.startWithParameters(4900, variables);
+            mockImpl("SimulateWithParameters");
+            await client.NLWS.xtkWorkflow.simulateWithParameters(4900, variables);
+            mockImpl("PostEvent");
+            await client.NLWS.xtkWorkflow.postEvent("WFK123", "signal", "", variables, false);
+            
+            // return parameter instanceId has been removed from the mock method definition to simplify the unit test
+            mockImpl("SpawnWithParameters");
+            await client.NLWS.xtkWorkflow.spawnWithParameters(4900, variables);
+            mockImpl("SpawnWithParametersEx");
+            await client.NLWS.xtkWorkflow.spawnWithParametersEx(4900, true, variables);
 
             client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
             await client.NLWS.xtkSession.logoff();
