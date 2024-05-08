@@ -565,6 +565,16 @@ class ConnectionParameters {
 
 
 /**
+ * @typedef {Object} FileDownloadOptions
+ * @property {string} fileName to rename the name in save as dialog of web browser (force this
+ * dialog) must be in UTF-8
+ * @property {string} saveAsFile should the response trigger a file save popup for browsers
+ * @property {string} contentType change the content-type of the response (to help browser to
+ * handle this file) expl : image/png, text/plain;charset=ISO-8859-1
+ * @memberOf Campaign
+ */
+
+/**
  * File Uploader API for JS SDK(Currently available only in browsers)
  * @private
  * @ignore
@@ -702,7 +712,80 @@ const fileUploader = (client) => {
                 else
                   throw CampaignException.AEM_ASSET_UPLOAD_FAILED(ex, ex.statusCode);
             }
+        },
+
+        /**
+         * This is the exposed/public method for fileDownloader instance which will be responsible for downloading the files from the Campaign instance from 'upload' folder Only.
+         * @ignore
+         * @param md5 md5 of the file content
+         * @param ext (original) file extension
+         * @param {Object} FileDownloadOptions
+         * @returns {Promise<{data: string, error: Array}>}
+         */
+        download: async (md5, ext, options) => {
+          const response = { data: null, error: [] };
+
+          if (!md5) {
+            response.error.push(
+              CampaignException.BAD_PARAMETER(
+                "md5",
+                md5,
+                "'md5' is mandatory parameter for download file"
+              )
+            );
+          }
+
+          if (!ext) {
+            response.error.push(
+              CampaignException.BAD_PARAMETER(
+                "ext",
+                ext,
+                "'ext' is mandatory parameter for download file"
+              )
+            );
+          }
+
+          if (response.error.length === 0) {
+            try {
+              const fileName =
+                options && options.fileName ? options.fileName : md5;
+              const saveAsFile =
+                options && options.saveAsFile ? options.saveAsFile : false;
+              const contentType =
+                options && options.contentType ? options.contentType : "";
+
+              const queryParams = {
+                md5,
+                ext,
+                fileName,
+              };
+
+              if (contentType) {
+                queryParams.contentType = contentType;
+              }
+
+              const queryString = new URLSearchParams(queryParams).toString();
+
+              const headers = client._getAuthHeaders(false);
+              const data = await client._makeHttpCall({
+                url: `${client._connectionParameters._endpoint}/nl/jsp/downloadFile.jsp?${queryString}`,
+                headers: headers,
+              });
+
+              if (saveAsFile) {
+                Util.downloadFile(data, fileName, ext, contentType);
+              }
+
+              response.data = data;
+            } catch (ex) {
+              response.error.push(ex);
+              console.error(ex);
+            }
+          }
+
+          return response;
         }
+
     };
 };
 
