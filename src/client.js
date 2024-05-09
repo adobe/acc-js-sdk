@@ -715,7 +715,8 @@ const fileUploader = (client) => {
         },
 
         /**
-         * This is the exposed/public method for fileDownloader instance which will be responsible for downloading the files from the Campaign instance from 'upload' folder Only.
+         * This is the exposed/public method for fileDownloader instance which will be responsible for
+         * downloading the files from the Campaign instance from 'upload' folder Only.
          * @ignore
          * @param md5 md5 of the file content
          * @param ext (original) file extension
