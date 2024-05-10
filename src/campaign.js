@@ -43,7 +43,7 @@ const { Util } = require("./util.js");
   static FEATURE_NOT_SUPPORTED(name)                      { return new CampaignException(undefined, 500, 16384, `SDK-000015 ${name} feature is not supported by the ACC instance`); }
   static REQUEST_ABORTED( )                               { return new CampaignException(undefined, 500,   -53, `SDK-000016 Request was aborted by the client`); }
   static AEM_ASSET_UPLOAD_FAILED(details, statusCode=500) { return new CampaignException(undefined, statusCode, 16384, `SDK-000017 Failed to upload AEM asset`, details); }
-
+  static FILE_DOWNLOAD_FAILED(details, statusCode=500) { return new CampaignException(undefined, statusCode, 16384, `SDK-000018 Failed to download the requested file`, details); }
 
   /**
    * Returns a short description of the exception
@@ -67,7 +67,6 @@ const { Util } = require("./util.js");
    * @param {Error|string} cause an optional error object representing the cause of the exception
    */
   constructor(call, statusCode, faultCode, faultString, detail, cause) {
-
       // Provides a shorter and more friendly description of the call and method name
       // depending on whether the exception is thrown by a SOAP or HTTP call
       var methodCall;

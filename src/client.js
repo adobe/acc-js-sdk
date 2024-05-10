@@ -724,67 +724,61 @@ const fileUploader = (client) => {
          * @returns {Promise<{data: string, error: Array}>}
          */
         download: async (md5, ext, options) => {
-          const response = { data: null, error: [] };
+        const response = { data: null, errors: null };
 
-          if (!md5) {
-            response.error.push(
-              CampaignException.BAD_PARAMETER(
+          if (!md5 || typeof md5 !== 'string') {
+            throw CampaignException.BAD_PARAMETER(
                 "md5",
                 md5,
-                "'md5' is mandatory parameter for download file"
-              )
-            );
+                "'md5' is mandatory parameter with type as 'string' for download file."
+              );
           }
 
-          if (!ext) {
-            response.error.push(
-              CampaignException.BAD_PARAMETER(
+          if (!ext || typeof ext !== "string") {
+            throw CampaignException.BAD_PARAMETER(
                 "ext",
                 ext,
-                "'ext' is mandatory parameter for download file"
-              )
-            );
+                "'ext' is mandatory parameter with type as 'string' for download file."
+              );
           }
 
-          if (response.error.length === 0) {
-            try {
-              const fileName =
-                options && options.fileName ? options.fileName : md5;
-              const saveAsFile =
-                options && options.saveAsFile ? options.saveAsFile : false;
-              const contentType =
-                options && options.contentType ? options.contentType : "";
+          try {
+            const fileName =
+              options && options.fileName ? options.fileName : md5;
+            const saveAsFile =
+              options && options.saveAsFile ? options.saveAsFile : false;
+            const contentType =
+              options && options.contentType ? options.contentType : "";
 
-              const queryParams = {
-                md5,
-                ext,
-                fileName,
-              };
+            const queryParams = {
+              md5,
+              ext,
+              fileName,
+            };
 
-              if (contentType) {
-                queryParams.contentType = contentType;
-              }
-
-              const queryString = new URLSearchParams(queryParams).toString();
-
-              const headers = client._getAuthHeaders(false);
-              const data = await client._makeHttpCall({
-                url: `${client._connectionParameters._endpoint}/nl/jsp/downloadFile.jsp?${queryString}`,
-                headers: headers,
-              });
-
-              if (saveAsFile) {
-                Util.downloadFile(data, fileName, ext, contentType);
-              }
-
-              response.data = data;
-            } catch (ex) {
-              response.error.push(ex);
-              console.error(ex);
+            if (contentType) {
+              queryParams.contentType = contentType;
             }
-          }
 
-          return response;
+            const queryString = new URLSearchParams(queryParams).toString();
+
+            const headers = client._getAuthHeaders(false);
+            const rawFileResponse = await client._makeHttpCall({
+              url: `${client._connectionParameters._endpoint}/nl/jsp/downloadFile.jsp?${queryString}`,
+              headers: headers,
+            });
+
+            if (saveAsFile) {
+              Util.downloadFile(rawFileResponse, fileName, ext, contentType);
+            }
+
+            return rawFileResponse;
+          } catch (ex) {
+            if(ex instanceof CampaignException)
+              throw CampaignException.FILE_DOWNLOAD_FAILED(ex.faultString, ex.statusCode);
+            else
+              throw CampaignException.FILE_DOWNLOAD_FAILED(ex, ex.statusCode);
+          }
         }
 
     };

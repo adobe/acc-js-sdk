@@ -1103,6 +1103,8 @@ xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
 </SOAP-ENV:Envelope>
 `);
 
+const FILE_DOWNLOAD_RESPONSE = '"First Name","Last Name","E-Mail","Blocked","Title","Phone","Units","Gender","Department","Location","Preference 1","Preference 2"\n"Vishal","Kumar (from file)","kumarvishal@adobe.com","false","Developer","9911422203","$030,321","Male","UI","N132","Agriculture","Forestry and Fishing"';
+
 // Public exports
 exports.Mock = {
   makeClient: makeClient,
@@ -1158,6 +1160,7 @@ exports.Mock = {
   GET_XTK_COUNTER_RESPONSE: GET_XTK_COUNTER_RESPONSE,
   GET_FILERES_QUERY_SCHEMA_RESPONSE: GET_FILERES_QUERY_SCHEMA_RESPONSE,
   INCREASE_VALUE_RESPONSE: INCREASE_VALUE_RESPONSE,
+  FILE_DOWNLOAD_RESPONSE: FILE_DOWNLOAD_RESPONSE,
   FILE_RES_WRITE_RESPONSE: FILE_RES_WRITE_RESPONSE,
   PUBLISH_IF_NEEDED_RESPONSE: PUBLISH_IF_NEEDED_RESPONSE,
   GET_URL_RESPONSE: GET_URL_RESPONSE,
