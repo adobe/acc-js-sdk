@@ -568,7 +568,6 @@ class ConnectionParameters {
  * @typedef {Object} FileDownloadOptions
  * @property {string} fileName to rename the name in save as dialog of web browser (force this
  * dialog) must be in UTF-8
- * @property {string} saveAsFile should the response trigger a file save popup for browsers
  * @property {string} contentType change the content-type of the response (to help browser to
  * handle this file) expl : image/png, text/plain;charset=ISO-8859-1
  * @memberOf Campaign
@@ -745,8 +744,6 @@ const fileUploader = (client) => {
           try {
             const fileName =
               options && options.fileName ? options.fileName : md5;
-            const saveAsFile =
-              options && options.saveAsFile ? options.saveAsFile : false;
             const contentType =
               options && options.contentType ? options.contentType : "";
 
@@ -768,16 +765,9 @@ const fileUploader = (client) => {
               headers: headers,
             });
 
-            if (saveAsFile) {
-              Util.downloadFile(rawFileResponse, fileName, ext, contentType);
-            }
-
             return rawFileResponse;
           } catch (ex) {
-            if(ex instanceof CampaignException)
-              throw CampaignException.FILE_DOWNLOAD_FAILED(ex.faultString, ex.statusCode);
-            else
-              throw CampaignException.FILE_DOWNLOAD_FAILED(ex, ex.statusCode);
+            throw CampaignException.FILE_DOWNLOAD_FAILED(md5, ex);
           }
         }
 

@@ -4332,7 +4332,7 @@ describe('ACC Client', function () {
             );
 
             client._transport.mockImplementation(() => {
-              throw mockException;
+              throw 'Something went wrong!';
             });
 
             await client.fileUploader
@@ -4342,29 +4342,7 @@ describe('ACC Client', function () {
                 fileOptions,
               )
               .catch((actualException) => {
-                expect(actualException).toMatchObject(mockException);
-              });
-          });
-
-          it("Should throw normal exception when file download fails", async () => {
-            const client = await Mock.makeClient();
-            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
-            await client.NLWS.xtkSession.logon();
-
-
-            await client.fileUploader
-              .download(
-                fileMd5,
-                fileExt,
-                {
-                  fileName: "myFile",
-                  saveAsFile: true,
-                  contentType: "text/csv",
-                },
-              )
-              .catch((actualException) => {
-                console.log('client.test', { actualException });
-                expect(actualException.message).toEqual(`500 - Error 16384: SDK-000018 Failed to download the requested file. ${actualException.detail}`)
+                expect(actualException.message).toStrictEqual("500 - Error 16384: SDK-000018 \"Failed to download file a88333b4e8b523a1c4fca8f3b378b8e0. 500 - Error calling method '/nl/jsp/downloadFile.jsp?md5=a88333b4e8b523a1c4fca8f3b378b8e0&ext=csv&fileName=myFile&contentType=text%2Fcsv': Something went wrong!")
               });
           });
         });
