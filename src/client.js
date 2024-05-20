@@ -565,15 +565,6 @@ class ConnectionParameters {
 
 
 /**
- * @typedef {Object} FileDownloadOptions
- * @property {string} fileName to rename the name in save as dialog of web browser (force this
- * dialog) must be in UTF-8
- * @property {string} contentType change the content-type of the response (to help browser to
- * handle this file) expl : image/png, text/plain;charset=ISO-8859-1
- * @memberOf Campaign
- */
-
-/**
  * File Uploader API for JS SDK(Currently available only in browsers)
  * @private
  * @ignore
@@ -714,13 +705,16 @@ const fileUploader = (client) => {
         },
 
         /**
-         * This is the exposed/public method for fileDownloader instance which will be responsible for
-         * downloading the files from the Campaign instance from 'upload' folder Only.
-         * @ignore
-         * @param md5 md5 of the file content
-         * @param ext (original) file extension
-         * @param {Object} FileDownloadOptions
-         * @returns {Promise<{data: string, error: Array}>}
+         * Exposed public method of the fileUploader api,
+         * specifically designed to download files from the 'upload' folder of the Campaign instance
+         * @param {string} md5 md5 of the file content
+         * @param {string} ext (original) file extension
+         * @param {Object | undefined} FileDownloadOptions
+         * @param {string} FileDownloadOptions.fileName to rename the name in save as dialog of web browser 
+         * (force this dialog) must be in UTF-8
+         * @param {string} FileDownloadOptions.contentType change the content-type of the response (to help browser to
+         * handle this file) expl : image/png, text/plain;charset=ISO-8859-1
+         * @returns {Promise<File(string)>}
          */
         download: async (md5, ext, options) => {
         const response = { data: null, errors: null };
