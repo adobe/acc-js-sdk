@@ -741,17 +741,11 @@ const fileUploader = (client) => {
             const contentType =
               options && options.contentType ? options.contentType : "";
 
-            const queryParams = {
-              md5,
-              ext,
-              fileName,
-            };
+            let queryString = `md5=${md5}&ext=${ext}&fileName=${encodeURIComponent(fileName)}`;
 
             if (contentType) {
-              queryParams.contentType = contentType;
+              queryString += `&contentType=${encodeURIComponent(contentType)}`;
             }
-
-            const queryString = new URLSearchParams(queryParams).toString();
 
             const headers = client._getAuthHeaders(false);
             const rawFileResponse = await client._makeHttpCall({
