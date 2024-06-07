@@ -32,6 +32,7 @@ const { XtkCaster } = require("./xtkCaster.js");
  * @property {string} xtkschema - the method schema id. It can be ommited if the object has a xtkschema property
  * @property {any} object - the object ("this") to call the method with, possibly null for static methods. Should implement the xtk:job interface
  * @property {Array} args - the list of arguments to the SOAP call
+ * @property {(string|number)} [jobId] - the optional job id, which can be used for subsequent calls
  * @memberOf Campaign
  */
 
@@ -77,10 +78,11 @@ class XtkJobInterface {
      * @param {Campaign.XtkSoapCallSpec} soapCallSpec the definition of the SOAP call
      */
     constructor(client, soapCallSpec) {
+        this._reset();
         this._client = client;
         this._soapCall = soapCallSpec;
         this._maxLogCount = 100; // default fetch size
-        this._reset();
+        this.jobId = soapCallSpec ? soapCallSpec.jobId : undefined;
     }
 
     // Reset state before executing or submitting a job
