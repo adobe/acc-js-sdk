@@ -702,7 +702,61 @@ const fileUploader = (client) => {
                 else
                   throw CampaignException.AEM_ASSET_UPLOAD_FAILED(ex, ex.statusCode);
             }
+        },
+
+        /**
+         * Exposed public method of the fileUploader api,
+         * specifically designed to download files from the 'upload' folder of the Campaign instance
+         * @param {string} md5 md5 of the file content
+         * @param {string} ext (original) file extension
+         * @param {Object | undefined} options
+         * @param {string} options.fileName to rename the name in save as dialog of web browser 
+         * (force this dialog) must be in UTF-8
+         * @param {string} options.contentType change the content-type of the response (to help browser to
+         * handle this file) expl : image/png, text/plain;charset=ISO-8859-1
+         * @returns {Promise<File(string)>}
+         */
+        download: async (md5, ext, options) => {
+          if (!md5 || typeof md5 !== 'string') {
+            throw CampaignException.BAD_PARAMETER(
+                "md5",
+                md5,
+                "'md5' is mandatory parameter with type as 'string' for download file."
+              );
+          }
+
+          if (!ext || typeof ext !== "string") {
+            throw CampaignException.BAD_PARAMETER(
+                "ext",
+                ext,
+                "'ext' is mandatory parameter with type as 'string' for download file."
+              );
+          }
+
+          try {
+            const fileName =
+              options && options.fileName ? options.fileName : md5;
+            const contentType =
+              options && options.contentType ? options.contentType : "";
+
+            let queryString = `md5=${encodeURIComponent(md5)}&ext=${encodeURIComponent(ext)}&fileName=${encodeURIComponent(fileName)}`;
+
+            if (contentType) {
+              queryString += `&contentType=${encodeURIComponent(contentType)}`;
+            }
+
+            const headers = client._getAuthHeaders(false);
+            const rawFileResponse = await client._makeHttpCall({
+              url: `${client._connectionParameters._endpoint}/nl/jsp/downloadFile.jsp?${queryString}`,
+              headers: headers,
+            });
+
+            return rawFileResponse;
+          } catch (ex) {
+            throw CampaignException.FILE_DOWNLOAD_FAILED(md5, ex);
+          }
         }
+
     };
 };
 
