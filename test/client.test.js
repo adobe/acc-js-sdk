@@ -4223,7 +4223,6 @@ describe('ACC Client', function () {
           beforeEach(() => {
             fileOptions = {
               fileName: "myFile",
-              saveAsFile: false,
               contentType: "text/csv",
             }
           });

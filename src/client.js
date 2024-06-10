@@ -717,8 +717,6 @@ const fileUploader = (client) => {
          * @returns {Promise<File(string)>}
          */
         download: async (md5, ext, options) => {
-        const response = { data: null, errors: null };
-
           if (!md5 || typeof md5 !== 'string') {
             throw CampaignException.BAD_PARAMETER(
                 "md5",
@@ -741,7 +739,7 @@ const fileUploader = (client) => {
             const contentType =
               options && options.contentType ? options.contentType : "";
 
-            let queryString = `md5=${md5}&ext=${ext}&fileName=${encodeURIComponent(fileName)}`;
+            let queryString = `md5=${encodeURIComponent(md5)}&ext=${encodeURIComponent(ext)}&fileName=${encodeURIComponent(fileName)}`;
 
             if (contentType) {
               queryString += `&contentType=${encodeURIComponent(contentType)}`;
