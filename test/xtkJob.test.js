@@ -487,6 +487,16 @@ describe('XRK Jobs', function () {
             expect(client.NLWS.xtkJob.getStatus.mock.calls.length).toBe(1);
             expect(client.NLWS.xtkJob.getStatus.mock.calls[0]).toEqual(["ABC", 12, 500]);
         });
+
+        it("Should get status from provided jobId", async () => {
+            const jobId = 'ABC';
+            const client = { NLWS: { xtkJob: { getStatus: jest.fn() } }  };
+            const job = new XtkJobInterface(client, { jobId });
+            client.NLWS.xtkJob.getStatus.mockReturnValueOnce(Promise.resolve({ }));
+            await job.getStatus(12, 500);
+            expect(client.NLWS.xtkJob.getStatus.mock.calls.length).toBe(1);
+            expect(client.NLWS.xtkJob.getStatus.mock.calls[0]).toEqual([jobId, 12, 500]);
+        });
     });
 
     describe("Get Result", () => {
