@@ -106,6 +106,15 @@ title: XTK Jobs (xkt:job, xkt:jobInterface)
   </tbody>
 </table>
 
+<p>
+  You can get the status of a job, given a job id as follow
+</p>
+
+<pre class="code">
+  const jobId = 'ABC';
+  const job = new XtkJobInterface(client, { jobId });
+  const status = await job.getStatus(12, 500);
+</pre>
 
 <h1>Job Progress</h1>
 <p>

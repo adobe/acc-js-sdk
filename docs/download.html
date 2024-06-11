@@ -1,0 +1,25 @@
+---
+layout: page
+title: Downloading files
+---
+
+<p>
+    Files can be downloaded using the <b>client.fileUploader.download</b> method. In order to download a file from the Campaign server, you need the file md5 and extension which act as the file key. For example, the md5 of a file attachment in a delivry is available in the attachment/@md5 attribute.
+</p>
+
+<p>
+    In the following example, a CSV file is downloaded
+</p>
+
+<pre class="code">
+    const responseFile = await client.fileUploader.download("d83d8b9a7504043644e1f2dd0a28bf7f", "csv", {
+        fileName: 'My Sample File.csv',
+        contentType: "txt/csv",
+    });
+</pre>
+
+<p>
+    The function returns a <a href="https://w3c.github.io/FileAPI/#file-section">File Blob</a>
+<p>
+
+<p class="warning">This function only works when using the SDK in the browser.</p>

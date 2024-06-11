@@ -66,6 +66,8 @@
       link: reportData.html
     - name: AEM asset upload API
       link: uploadAemAsset.html
+    - name: Downloading files
+      link: download.html
 - name: --
 - name: Advanced Topics
   children:
