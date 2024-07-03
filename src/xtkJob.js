@@ -112,7 +112,8 @@ class XtkJobInterface {
             client: this._client,
             object: this._soapCall.object,
             schemaId: 'xtk:jobInterface',
-            entitySchemaId: entitySchemaId
+            entitySchemaId: entitySchemaId,
+            headers: this._client._connectionParameters._options.extraHttpHeaders
         };
         var jobId = await callContext.client._callMethod("Execute", callContext, [ methodName ]);
         this.jobId = jobId;
@@ -135,7 +136,8 @@ class XtkJobInterface {
             client: this._client,
             object: this._soapCall.object,
             schemaId: 'xtk:jobInterface',
-            entitySchemaId: entitySchemaId
+            entitySchemaId: entitySchemaId,
+            headers: this._client._connectionParameters._options.extraHttpHeaders
         };
         var jobId = await callContext.client._callMethod("Submit", callContext, [ this._soapCall.method ]);
         this.jobId = jobId;
@@ -156,8 +158,8 @@ class XtkJobInterface {
             object: this._soapCall.object,
             schemaId: 'xtk:jobInterface',
             entitySchemaId: entitySchemaId,
+            headers: this._client._connectionParameters._options.extraHttpHeaders
         };
-
         const methodName = this._soapCall.method;
         var schema = await this._client.getSchema(entitySchemaId, "xml", true);
         if (!schema)
