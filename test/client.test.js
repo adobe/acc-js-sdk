@@ -3717,7 +3717,60 @@ describe('ACC Client', function () {
                 url: "http://hello.com",
                 });
             });
+            it("Should add extraHttpHeaders in the headers", async () => {
+                // Create a mock client and logon
+                const extraHttpHeaders = {'x-api-key': 'check'};
+                const client = await Mock.makeClient({extraHttpHeaders});
+                client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+                await client.NLWS.xtkSession.logon();
 
+                // Mock the upload protocol
+                // - the upload.jsp (which returns the content of an iframe and JS to eval)
+                // - call to xtk:counter#IncreaseValue (first, retrieve the schema xtk:counter then call the function)
+                // - call to xtk:session#Write
+                // - call to xtk:fileRes#PublishIfNeeded
+                // - call to xtk:fileRes#GetURL
+                
+                client._transport.mockReturnValueOnce(
+                Promise.resolve(`Ok 
+                <html xmlns="http://www.w3.org/1999/xhtml">
+                    <head>
+                    <script type="text/javascript">if(window.parent&&window.parent.document.controller&&"function"==typeof window.parent.document.controller.uploadFileCallBack){var aFilesInfo=new Array;aFilesInfo.push({paramName:"file",fileName:"test.txt",newFileName:"d8e8fca2dc0f896fd7cb4cb0031ba249.txt",md5:"d8e8fca2dc0f896fd7cb4cb0031ba249"}),window.parent.document.controller.uploadFileCallBack(aFilesInfo)}</script>
+                    </head>
+                <body></body>
+                </html>`)
+                ); // upload.jsp
+
+                client._transport.mockReturnValueOnce(
+                Promise.resolve(Mock.GET_XTK_COUNTER_RESPONSE)
+                ); // GetEntityIfMoreRecentResponse - counter
+                client._transport.mockReturnValueOnce(Mock.INCREASE_VALUE_RESPONSE); // xtk:counter#IncreaseValue
+
+                client._transport.mockReturnValueOnce(
+                Mock.GET_XTK_SESSION_SCHEMA_RESPONSE
+                ); // GetEntityIfMoreRecentResponse - session
+                client._transport.mockReturnValueOnce(Mock.FILE_RES_WRITE_RESPONSE); // xtk:session#Write
+
+                client._transport.mockReturnValueOnce(
+                Promise.resolve(Mock.GET_FILERES_QUERY_SCHEMA_RESPONSE)
+                ); // GetEntityIfMoreRecentResponse - fileRes
+                client._transport.mockReturnValueOnce(
+                Promise.resolve(Mock.PUBLISH_IF_NEEDED_RESPONSE)
+                ); // xtk:fileRes#PublishIfNeeded
+
+                client._transport.mockReturnValueOnce(
+                Promise.resolve(Mock.GET_URL_RESPONSE)
+                ); // xtk:fileRes#GetURL
+
+                // Call upload
+                await client.fileUploader.upload({
+                type: "text/html",
+                size: 12345,
+                });
+                expect(client._transport.mock.calls[0][0]).toMatchObject(expect.objectContaining({
+                    headers: expect.objectContaining(extraHttpHeaders),
+                }));
+            });
             it("throws error with dependant failures", async () => {
                 // Create a mock client and logon
                 const client = await Mock.makeClient();
@@ -4107,6 +4160,26 @@ describe('ACC Client', function () {
               await client.NLWS.xtkSession.logoff();
             });
 
+            it("Should add extraHttpHeaders in the headers", async () => {
+                const extraHttpHeaders = {'x-api-key': 'check'};
+                const client = await Mock.makeClient({extraHttpHeaders});
+                client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+                await client.NLWS.xtkSession.logon();
+  
+                const mockResponse = {
+                  publishedURL:
+                    "http://trk-inst-xyz.camp.adobe.com/res/trk-inst/409afb8798180a36591456e152b6c406.jpeg",
+                };
+                client._bearerToken = "Bearer 1234567890";
+                client._transport.mockReturnValueOnce(mockResponse);
+                await client.fileUploader.uploadAemAsset(
+                  "https://author-stg.aem.adobe.com/adobe/repository/content/dam/projects/children-kids-group-eating-ice-cream-funny-party-72701973%20%281%29%20%2812%29%20%282%29%20%283%29.jpg;api=block_download"
+                );
+                expect(client._transport.mock.calls[0][0]).toMatchObject(expect.objectContaining({
+                    headers: expect.objectContaining(extraHttpHeaders),
+                }));
+            });            
+
             // Case 2: Bearertoken is not provided, but the client is already authenticated with session token
             it("Should throw error for missing authentication token", async () => {
               const client = await Mock.makeClient();
@@ -4242,6 +4315,26 @@ describe('ACC Client', function () {
             );
 
             expect(response).toStrictEqual(mockResponse);
+          });
+
+          it("Should add extraHttpHeaders in the headers", async () => {
+            const extraHttpHeaders = {'x-api-key': 'check'}
+            const client = await Mock.makeClient({extraHttpHeaders});
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+
+            const mockResponse = Mock.FILE_DOWNLOAD_RESPONSE;
+            client._transport.mockReturnValueOnce(mockResponse);
+
+            await client.fileUploader.download(
+              fileMd5,
+              fileExt,
+              fileOptions,
+            );
+
+            expect(client._transport.mock.calls[0][0]).toMatchObject(expect.objectContaining({
+                headers: expect.objectContaining(extraHttpHeaders),
+            }));
           });
 
           it("Should return correct response without fileOptions", async () => {
