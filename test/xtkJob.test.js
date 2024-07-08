@@ -176,7 +176,7 @@ describe('XRK Jobs', function () {
 
     describe("Execute", () => {
         it("Execute with success", async () => {
-            const client = { _callMethod: jest.fn() };
+            const client = { _callMethod: jest.fn(), _connectionParameters: { _options: {}} };
             const job = new XtkJobInterface(client, { xtkschema: "nms:delivery", object: "Hello World", method: "Prepare" });
             client._callMethod.mockReturnValueOnce(Promise.resolve("9876"));
             const jobId = await job.execute();
@@ -191,8 +191,26 @@ describe('XRK Jobs', function () {
             expect(client._callMethod.mock.calls[0][2]).toEqual([ "Prepare" ]);
         });
 
+        it("Execute should pass extraHttpHeaders in headers", async () => {
+            const extraHttpHeaders = {'x-api-key': 'check'};
+            const client = { _callMethod: jest.fn(), _connectionParameters: { _options: { extraHttpHeaders }} };
+            const job = new XtkJobInterface(client, { xtkschema: "nms:delivery", object: "Hello World", method: "Prepare" });
+            client._callMethod.mockReturnValueOnce(Promise.resolve("9876"));
+            const jobId = await job.execute();
+            expect(jobId).toBe("9876");
+            expect(client._callMethod.mock.calls.length).toBe(1);
+            expect(client._callMethod.mock.calls[0][0]).toBe("Execute");
+            expect(client._callMethod.mock.calls[0][1]).toMatchObject({
+                entitySchemaId: "nms:delivery",
+                schemaId: "xtk:jobInterface",
+                object: "Hello World",
+                headers: extraHttpHeaders,
+            });
+            expect(client._callMethod.mock.calls[0][2]).toEqual([ "Prepare" ]);
+        });
+
         it("Infer schema from objects", async () => {
-            const client = { _callMethod: jest.fn() };
+            const client = { _callMethod: jest.fn(), _connectionParameters: { _options: {}} };
             const job = new XtkJobInterface(client, { object: { xtkschema: "nms:delivery", name: "Hello World" }, method: "Prepare" });
             client._callMethod.mockReturnValueOnce(Promise.resolve("9876"));
             const jobId = await job.execute();
@@ -238,7 +256,7 @@ describe('XRK Jobs', function () {
 
     describe("Submit", () => {
         it("Submit with success", async () => {
-            const client = { _callMethod: jest.fn() };
+            const client = { _callMethod: jest.fn(), _connectionParameters: { _options: {}} };
             const job = new XtkJobInterface(client, { xtkschema: "nms:delivery", object: "Hello World", method: "Prepare" });
             client._callMethod.mockReturnValueOnce(Promise.resolve("9876"));
             const jobId = await job.submit();
@@ -253,8 +271,26 @@ describe('XRK Jobs', function () {
             expect(client._callMethod.mock.calls[0][2]).toEqual([ "Prepare" ]);
         });
 
+        it("Submit should pass extraHttpHeaders in headers", async () => {
+            const extraHttpHeaders = {'x-api-key': 'check'};
+            const client = { _callMethod: jest.fn(), _connectionParameters: { _options: { extraHttpHeaders }} };
+            const job = new XtkJobInterface(client, { xtkschema: "nms:delivery", object: "Hello World", method: "Prepare" });
+            client._callMethod.mockReturnValueOnce(Promise.resolve("9876"));
+            const jobId = await job.submit();
+            expect(jobId).toBe("9876");
+            expect(client._callMethod.mock.calls.length).toBe(1);
+            expect(client._callMethod.mock.calls[0][0]).toBe("Submit");
+            expect(client._callMethod.mock.calls[0][1]).toMatchObject({
+                entitySchemaId: "nms:delivery",
+                schemaId: "xtk:jobInterface",
+                object: "Hello World",
+                headers: extraHttpHeaders,
+            });
+            expect(client._callMethod.mock.calls[0][2]).toEqual([ "Prepare" ]);
+        });
+
         it("Infer schema from objects", async () => {
-            const client = { _callMethod: jest.fn() };
+            const client = { _callMethod: jest.fn(), _connectionParameters: { _options: {}} };
             const job = new XtkJobInterface(client, { object: { xtkschema: "nms:delivery", name: "Hello World" }, method: "Prepare" });
             client._callMethod.mockReturnValueOnce(Promise.resolve("9876"));
             const jobId = await job.submit();
@@ -301,7 +337,7 @@ describe('XRK Jobs', function () {
 
     describe("SubmitSoapCall", () => {
         it("SubmitSoapCall with success", async () => {
-            const client = { _callMethod: jest.fn(), getSchema: jest.fn(), _methodCache: { get: jest.fn()} };
+            const client = { _callMethod: jest.fn(), getSchema: jest.fn(), _methodCache: { get: jest.fn()}, _connectionParameters: { _options: {}} };
             const job = new XtkJobInterface(client, { xtkschema: "nms:delivery", object: "Hello World", method: "Prepare" });
             client._callMethod.mockReturnValueOnce(Promise.resolve("9876"));
             client.getSchema.mockReturnValueOnce(Promise.resolve(true));
@@ -325,8 +361,27 @@ describe('XRK Jobs', function () {
             } ]);
         });
 
+        it("SubmitSoapCall should pass extraHttpHeaders in headers", async () => {
+            const extraHttpHeaders = {'x-api-key': 'check'};
+            const client = { _callMethod: jest.fn(), getSchema: jest.fn(), _methodCache: { get: jest.fn()}, _connectionParameters: { _options: { extraHttpHeaders }} };
+            const job = new XtkJobInterface(client, { xtkschema: "nms:delivery", object: "Hello World", method: "Prepare" });
+            client._callMethod.mockReturnValueOnce(Promise.resolve("9876"));
+            client.getSchema.mockReturnValueOnce(Promise.resolve(true));
+            client._methodCache.get.mockReturnValueOnce(DomUtil.parse("<method></method>").documentElement);
+            const jobId = await job.submitSoapCall();
+            expect(jobId).toBe("9876");
+            expect(client._callMethod.mock.calls.length).toBe(1);
+            expect(client._callMethod.mock.calls[0][0]).toBe("SubmitSoapCall");
+            expect(client._callMethod.mock.calls[0][1]).toMatchObject({
+                entitySchemaId: "nms:delivery",
+                schemaId: "xtk:jobInterface",
+                object: "Hello World",
+                headers: extraHttpHeaders,
+            });
+        });
+
         it("SubmitSoapCall a non-persistant and static job with success", async () => {
-            const client = { _callMethod: jest.fn(), getSchema: jest.fn(), _methodCache: { get: jest.fn()} };
+            const client = { _callMethod: jest.fn(), getSchema: jest.fn(), _methodCache: { get: jest.fn()}, _connectionParameters: { _options: {}} };
             const jobDescription = { 
                 doNotPersist: "true",
                 xtkschema: 'nms:webApp',
@@ -368,7 +423,7 @@ describe('XRK Jobs', function () {
         });
 
         it("Infer schema from objects", async () => {
-            const client = { _callMethod: jest.fn(), getSchema: jest.fn(), _methodCache: { get: jest.fn()} };
+            const client = { _callMethod: jest.fn(), getSchema: jest.fn(), _methodCache: { get: jest.fn()}, _connectionParameters: { _options: {}} };
             const job = new XtkJobInterface(client, { object: { xtkschema: "nms:delivery", name: "Hello World" }, method: "Prepare" });
             client._callMethod.mockReturnValueOnce(Promise.resolve("9876"));
             client.getSchema.mockReturnValueOnce(Promise.resolve(true));
@@ -383,7 +438,7 @@ describe('XRK Jobs', function () {
         });
 
         it("Should fail on missing schema", async () => {
-            const client = { _callMethod: jest.fn(), getSchema: jest.fn(), _methodCache: { get: jest.fn()} };
+            const client = { _callMethod: jest.fn(), getSchema: jest.fn(), _methodCache: { get: jest.fn()}, _connectionParameters: { _options: {}} };
             const job = new XtkJobInterface(client, { method: "Prepare" });
             client._callMethod.mockReturnValueOnce(Promise.resolve("9876"));
             client.getSchema.mockReturnValueOnce(Promise.resolve(false));
@@ -400,7 +455,7 @@ describe('XRK Jobs', function () {
         });
 
         it("Should fail on invalid schema", async () => {
-            const client = { _callMethod: jest.fn(), getSchema: jest.fn(), _methodCache: { get: jest.fn()} };
+            const client = { _callMethod: jest.fn(), getSchema: jest.fn(), _methodCache: { get: jest.fn()}, _connectionParameters: { _options: {}} };
             const job = new XtkJobInterface(client, { object: { xtkschema: "nms:notFound", name: "Hello World" }, method: "Prepare" });
             client._callMethod.mockReturnValueOnce(Promise.resolve("9876"));
             client.getSchema.mockReturnValueOnce(Promise.resolve(false));
@@ -417,7 +472,7 @@ describe('XRK Jobs', function () {
         });
 
         it("Should fail on method not found", async () => {
-            const client = { _callMethod: jest.fn(), getSchema: jest.fn(), _methodCache: { get: jest.fn()} };
+            const client = { _callMethod: jest.fn(), getSchema: jest.fn(), _methodCache: { get: jest.fn()}, _connectionParameters: { _options: {}} };
             const job = new XtkJobInterface(client, { object: { xtkschema: "nms:delivery", name: "Hello World" }, method: "NotFound" });
             client._callMethod.mockReturnValueOnce(Promise.resolve("9876"));
             client.getSchema.mockReturnValueOnce(Promise.resolve(true));

@@ -595,6 +595,8 @@ const fileUploader = (client) => {
                     const data = new FormData();
                     data.append('file_noMd5', file);
                     const headers = client._getAuthHeaders(false);
+                    for (let h in client._connectionParameters._options.extraHttpHeaders)
+                        headers[h] = client._connectionParameters._options.extraHttpHeaders[h];
                     client._makeHttpCall({
                         url: `${client._connectionParameters._endpoint}/nl/jsp/uploadFile.jsp`,
                         processData: false,
@@ -680,7 +682,8 @@ const fileUploader = (client) => {
                 const jsonData = JSON.stringify({
                     'assetDownloadUrl': assetDownloadUrl
                 });
-
+                for (let h in client._connectionParameters._options.extraHttpHeaders)
+                    headers[h] = client._connectionParameters._options.extraHttpHeaders[h];
                 var response = await client._makeHttpCall({
                     url: url,
                     method: 'POST',
@@ -746,6 +749,8 @@ const fileUploader = (client) => {
             }
 
             const headers = client._getAuthHeaders(false);
+            for (let h in client._connectionParameters._options.extraHttpHeaders)
+                headers[h] = client._connectionParameters._options.extraHttpHeaders[h];
             const rawFileResponse = await client._makeHttpCall({
               url: `${client._connectionParameters._endpoint}/nl/jsp/downloadFile.jsp?${queryString}`,
               headers: headers,
