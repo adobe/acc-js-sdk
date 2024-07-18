@@ -609,6 +609,7 @@ const fileUploader = (client) => {
                         }
                         const iframe = document.createElement('iframe');
                         iframe.style.display = 'block';
+                        iframe.style.border = 'none';
                         iframe.style.height = 0;
                         iframe.style.width = 0;
                         if(options && options.className) {
