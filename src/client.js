@@ -629,22 +629,37 @@ const fileUploader = (client) => {
                                     size: file.size,
                                 };
                                 if (action === "publishIfNeeded") {
-                                    const counter = await client.NLWS.xtkCounter.increaseValue({name: 'xtkResource'});
-                                    const fileRes= {
-                                        internalName: 'RES' + counter,
-                                        md5: data[0].md5,
-                                        label: data[0].fileName,
-                                        fileName: data[0].fileName,
-                                        originalName: data[0].fileName,
-                                        useMd5AsFilename: '1',
-                                        storageType: 5,
-                                        xtkschema: 'xtk:fileRes'
-
+                                  try {
+                                    const counter =
+                                      await client.NLWS.xtkCounter.increaseValue(
+                                        { name: 'xtkResource' }
+                                      );
+                                    const fileRes = {
+                                      internalName: 'RES' + counter,
+                                      md5: data[0].md5,
+                                      label: data[0].fileName,
+                                      fileName: data[0].fileName,
+                                      originalName: data[0].fileName,
+                                      useMd5AsFilename: '1',
+                                      storageType: 5,
+                                      xtkschema: 'xtk:fileRes',
                                     };
                                     await client.NLWS.xtkSession.write(fileRes);
-                                    await client.NLWS.xtkFileRes.create(fileRes).publishIfNeeded();
-                                    const url = await client.NLWS.xtkFileRes.create(fileRes).getURL();
+                                    await client.NLWS.xtkFileRes
+                                      .create(fileRes)
+                                      .publishIfNeeded();
+                                    const url = await client.NLWS.xtkFileRes
+                                      .create(fileRes)
+                                      .getURL();
                                     result.url = url;
+                                  } catch (ex) {
+                                    reject(
+                                      CampaignException.FILE_UPLOAD_FAILED(
+                                        file.name,
+                                        ex
+                                      )
+                                    );
+                                  }
                                 }
                                 resolve(result);
                             }
