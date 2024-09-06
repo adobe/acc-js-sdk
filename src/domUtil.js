@@ -314,7 +314,7 @@ class DomUtil {
             var attFirstIndex = 1;
 
             if (flavor == "SimpleJson") {
-                if ((t == "string" || t == "number" || t == "boolean") && att[0] != '$') {
+                if ((t == "string" || t == "number" || t == "boolean") && att[0] != '$' && att[0] != '@') {
                     isAtt = true;
                     attFirstIndex = 0;
                 }
