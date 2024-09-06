@@ -156,6 +156,8 @@ describe('DomUtil', function() {
             assert.strictEqual(fromJSON({ "a": [ ] }), '<root/>');
             assert.strictEqual(fromJSON({ "a": null }), '<root/>');
             assert.strictEqual(fromJSON({ "a": undefined }), '<root/>');
+            assert.strictEqual(fromJSON({ "@a":2, "@b":"zz", "@c": true }), '<root a="2" b="zz" c="true"/>');
+            assert.strictEqual(fromJSON({ "a":{ x:3 }, "@a": 2 }), '<root a="2"><a x="3"/></root>');
         });
 
         it("Should support attributes named 'length'", () => {
@@ -192,6 +194,8 @@ describe('DomUtil', function() {
             assert.strictEqual(fromJSON({ "a": [ ] }), '<root/>');
             assert.strictEqual(fromJSON({ "a": null }), '<root/>');
             assert.strictEqual(fromJSON({ "a": undefined }), '<root/>');
+            assert.strictEqual(fromJSON({ "@a":2, "@b":"zz", "@c": true }), '<root a="2" b="zz" c="true"/>');
+            assert.strictEqual(fromJSON({ "a":{ x:3 }, "@a": 2 }), '<root a="2"><a x="3"/></root>');
         });
     });
 
