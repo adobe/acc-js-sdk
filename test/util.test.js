@@ -446,5 +446,36 @@ describe('Util', function() {
             await expect(Util.asPromise(Promise.resolve(3))).resolves.toBe(3);
         });
     });
+
+    describe("Decode JWT token", () => {
+        it("Should decode valid expired token", () => {
+            const jsonObject = { "hello": "world" };
+            const jsonString = JSON.stringify(jsonObject);
+            const base64String = btoa(jsonString);
+            const token = "ABC." + base64String + ".XYZ";
+            expect(Util.decodeJwtToken(token)).toEqual(jsonObject);
+        });
+
+        it("Should not decode partial token (2 parts instead of 3)", () => {
+            const token = "ABCD.EFGH";
+            expect(() => {Util.decodeJwtToken(token)}).toThrow("Invalid JWT token");
+        });
+
+        it("Should not null or empty token", () => {
+            let token = "";
+            expect(() => {Util.decodeJwtToken(token)}).toThrow("Invalid JWT token");
+            token = null;
+            expect(() => {Util.decodeJwtToken(token)}).toThrow("Invalid JWT token");
+            token = undefined;
+            expect(() => {Util.decodeJwtToken(token)}).toThrow("Invalid JWT token");
+        });
+
+        it("Should not invalid token", () => {
+            const token = "Hel#lo.~!@#.!@$%$#";
+            expect(() => {Util.decodeJwtToken(token)}).toThrow("Invalid JWT token");
+        });
+
+    });
+
 });
 

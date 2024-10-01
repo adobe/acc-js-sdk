@@ -159,6 +159,26 @@ class Util {
       return object;
     return Promise.resolve(object);
   }
+
+  static decodeJwtToken(token) {
+    if (!token) 
+      throw new Error("Invalid JWT token, null or empty string");
+    const parts = token.split('.');
+    if (parts.length !== 3)
+      throw new Error("Invalid JWT token, should be made of 3 parts");
+
+    try {
+      const base64Url = parts[1];
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+      const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+          return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+      }).join(''));
+
+      return JSON.parse(jsonPayload);
+    } catch(ex) {
+      throw new Error("Invalid JWT token, " + ex);
+    }
+  }
 }
 
 /**
