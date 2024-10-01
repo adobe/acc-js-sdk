@@ -144,6 +144,32 @@ const { Util } = require("./util.js");
           faultString = faultString.trim();
       }
 
+      // https://github.com/adobe/acc-js-sdk/issues/108
+      // 401 error code is hidden in error message and incorrectly reported as HTTP 500 error causing the refresh token
+      // callback not to be called
+      // Extract specific error code if possible
+      if (errorCode == "SOP-330007" && errorMessage && errorMessage.indexOf("XSV-350114") != -1 && errorMessage.indexOf(" 401") != -1) {
+        statusCode = 401;
+      }
+      // Because Campaign security zones may hide the previous error, fallback by trying to decode
+      // the JWT token and check if it is expired
+      else if (call && call._bearerToken) {
+        try {
+          const jwt = Util.decodeJwtToken(call._bearerToken);
+          if (jwt) {
+            const createdAt = +jwt.created_at;
+            const expiresIn = +jwt.expires_in;
+            const expiredAt = createdAt + expiresIn;
+            const now = Date.now();
+            const hasExpired = now > expiredAt;
+            statusCode = hasExpired ? 401 : statusCode;
+          }
+        } catch(ex) {
+          // Invalid JWT token
+          statusCode = 401;
+        }
+      }
+
       /**
        * The type of exception, always "CampaignException"
        * @type {string}

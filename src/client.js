@@ -1483,7 +1483,9 @@ class Client {
                 this._trackEvent('SOAP//failure', event, ex, pushDownOptions);
                 // Call session expiration callback in case of 401
                 if (ex.statusCode == 401 && that._refreshClient && soapCall.retry) {
-                    return this._retrySoapCall(soapCall);
+                    return this._retrySoapCall(soapCall).catch((ex) => {
+                        return Promise.reject(ex);
+                    });
                 }
                 else
                     return Promise.reject(ex);

@@ -119,6 +119,38 @@ describe('IMS Bearer Toekn', function () {
         expect(lastCall[0].headers["X-Session-Token"]).toBeUndefined();
     });
 
+    it("Expired session refresh client callback (", async () => {
+
+        const refreshClient = async (client) => {
+            const connectionParameters = sdk.ConnectionParameters.ofImsBearerToken("http://acc-sdk:8080", "ey2...", options);
+            client.reinit(connectionParameters);
+            await client.NLWS.xtkSession.logon();
+            return client;
+        };
+
+        const transport = jest.fn();
+        const options = {
+            transport: transport,
+            refreshClient: refreshClient,
+        };
+        const connectionParameters = sdk.ConnectionParameters.ofImsBearerToken("http://acc-sdk:8080", "ey1...", options);
+        const client = await sdk.init(connectionParameters);
+        await client.NLWS.xtkSession.logon();
+
+        client._transport.mockReturnValueOnce(Promise.resolve(`XSV-350008 Session has expired or is invalid. Please reconnect.`));
+        client._transport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
+        client._transport.mockReturnValueOnce(Mock.GET_DATABASEID_RESPONSE);
+        var databaseId = await client.getOption("XtkDatabaseId");
+        expect(databaseId).toBe("uFE80000000000000F1FA913DD7CC7C480041161C");
+        const lastCall = client._transport.mock.calls[client._transport.mock.calls.length - 1];
+        expect(lastCall[0].headers).toMatchObject({
+            "ACC-SDK-Auth": "ImsBearerToken",
+            "Authorization": "Bearer ey2..."
+        });
+        expect(lastCall[0].headers["X-Security-Token"]).toBeUndefined();
+        expect(lastCall[0].headers["X-Session-Token"]).toBeUndefined();
+    });
+
 
     it("Should call ping API", async () => {
         const client = await makeImsClient();
