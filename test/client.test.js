@@ -1691,6 +1691,31 @@ describe('ACC Client', function () {
             client._transport.mockRejectedValueOnce(new HttpError(504, "This call failed"));
             await expect(client.test()).rejects.toMatchObject({ statusCode:504, message:"504 - Error calling method '/r/test': This call failed" });
         });
+
+        it("Should call test API with authentication headers", async () => {
+            const client = await Mock.makeClient({alwaysAuthenticate: true});
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+
+            client._transport.mockReturnValueOnce(Mock.R_TEST);
+            await client.test();
+            expect(client._transport).toHaveBeenLastCalledWith({
+                headers: {
+                  "ACC-SDK-Auth": expect.any(String),
+                  "ACC-SDK-Version": expect.any(String),
+                  Cookie: expect.any(String),
+                  "User-Agent": expect.any(String),
+                  "X-Query-Source": expect.any(String),
+                  "X-Security-Token": expect.any(String),
+                  "X-Session-Token": expect.any(String),
+                },
+                method: "GET",
+                url: "http://acc-sdk:8080/r/test",
+              });
+
+            client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
+            await client.NLWS.xtkSession.logoff();
+        });
     })
 
     describe("/nl/jsp/ping.jsp API", () => {

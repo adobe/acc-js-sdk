@@ -380,6 +380,7 @@ class ConnectionParameters {
         this._options.noSDKHeaders = !!options.noSDKHeaders;
         this._options.noMethodInURL = !!options.noMethodInURL;
         this._options.cacheRootKey = options.cacheRootKey === undefined ? "default": options.cacheRootKey;
+        this._options.alwaysAuthenticate = !!options.alwaysAuthenticate;
     }
 
     /**
@@ -2228,9 +2229,10 @@ class Client {
      * @returns {Campaign.RedirStatus} an object describing the status of the redirection server
      */
     async test() {
+        const headers = this._connectionParameters._options.alwaysAuthenticate ? this._getAuthHeaders(true) : {};
         const request = {
             url: `${this._connectionParameters._endpoint}/r/test`,
-            headers: {}
+            headers
         };
         for (let h in this._connectionParameters._options.extraHttpHeaders)
             request.headers[h] = this._connectionParameters._options.extraHttpHeaders[h];
