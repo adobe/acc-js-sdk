@@ -161,7 +161,10 @@ governing permissions and limitations under the License.
                 }
             }
 
-            // Use Json because xtk:schema does not work directly in DomUtil.parse(`<cache buildNumber="9469" time="2022-06-30T00:00:00.000"><xtk:schema></xtk:schema></cache>`);
+            // Extract namespace from the cacheSchemaId
+            const namespace = this._cacheSchemaId.split(":")[0];
+
+            // Use Json because xtk:schema does not work directly in DomUtil.parse(`<cache buildNumber="9469" time="2022-06-30T00:00:00.000"><xtk:schema xmlns:xtk="urn:xtk:schema"></xtk:schema></cache>`);
             // due to the colon character
             let jsonCache;
             if (this._lastTime === undefined || this._buildNumber === undefined) {
@@ -172,7 +175,9 @@ governing permissions and limitations under the License.
                 jsonCache = {
                     buildNumber: this._buildNumber,
                     lastModified: this._lastTime,
-                    [this._cacheSchemaId]: {}
+                    [this._cacheSchemaId]: {
+                        [`xmlns:${namespace}`]: `urn:${this._cacheSchemaId}`
+                    }
                 };
             }
 
