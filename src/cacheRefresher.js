@@ -169,7 +169,9 @@ governing permissions and limitations under the License.
             let jsonCache;
             if (this._lastTime === undefined || this._buildNumber === undefined) {
                 jsonCache = {
-                    [this._cacheSchemaId]: {}
+                    [this._cacheSchemaId]: {
+                        [`xmlns:${namespace}`]: `urn:${this._cacheSchemaId}`
+                    }
                 };
             } else {
                 jsonCache = {
