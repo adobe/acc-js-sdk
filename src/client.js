@@ -308,6 +308,7 @@ class Credentials {
     * @property {boolean} noMethodInURL - Can be set to true to remove the method name from the URL
     * @property {number} timeout - Can be set to change the HTTP call timeout. Value is passed in ms.
     * @property {string} cacheRootKey - "default" or "none" - determine the prefix to use for the keys in the caches of schemas, options, etc.
+    * @property {string} instanceKey - an optional value to override the instance key which is used for the caches of schemas, options, etc.
     * @memberOf Campaign
  */
 
@@ -829,8 +830,10 @@ class Client {
         this._secretKeyCipher = undefined;
 
         this._storage = connectionParameters._options._storage;
-        // TODO late cache initiallzation because need XtkDatabaseId / instance name
-        var instanceKey = connectionParameters._endpoint || "";
+
+        var instanceKey = connectionParameters._options.instanceKey;
+        if (!instanceKey)
+            instanceKey = connectionParameters._endpoint || "";
         if (instanceKey.startsWith("http://")) instanceKey = instanceKey.substr(7);
         if (instanceKey.startsWith("https://")) instanceKey = instanceKey.substr(8);
 
@@ -894,6 +897,7 @@ class Client {
                 endpoint: this._connectionParameters._endpoint,
                 createdAt: Date.now(),
                 clientApp: this._connectionParameters._options.clientApp,
+                instanceKey: instanceKey
             }
         };
         if  (this._connectionParameters._credentials) {

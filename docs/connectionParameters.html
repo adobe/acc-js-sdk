@@ -104,6 +104,16 @@ const connectionParameters = sdk.ConnectionParameters.ofUserAndPassword(
             <td>number</td>
             <td>Can be used to set the APIs call timeout (in ms)</td>
         </tr>
+        <tr>
+            <td>cacheRootKey</td>
+            <td>"default" or "none"</td>
+            <td>Determine the prefix to use for the keys in the caches of schemas, options, etc.<p>The value "default" means that cached keys are prefixed with "acc.js.sdk.${this.sdk.getSDKVersion().version}.${instanceKey}.cache."</p></td>
+        </tr>
+        <tr>
+            <td>instanceKey</td>
+            <td>string</td>
+            <td>An optional value to override the instance key which is used for the caches of schemas, options, etc.</td>
+        </tr>
     </tbody>
 </table>
 
