@@ -455,6 +455,28 @@ const GET_XTK_QUERY_SCHEMA_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
     </SOAP-ENV:Body>
     </SOAP-ENV:Envelope>`);
 
+const GET_UNION_PROFILE_SCHEMA_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
+    <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:wpp:default' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
+    <SOAP-ENV:Body>
+        <GetEntityIfMoreRecentResponse xmlns='urn:wpp:default' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
+            <pdomDoc xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
+
+             <schema label="XDM Individual Profile" labelSingular="XDM Individual Profile" library="true" name="profile__union" namespace="xdm" xtkschema="xtk:schema">
+                <element autopk="false" label="XDM Individual Profile" name="profile__union" pkgStatus="never">
+                    <element name="_ajobatchjourneystage" type="">
+                    <attribute label="email" length="255" name="email" type="string"/>
+                    <attribute label="Loyalty Member" name="loyaltyMember" type="boolean"/>
+                    <attribute label="Use Case ID" length="255" name="useCaseInstanceId" type="string"/>
+                    </element>
+                    <attribute label="Identifier" length="255" name="_id" type="string"/>
+                </element>
+                </schema>
+
+            </pdomDoc>
+        </GetEntityIfMoreRecentResponse>
+    </SOAP-ENV:Body>
+    </SOAP-ENV:Envelope>`);
+
 const GET_NMS_DELIVERY_SCHEMA_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
 <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:wpp:default' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
 <SOAP-ENV:Body>
@@ -1127,6 +1149,7 @@ exports.Mock = {
   GET_OPTION_NOTFOUND_RESPONSE: GET_OPTION_NOTFOUND_RESPONSE,
   GET_OPTION_MISSING_DATA_RESPONSE: GET_OPTION_MISSING_DATA_RESPONSE,
   GET_XTK_QUERY_SCHEMA_RESPONSE: GET_XTK_QUERY_SCHEMA_RESPONSE,
+  GET_UNION_PROFILE_SCHEMA_RESPONSE: GET_UNION_PROFILE_SCHEMA_RESPONSE,
   GET_NMS_DELIVERY_SCHEMA_RESPONSE: GET_NMS_DELIVERY_SCHEMA_RESPONSE,
   GET_DELIVERY_TEST_RESPONSE: GET_DELIVERY_TEST_RESPONSE,
   GET_MID_EXT_ACCOUNT_RESPONSE: GET_MID_EXT_ACCOUNT_RESPONSE,

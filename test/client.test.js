@@ -435,6 +435,20 @@ describe('ACC Client', function () {
             await client.NLWS.xtkSession.logoff();
         });
 
+        it("Should return XDM schema definition", async () => {
+            const client = await Mock.makeClient();
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+
+            client._transport.mockReturnValueOnce(Mock.GET_UNION_PROFILE_SCHEMA_RESPONSE);
+            var schema = await client.getSchema("xdm:tenant:unions|_xdm.context.profile__union");
+            expect(schema["namespace"]).toBe("xdm");
+            expect(schema["name"]).toBe("profile__union");
+
+            client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
+            await client.NLWS.xtkSession.logoff();
+        });
+
         it("Should return temp group schema definition", async () => {
             const client = await Mock.makeClient();
             client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);

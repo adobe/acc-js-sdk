@@ -1928,6 +1928,14 @@ class Client {
      * @returns {XML.XtkObject}  the schema definition, as either a DOM document or a JSON object
      */
     async getSchema(schemaId, representation, internal) {
+        // Support for Orchestrated Campaign XDM schemas (do not use cache)
+        const pipeIndex = schemaId.indexOf("|");
+        if( pipeIndex != -1 && schemaId.startsWith("xdm:") ) {
+            const entityType = schemaId.substring(0, pipeIndex);
+            schemaId = schemaId.substring(pipeIndex + 1);
+            const entity = await this.getEntityIfMoreRecent(entityType, schemaId, representation, internal);
+            return entity;
+        }
         var entity = await this._entityCache.get("xtk:schema", schemaId);
         if (!entity) {
               // special case of "temp:group:*" schemas for nms:group
