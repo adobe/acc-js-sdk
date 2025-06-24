@@ -2755,6 +2755,15 @@ describe('ACC Client', function () {
             expect(client._optionCache._storage._rootKey).toBe(`OptionCache$`);
         });
 
+        it("Should support instanceKey", async () => {
+            // Default has version & instance name
+            const version = sdk.getSDKVersion().version; // "${version}" or similar
+            connectionParameters = sdk.ConnectionParameters.ofUserAndPassword("http://acc-sdk:8080", "admin", "admin");
+            connectionParameters = sdk.ConnectionParameters.ofUserAndPassword("http://acc-sdk:8080", "admin", "admin", { instanceKey: "hello" });
+            var client = await sdk.init(connectionParameters);
+            expect(client._optionCache._storage._rootKey).toBe(`acc.js.sdk.${version}.hello.cache.OptionCache$`);
+        });
+
         describe("Should simulate the Shell Cache API", () => {
             // See https://github.com/AdobeDocs/exc-app/blob/master/docs/modules/cache.md#sample-code
             it("Sould get cached option", async () => {
