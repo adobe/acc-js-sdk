@@ -143,6 +143,16 @@ class Util {
     return schemaId;
   }
 
+  static validateFileResPrefix(prefix, defaultPrefix = "RES") {
+    const regex = /^[A-Za-z_][A-Za-z0-9_]*$/;
+
+    if (typeof prefix !== "string" || !regex.test(prefix)) {
+      return defaultPrefix;
+    }
+
+    return prefix;
+  }
+
   /**
    * Test if an object is a promise
    * @param {*} object the object to test

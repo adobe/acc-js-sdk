@@ -446,5 +446,17 @@ describe('Util', function() {
             await expect(Util.asPromise(Promise.resolve(3))).resolves.toBe(3);
         });
     });
+
+    describe("Validate file res prefix", () => {
+        it("Should return the correct prefix", () => {
+            expect(Util.validateFileResPrefix("customPrefix")).toBe("customPrefix");
+            expect(Util.validateFileResPrefix("1invalidPrefix")).toBe("RES");
+            expect(Util.validateFileResPrefix("anotherInvalidPrefix!")).toBe("RES");
+            expect(Util.validateFileResPrefix("valid_prefix_2")).toBe("valid_prefix_2");
+
+            expect(Util.validateFileResPrefix("valid_prefix_3", "customDefault")).toBe("valid_prefix_3");
+            expect(Util.validateFileResPrefix("132Invalid", "customDefault")).toBe("customDefault");
+        });
+    });
 });
 
