@@ -38,7 +38,7 @@ const EntityAccessor = require('./entityAccessor.js').EntityAccessor;
 const { Util } = require('./util.js');
 const { XtkJobInterface } = require('./xtkJob.js');
 const qsStringify = require('qs-stringify');
-
+const crypto = require('crypto');
 /**
  * @namespace Campaign
  *
@@ -583,7 +583,7 @@ const fileUploader = (client) => {
          * @param {FileUploadOptions|undefined} options
          * @returns {Promise<{name: string, md5: string, type: string, size: string, url: string}>}
          */
-        upload: (file, options) => {
+        upload: (file, options, fileResPrefix) => {
             console.log(`fileuploader.upload is an experimental feature and is not currently fully functional. It is work in progress and will change in the future.`);
             return new Promise((resolve, reject) => {
                 const action = (options && options.action) ? options.action : "publishIfNeeded";
@@ -631,12 +631,19 @@ const fileUploader = (client) => {
                                 };
                                 if (action === "publishIfNeeded") {
                                   try {
-                                    const counter =
-                                      await client.NLWS.xtkCounter.increaseValue(
-                                        { name: 'xtkResource' }
-                                      );
+                                    // Following https://jira.corp.adobe.com/browse/NEO-88828 the fileRes internal name is defined as is:
+                                    // If a prefix is not provided, we keep the old behavior which is to use the prefix 'RES' and the xtkResource counter (i.e.'RES1'...)
+                                    // If a prefix is provided, we use it with a UUID (i.e. 'customPrefix-123e4567-e89b-12d3-a456-426614174000')
+                                    const oldBehaviorPrefix = 'RES';
+                                    const prefix = Util.validateFileResPrefix(fileResPrefix, oldBehaviorPrefix);
+
+                                    const suffix = (prefix === oldBehaviorPrefix) ? 
+                                      await client.NLWS.xtkCounter.increaseValue({ name: 'xtkResource' }) : crypto.randomUUID();
+
+                                    const internalName = (prefix === oldBehaviorPrefix) ? `${prefix}${suffix}` : `${prefix}_${suffix}`;
+
                                     const fileRes = {
-                                      internalName: 'RES' + counter,
+                                      internalName,
                                       md5: data[0].md5,
                                       label: data[0].fileName,
                                       fileName: data[0].fileName,
