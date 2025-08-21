@@ -38,7 +38,7 @@ const EntityAccessor = require('./entityAccessor.js').EntityAccessor;
 const { Util } = require('./util.js');
 const { XtkJobInterface } = require('./xtkJob.js');
 const qsStringify = require('qs-stringify');
-const crypto = require('crypto');
+
 /**
  * @namespace Campaign
  *
@@ -636,9 +636,16 @@ const fileUploader = (client) => {
                                     // If a prefix is provided, we use it with a UUID (i.e. 'customPrefix-123e4567-e89b-12d3-a456-426614174000')
                                     const oldBehaviorPrefix = 'RES';
                                     const prefix = Util.validateFileResPrefix(fileResPrefix, oldBehaviorPrefix);
-
+                                    async function getUUIDOrFallback() {
+                                        try {
+                                            return Util.getUUID();
+                                        } catch (error) {
+                                            // In case getUUID throws, fall back to increasing the counter
+                                            return await client.NLWS.xtkCounter.increaseValue({ name: 'xtkResource' });
+                                        }
+                                    }
                                     const suffix = (prefix === oldBehaviorPrefix) ? 
-                                      await client.NLWS.xtkCounter.increaseValue({ name: 'xtkResource' }) : crypto.randomUUID();
+                                      await client.NLWS.xtkCounter.increaseValue({ name: 'xtkResource' }) : await getUUIDOrFallback();
 
                                     const internalName = (prefix === oldBehaviorPrefix) ? `${prefix}${suffix}` : `${prefix}_${suffix}`;
 

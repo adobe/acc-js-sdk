@@ -458,5 +458,104 @@ describe('Util', function() {
             expect(Util.validateFileResPrefix("132Invalid", "customDefault")).toBe("customDefault");
         });
     });
+
+    describe("GetUUID", () => {
+        describe("UUID - on server node", () => {
+            describe("node <= 16", () => {
+                describe('code coverage: getUUID', () => {
+                    let originalCrypto;
+                    // on old Node versions, crypto may not be available
+                    // deleting globalThis.crypto to simulate the environment on newer Node
+                    beforeEach(() => {
+                        // Save the original crypto
+                        originalCrypto = globalThis.crypto;
+                        delete globalThis.crypto;
+                    });
+
+                    afterEach(() => {
+                        // Restore it after the test
+                        globalThis.crypto = originalCrypto;
+                    });
+
+                    it('should handle require("crypto") throwing', () => {
+                        // Force require("crypto") to throw
+                        jest.mock('crypto', () => {
+                            throw new Error('mock require failure');
+                        });
+
+                        // Re-require the module AFTER mocking
+                        const UUIDHelper = require('../src/util.js').Util;
+
+                        let exceptionCaught = false;
+                        try{
+                            UUIDHelper.getUUID();
+                        } catch (e) {
+                            exceptionCaught = true;
+                        }
+                        expect(exceptionCaught).toBe(true);
+                    });
+
+                    it('should handle require("crypto") throwing', () => {
+                        // Force require("crypto") to not have randomUUID
+                        jest.mock('crypto', () => ({}));
+
+                        // Re-require the module AFTER mocking
+                        const UUIDHelper = require('../src/util.js').Util;
+
+                        let exceptionCaught = false;
+                        try{
+                            UUIDHelper.getUUID();
+                        } catch (e) {
+                            exceptionCaught = e.message === 'Unable to generate UUID';
+                        }
+                        expect(exceptionCaught).toBe(true);
+                    });
+
+                    it('should fallback to node crypto when globalThis.crypto is not available', () => {
+                        jest.unmock('crypto');
+                        // Spy on require
+                        const spy = jest.spyOn(require('crypto'), 'randomUUID').mockReturnValue('mock-uuid');
+
+                        // Re-import the module if your getUUID function is from a module
+                        const uuid = Util.getUUID(); // or just call getUUID() if it's in scope
+
+                        expect(uuid).toBe('mock-uuid');
+                        expect(spy).toHaveBeenCalled();
+                        spy.mockRestore();
+                    });
+                });
+            });
+        });
+        describe("node > 16", () => {
+            it('should return a correct UUID v4', () => {
+                // x is [0-9a-f], Y is 8, 9, a or b
+                // uuid format: xxxxxxxx-xxxx-4xxx-Yxxx-xxxxxxxxxxxx
+                const uuidV4Regex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+                expect(uuidV4Regex.test(Util.getUUID())).toBe(true);
+            });
+        });
+
+        describe("UUID - on browser", () => {
+            // code coverage test as we mock the browser return values
+            it('should return a correct UUID v4', () => {
+                if (!globalThis.crypto || !globalThis.crypto.randomUUID){
+                    globalThis.crypto = {
+                        ...globalThis.crypto,
+                        randomUUID: jest.fn(),
+                    };
+                }
+
+                // x is [0-9a-f], Y is 8, 9, a or b
+                // uuid v4 format: xxxxxxxx-xxxx-4xxx-Yxxx-xxxxxxxxxxxx
+                // Mocking crypto.randomUUID to return a specific valid v4 UUID
+                jest.spyOn(globalThis.crypto, 'randomUUID').mockReturnValue('123e4567-e89b-42d3-a456-426614174000');
+                const uuidV4Regex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+                expect(uuidV4Regex.test(Util.getUUID())).toBe(true);
+                // Mocking crypto.randomUUID to return a specific an invalid v4 UUID
+                jest.spyOn(globalThis.crypto, 'randomUUID').mockReturnValue('12345678-1234-0234-0567-426614174000');
+                expect(uuidV4Regex.test(Util.getUUID())).toBe(false);
+            });
+        });
+    });
 });
 

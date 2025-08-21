@@ -143,7 +143,7 @@ class Util {
     return schemaId;
   }
 
-  static validateFileResPrefix(prefix, defaultPrefix = "RES") {
+  static validateFileResPrefix(prefix, defaultPrefix = 'RES') {
     const regex = /^[A-Za-z_][A-Za-z0-9_]*$/;
 
     if (typeof prefix !== "string" || !regex.test(prefix)) {
@@ -151,6 +151,23 @@ class Util {
     }
 
     return prefix;
+  }
+
+  static getUUID() {
+    if (globalThis.crypto
+      && globalThis.crypto.randomUUID
+      && typeof globalThis.crypto.randomUUID === 'function') {
+      return globalThis.crypto.randomUUID(); // browser
+    }
+    const nodeCrypto = (() => {
+      return require("crypto");
+    })();
+    if (nodeCrypto && nodeCrypto.randomUUID) {
+      return nodeCrypto.randomUUID(); // Node
+    }
+
+    //Nothing worked
+    throw new Error('Unable to generate UUID');
   }
 
   /**

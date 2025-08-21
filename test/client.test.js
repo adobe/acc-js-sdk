@@ -3604,7 +3604,7 @@ describe('ACC Client', function () {
                 statusCode: 500,
                 });
             });
-            });
+            }); // "File uploader - on server"
 
             describe("File uploader - on browser", () => {
             beforeEach(() => {
@@ -4218,8 +4218,6 @@ describe('ACC Client', function () {
                 statusCode: 400,
                 });
             });
-            });
-
             it("Test uploads by specifying a file prefix", async () => {
                 // Create a mock client and logon
                 const client = await Mock.makeClient();
@@ -4261,13 +4259,69 @@ describe('ACC Client', function () {
                 ); // xtk:fileRes#GetURL
 
                 // Call upload
-                const result = await client.fileUploader.upload({
-                type: "text/html",
-                size: 12345,
-                }, undefined, 'PREFIX');
+                await client.fileUploader.upload({
+                    type: "text/html",
+                    size: 12345,
+                    }, undefined, 'PREFIX');
                 expect(Util.validateFileResPrefix).toHaveBeenLastCalledWith('PREFIX', 'RES');
             });
-        });
+
+            it("Test uploads by with a file prefix but getUUID throws", async () => {
+                // Create a mock client and logon
+                const client = await Mock.makeClient();
+                client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+                await client.NLWS.xtkSession.logon();
+
+                // Mock the upload protocol
+                // - the upload.jsp (which returns the content of an iframe and JS to eval)
+                // - call to xtk:session#Write
+                // - call to xtk:fileRes#PublishIfNeeded
+                // - call to xtk:fileRes#GetURL
+
+                client._transport.mockReturnValueOnce(
+                Promise.resolve(`Ok 
+                <html xmlns="http://www.w3.org/1999/xhtml">
+                    <head>
+                    <script type="text/javascript">if(window.parent&&window.parent.document.controller&&"function"==typeof window.parent.document.controller.uploadFileCallBack){var aFilesInfo=new Array;aFilesInfo.push({paramName:"file",fileName:"test.txt",newFileName:"d8e8fca2dc0f896fd7cb4cb0031ba249.txt",md5:"d8e8fca2dc0f896fd7cb4cb0031ba249"}),window.parent.document.controller.uploadFileCallBack(aFilesInfo)}</script>
+                    </head>
+                <body></body>
+                </html>`)
+                ); // upload.jsp
+
+                client._transport.mockReturnValueOnce(
+                    Promise.resolve(Mock.GET_XTK_COUNTER_RESPONSE)
+                ); // GetEntityIfMoreRecentResponse - counter
+                client._transport.mockReturnValueOnce(
+                    Mock.INCREASE_VALUE_RESPONSE
+                ); // xtk:counter#IncreaseValue
+
+                client._transport.mockReturnValueOnce(
+                Mock.GET_XTK_SESSION_SCHEMA_RESPONSE
+                ); // GetEntityIfMoreRecentResponse - session
+                
+                client._transport.mockReturnValueOnce(Mock.FILE_RES_WRITE_RESPONSE); // xtk:session#Write
+                jest.spyOn(Util, 'getUUID').mockImplementation(() => { throw new Error('UUID error'); });
+
+                client._transport.mockReturnValueOnce(
+                Promise.resolve(Mock.GET_FILERES_QUERY_SCHEMA_RESPONSE)
+                ); // GetEntityIfMoreRecentResponse - fileRes
+                client._transport.mockReturnValueOnce(
+                Promise.resolve(Mock.PUBLISH_IF_NEEDED_RESPONSE)
+                ); // xtk:fileRes#PublishIfNeeded
+
+                client._transport.mockReturnValueOnce(
+                Promise.resolve(Mock.GET_URL_RESPONSE)
+                ); // xtk:fileRes#GetURL
+
+                // Call upload
+                await client.fileUploader.upload({
+                    type: "text/html",
+                    size: 12345,
+                    }, undefined, 'PREFIX');
+                expect(Util.getUUID).toHaveBeenCalledTimes(1);
+            });
+            }); // "File uploader - on browser"
+        }); // 'upload'
 
         describe('uploadAemAsset', () => {
           // write unit test for client.fileUploader.uploadAemAsset method
