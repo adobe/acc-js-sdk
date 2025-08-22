@@ -636,14 +636,14 @@ const fileUploader = (client) => {
                                     // If a prefix is provided, we use it with a UUID (i.e. 'customPrefix-123e4567-e89b-12d3-a456-426614174000')
                                     const oldBehaviorPrefix = 'RES';
                                     const prefix = Util.validateFileResPrefix(fileResPrefix, oldBehaviorPrefix);
-                                    async function getUUIDOrFallback() {
+                                    const getUUIDOrFallback = async() => {
                                         try {
                                             return Util.getUUID();
                                         } catch (error) {
                                             // In case getUUID throws, fall back to increasing the counter
                                             return await client.NLWS.xtkCounter.increaseValue({ name: 'xtkResource' });
                                         }
-                                    }
+                                    };
                                     const suffix = (prefix === oldBehaviorPrefix) ? 
                                       await client.NLWS.xtkCounter.increaseValue({ name: 'xtkResource' }) : await getUUIDOrFallback();
 

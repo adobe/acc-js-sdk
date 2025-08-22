@@ -154,9 +154,9 @@ class Util {
   }
 
   static getUUID() {
-    if (globalThis.crypto
-      && globalThis.crypto.randomUUID
-      && typeof globalThis.crypto.randomUUID === 'function') {
+    if (globalThis.crypto &&
+      globalThis.crypto.randomUUID &&
+      typeof globalThis.crypto.randomUUID === 'function') {
       return globalThis.crypto.randomUUID(); // browser
     }
     const nodeCrypto = (() => {
