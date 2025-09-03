@@ -2543,7 +2543,36 @@ describe('Application', () => {
                 client._transport.mockReturnValueOnce(Mock.GET_MISSING_SCHEMA_RESPONSE);
                 const schema = await client.application.getSchema("xtk:dummy")
                 expect(schema).toBeNull();
-            })
+            });
+
+            it("Should respect withoutCache parameter", async () => {
+                const client = await Mock.makeClient();
+                client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+                await client.NLWS.xtkSession.logon();
+
+                // First call - should use cache
+                client._transport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
+                const schema = await client.application.getSchema("xtk:session");
+                expect(schema.namespace).toBe("xtk");
+                expect(schema.name).toBe("session");
+                expect(client._transport).toHaveBeenCalledTimes(2); // Logon + getSchema
+
+                // Second call - should use cache (no transport call)
+                const schema2 = await client.application.getSchema("xtk:session");
+                expect(schema2.namespace).toBe("xtk");
+                expect(schema2.name).toBe("session");
+                expect(client._transport).toHaveBeenCalledTimes(2); // Still only 2 calls (no new transport call)
+
+                // Third call with withoutCache=true - should bypass cache and make transport call
+                client._transport.mockReturnValueOnce(Mock.GET_XTK_SESSION_SCHEMA_RESPONSE);
+                const schema3 = await client.application.getSchema("xtk:session", true);
+                expect(schema3.namespace).toBe("xtk");
+                expect(schema3.name).toBe("session");
+                expect(client._transport).toHaveBeenCalledTimes(3); // Now 3 calls (bypassed cache)
+
+                client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
+                await client.NLWS.xtkSession.logoff();
+            });
         });
 
         describe("application.hasPackage", () => {

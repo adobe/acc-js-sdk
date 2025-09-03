@@ -1419,15 +1419,19 @@ class Application {
      * Using the `XtkSchema` API makes it easier to navigate schemas than using a plain XML or JSON object
      * 
      * @param {string} schemaId 
+     * @param {boolean} withoutCache if true, the schema will be fetched from the server without using the cache, defaults to false
      * @returns {Campaign.XtkSchema} the schema, or null if the schema was not found
      */
-     async getSchema(schemaId) {
+     async getSchema(schemaId, withoutCache = false) {
+        if (withoutCache) {
+            return this._getSchema(schemaId, withoutCache);
+        }
         return this._schemaCache.getSchema(schemaId);
     }
 
     // Private function: get a schema without using the SchemaCache
-    async _getSchema(schemaId) {
-        const xml = await this.client.getSchema(schemaId, "xml");
+    async _getSchema(schemaId, withoutCache = false) {
+        const xml = await this.client.getSchema(schemaId, "xml", undefined, withoutCache);
         if (!xml)
             return null;
         return newSchema(xml, this);

@@ -436,6 +436,42 @@ describe('ACC Client', function () {
             await client.NLWS.xtkSession.logoff();
         });
 
+        it("Should respect withoutCache parameter", async () => {
+            const client = await Mock.makeClient();
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+
+            // First call - should cache the schema
+            client._transport.mockReturnValueOnce(Mock.GET_NMS_EXTACCOUNT_SCHEMA_RESPONSE);
+            var schema = await client.getSchema("nms:extAccount");
+            expect(schema["namespace"]).toBe("nms");
+            expect(schema["name"]).toBe("extAccount");
+            expect(client._transport).toHaveBeenCalledTimes(2); // Logon + getSchema
+
+            // Second call - should use cache (no transport call)
+            schema = await client.getSchema("nms:extAccount");
+            expect(schema["namespace"]).toBe("nms");
+            expect(schema["name"]).toBe("extAccount");
+            expect(client._transport).toHaveBeenCalledTimes(2); // Still only 2 calls (no new transport call)
+
+            // Third call with withoutCache=true - should bypass cache and make transport call
+            client._transport.mockReturnValueOnce(Mock.GET_NMS_EXTACCOUNT_SCHEMA_RESPONSE);
+            schema = await client.getSchema("nms:extAccount", undefined, undefined, true);
+            expect(schema["namespace"]).toBe("nms");
+            expect(schema["name"]).toBe("extAccount");
+            expect(client._transport).toHaveBeenCalledTimes(3); // Now 3 calls (bypassed cache)
+
+            // Fourth call with withoutCache=true and custom representation - should bypass cache
+            client._transport.mockReturnValueOnce(Mock.GET_NMS_EXTACCOUNT_SCHEMA_RESPONSE);
+            schema = await client.getSchema("nms:extAccount", "xml", undefined, true);
+            expect(schema.getAttribute("namespace")).toBe("nms");
+            expect(schema.getAttribute("name")).toBe("extAccount");
+            expect(client._transport).toHaveBeenCalledTimes(4); // Now 4 calls (bypassed cache again)
+
+            client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
+            await client.NLWS.xtkSession.logoff();
+        });
+
         it("Should return XDM schema definition", async () => {
             const client = await Mock.makeClient();
             client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);

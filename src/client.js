@@ -1943,9 +1943,10 @@ class Client {
      * @param {string} schemaId the schema id, such as "xtk:session", or "nms:recipient"
      * @param {string} representation an optional representation of the schema: "BadgerFish", "SimpleJson" or "xml". If not set, we'll use the client default representation
      * @param {boolean} internal indicates an "internal" call, i.e. a call performed by the SDK itself rather than the user of the SDK. For instance, the SDK will dynamically load schemas to find method definitions
+     * @param {boolean} withoutCache if true, the schema will be fetched from the server without using the cache, defaults to false
      * @returns {XML.XtkObject}  the schema definition, as either a DOM document or a JSON object
      */
-    async getSchema(schemaId, representation, internal) {
+    async getSchema(schemaId, representation, internal, withoutCache = false) {
         // Support for Orchestrated Campaign XDM schemas (do not use cache)
         const pipeIndex = schemaId.indexOf("|");
         if( pipeIndex != -1 && schemaId.startsWith("xdm:") ) {
@@ -1955,7 +1956,7 @@ class Client {
             return entity;
         }
         var entity = await this._entityCache.get("xtk:schema", schemaId);
-        if (!entity) {
+        if (!entity || withoutCache) {
               // special case of "temp:group:*" schemas for nms:group
               // Schema "temp:group:*" is not cached because life cycle of this kind of schema is not the same as the others schemas
               if (schemaId.startsWith("temp:group:")) {
