@@ -57,7 +57,7 @@ async function withMockConsole(fn) {
   });
   try {
     await fn();
-    return logs;
+      return logs;
   } finally {
     console.log.mockRestore();
   }
@@ -507,7 +507,7 @@ const GET_DELIVERY_TEST_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
 </SOAP-ENV:Envelope>`);
 
 const GET_MID_EXT_ACCOUNT_RESPONSE = (encryptedPassword) => {
-  return  Promise.resolve(`<?xml version='1.0'?>
+    return Promise.resolve(`<?xml version='1.0'?>
     <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:xtk:queryDef' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
     <SOAP-ENV:Body>
         <ExecuteQueryResponse xmlns='urn:xtk:queryDef' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
@@ -520,7 +520,7 @@ const GET_MID_EXT_ACCOUNT_RESPONSE = (encryptedPassword) => {
 }
 
 const GET_BAD_EXT_ACCOUNT_RESPONSE = (encryptedPassword) => {
-  return Promise.resolve(`<?xml version='1.0'?>
+    return Promise.resolve(`<?xml version='1.0'?>
     <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:xtk:queryDef' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
     <SOAP-ENV:Body>
         <ExecuteQueryResponse xmlns='urn:xtk:queryDef' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
@@ -734,6 +734,11 @@ const GET_USER_INFO_RESPONSE = Promise.resolve(`<?xml version='1.0'?>
             <userInfo datakitInDatabase="true" homeDir="" instanceLocale="en" locale="en" login="admin" loginCS="Administrator (admin)" loginId="1059" noConsoleCnx="false" orgUnitId="0" theme="" timezone="Europe/Paris">
                 <login-group id="1060"/>
                 <login-right right="admin"/>
+                <installed-package name="WebUI" namespace="cus"/>
+				<installed-package name="views_2024_02_15T05_29_07Z" namespace="cus"/>
+			    <installed-package name="PKG3" namespace="cus"/>
+				<installed-package name="views_2024_02_15T05_30_50Z" namespace="cus"/>
+				<installed-package name="core" namespace="nms"/>
             </userInfo>
         </pUserInfo>
     </GetUserInfoResponse>

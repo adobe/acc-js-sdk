@@ -37,6 +37,100 @@ describe('IMS Bearer Toekn', function () {
         expect(client.isLogged()).toBe(true);
     });
 
+    it('Should logn with IMS bearer token and save the server Info cache', async () => {
+        const client = await makeImsClient({useServerInfoCache: true, sessionInfo: true});
+        client._transport = jest.fn();
+        const putSpy = jest.spyOn(client._serverInfoCache, "put");
+        client.test = jest.fn(() => Promise.resolve({build: "8.9.1"}))
+        client._transport.mockImplementationOnce(() => {
+            return Mock.GET_XTK_SESSION_SCHEMA_RESPONSE;
+        });
+
+        client._transport.mockImplementationOnce(() => {
+            return Mock.GET_USER_INFO_RESPONSE;
+        });
+
+        client.test = jest.fn(() => Promise.resolve({build: "8.9.1"}))
+        client._transport.mockImplementationOnce(() => {
+            return Mock.GET_XTK_SESSION_SCHEMA_RESPONSE;
+        });
+
+        client._transport.mockImplementationOnce(() => {
+            return Mock.GET_USER_INFO_RESPONSE;
+        });
+
+        await client.NLWS.xtkSession.logon();
+        expect(client.isLogged()).toBe(true);
+        expect(putSpy).toHaveBeenCalledWith("sessionInfo", {
+            "serverInfo": {
+                "buildNumber": "8.9.1",
+                "instanceName": "undefined"
+            },
+            "userInfo": {
+                "datakitInDatabase": "true",
+                "homeDir": "",
+                "installed-package": [
+                    {
+                        "name": "WebUI",
+                        "namespace": "cus"
+                    },
+                    {
+                        "name": "views_2024_02_15T05_29_07Z",
+                        "namespace": "cus"
+                    },
+                    {
+                        "name": "PKG3",
+                        "namespace": "cus"
+                    },
+                    {
+                        "name": "views_2024_02_15T05_30_50Z",
+                        "namespace": "cus"
+                    },
+                    {
+                        "name": "core",
+                        "namespace": "nms"
+                    }
+                ],
+                "instanceLocale": "en",
+                "locale": "en",
+                "login": "admin",
+                "login-group": {
+                    "id": "1060"
+                },
+                "login-right": {
+                    "right": "admin"
+                },
+                "loginCS": "Administrator (admin)",
+                "loginId": "1059",
+                "noConsoleCnx": "false",
+                "orgUnitId": "0",
+                "theme": "",
+                "timezone": "Europe/Paris"
+            }
+        });
+    })
+    it ("should handle the case where the get serverInfo from cache fails", async () => {
+        const client = await makeImsClient({useServerInfoCache: true, sessionInfo: true});
+        client._serverInfoCache.get = jest.fn(() => Promise.reject(new Error("Cache error")));
+        client._transport.mockImplementationOnce(() => {
+            return Mock.GET_XTK_SESSION_SCHEMA_RESPONSE;
+        });
+
+        client._transport.mockImplementationOnce(() => {
+            return Mock.GET_USER_INFO_RESPONSE;
+        });
+
+        client.test = jest.fn(() => Promise.resolve({build: "8.9.1"}))
+
+        client._transport.mockImplementationOnce(() => {
+            return Mock.GET_USER_INFO_RESPONSE;
+        });
+        await client.NLWS.xtkSession.logon();
+        expect(client._serverInfoCache.get).toHaveBeenCalledWith("sessionInfo");
+        expect(client._transport).toBeCalledTimes(2);
+        expect(client.isLogged()).toBe(true);
+    });
+
     // The logoff API invalidates the session created on the server side and does not invalidate 
     // the bearer token. To invalidate the bearer token, IMS should be used
     it('Should logoff', async () => {

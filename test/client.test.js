@@ -65,7 +65,33 @@ describe('ACC Client', function () {
             await client.NLWS.xtkSession.logoff();
             expect(client.isLogged()).toBe(false);
         });
-
+        it('Should logon and logoff with server info cache disabled', async () => {
+            const client = await Mock.makeClient({ useServerInfoCache: false });
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+            expect(client.isLogged()).toBe(true);
+            var sessionInfoXml = client.getSessionInfo("xml");
+            expect(DomUtil.findElement(sessionInfoXml, "serverInfo", true).getAttribute("buildNumber")).toBe("9219");
+        });
+        it('Should logon and logoff with server info cache enabled', async () => {
+            const client = await Mock.makeClient({ useServerInfoCache: true });
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+            expect(client.isLogged()).toBe(true);
+            var sessionInfoXml = client.getSessionInfo("xml");
+            expect(DomUtil.findElement(sessionInfoXml, "serverInfo", true).getAttribute("buildNumber")).toBe("9219");
+        });
+        it('Should logon and logoff with server info cache enabled and disabled', async () => {
+            const client = await Mock.makeClient({ useServerInfoCache: true });
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+            expect(client.isLogged()).toBe(true);
+            var sessionInfoXml = client.getSessionInfo("xml");
+            expect(DomUtil.findElement(sessionInfoXml, "serverInfo", true).getAttribute("buildNumber")).toBe("9219");
+        });
         it('Should logon and logoff with traces', async () => {
             const client = await Mock.makeClient();
             client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
@@ -2288,6 +2314,74 @@ describe('ACC Client', function () {
             expect(transport.mock.calls.length).toBe(2);
         })
 
+        it("Should logon and logoff with server info cache enabled", async () => {
+            const connectionParameters = sdk.ConnectionParameters.ofImsBearerToken("http://acc-sdk:8080", "$token$", {useServerInfoCache: true, sessionInfo: true});
+            const client = await sdk.init(connectionParameters);
+            client._transport = jest.fn();
+            // Spy on the session info cache get method
+            const getSpy = jest.spyOn(client._serverInfoCache, "get");
+            const putSpy = jest.spyOn(client._serverInfoCache, "put");
+            getSpy.mockReturnValueOnce(Promise.resolve({
+                serverInfo: {
+                    buildNumber: "9219",
+                    instanceName: "ffdamkt",
+                    majNumber: "6",
+                    minNumber: "7",
+                    servicePack: "0",
+                    serverDate: "2020-07-05 14:11:31.986Z",
+                    sessionTimeOut: "86400",
+                    useVault: "false",
+                },
+                userInfo: {
+                    login: "admin",
+                    loginCS: "Administrator (admin)",
+                    loginId: "1059",
+                    noConsoleCnx: "false",
+                    orgUnitId: "0",
+                    theme: "Europe/Paris",
+                    timezone: "Europe/Paris",
+                    locale: "en",
+                    instanceLocale: "en",
+                    homeDir: "",
+                    datakitInDatabase: "true",
+                    "login-group": {
+                        id: "1060"
+                    },
+                    "login-right": {
+                        right: "admin"
+                    },
+                    "installed-package": [
+                        {
+                            namespace: "nms",
+                            name: "campaign",
+                        },
+                        {
+                            namespace: "nms",
+                            name: "core",
+                        }
+                    ]
+                }
+            }));
+            putSpy.mockReturnValueOnce(Promise.resolve(null));
+            client._transport.mockReturnValueOnce(Mock.BEARER_LOGON_RESPONSE);
+            await client.logon();
+            expect(client.isLogged()).toBeTruthy();
+            // Check that the cache was called for session info
+            expect(getSpy).toHaveBeenCalledWith("sessionInfo");
+            const transport = client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
+            await client.logoff();
+            expect(client.isLogged()).toBeFalsy();
+            // Ensure logoff has been called
+            expect(transport.mock.calls.length).toBe(1);
+        });
+        it("Should logon and logoff with server info cache disabled", async () => {
+            const connectionParameters = sdk.ConnectionParameters.ofImsBearerToken("http://acc-sdk:8080", "$token$");
+            const client = await sdk.init(connectionParameters);
+            client._transport = jest.fn();
+            client._transport.mockReturnValueOnce(Mock.BEARER_LOGON_RESPONSE);
+            await client.logon();
+            expect(client.isLogged()).toBeTruthy();
+        });
         it("Call SAOP method", async () => {
             const connectionParameters = sdk.ConnectionParameters.ofBearerToken("http://acc-sdk:8080", "$token$");
             const client = await sdk.init(connectionParameters);
