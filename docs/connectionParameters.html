@@ -114,6 +114,15 @@ const connectionParameters = sdk.ConnectionParameters.ofUserAndPassword(
             <td>string</td>
             <td>An optional value to override the instance key which is used for the caches of schemas, options, etc.</td>
         </tr>
+        <tr>
+            <td>useServerInfoCache</td>
+            <td>boolean</td>
+            <td>Enables caching of server info and installed packages. Defaults to false</td>
+        </tr>
+        <tr>
+            <td>useServerInfoCacheTTL</td>
+            <td>number</td>
+            <td>The TTL (in milliseconds) for the server info cache. Defaults to 1 day</td>
+        </tr>
     </tbody>
 </table>
-
