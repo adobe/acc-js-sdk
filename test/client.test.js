@@ -4445,7 +4445,7 @@ describe('ACC Client', function () {
                     type: "text/html",
                     size: 12345,
                     }, undefined, 'PREFIX');
-                expect(Util.getUUID).toHaveBeenCalledTimes(8);
+                expect(Util.getUUID).toHaveBeenCalledTimes(1);
             });
             }); // "File uploader - on browser"
         }); // 'upload'
