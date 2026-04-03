@@ -3447,8 +3447,8 @@ describe('ACC Client', function () {
             });
         });
 
-        it("Should add x-request-id header to every SOAP call", async () => {
-            const client = await Mock.makeClient();
+        it("Should add x-request-id header to SOAP call when enableRequestIdHeader is true", async () => {
+            const client = await Mock.makeClient({ enableRequestIdHeader: true });
             client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
 
@@ -3480,7 +3480,37 @@ describe('ACC Client', function () {
         });
 
         it("Should call SOAP call on request ID generation failure", async () => {
-            const client = await Mock.makeClient();
+            const client = await Mock.makeClient({enableRequestIdHeader: true});
+            client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
+            await client.NLWS.xtkSession.logon();
+            
+            const mockGetUUID = jest.spyOn(Util, 'getUUID').mockImplementation(() => { throw new Error('UUID error'); });
+            
+            client._transport.mockReturnValueOnce(Mock.GET_XTK_QUERY_SCHEMA_RESPONSE);
+            client._transport.mockReturnValueOnce(Mock.GET_QUERY_EXECUTE_RESPONSE);
+            const queryDef = {
+                "schema": "nms:extAccount",
+                "operation": "select",
+                "select": {
+                    "node": [{ "expr": "@id" }]
+                }
+            };
+            
+            const query = client.NLWS.xtkQueryDef.create(queryDef);
+
+            const headers = await collectHeaders(client, async() => {
+                await query.executeQuery();
+            });
+
+            expect(headers["x-request-id"]).toBeUndefined();
+            
+            // Restore the mock
+            mockGetUUID.mockRestore();
+        });
+
+
+        it("Should not add x-request-id header to SOAP call when enableRequestIdHeader is false", async () => {
+            const client = await Mock.makeClient({ enableRequestIdHeader: false });
             client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
             
@@ -4415,7 +4445,7 @@ describe('ACC Client', function () {
                     type: "text/html",
                     size: 12345,
                     }, undefined, 'PREFIX');
-                expect(Util.getUUID).toHaveBeenCalledTimes(8);
+                expect(Util.getUUID).toHaveBeenCalledTimes(1);
             });
             }); // "File uploader - on browser"
         }); // 'upload'

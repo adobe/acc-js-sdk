@@ -309,6 +309,7 @@ class Credentials {
     * @property {number} timeout - Can be set to change the HTTP call timeout. Value is passed in ms.
     * @property {string} cacheRootKey - "default" or "none" - determine the prefix to use for the keys in the caches of schemas, options, etc.
     * @property {string} instanceKey - an optional value to override the instance key which is used for the caches of schemas, options, etc.
+    * @property {boolean} enableRequestIdHeader - an optional value to enable the request ID header for SOAP API calls
     * @memberOf Campaign
  */
 
@@ -1178,17 +1179,21 @@ class Client {
      * parameters should be set
      */
     _prepareSoapCall(urn, method, isStatic, internal, extraHttpHeaders, pushDownOptions) {
-        // Generate unique request ID for every SOAP call
-        let requestId;
-        try {
-          requestId = Util.getUUID();
-        } catch (error) {
-          console.error("Failed to generate request ID", error);
-        }
-        const updatedExtraHttpHeaders = requestId ? Object.assign({}, extraHttpHeaders, {
+
+        // Send request ID header if enableRequestIdHeader flag is set to true
+        const enableRequestIdHeader = this._connectionParameters._options &&
+          this._connectionParameters._options.enableRequestIdHeader;
+        let updatedExtraHttpHeaders = extraHttpHeaders;
+        if (enableRequestIdHeader) {
+          try {
+            const requestId = Util.getUUID();
+            updatedExtraHttpHeaders = Object.assign({}, extraHttpHeaders, {
               "x-request-id": requestId,
-            })
-          : extraHttpHeaders;
+            });
+          } catch (error) {
+            console.error("Failed to generate request ID", error);
+          }
+        }
         const soapCall = new SoapMethodCall(this._transport, urn, method,
                                             this._sessionToken, this._securityToken,
                                             this._getUserAgentString(),
