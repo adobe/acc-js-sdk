@@ -9,6 +9,10 @@ The API is fully asynchronous using promises and works as well on the server sid
 > **Extensive documentation is available**: https://opensource.adobe.com/acc-js-sdk/
 
 
+# Prerequisites
+
+The SDK requires **Node.js version 20** or above.
+
 # QuickStart
 
 
@@ -32,7 +36,7 @@ console.log(sdk.getSDKVersion());
 which will return the SDK name and version (the actual name and version number will depend on the version you have installed)
 ```
 {
-  version: "1.0.0",
+  version: "1.2.0",
   name: "@adobe/acc-js-sdk",
   description: "ACC Javascript SDK",
 }
@@ -94,7 +98,7 @@ node index.js
 
 It will display something like this
 ```
-ACC Javascript SDK version 1.0.0
+ACC Javascript SDK version 1.2.0
 Target mappings: {"deliveryMapping":[{"id":"1747","label":"Recipients","name":"mapRecipient","schema":"nms:recipient"},{"id":"1826","label":"Subscriptions","name":"mapSubscribe","schema":"nms:subscription"},{"id":"1827","label":"Operators","name":"mapOperator","schema":"xtk:operator"},{"id":"1828","label":"External file","name":"mapAny","schema":""},{"id":"1830","label":"Visitors","name":"mapVisitor","schema":"nms:visitor"},{"id":"2035","label":"Real time event","name":"mapRtEvent","schema":"nms:rtEvent"},{"id":"2036","label":"Batch event","name":"mapBatchEvent","schema":"nms:batchEvent"},{"id":"2070","label":"Subscriber applications","name":"mapAppSubscriptionRcp","schema":"nms:appSubscriptionRcp"}]}
 ````
 

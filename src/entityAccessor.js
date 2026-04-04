@@ -10,22 +10,22 @@ OF ANY KIND, either express or implied. See the License for the specific languag
 governing permissions and limitations under the License.
 */
 (function() {
-"use strict";
+  "use strict";
 
-/**********************************************************************************
+  /**********************************************************************************
  * 
  * Helper function to navigate an entity, regardless of its representation
  * 
  *********************************************************************************/
-const XtkCaster = require('./xtkCaster.js').XtkCaster;
-const { DomUtil, BadgerFishObject } = require('./domUtil.js');
-const { Util } = require("./util.js");
+  const XtkCaster = require('./xtkCaster.js').XtkCaster;
+  const { DomUtil, BadgerFishObject } = require('./domUtil.js');
+  const { Util } = require("./util.js");
 
-/**
+  /**
  * @namespace XML
  */
 
-/**
+  /**
  * The XtkObject type is a Campaign entity, represented either as a DOM element, or as a JavaScript
  * literal object, depending on the selected representation (xml, SimpleJson or BadgerFish)
  * 
@@ -33,7 +33,7 @@ const { Util } = require("./util.js");
  * @memberOf XML
  */
 
-/**
+  /**
  * An entity accessor enables you to access properties of entity objects manipulated by
  * the JS SDK. With the representations mechanism, the SDK can work with either xml or
  * json documents. You can use the DOM API to manipulate XML documents, and native
@@ -45,7 +45,7 @@ const { Util } = require("./util.js");
  * @class
  * @memberof XML
  */
-class EntityAccessor {
+  class EntityAccessor {
     
     constructor() {
     }
@@ -68,13 +68,13 @@ class EntityAccessor {
      * expect(EntityAccessor.getAttributeAsString(entity, "hello")).toBe("world");
      */
     static getAttributeAsString(entity, name) {
-        if (entity.documentElement) entity = entity.documentElement;
-        if (entity.nodeType && entity.tagName)
-            return DomUtil.getAttributeAsString(entity, name);
-        else if (entity instanceof BadgerFishObject)
-            return XtkCaster.asString(entity[`@${name}`]);
-        else 
-            return XtkCaster.asString(entity[name]);
+      if (entity.documentElement) entity = entity.documentElement;
+      if (entity.nodeType && entity.tagName)
+        return DomUtil.getAttributeAsString(entity, name);
+      else if (entity instanceof BadgerFishObject)
+        return XtkCaster.asString(entity[`@${name}`]);
+      else 
+        return XtkCaster.asString(entity[name]);
     }
 
     /**
@@ -94,13 +94,13 @@ class EntityAccessor {
      * expect(EntityAccessor.getAttributeAsLong(entity, "hello")).toBe(42);
      */
     static getAttributeAsLong(entity, name) {
-        if (entity.documentElement) entity = entity.documentElement;
-        if (entity.nodeType && entity.tagName)
-            return DomUtil.getAttributeAsLong(entity, name);
-        else if (entity instanceof BadgerFishObject)
-            return XtkCaster.asLong(entity[`@${name}`]);
-        else 
-            return XtkCaster.asLong(entity[name]);
+      if (entity.documentElement) entity = entity.documentElement;
+      if (entity.nodeType && entity.tagName)
+        return DomUtil.getAttributeAsLong(entity, name);
+      else if (entity instanceof BadgerFishObject)
+        return XtkCaster.asLong(entity[`@${name}`]);
+      else 
+        return XtkCaster.asLong(entity[name]);
     }
 
     /**
@@ -120,13 +120,13 @@ class EntityAccessor {
      * expect(EntityAccessor.getAttributeAsBoolean(entity, "hello")).toBe(true);
      */
     static getAttributeAsBoolean(entity, name) {
-        if (entity.documentElement) entity = entity.documentElement;
-        if (entity.nodeType && entity.tagName)
-            return DomUtil.getAttributeAsBoolean(entity, name);
-        else if (entity instanceof BadgerFishObject)
-            return XtkCaster.asBoolean(entity[`@${name}`]);
-        else 
-            return XtkCaster.asBoolean(entity[name]);
+      if (entity.documentElement) entity = entity.documentElement;
+      if (entity.nodeType && entity.tagName)
+        return DomUtil.getAttributeAsBoolean(entity, name);
+      else if (entity instanceof BadgerFishObject)
+        return XtkCaster.asBoolean(entity[`@${name}`]);
+      else 
+        return XtkCaster.asBoolean(entity[name]);
     }
 
     /**
@@ -147,22 +147,22 @@ class EntityAccessor {
      * EntityAccessor.getChildElements(entity, "chapter");
      */
     static getChildElements(entity, tagName) {
-        if (entity.documentElement) entity = entity.documentElement;
-        if (entity.nodeType && entity.tagName) {
-            const elements = [];
-            var child = DomUtil.getFirstChildElement(entity);
-            while (child) {
-                if (!tagName || tagName == child.tagName)
-                    elements.push(child);
-                child = DomUtil.getNextSiblingElement(child);
-            }
-            return elements;
+      if (entity.documentElement) entity = entity.documentElement;
+      if (entity.nodeType && entity.tagName) {
+        const elements = [];
+        var child = DomUtil.getFirstChildElement(entity);
+        while (child) {
+          if (!tagName || tagName == child.tagName)
+            elements.push(child);
+          child = DomUtil.getNextSiblingElement(child);
         }
-        else {
-            var elements = entity[tagName] || [];
-            if (!Util.isArray(elements)) elements = [ elements ];
-            return elements;
-        }
+        return elements;
+      }
+      else {
+        var elements = entity[tagName] || [];
+        if (!Util.isArray(elements)) elements = [ elements ];
+        return elements;
+      }
     }
 
     /**
@@ -183,26 +183,26 @@ class EntityAccessor {
      * EntityAccessor.getElement(entity, "body");
      */
     static getElement(entity, tagName) {
-        if (entity.documentElement) entity = entity.documentElement;
-        if (entity.nodeType && entity.tagName) {
-            var child = DomUtil.getFirstChildElement(entity);
-            while (child) {
-                if (tagName == child.tagName)
-                    return child;
-                child = DomUtil.getNextSiblingElement(child);
-            }
-            return null;
+      if (entity.documentElement) entity = entity.documentElement;
+      if (entity.nodeType && entity.tagName) {
+        var child = DomUtil.getFirstChildElement(entity);
+        while (child) {
+          if (tagName == child.tagName)
+            return child;
+          child = DomUtil.getNextSiblingElement(child);
         }
-        else {
-            const child = entity[tagName];
-            return child ? child : null;
-        }
+        return null;
+      }
+      else {
+        const child = entity[tagName];
+        return child ? child : null;
+      }
     }
 
-}
+  }
 
 
-// Public exports
-exports.EntityAccessor = EntityAccessor;
+  // Public exports
+  exports.EntityAccessor = EntityAccessor;
 
 })();

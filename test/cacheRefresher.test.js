@@ -311,6 +311,7 @@ describe("CacheRefresher cache", function () {
     });
 
     it('Catch error in soap call GetModifiedEntities and display a warning', async () => {
+        const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
         const client = await Mock.makeClient();
         client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
 
@@ -330,6 +331,12 @@ describe("CacheRefresher cache", function () {
         } catch (e) {
             fail('exception is not expected');
         }
+
+        expect(warnSpy).toHaveBeenCalledWith(
+            expect.stringContaining('Failed to refresh cache'),
+            expect.anything()
+        );
+        warnSpy.mockRestore();
 
         cacheRefresher.stopAutoRefresh();
         client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);

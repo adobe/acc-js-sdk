@@ -10,185 +10,185 @@ OF ANY KIND, either express or implied. See the License for the specific languag
 governing permissions and limitations under the License.
 */
 (function() {
-"use strict";    
+  "use strict";    
   
 
-/**********************************************************************************
+  /**********************************************************************************
  * 
  * Generic utilities
  * 
  *********************************************************************************/
 
-/**
+  /**
  * @namespace Utils
  */
 
-/**
+  /**
  * @memberof Utils
  * @class
  * @constructor
  */
-class Util {
+  class Util {
 
-  /**
+    /**
    * Generic helper functions available everywhere in the SDK. Al functions are static, it is not necessary to create new instances of this object
    */
-  constructor() {
-  }
+    constructor() {
+    }
 
-  /**
+    /**
    * Indicates whether the SDK is running in a browser or not
    * @returns {boolean} a boolean indicating if the SDK is running in a browser or not
    */
-  static isBrowser() {
-    const browser = typeof window !== 'undefined';
-    return browser;
-  }
+    static isBrowser() {
+      const browser = typeof window !== 'undefined';
+      return browser;
+    }
   
-  /**
+    /**
    * Tests if an object is a JavaScript array
    * @param {*} obj the object to test, may be undefined
    * @returns {boolean} true if the object is an array
    */
-  static isArray(obj) {
-    return Array.isArray(obj);
-  }
-
-  // Helper function for trim() to replace text between 2 indices
-  static _removeBetween(text, from, to) {
-    var index = 0;
-    while (index < text.length) {
-      index = text.indexOf(from, index);
-      if (index == -1) break;
-      const index2 = text.indexOf(to, index);
-      if (index2 == -1) {
-        break;
-      }
-      text = text.substring(0, index + from.length) + '***' + text.substring(index2);
-      index = index2;
+    static isArray(obj) {
+      return Array.isArray(obj);
     }
-    return text;
-  }
+
+    // Helper function for trim() to replace text between 2 indices
+    static _removeBetween(text, from, to) {
+      var index = 0;
+      while (index < text.length) {
+        index = text.indexOf(from, index);
+        if (index == -1) break;
+        const index2 = text.indexOf(to, index);
+        if (index2 == -1) {
+          break;
+        }
+        text = text.substring(0, index + from.length) + '***' + text.substring(index2);
+        index = index2;
+      }
+      return text;
+    }
   
-  /**
+    /**
    * Trims a text, an object or an array and remove sensitive information, such as session tokens, passwords, etc.
    * 
    * @param {string|Object|Array} obj is the object to trim
    * @returns {string|Object|Array} the trimmed object
    */
-  static trim(obj) {
-    if (obj == null || obj == undefined) return undefined;
-    if (Util.isArray(obj)) {
-      const a = [];
-      for (const p of obj) {
-        a.push(Util.trim(p));
+    static trim(obj) {
+      if (obj == null || obj == undefined) return undefined;
+      if (Util.isArray(obj)) {
+        const a = [];
+        for (const p of obj) {
+          a.push(Util.trim(p));
+        }
+        return a;
       }
-      return a;
-    }
-    if (typeof obj == "object") {
-      for (const p in obj) {
-        const lowerP = p.toLowerCase();
-        if (lowerP === "x-security-token" || lowerP === "x-session-token")
-          obj[p] = "***";
-        else if (p === "Cookie") {
-          var index = obj[p].toLowerCase().indexOf("__sessiontoken");
-          if (index !== -1) {
-            index = obj[p].indexOf("=", index);
+      if (typeof obj == "object") {
+        for (const p in obj) {
+          const lowerP = p.toLowerCase();
+          if (lowerP === "x-security-token" || lowerP === "x-session-token")
+            obj[p] = "***";
+          else if (p === "Cookie") {
+            var index = obj[p].toLowerCase().indexOf("__sessiontoken");
             if (index !== -1) {
-              index = index + 1;
-              const endIndex = obj[p].indexOf(";", index);
-              if (endIndex == -1)
-                obj[p] = obj[p].substring(0, index) + "***";
-              else 
-                obj[p] = obj[p].substring(0, index) + "***" + obj[p].substring(endIndex);
+              index = obj[p].indexOf("=", index);
+              if (index !== -1) {
+                index = index + 1;
+                const endIndex = obj[p].indexOf(";", index);
+                if (endIndex == -1)
+                  obj[p] = obj[p].substring(0, index) + "***";
+                else 
+                  obj[p] = obj[p].substring(0, index) + "***" + obj[p].substring(endIndex);
+              }
             }
           }
+          else
+            obj[p] = Util.trim(obj[p]);
         }
-        else
-          obj[p] = Util.trim(obj[p]);
       }
-    }
-    if (typeof obj == "string") {
+      if (typeof obj == "string") {
       // Remove trailing blanks
-      while (obj && (obj.endsWith(' ') || obj.endsWith('\n') || obj.endsWith('\r') || obj.endsWith('\t')))
-        obj = obj.substring(0, obj.length - 1);
+        while (obj && (obj.endsWith(' ') || obj.endsWith('\n') || obj.endsWith('\r') || obj.endsWith('\t')))
+          obj = obj.substring(0, obj.length - 1);
 
-      // Hide session tokens
-      obj = this._removeBetween(obj, "<Cookie>__sessiontoken=", "</Cookie>");
-      obj = this._removeBetween(obj, "<X-Security-Token>", "</X-Security-Token>");
-      obj = this._removeBetween(obj, "<X-Session-Token>", "</X-Session-Token>");
-      obj = this._removeBetween(obj, '<sessiontoken xsi:type="xsd:string">', '</sessiontoken>');
-      obj = this._removeBetween(obj, "<pstrSessionToken xsi:type='xsd:string'>", "</pstrSessionToken>");
-      obj = this._removeBetween(obj, "<pstrSecurityToken xsi:type='xsd:string'>", "</pstrSecurityToken>");
-      obj = this._removeBetween(obj, '<password xsi:type="xsd:string">', '</password>');
+        // Hide session tokens
+        obj = this._removeBetween(obj, "<Cookie>__sessiontoken=", "</Cookie>");
+        obj = this._removeBetween(obj, "<X-Security-Token>", "</X-Security-Token>");
+        obj = this._removeBetween(obj, "<X-Session-Token>", "</X-Session-Token>");
+        obj = this._removeBetween(obj, '<sessiontoken xsi:type="xsd:string">', '</sessiontoken>');
+        obj = this._removeBetween(obj, "<pstrSessionToken xsi:type='xsd:string'>", "</pstrSessionToken>");
+        obj = this._removeBetween(obj, "<pstrSecurityToken xsi:type='xsd:string'>", "</pstrSecurityToken>");
+        obj = this._removeBetween(obj, '<password xsi:type="xsd:string">', '</password>');
+      }
+      return obj;
     }
-    return obj;
-  }
 
-  /**
+    /**
    * Get Schema id from namespace (find first upper case letter)
    * @param {string} namespace a SDK namespace, i.e. xtkWorkflow, nmsDelivery, etc.
    * @return {string} the corresponding schema id, i.e. xtk:workflow, nms:delivery, etc.
    */
-  static schemaIdFromNamespace(namespace) {
-    var schemaId = "";
-    for (var i=0; i<namespace.length; i++) {
+    static schemaIdFromNamespace(namespace) {
+      var schemaId = "";
+      for (var i=0; i<namespace.length; i++) {
         const c = namespace[i];
         if (c >='A' && c<='Z') {
-            schemaId = schemaId + ":" + c.toLowerCase() + namespace.substr(i+1);
-            break;
+          schemaId = schemaId + ":" + c.toLowerCase() + namespace.substr(i+1);
+          break;
         }
         schemaId = schemaId + c;
-    }
-    return schemaId;
-  }
-
-  static validateFileResPrefix(prefix, defaultPrefix = 'RES') {
-    const regex = /^[A-Za-z_][A-Za-z0-9_]*$/;
-
-    if (typeof prefix !== "string" || !regex.test(prefix)) {
-      return defaultPrefix;
+      }
+      return schemaId;
     }
 
-    return prefix;
-  }
+    static validateFileResPrefix(prefix, defaultPrefix = 'RES') {
+      const regex = /^[A-Za-z_][A-Za-z0-9_]*$/;
 
-  static getUUID() {
-    if (globalThis.crypto &&
+      if (typeof prefix !== "string" || !regex.test(prefix)) {
+        return defaultPrefix;
+      }
+
+      return prefix;
+    }
+
+    static getUUID() {
+      if (globalThis.crypto &&
       globalThis.crypto.randomUUID &&
       typeof globalThis.crypto.randomUUID === 'function') {
-      return globalThis.crypto.randomUUID(); // browser
-    }
-    const nodeCrypto = (() => {
-      return require("crypto");
-    })();
-    if (nodeCrypto && nodeCrypto.randomUUID) {
-      return nodeCrypto.randomUUID(); // Node
+        return globalThis.crypto.randomUUID(); // browser
+      }
+      const nodeCrypto = (() => {
+        return require("crypto");
+      })();
+      if (nodeCrypto && nodeCrypto.randomUUID) {
+        return nodeCrypto.randomUUID(); // Node
+      }
+
+      //Nothing worked
+      throw new Error('Unable to generate UUID');
     }
 
-    //Nothing worked
-    throw new Error('Unable to generate UUID');
-  }
-
-  /**
+    /**
    * Test if an object is a promise
    * @param {*} object the object to test
    * @returns {boolean} if the object is a promise
    */
-  static isPromise(object) {
-    if (object === null || object === undefined) return false;
-    if (object.then && (typeof object.then === "function")) return true;
-    return false;
+    static isPromise(object) {
+      if (object === null || object === undefined) return false;
+      if (object.then && (typeof object.then === "function")) return true;
+      return false;
+    }
+
+    static asPromise(object) {
+      if (this.isPromise(object)) 
+        return object;
+      return Promise.resolve(object);
+    }
   }
 
-  static asPromise(object) {
-    if (this.isPromise(object)) 
-      return object;
-    return Promise.resolve(object);
-  }
-}
-
-/**
+  /**
  * The ArrayMap object is used to access elements as either an array or a map
  * 
  * @class
@@ -196,8 +196,8 @@ class Util {
  * @memberof Utils
  */
 
-class ArrayMap {
-  constructor() {
+  class ArrayMap {
+    constructor() {
       // List of items, as an ordered array. Use defineProperty to make it non-enumerable
       // and support for for ... in loop to iterate by item key
       Object.defineProperty(this, "_items", {
@@ -219,9 +219,9 @@ class ArrayMap {
         writable: true,
         enumerable: false,
       });
-  }
+    }
 
-  _push(key, value, withoutIndexing) {
+    _push(key, value, withoutIndexing) {
       let isNumKey = false;
       let updateIndex = -1;
 
@@ -267,82 +267,82 @@ class ArrayMap {
       else
         this._items[updateIndex] = value;
       this.length = this._items.length;
-  }
+    }
 
-  /**
+    /**
    * Executes a provided function once for each array element.
    * @param {*} callback Function that is called for every element of the array
    * @param {*} thisArg Optional value to use as this when executing the callback function.
    * @returns a new array
    */
-  forEach(callback, thisArg) {
+    forEach(callback, thisArg) {
       return this._items.forEach(callback, thisArg);
-  }
+    }
 
-  /**
+    /**
    * Returns the first element that satisfies the provided testing function. If no values satisfy the testing function, undefined is returned.
    * @param {*} callback Function that is called for every element of the array
    * @param {*} thisArg Optional value to use as this when executing the callback function.
    * @returns the first element matching the testing function
    */
-  find(callback, thisArg) {
-    return this._items.find(callback, thisArg);
-  }
+    find(callback, thisArg) {
+      return this._items.find(callback, thisArg);
+    }
 
-  /**
+    /**
    * creates a new array with all elements that pass the test implemented by the provided function.
    * @param {*} callback Function that is called for every element of the array
    * @param {*} thisArg Optional value to use as this when executing the callback function.
    * @returns an array containing elements passing the test function
    */
-   filter(callback, thisArg) {
-    return this._items.filter(callback, thisArg);
-  }
+    filter(callback, thisArg) {
+      return this._items.filter(callback, thisArg);
+    }
 
-  /**
+    /**
    * Get a element by either name (access as a map) or index (access as an array). Returns undefined if the element does not exist or
    * if the array index is out of range.
    * @param {string|number} indexOrKey the name or index of the element
    * @returns the element matching the name or index
    */
-  get(indexOrKey) {
-    if (typeof indexOrKey === 'number') return this._items[indexOrKey];
-    return this._map[indexOrKey];
-  }
+    get(indexOrKey) {
+      if (typeof indexOrKey === 'number') return this._items[indexOrKey];
+      return this._map[indexOrKey];
+    }
 
-  /**
+    /**
    * Creates a new array populated with the results of calling a provided function on every element in the calling array.
    * @param {*} callback Function that is called for every element of the array
    * @param {*} thisArg Optional value to use as this when executing the callback function.
    * @returns a new array
    */
-  map(callback, thisArg) {
-    return this._items.map(callback, thisArg);
-  }
+    map(callback, thisArg) {
+      return this._items.map(callback, thisArg);
+    }
 
-  /**
+    /**
    * Returns a new array formed by applying a given callback function to each element of the array, and then flattening the result by one level. 
    * @param {*} callback Function that is called for every element of the array
    * @param {*} thisArg Optional value to use as this when executing the callback function.
    * @returns a new array
    */
-  flatMap(callback, thisArg) {
-    return this._items.flatMap(callback, thisArg);
-  }
+    flatMap(callback, thisArg) {
+      return this._items.flatMap(callback, thisArg);
+    }
 
-  /**
+    /**
    * Iterates over all the elements using the for ... of syntax.
    * @returns returns each element one after the other
    */
-  *[Symbol.iterator] () {
+    *[Symbol.iterator] () {
       for (const item of this._items) {
-          yield item;
+        yield item;
       }
+    }
   }
-}
 
-// Public expots
-exports.Util = Util;
-exports.ArrayMap = ArrayMap;
+  // Public expots
+  exports.Util = Util;
+  exports.ArrayMap = ArrayMap;
 
 })();

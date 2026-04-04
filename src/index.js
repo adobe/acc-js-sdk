@@ -10,23 +10,23 @@ OF ANY KIND, either express or implied. See the License for the specific languag
 governing permissions and limitations under the License.
 */
 (function() {
-"use strict";    
+  "use strict";    
     
-/**********************************************************************************
+  /**********************************************************************************
  * 
  * Adobe Campaign Classic Core SDK
  * 
  *********************************************************************************/
 
-const pjson = require('../package.json');
-const DomUtil = require('./domUtil.js').DomUtil;
-const XtkCaster = require('./xtkCaster.js').XtkCaster;
-const { Client, Credentials, ConnectionParameters } = require('./client.js');
-const request = require('./transport.js').request;
-const { TestUtil } = require('./testUtil.js');
-const { HttpError } = require('./transport.js');
+  const pjson = require('../package.json');
+  const DomUtil = require('./domUtil.js').DomUtil;
+  const XtkCaster = require('./xtkCaster.js').XtkCaster;
+  const { Client, Credentials, ConnectionParameters } = require('./client.js');
+  const request = require('./transport.js').request;
+  const { TestUtil } = require('./testUtil.js');
+  const { HttpError } = require('./transport.js');
 
-/**
+  /**
  * Get/Set the transport function (defaults to Axios). This function is used for testing / mocking the transport layer.
  * Called without arguments, it returns the current transport function
  * Called with an argument, it sets the current transport function and returns the previous one
@@ -41,23 +41,23 @@ const { HttpError } = require('./transport.js');
  * }
  */
 
-var transport = request;
+  var transport = request;
 
-/**
+  /**
  * @namespace Campaign
  */
-class SDK {
+  class SDK {
 
     constructor() {
     }
 
     _transport(t) {
-        if (t) {
-            const old = transport;
-            transport = t;
-            return old;
-        }
-        return transport;
+      if (t) {
+        const old = transport;
+        transport = t;
+        return old;
+      }
+      return transport;
     }
     
     /**
@@ -68,8 +68,8 @@ class SDK {
      * @return {Promise<Client>} an ACC client object
      */
     async init (connectionParameters) {
-        const client = new Client(this, connectionParameters);
-        return client;
+      const client = new Client(this, connectionParameters);
+      return client;
     }
 
     /**
@@ -86,11 +86,11 @@ class SDK {
      * @returns {Campaign.SDKVersion} an object containing information about the SDK, such as it's name, version, etc.
      */
     getSDKVersion() {
-        return {
-            version: pjson.version,
-            name: pjson.name,
-            description: pjson.description
-        };
+      return {
+        version: pjson.version,
+        name: pjson.name,
+        description: pjson.description
+      };
     }
 
     /**
@@ -98,9 +98,9 @@ class SDK {
      * Can be useful to troubleshoot IP whitelisting issues
      */
     async ip() {
-        const transport = this._transport();
-        const ip = await transport({ url: "https://api.db-ip.com/v2/free/self" });
-        return ip;
+      const transport = this._transport();
+      const ip = await transport({ url: "https://api.db-ip.com/v2/free/self" });
+      return ip;
     }
 
     /** 
@@ -130,23 +130,23 @@ class SDK {
      * expect(sdk.escapeXtk`@name=${"Rock 'n' Roll"}`).toBe("@name='Rock \\'n\\' Roll'");
      */
     escapeXtk(p1, ...p2) {
-        // first syntax: only one parameter which is a string => returns the escaped string.
-        // that's how the Campaign function in common.js behaves
-        if (p1 === undefined || p1 === null)
-            return "''";
-        if (typeof p1 === 'string') {
-            return "'" + String(p1).replace(/\\/g, "\\\\").replace(/'/g,  "\\'") + "'";
-        }
+      // first syntax: only one parameter which is a string => returns the escaped string.
+      // that's how the Campaign function in common.js behaves
+      if (p1 === undefined || p1 === null)
+        return "''";
+      if (typeof p1 === 'string') {
+        return "'" + String(p1).replace(/\\/g, "\\\\").replace(/'/g,  "\\'") + "'";
+      }
 
-        // Second syntax: for use in tagged template literals
-        // instead of writing:  { expr: "@name = " + escapeXtk(userName) }
-        // you write { expr: escapeXtk`@name = {userName}` }
-        if (p1.length == 0) return "''";
-        var str = p1[0];
-        for (var i=1; i<p1.length; i++) {
-            str = str + this.escapeXtk(p2[i-1]) + p1[i];
-        }
-        return str;
+      // Second syntax: for use in tagged template literals
+      // instead of writing:  { expr: "@name = " + escapeXtk(userName) }
+      // you write { expr: escapeXtk`@name = {userName}` }
+      if (p1.length == 0) return "''";
+      var str = p1[0];
+      for (var i=1; i<p1.length; i++) {
+        str = str + this.escapeXtk(p2[i-1]) + p1[i];
+      }
+      return str;
     }
 
     /**
@@ -156,14 +156,14 @@ class SDK {
      * @returns the escaped string
      */
     escapeForLike(text, escapeXtkParams) {
-        text = XtkCaster.asString(text);
-        if (!text) return "";    
-        text = text.replace(/\\/g, "\\\\")
-                    .replace(/'/g,  "\\'")
-                    .replace(/%/g,  "\\%")
-                    .replace(/_/g,  "\\_");
-        if (escapeXtkParams)
-            text = text.replace(/\$/g, "' + Char('36') + '");
+      text = XtkCaster.asString(text);
+      if (!text) return "";    
+      text = text.replace(/\\/g, "\\\\")
+        .replace(/'/g,  "\\'")
+        .replace(/%/g,  "\\%")
+        .replace(/_/g,  "\\_");
+      if (escapeXtkParams)
+        text = text.replace(/\$/g, "' + Char('36') + '");
       return text;
     }
 
@@ -173,19 +173,19 @@ class SDK {
      * @returns {string} the expanded xpath
      */
     expandXPath(xpath) {
-        if (!xpath) return xpath;
-        if (xpath.startsWith("[") && xpath.endsWith("]"))
-            return xpath;
-        if (xpath.indexOf('/') === -1 && xpath.indexOf('-') === -1 && xpath.indexOf(':') === -1)
-            return xpath;
-        return `[${xpath}]`;
+      if (!xpath) return xpath;
+      if (xpath.startsWith("[") && xpath.endsWith("]"))
+        return xpath;
+      if (xpath.indexOf('/') === -1 && xpath.indexOf('-') === -1 && xpath.indexOf(':') === -1)
+        return xpath;
+      return `[${xpath}]`;
     }
 
     unexpandXPath(xpath) {
-        if (!xpath) return xpath;
-        if (xpath.startsWith("[") && xpath.endsWith("]"))
-            return xpath.substring(1, xpath.length - 1);
-        return xpath;
+      if (!xpath) return xpath;
+      if (xpath.startsWith("[") && xpath.endsWith("]"))
+        return xpath.substring(1, xpath.length - 1);
+      return xpath;
     }
 
     /**
@@ -195,26 +195,26 @@ class SDK {
      * @returns {string} the text literal which can be used in a Xtk expression or condition
      */
     xtkConstText(value, type) {
-        if (!type || type === 'string' || type === 'memo') {
-            return sdk.escapeXtk(XtkCaster.asString(value));
-        }
-        const constText = XtkCaster.asString(XtkCaster.as(value, type));
-        if (XtkCaster.isTimeType(type))
-            return `#${constText}#`;
-        return constText;
+      if (!type || type === 'string' || type === 'memo') {
+        return sdk.escapeXtk(XtkCaster.asString(value));
+      }
+      const constText = XtkCaster.asString(XtkCaster.as(value, type));
+      if (XtkCaster.isTimeType(type))
+        return `#${constText}#`;
+      return constText;
     }
-}
+  }
 
-const sdk = new SDK();
-sdk.TestUtil = TestUtil;
-sdk.XtkCaster = XtkCaster;
-sdk.Credentials = Credentials;
-sdk.DomUtil = DomUtil;
-sdk.ConnectionParameters = ConnectionParameters;
-sdk.HttpError = HttpError;
+  const sdk = new SDK();
+  sdk.TestUtil = TestUtil;
+  sdk.XtkCaster = XtkCaster;
+  sdk.Credentials = Credentials;
+  sdk.DomUtil = DomUtil;
+  sdk.ConnectionParameters = ConnectionParameters;
+  sdk.HttpError = HttpError;
 
-// Public exports
-module.exports = sdk;
+  // Public exports
+  module.exports = sdk;
 
 
 })();

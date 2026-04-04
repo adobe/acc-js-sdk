@@ -12,36 +12,36 @@ OF ANY KIND, either express or implied. See the License for the specific languag
 governing permissions and limitations under the License.
 */
 (function() {
-"use strict";    
+  "use strict";    
   
-const { newSchema } = require("./application.js");
+  const { newSchema } = require("./application.js");
 
-/**********************************************************************************
+  /**********************************************************************************
  * 
  * Utilities for testing
  * 
  *********************************************************************************/
 
-/**
+  /**
  * @namespace Utils
  */
 
-/**
+  /**
  * @memberof Utils
  * @class
  * @constructor
  */
-class TestUtil {
+  class TestUtil {
 
-  static newSchema(xml) {
-    if (typeof xml === "string") 
-      xml = DomUtil.parse(xml);
-    return newSchema(xml);
+    static newSchema(xml) {
+      if (typeof xml === "string") 
+        xml = DomUtil.parse(xml);
+      return newSchema(xml);
+    }
   }
-}
 
 
-// Public expots
-exports.TestUtil = TestUtil;
+  // Public expots
+  exports.TestUtil = TestUtil;
 
 })();

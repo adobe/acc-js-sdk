@@ -10,10 +10,9 @@ OF ANY KIND, either express or implied. See the License for the specific languag
 governing permissions and limitations under the License.
 */
 (function() {
-"use strict";    
-/*jshint sub:true*/
+  "use strict";    
 
-/**********************************************************************************
+  /**********************************************************************************
  * 
  * SOAP calls wrapper
  * 
@@ -46,28 +45,28 @@ governing permissions and limitations under the License.
  * 
  *********************************************************************************/
 
-const { DomUtil, DomException } = require('./domUtil.js');
-const XtkCaster = require('./xtkCaster.js').XtkCaster;
-const { CampaignException, makeCampaignException } = require('./campaign.js');
-const SOAP_ENCODING_NATIVE = "http://schemas.xmlsoap.org/soap/encoding/";
-const SOAP_ENCODING_XML = "http://xml.apache.org/xml-soap/literalxml";
-const NS_ENV = "http://schemas.xmlsoap.org/soap/envelope/";
-const NS_XSI = "http://www.w3.org/2001/XMLSchema-instance";
-const NS_XSD = "http://www.w3.org/2001/XMLSchema";
+  const { DomUtil, DomException } = require('./domUtil.js');
+  const XtkCaster = require('./xtkCaster.js').XtkCaster;
+  const { CampaignException, makeCampaignException } = require('./campaign.js');
+  const SOAP_ENCODING_NATIVE = "http://schemas.xmlsoap.org/soap/encoding/";
+  const SOAP_ENCODING_XML = "http://xml.apache.org/xml-soap/literalxml";
+  const NS_ENV = "http://schemas.xmlsoap.org/soap/envelope/";
+  const NS_XSI = "http://www.w3.org/2001/XMLSchema-instance";
+  const NS_XSD = "http://www.w3.org/2001/XMLSchema";
 
 
-/**
+  /**
  * @namespace SOAP
  */
 
 
   
-/**
+  /**
  * @namespace SOAP
  */
 
 
-/**
+  /**
  * Creates a SOAP method call object which encapsulates a SOAP call and helper methods to constructs
  * the call and decode the result.
  * 
@@ -83,47 +82,47 @@ const NS_XSD = "http://www.w3.org/2001/XMLSchema";
  * @param {string} bearerToken The bearer token to use for HTTP requests. Only required for ImsBearerToken authentication
  * @memberof SOAP
  */
-class SoapMethodCall {
+  class SoapMethodCall {
     
     constructor(transport, urn, methodName, sessionToken, securityToken, userAgentString, pushDownOptions, extraHttpHeaders, bearerToken) {
-        this.request = undefined;       // The HTTP request (object literal passed to the transport layer)
-        this.requestOptions = undefined;
-        this.response = undefined;      // The HTTP response object (in case of success)
+      this.request = undefined;       // The HTTP request (object literal passed to the transport layer)
+      this.requestOptions = undefined;
+      this.response = undefined;      // The HTTP response object (in case of success)
 
-        // Current URN and method (for error reporting)
-        this.urn = urn;
-        this.methodName = methodName;
-        this.isStatic = false;
+      // Current URN and method (for error reporting)
+      this.urn = urn;
+      this.methodName = methodName;
+      this.isStatic = false;
 
-        // Soap calls marked as internal are calls performed by the framework internally
-        // (such as GetEntityIfMoreRecent calls needed to lookup schemas)
-        this.internal = false;
-        // Enable soap retry
-        this.retry = true;
-        this._retryCount = 0;
+      // Soap calls marked as internal are calls performed by the framework internally
+      // (such as GetEntityIfMoreRecent calls needed to lookup schemas)
+      this.internal = false;
+      // Enable soap retry
+      this.retry = true;
+      this._retryCount = 0;
 
-        this._sessionToken = sessionToken || "";
-        this._securityToken = securityToken || "";
-        this._bearerToken = bearerToken; // may be undefined if not using bearer token authentication
-        this._userAgentString = userAgentString;
-        this._pushDownOptions = pushDownOptions || {};
-        this._charset = this._pushDownOptions.charset || '';
-        this._extraHttpHeaders = extraHttpHeaders || {};
+      this._sessionToken = sessionToken || "";
+      this._securityToken = securityToken || "";
+      this._bearerToken = bearerToken; // may be undefined if not using bearer token authentication
+      this._userAgentString = userAgentString;
+      this._pushDownOptions = pushDownOptions || {};
+      this._charset = this._pushDownOptions.charset || '';
+      this._extraHttpHeaders = extraHttpHeaders || {};
 
-        // THe SOAP call being built
-        this._doc = undefined;           // XML document for SOAP call
-        this._root = undefined;          // Root of the document
-        this._header = undefined;        // SOAP-ENV:Header
-        this._data = undefined;          // SOAP-ENV:Body
-        this._method = undefined;        // XML element for the method
+      // THe SOAP call being built
+      this._doc = undefined;           // XML document for SOAP call
+      this._root = undefined;          // Root of the document
+      this._header = undefined;        // SOAP-ENV:Header
+      this._data = undefined;          // SOAP-ENV:Body
+      this._method = undefined;        // XML element for the method
 
-        this._initMessage(urn, methodName, SOAP_ENCODING_NATIVE);
+      this._initMessage(urn, methodName, SOAP_ENCODING_NATIVE);
 
-        // Current DOM element for reading result (getNext* functions) 
-        this.elemCurrent = undefined;
+      // Current DOM element for reading result (getNext* functions) 
+      this.elemCurrent = undefined;
 
-        // Transport object to perform HTTP request (request or mock)
-        this._transport = transport;
+      // Transport object to perform HTTP request (request or mock)
+      this._transport = transport;
     }
 
     /**
@@ -131,9 +130,9 @@ class SoapMethodCall {
      * @returns {boolean} indicates if the call requires a Logon first
      */
     requiresLogon() {
-        const requiresLogon = !(this.urn === "xtk:session" && 
+      const requiresLogon = !(this.urn === "xtk:session" && 
                                (this.methodName === "Logon" || this.methodName === "BearerTokenLogon") ) ;
-        return requiresLogon;
+      return requiresLogon;
     }
 
     /**
@@ -145,24 +144,24 @@ class SoapMethodCall {
      * @param {string} encoding the SOAP encoding style (SOAP-ENV:encodingStyle) 
      */
     _initMessage(urn, method, encoding) {
-        this.urn = urn;
-        this.methodName = method;
-        this.encoding = encoding;
-        var urnPath = "urn:" + urn;
+      this.urn = urn;
+      this.methodName = method;
+      this.encoding = encoding;
+      var urnPath = "urn:" + urn;
 
-        this._doc = DomUtil.parse(`<?xml version='1.0' encoding='UTF-8'?><SOAP-ENV:Envelope xmlns:xsd='${NS_XSD}' xmlns:xsi='${NS_XSI}' xmlns:SOAP-ENV='${NS_ENV}' xmlns:ns='http://xml.apache.org/xml-soap'></SOAP-ENV:Envelope>`);
-        this._root = this._doc.documentElement;
+      this._doc = DomUtil.parse(`<?xml version='1.0' encoding='UTF-8'?><SOAP-ENV:Envelope xmlns:xsd='${NS_XSD}' xmlns:xsi='${NS_XSI}' xmlns:SOAP-ENV='${NS_ENV}' xmlns:ns='http://xml.apache.org/xml-soap'></SOAP-ENV:Envelope>`);
+      this._root = this._doc.documentElement;
 
-        this._header = this._doc.createElement(`SOAP-ENV:Header`);
-        this._root.appendChild(this._header);
+      this._header = this._doc.createElement(`SOAP-ENV:Header`);
+      this._root.appendChild(this._header);
 
-        this._data = this._doc.createElement(`SOAP-ENV:Body`);
-        this._root.appendChild(this._data);
+      this._data = this._doc.createElement(`SOAP-ENV:Body`);
+      this._root.appendChild(this._data);
 
-        this._method = this._doc.createElement(`m:${method}`);
-        this._method.setAttribute(`xmlns:m`, urnPath);
-        this._method.setAttribute(`SOAP-ENV:encodingStyle`, encoding);
-        this._data.appendChild(this._method);
+      this._method = this._doc.createElement(`m:${method}`);
+      this._method.setAttribute(`xmlns:m`, urnPath);
+      this._method.setAttribute(`SOAP-ENV:encodingStyle`, encoding);
+      this._data.appendChild(this._method);
     }
 
     /**
@@ -176,14 +175,14 @@ class SoapMethodCall {
      * @returns the XML element to be added to the SOAP call
      */
     _addNode(tag, type, value, encoding) {
-        const node = this._doc.createElement(tag);
-        node.setAttribute("xsi:type", type);
-        if (encoding != this.encoding)
+      const node = this._doc.createElement(tag);
+      node.setAttribute("xsi:type", type);
+      if (encoding != this.encoding)
         node.setAttribute("SOAP-ENV:encodingStyle", encoding);
-        if (value !== null && value !== undefined)
-            node.textContent = value;
-        this._method.appendChild(node);
-        return node;
+      if (value !== null && value !== undefined)
+        node.textContent = value;
+      this._method.appendChild(node);
+      return node;
     }
 
     /**
@@ -192,8 +191,8 @@ class SoapMethodCall {
      * @param {*} value the parameter value, which will be casted to a byte according to xtk rules
      */
     writeByte(tag, value) {
-        value = XtkCaster.asByte(value);
-        this._addNode(tag, "xsd:byte", XtkCaster.asString(value), SOAP_ENCODING_NATIVE);
+      value = XtkCaster.asByte(value);
+      this._addNode(tag, "xsd:byte", XtkCaster.asString(value), SOAP_ENCODING_NATIVE);
     }
 
     /**
@@ -202,8 +201,8 @@ class SoapMethodCall {
      * @param {*} value the parameter value, which will be casted to a boolean according to xtk rules
      */
     writeBoolean(tag, value) {
-        value = XtkCaster.asBoolean(value);
-        this._addNode(tag, "xsd:boolean", XtkCaster.asString(value), SOAP_ENCODING_NATIVE);
+      value = XtkCaster.asBoolean(value);
+      this._addNode(tag, "xsd:boolean", XtkCaster.asString(value), SOAP_ENCODING_NATIVE);
     }
 
     /**
@@ -212,8 +211,8 @@ class SoapMethodCall {
      * @param {*} value the parameter value, which will be casted to a short according to xtk rules
      */
     writeShort(tag, value) {
-        value = XtkCaster.asShort(value);
-        this._addNode(tag, "xsd:short", XtkCaster.asString(value), SOAP_ENCODING_NATIVE);
+      value = XtkCaster.asShort(value);
+      this._addNode(tag, "xsd:short", XtkCaster.asString(value), SOAP_ENCODING_NATIVE);
     }
 
     /**
@@ -222,8 +221,8 @@ class SoapMethodCall {
      * @param {*} value the parameter value, which will be casted to a int32 according to xtk rules
      */
     writeLong(tag, value) {
-        value = XtkCaster.asLong(value);
-        this._addNode(tag, "xsd:int", XtkCaster.asString(value), SOAP_ENCODING_NATIVE);
+      value = XtkCaster.asLong(value);
+      this._addNode(tag, "xsd:int", XtkCaster.asString(value), SOAP_ENCODING_NATIVE);
     }
 
     /**
@@ -232,8 +231,8 @@ class SoapMethodCall {
      * @param {*} value the parameter value, which will be casted to a int64 according to xtk rules
      */
     writeInt64(tag, value) {
-        value = XtkCaster.asInt64(value);
-        this._addNode(tag, "xsd:long", XtkCaster.asString(value), SOAP_ENCODING_NATIVE);
+      value = XtkCaster.asInt64(value);
+      this._addNode(tag, "xsd:long", XtkCaster.asString(value), SOAP_ENCODING_NATIVE);
     }
 
     /**
@@ -242,8 +241,8 @@ class SoapMethodCall {
      * @param {*} value the parameter value, which will be casted to a float according to xtk rules
      */
     writeFloat(tag, value) {
-        value = XtkCaster.asNumber(value);
-        this._addNode(tag, "xsd:float", XtkCaster.asString(value), SOAP_ENCODING_NATIVE);
+      value = XtkCaster.asNumber(value);
+      this._addNode(tag, "xsd:float", XtkCaster.asString(value), SOAP_ENCODING_NATIVE);
     }
 
     /**
@@ -252,8 +251,8 @@ class SoapMethodCall {
      * @param {*} value the parameter value, which will be casted to a double according to xtk rules
      */
     writeDouble(tag, value) {
-        value = XtkCaster.asNumber(value);
-        this._addNode(tag, "xsd:double", XtkCaster.asString(value), SOAP_ENCODING_NATIVE);
+      value = XtkCaster.asNumber(value);
+      this._addNode(tag, "xsd:double", XtkCaster.asString(value), SOAP_ENCODING_NATIVE);
     }
 
     /**
@@ -262,8 +261,8 @@ class SoapMethodCall {
      * @param {*} value the parameter value, which will be casted to a string according to xtk rules
      */
     writeString(tag, value) {
-        value = XtkCaster.asString(value);
-        this._addNode(tag, "xsd:string", value, SOAP_ENCODING_NATIVE);
+      value = XtkCaster.asString(value);
+      this._addNode(tag, "xsd:string", value, SOAP_ENCODING_NATIVE);
     }
 
     /**
@@ -272,8 +271,8 @@ class SoapMethodCall {
      * @param {*} value the parameter value, which will be casted to a timestamp according to xtk rules
      */
     writeTimestamp(tag, value) {
-        value = XtkCaster.asTimestamp(value);
-        this._addNode(tag, "xsd:datetime", XtkCaster.asString(value), SOAP_ENCODING_NATIVE);
+      value = XtkCaster.asTimestamp(value);
+      this._addNode(tag, "xsd:datetime", XtkCaster.asString(value), SOAP_ENCODING_NATIVE);
     }
 
     /**
@@ -282,8 +281,8 @@ class SoapMethodCall {
      * @param {*} value the parameter value, which will be casted to a date according to xtk rules
      */
     writeDate(tag, value) {
-        value = XtkCaster.asDate(value);
-        this._addNode(tag, "xsd:date", XtkCaster.asString(value), SOAP_ENCODING_NATIVE);
+      value = XtkCaster.asDate(value);
+      this._addNode(tag, "xsd:date", XtkCaster.asString(value), SOAP_ENCODING_NATIVE);
     }
 
     /**
@@ -292,12 +291,12 @@ class SoapMethodCall {
      * @param {Element} value the parameter value (XML element)
      */
     writeElement(tag, element) {
-        const node = this._addNode(tag, "ns:Element", null, SOAP_ENCODING_XML);
-        if (element !== null && element !== undefined) {
-            if (element.nodeType === 9) element = element.documentElement;
-            const child = this._doc.importNode(element, true);
-            node.appendChild(child);
-        }
+      const node = this._addNode(tag, "ns:Element", null, SOAP_ENCODING_XML);
+      if (element !== null && element !== undefined) {
+        if (element.nodeType === 9) element = element.documentElement;
+        const child = this._doc.importNode(element, true);
+        node.appendChild(child);
+      }
     }
 
     /**
@@ -306,12 +305,12 @@ class SoapMethodCall {
      * @param {Document} value the parameter value (XML document)
      */
     writeDocument(tag, document) {
-        const node = this._addNode(tag, "", null, SOAP_ENCODING_XML);
-        if (document !== null && document !== undefined) {
-            const element = document.nodeType === 1 ? document : document.documentElement;
-            const child = this._doc.importNode(element, true);
-            node.appendChild(child);
-        }
+      const node = this._addNode(tag, "", null, SOAP_ENCODING_XML);
+      if (document !== null && document !== undefined) {
+        const element = document.nodeType === 1 ? document : document.documentElement;
+        const child = this._doc.importNode(element, true);
+        node.appendChild(child);
+      }
     }
 
     /** 
@@ -323,14 +322,14 @@ class SoapMethodCall {
      * @throws {CampaignException} if the current return value type does not match the expected type
      */
     _checkTypeMatch(type) {
-        if (this.elemCurrent === null || this.elemCurrent === undefined) {
-            throw new CampaignException(this, 400, `Missing parameter for method '${this.methodName}' of urn '${this.urn}'`);
-        } else if ( type != "ns:Document") {
-            var xsiType = this.elemCurrent.getAttribute("xsi:type");
-            if (xsiType === null || xsiType === undefined || xsiType !== type) {
-                throw new CampaignException(this, 400, `Parameter type mismatch for method '${this.methodName}' of urn '${this.urn}'. Expected '${type}', got '${xsiType}'`);
-            }
+      if (this.elemCurrent === null || this.elemCurrent === undefined) {
+        throw new CampaignException(this, 400, `Missing parameter for method '${this.methodName}' of urn '${this.urn}'`);
+      } else if ( type != "ns:Document") {
+        var xsiType = this.elemCurrent.getAttribute("xsi:type");
+        if (xsiType === null || xsiType === undefined || xsiType !== type) {
+          throw new CampaignException(this, 400, `Parameter type mismatch for method '${this.methodName}' of urn '${this.urn}'. Expected '${type}', got '${xsiType}'`);
         }
+      }
     }
 
     /**
@@ -343,16 +342,16 @@ class SoapMethodCall {
      * @returns the Entity DOM Element if there's one, or null if there isn't. The currentElement pointer will be  updated accordingly
      */
     getEntity() {
-        if (!this.elemCurrent)
-            return null;
-        if (this.elemCurrent.getAttribute("xsi:type") != "ns:Element")
-            return null;
-        if (this.elemCurrent.tagName != "entity" && this.elemCurrent.tagName != "this")
-            return null;
-        var entity = this.elemCurrent;
-        entity = DomUtil.getFirstChildElement(entity);
-        this.elemCurrent = DomUtil.getNextSiblingElement(this.elemCurrent);
-        return entity;
+      if (!this.elemCurrent)
+        return null;
+      if (this.elemCurrent.getAttribute("xsi:type") != "ns:Element")
+        return null;
+      if (this.elemCurrent.tagName != "entity" && this.elemCurrent.tagName != "this")
+        return null;
+      var entity = this.elemCurrent;
+      entity = DomUtil.getFirstChildElement(entity);
+      this.elemCurrent = DomUtil.getNextSiblingElement(this.elemCurrent);
+      return entity;
     }
 
     /**
@@ -361,10 +360,10 @@ class SoapMethodCall {
      * @returns {string} the string result value
      */
     getNextString() {
-        this._checkTypeMatch("xsd:string");
-        var value = DomUtil.elementValue(this.elemCurrent);
-        this.elemCurrent = DomUtil.getNextSiblingElement(this.elemCurrent);
-        return value;
+      this._checkTypeMatch("xsd:string");
+      var value = DomUtil.elementValue(this.elemCurrent);
+      this.elemCurrent = DomUtil.getNextSiblingElement(this.elemCurrent);
+      return value;
     }
 
     /**
@@ -373,10 +372,10 @@ class SoapMethodCall {
      * @returns {string} the primary key string result value
      */
     getNextPrimaryKey() {
-        this._checkTypeMatch("xsd:primarykey");
-        var value = DomUtil.elementValue(this.elemCurrent);
-        this.elemCurrent = DomUtil.getNextSiblingElement(this.elemCurrent);
-        return value;
+      this._checkTypeMatch("xsd:primarykey");
+      var value = DomUtil.elementValue(this.elemCurrent);
+      this.elemCurrent = DomUtil.getNextSiblingElement(this.elemCurrent);
+      return value;
     }
 
     /**
@@ -385,10 +384,10 @@ class SoapMethodCall {
      * @returns {number} the boolean result value
      */
     getNextBoolean() {
-        this._checkTypeMatch("xsd:boolean");
-        var value = DomUtil.elementValue(this.elemCurrent);
-        this.elemCurrent = DomUtil.getNextSiblingElement(this.elemCurrent);
-        return XtkCaster.asBoolean(value);
+      this._checkTypeMatch("xsd:boolean");
+      var value = DomUtil.elementValue(this.elemCurrent);
+      this.elemCurrent = DomUtil.getNextSiblingElement(this.elemCurrent);
+      return XtkCaster.asBoolean(value);
     }
 
     /**
@@ -397,10 +396,10 @@ class SoapMethodCall {
      * @returns {number} the byte result value
      */
     getNextByte() {
-        this._checkTypeMatch("xsd:byte");
-        var value = DomUtil.elementValue(this.elemCurrent);
-        this.elemCurrent = DomUtil.getNextSiblingElement(this.elemCurrent);
-        return XtkCaster.asByte(value);
+      this._checkTypeMatch("xsd:byte");
+      var value = DomUtil.elementValue(this.elemCurrent);
+      this.elemCurrent = DomUtil.getNextSiblingElement(this.elemCurrent);
+      return XtkCaster.asByte(value);
     }
 
     /**
@@ -409,10 +408,10 @@ class SoapMethodCall {
      * @returns {number} the short result value
      */
     getNextShort() {
-        this._checkTypeMatch("xsd:short");
-        var value = DomUtil.elementValue(this.elemCurrent);
-        this.elemCurrent = DomUtil.getNextSiblingElement(this.elemCurrent);
-        return XtkCaster.asShort(value);
+      this._checkTypeMatch("xsd:short");
+      var value = DomUtil.elementValue(this.elemCurrent);
+      this.elemCurrent = DomUtil.getNextSiblingElement(this.elemCurrent);
+      return XtkCaster.asShort(value);
     }
 
     /**
@@ -421,10 +420,10 @@ class SoapMethodCall {
      * @returns {number} the int32 result value
      */
     getNextLong() {
-        this._checkTypeMatch("xsd:int");
-        var value = DomUtil.elementValue(this.elemCurrent);
-        this.elemCurrent = DomUtil.getNextSiblingElement(this.elemCurrent);
-        return XtkCaster.asLong(value);
+      this._checkTypeMatch("xsd:int");
+      var value = DomUtil.elementValue(this.elemCurrent);
+      this.elemCurrent = DomUtil.getNextSiblingElement(this.elemCurrent);
+      return XtkCaster.asLong(value);
     }
 
     /**
@@ -434,10 +433,10 @@ class SoapMethodCall {
      * @returns {string} the int64 result value as a string
      */
     getNextInt64() {
-        this._checkTypeMatch("xsd:long");
-        var value = DomUtil.elementValue(this.elemCurrent);
-        this.elemCurrent = DomUtil.getNextSiblingElement(this.elemCurrent);
-        return value;
+      this._checkTypeMatch("xsd:long");
+      var value = DomUtil.elementValue(this.elemCurrent);
+      this.elemCurrent = DomUtil.getNextSiblingElement(this.elemCurrent);
+      return value;
     }
 
     /**
@@ -446,10 +445,10 @@ class SoapMethodCall {
      * @returns {number} the float result value
      */
     getNextFloat() {
-        this._checkTypeMatch("xsd:float");
-        var value = DomUtil.elementValue(this.elemCurrent);
-        this.elemCurrent = DomUtil.getNextSiblingElement(this.elemCurrent);
-        return XtkCaster.asFloat(value);
+      this._checkTypeMatch("xsd:float");
+      var value = DomUtil.elementValue(this.elemCurrent);
+      this.elemCurrent = DomUtil.getNextSiblingElement(this.elemCurrent);
+      return XtkCaster.asFloat(value);
     }
 
     /**
@@ -458,10 +457,10 @@ class SoapMethodCall {
      * @returns {number} the double result value
      */
     getNextDouble() {
-        this._checkTypeMatch("xsd:double");
-        var value = DomUtil.elementValue(this.elemCurrent);
-        this.elemCurrent = DomUtil.getNextSiblingElement(this.elemCurrent);
-        return XtkCaster.asDouble(value);
+      this._checkTypeMatch("xsd:double");
+      var value = DomUtil.elementValue(this.elemCurrent);
+      this.elemCurrent = DomUtil.getNextSiblingElement(this.elemCurrent);
+      return XtkCaster.asDouble(value);
     }
 
     /**
@@ -470,10 +469,10 @@ class SoapMethodCall {
      * @returns {Date} the timestamp result value
      */
     getNextDateTime() {
-        this._checkTypeMatch("xsd:dateTime");
-        var value = DomUtil.elementValue(this.elemCurrent);
-        this.elemCurrent = DomUtil.getNextSiblingElement(this.elemCurrent);
-        return XtkCaster.asTimestamp(value);
+      this._checkTypeMatch("xsd:dateTime");
+      var value = DomUtil.elementValue(this.elemCurrent);
+      this.elemCurrent = DomUtil.getNextSiblingElement(this.elemCurrent);
+      return XtkCaster.asTimestamp(value);
     }
 
     /**
@@ -482,10 +481,10 @@ class SoapMethodCall {
      * @returns {Date} the date result value
      */
     getNextDate() {
-        this._checkTypeMatch("xsd:date");
-        var value = DomUtil.elementValue(this.elemCurrent);
-        this.elemCurrent = DomUtil.getNextSiblingElement(this.elemCurrent);
-        return XtkCaster.asDate(value);
+      this._checkTypeMatch("xsd:date");
+      var value = DomUtil.elementValue(this.elemCurrent);
+      this.elemCurrent = DomUtil.getNextSiblingElement(this.elemCurrent);
+      return XtkCaster.asDate(value);
     }
 
     /**
@@ -494,15 +493,15 @@ class SoapMethodCall {
      * @returns {Document} the XML document result value
      */
     getNextDocument() {
-        this._checkTypeMatch("ns:Document");
-        var elemValue = DomUtil.getFirstChildElement(this.elemCurrent);
-        if (elemValue === null || elemValue === undefined) {
-            this.elemValue = null;
-            return null;
-        } 
-        var docValue = elemValue;
-        this.elemCurrent = DomUtil.getNextSiblingElement(this.elemCurrent);
-        return docValue;
+      this._checkTypeMatch("ns:Document");
+      var elemValue = DomUtil.getFirstChildElement(this.elemCurrent);
+      if (elemValue === null || elemValue === undefined) {
+        this.elemValue = null;
+        return null;
+      } 
+      var docValue = elemValue;
+      this.elemCurrent = DomUtil.getNextSiblingElement(this.elemCurrent);
+      return docValue;
     }
 
     /**
@@ -511,14 +510,14 @@ class SoapMethodCall {
      * @returns {Element} the XML element result value
      */
     getNextElement() {
-        this._checkTypeMatch("ns:Element");
-        var elemValue = DomUtil.getFirstChildElement(this.elemCurrent);
-        if (elemValue === null || elemValue === undefined) {
-            this.elemValue = null;
-            return null;
-        } 
-        this.elemCurrent = DomUtil.getNextSiblingElement(this.elemCurrent);
-        return elemValue;
+      this._checkTypeMatch("ns:Element");
+      var elemValue = DomUtil.getFirstChildElement(this.elemCurrent);
+      if (elemValue === null || elemValue === undefined) {
+        this.elemValue = null;
+        return null;
+      } 
+      this.elemCurrent = DomUtil.getNextSiblingElement(this.elemCurrent);
+      return elemValue;
     }
 
     /**
@@ -527,7 +526,7 @@ class SoapMethodCall {
      * @returns a boolean set to true if ther are no more response args to read
      */ 
     checkNoMoreArgs() {
-        return !this.elemCurrent;
+      return !this.elemCurrent;
     }
 
     /**
@@ -538,44 +537,44 @@ class SoapMethodCall {
      */
     _createHTTPRequest(url, requestOptions) {
 
-        const headers = {
-            'Content-type': `application/soap+xml${this._charset ? ";charset=" + this._charset : ""}`,
-            'SoapAction': `${this.urn}#${this.methodName}`,
-        };
-        if (this._bearerToken) {
-            headers['Authorization'] = `Bearer ${this._bearerToken}`;
-        }
-        else {
-            headers['X-Security-Token'] = this._securityToken;
-            headers['X-Session-Token'] = this._sessionToken;
-        }
+      const headers = {
+        'Content-type': `application/soap+xml${this._charset ? ";charset=" + this._charset : ""}`,
+        'SoapAction': `${this.urn}#${this.methodName}`,
+      };
+      if (this._bearerToken) {
+        headers['Authorization'] = `Bearer ${this._bearerToken}`;
+      }
+      else {
+        headers['X-Security-Token'] = this._securityToken;
+        headers['X-Session-Token'] = this._sessionToken;
+      }
 
-        // Add HTTP headers specific to the SOAP call for better tracing/troubleshooting
-        if (this._extraHttpHeaders && this._extraHttpHeaders['ACC-SDK-Version']) {
-            // "this.retry" means that the call can be retried, not that it is being retried. The HTTP header howerver, indicates that this
-            // is actually a retry of a previously failed call (expired token)
-            if (this._retryCount > 0) headers["ACC-SDK-Call-RetryCount"] = `${this._retryCount}`;
-            if (this.internal) headers["ACC-SDK-Call-Internal"] = "1";
-        }
+      // Add HTTP headers specific to the SOAP call for better tracing/troubleshooting
+      if (this._extraHttpHeaders && this._extraHttpHeaders['ACC-SDK-Version']) {
+        // "this.retry" means that the call can be retried, not that it is being retried. The HTTP header howerver, indicates that this
+        // is actually a retry of a previously failed call (expired token)
+        if (this._retryCount > 0) headers["ACC-SDK-Call-RetryCount"] = `${this._retryCount}`;
+        if (this.internal) headers["ACC-SDK-Call-Internal"] = "1";
+      }
 
-        const request = {
-            url: url,
-            method: 'POST',
-            headers: headers,
-            data: DomUtil.toXMLString(this._doc)
-        };
-        if (this._sessionToken)
-            request.headers.Cookie = '__sessiontoken=' + this._sessionToken;
-        if (this._userAgentString)
-            request.headers['User-Agent'] = this._userAgentString;
+      const request = {
+        url: url,
+        method: 'POST',
+        headers: headers,
+        data: DomUtil.toXMLString(this._doc)
+      };
+      if (this._sessionToken)
+        request.headers.Cookie = '__sessiontoken=' + this._sessionToken;
+      if (this._userAgentString)
+        request.headers['User-Agent'] = this._userAgentString;
 
-        // Override http headers with custom headers
-        for (let h in this._extraHttpHeaders) {
-            request.headers[h] = this._extraHttpHeaders[h];
-        }
+      // Override http headers with custom headers
+      for (let h in this._extraHttpHeaders) {
+        request.headers[h] = this._extraHttpHeaders[h];
+      }
 
-        const extraOptions = Object.assign({}, this._pushDownOptions, requestOptions);
-        return [ request, extraOptions ];
+      const extraOptions = Object.assign({}, this._pushDownOptions, requestOptions);
+      return [ request, extraOptions ];
     }
     
     /**
@@ -584,50 +583,50 @@ class SoapMethodCall {
      * @param {client.Client} sdk client (optional)
      */
     finalize(url, client) {
-        if (client) {
-            this._sessionToken = client._sessionToken;
-            this._securityToken = client._securityToken;
-            this._bearerToken = client._bearerToken;
-        }
+      if (client) {
+        this._sessionToken = client._sessionToken;
+        this._securityToken = client._securityToken;
+        this._bearerToken = client._bearerToken;
+      }
 
-        var cookieHeader = DomUtil.findElement(this._header, "Cookie");
-        if (this._sessionToken) {
-            if (!cookieHeader) {
-                cookieHeader = this._doc.createElement("Cookie");
-                this._header.appendChild(cookieHeader);
-            }
-            cookieHeader.textContent = `__sessiontoken=${this._sessionToken}`;
-        } else if (cookieHeader) {
-            cookieHeader.remove();
+      var cookieHeader = DomUtil.findElement(this._header, "Cookie");
+      if (this._sessionToken) {
+        if (!cookieHeader) {
+          cookieHeader = this._doc.createElement("Cookie");
+          this._header.appendChild(cookieHeader);
         }
+        cookieHeader.textContent = `__sessiontoken=${this._sessionToken}`;
+      } else if (cookieHeader) {
+        cookieHeader.remove();
+      }
 
-        var securityTokenHeader = DomUtil.findElement(this._header, "X-Security-Token");
-        if (!securityTokenHeader) {
-            securityTokenHeader = this._doc.createElement("X-Security-Token");
-            this._header.appendChild(securityTokenHeader);
-        }
-        securityTokenHeader.textContent = this._securityToken;
+      var securityTokenHeader = DomUtil.findElement(this._header, "X-Security-Token");
+      if (!securityTokenHeader) {
+        securityTokenHeader = this._doc.createElement("X-Security-Token");
+        this._header.appendChild(securityTokenHeader);
+      }
+      securityTokenHeader.textContent = this._securityToken;
 
-        // Always write a sessiontoken element as the first parameter. Even when using SecurityToken authentication
-        // and when the session token is actually passed implicitely as a cookie, one must write a sessiontoken
-        // element. If not, authentication will fail because the first parameter is interpreted as the "authentication mode"
-        // and eventually passed as the first parameter of CXtkLocalSessionPart::GetXtkSecurity
-        var sessionTokenElem = DomUtil.findElement(this._method, "sessiontoken");
-        if (sessionTokenElem) {
-            sessionTokenElem.textContent = this._sessionToken;
-        } else {
-            sessionTokenElem = this._doc.createElement("sessiontoken");
-            sessionTokenElem.setAttribute("xsi:type", "xsd:string");
-            // sessionTokenElem.setAttribute("SOAP-ENV:encodingStyle", SOAP_ENCODING_NATIVE);
-            sessionTokenElem.textContent = this._sessionToken;
-            this._method.prepend(sessionTokenElem);
-        }
-        const noMethodInURL = !!this._pushDownOptions.noMethodInURL;
-        const actualUrl = noMethodInURL ? url : `${url}?soapAction=${encodeURIComponent(this.urn + "#" + this.methodName)}`;
+      // Always write a sessiontoken element as the first parameter. Even when using SecurityToken authentication
+      // and when the session token is actually passed implicitely as a cookie, one must write a sessiontoken
+      // element. If not, authentication will fail because the first parameter is interpreted as the "authentication mode"
+      // and eventually passed as the first parameter of CXtkLocalSessionPart::GetXtkSecurity
+      var sessionTokenElem = DomUtil.findElement(this._method, "sessiontoken");
+      if (sessionTokenElem) {
+        sessionTokenElem.textContent = this._sessionToken;
+      } else {
+        sessionTokenElem = this._doc.createElement("sessiontoken");
+        sessionTokenElem.setAttribute("xsi:type", "xsd:string");
+        // sessionTokenElem.setAttribute("SOAP-ENV:encodingStyle", SOAP_ENCODING_NATIVE);
+        sessionTokenElem.textContent = this._sessionToken;
+        this._method.prepend(sessionTokenElem);
+      }
+      const noMethodInURL = !!this._pushDownOptions.noMethodInURL;
+      const actualUrl = noMethodInURL ? url : `${url}?soapAction=${encodeURIComponent(this.urn + "#" + this.methodName)}`;
 
-        // Prepare request and empty response objects
-        [this.request, this.requestOptions] = this._createHTTPRequest(actualUrl);
-        this.response = undefined;
+      // Prepare request and empty response objects
+      [this.request, this.requestOptions] = this._createHTTPRequest(actualUrl);
+      this.response = undefined;
     }
 
     /**
@@ -638,65 +637,65 @@ class SoapMethodCall {
      * @param {string} url the Campaign endpoint, such as "http://ffdamkt:8080/nl/jsp/soaprouter.jsp"
      */
     async execute() {
-        const that = this;
-        const promise = this._transport(this.request, this.requestOptions);
-        return promise.then(function(body) {
-            that.response = body;
-            // Response is a serialized XML document with the following structure
-            //
-            // Success:
-            //      <SOAP-ENV:Envelope>
-            //           <SOAP-ENV:Body>
-            //               <{{method}}Response>
-            //                  {{ return values (one element per return value) }}
-            //               </{{method}}Response>
-            //           </SOAP-ENV:Body>
-            //      </SOAP-ENV:Envelope>
-            //
-            // Failure:
-            //      <SOAP-ENV:Envelope>
-            //           <SOAP-ENV:Body>
-            //               <SOAP-ENV:Fault>
-            //                   <faultcode/>
-            //                   <faultstring/>
-            //                   <detail/>
-            //               </SOAP-ENV:Fault>
-            //           </SOAP-ENV:Body>
-            //      </SOAP-ENV:Envelope>        
-            const dom = DomUtil.parse(body);
-            that.elemCurrent = dom.documentElement;
-            that.elemCurrent = DomUtil.findElement(that.elemCurrent, "SOAP-ENV:Body");
-            if (!that.elemCurrent)
-                throw new DomException("Malformed SOAP response: missing body element");
-            that.elemCurrent = DomUtil.getFirstChildElement(that.elemCurrent);
-            if (!that.elemCurrent)
-                throw new DomException("Malformed SOAP response: body element is empty");
+      const that = this;
+      const promise = this._transport(this.request, this.requestOptions);
+      return promise.then(function(body) {
+        that.response = body;
+        // Response is a serialized XML document with the following structure
+        //
+        // Success:
+        //      <SOAP-ENV:Envelope>
+        //           <SOAP-ENV:Body>
+        //               <{{method}}Response>
+        //                  {{ return values (one element per return value) }}
+        //               </{{method}}Response>
+        //           </SOAP-ENV:Body>
+        //      </SOAP-ENV:Envelope>
+        //
+        // Failure:
+        //      <SOAP-ENV:Envelope>
+        //           <SOAP-ENV:Body>
+        //               <SOAP-ENV:Fault>
+        //                   <faultcode/>
+        //                   <faultstring/>
+        //                   <detail/>
+        //               </SOAP-ENV:Fault>
+        //           </SOAP-ENV:Body>
+        //      </SOAP-ENV:Envelope>        
+        const dom = DomUtil.parse(body);
+        that.elemCurrent = dom.documentElement;
+        that.elemCurrent = DomUtil.findElement(that.elemCurrent, "SOAP-ENV:Body");
+        if (!that.elemCurrent)
+          throw new DomException("Malformed SOAP response: missing body element");
+        that.elemCurrent = DomUtil.getFirstChildElement(that.elemCurrent);
+        if (!that.elemCurrent)
+          throw new DomException("Malformed SOAP response: body element is empty");
             
-            // Error management
-            if (that.elemCurrent.nodeName == "SOAP-ENV:Fault") {
-                const faultCode = DomUtil.findElement(that.elemCurrent, "faultcode").textContent;
-                const faultString = DomUtil.findElement(that.elemCurrent, "faultstring").textContent;
-                const detailNode = DomUtil.findElement(that.elemCurrent, "detail");
-                const detail = detailNode ? detailNode.textContent : undefined;
-                throw new CampaignException(that, 500, faultCode, faultString, detail);
-            }
-            // Set current element for subsequent calls to getNext* 
-            while (that.elemCurrent) {
-                var responseMethodTag = `${that.methodName}Response`;
-                var nodeName = that.elemCurrent.nodeName;
-                //if (nodeName === responseMethodTag || nodeName.endsWith(`:${responseMethodTag}`)) {
-                if (nodeName === responseMethodTag) {
-                    that.elemCurrent = DomUtil.getFirstChildElement(that.elemCurrent);
-                    break;
-                }
-                else
-                    that.elemCurrent = DomUtil.getNextSiblingElement(that.elemCurrent);
-            }
-        })
+        // Error management
+        if (that.elemCurrent.nodeName == "SOAP-ENV:Fault") {
+          const faultCode = DomUtil.findElement(that.elemCurrent, "faultcode").textContent;
+          const faultString = DomUtil.findElement(that.elemCurrent, "faultstring").textContent;
+          const detailNode = DomUtil.findElement(that.elemCurrent, "detail");
+          const detail = detailNode ? detailNode.textContent : undefined;
+          throw new CampaignException(that, 500, faultCode, faultString, detail);
+        }
+        // Set current element for subsequent calls to getNext* 
+        while (that.elemCurrent) {
+          var responseMethodTag = `${that.methodName}Response`;
+          var nodeName = that.elemCurrent.nodeName;
+          //if (nodeName === responseMethodTag || nodeName.endsWith(`:${responseMethodTag}`)) {
+          if (nodeName === responseMethodTag) {
+            that.elemCurrent = DomUtil.getFirstChildElement(that.elemCurrent);
+            break;
+          }
+          else
+            that.elemCurrent = DomUtil.getNextSiblingElement(that.elemCurrent);
+        }
+      })
         .catch(function(err) {
-            if (that.response && that.response.indexOf(`XSV-350008`) != -1)
-              throw CampaignException.SESSION_EXPIRED();
-            else throw makeCampaignException(that, err);
+          if (that.response && that.response.indexOf(`XSV-350008`) != -1)
+            throw CampaignException.SESSION_EXPIRED();
+          else throw makeCampaignException(that, err);
         });
     }
 
@@ -709,12 +708,12 @@ class SoapMethodCall {
      * @returns {Element} the XML element (empty)
      */
     createElement(tagName) {
-        return this._doc.createElement(tagName);
+      return this._doc.createElement(tagName);
     }
 
-}
+  }
 
-// Public exports
-exports.SoapMethodCall = SoapMethodCall;
+  // Public exports
+  exports.SoapMethodCall = SoapMethodCall;
 
 })();

@@ -603,7 +603,7 @@ describe('XRK Jobs', function () {
             });
             client._transport.mockReturnValueOnce(Mock.GET_XTK_JOB_SCHEMA_RESPONSE);
             client._transport.mockReturnValueOnce(MOCK_SUBMIT_JOB_RESPONSE("4210/nms:delivery@@B/C1boHl4jx1AEnDTI4nI137QkcFiiIZf4v++eFsPdM="));
-            jobId = await job.submit();
+            const jobId = await job.submit();
 
             // First call to get status returns the status and a no logs
             client._transport.mockReturnValueOnce(MOCK_GETSTATUS1_RESPONSE(2, 0, 0, true));
@@ -728,7 +728,7 @@ describe('XRK Jobs', function () {
             });
             client._transport.mockReturnValueOnce(Mock.GET_XTK_JOB_SCHEMA_RESPONSE);
             client._transport.mockReturnValueOnce(MOCK_SUBMIT_JOB_RESPONSE("4210/nms:delivery@@B/C1boHl4jx1AEnDTI4nI137QkcFiiIZf4v++eFsPdM="));
-            jobId = await job.submit();
+            const jobId = await job.submit();
 
             // First call to get status returns the status and a no logs
             client._transport.mockReturnValueOnce(MOCK_GETSTATUS1_RESPONSE(2, 0, 0, true));

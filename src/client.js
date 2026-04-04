@@ -10,36 +10,35 @@ OF ANY KIND, either express or implied. See the License for the specific languag
 governing permissions and limitations under the License.
 */
 (function() {
-"use strict";
-/*jshint sub:true*/
+  "use strict";
 
-/**********************************************************************************
+  /**********************************************************************************
  *
  * ACC JavaScript SDK
  * See README.md for usage
  *
  *********************************************************************************/
 
-/**
+  /**
  * Client to ACC instance
  */
-const { SoapMethodCall } = require('./soap.js');
-const { CampaignException, makeCampaignException } = require('./campaign.js');
-const XtkCaster = require('./xtkCaster.js').XtkCaster;
-const XtkEntityCache = require('./xtkEntityCache.js').XtkEntityCache;
-const Cipher = require('./crypto.js').Cipher;
-const DomUtil = require('./domUtil.js').DomUtil;
-const MethodCache = require('./methodCache.js').MethodCache;
-const OptionCache = require('./optionCache.js').OptionCache;
-const CacheRefresher = require('./cacheRefresher.js').CacheRefresher;
-const request = require('./transport.js').request;
-const { Application, newSchema } = require('./application.js');
-const EntityAccessor = require('./entityAccessor.js').EntityAccessor;
-const { Util } = require('./util.js');
-const { XtkJobInterface } = require('./xtkJob.js');
-const qsStringify = require('qs-stringify');
+  const { SoapMethodCall } = require('./soap.js');
+  const { CampaignException, makeCampaignException } = require('./campaign.js');
+  const XtkCaster = require('./xtkCaster.js').XtkCaster;
+  const XtkEntityCache = require('./xtkEntityCache.js').XtkEntityCache;
+  const Cipher = require('./crypto.js').Cipher;
+  const DomUtil = require('./domUtil.js').DomUtil;
+  const MethodCache = require('./methodCache.js').MethodCache;
+  const OptionCache = require('./optionCache.js').OptionCache;
+  const CacheRefresher = require('./cacheRefresher.js').CacheRefresher;
+  const request = require('./transport.js').request;
+  const { Application, newSchema } = require('./application.js');
+  const EntityAccessor = require('./entityAccessor.js').EntityAccessor;
+  const { Util } = require('./util.js');
+  const { XtkJobInterface } = require('./xtkJob.js');
+  const qsStringify = require('qs-stringify');
 
-/**
+  /**
  * @namespace Campaign
  *
  * @typedef {Object} SessionInfo
@@ -61,7 +60,7 @@ const qsStringify = require('qs-stringify');
  * @memberOf Campaign
 */
 
-/**
+  /**
  * @typedef {Object} XtkMethodParam
     * @property {string} name - the name of the parameter
     * @property {string} type - the type of the parameter
@@ -69,7 +68,7 @@ const qsStringify = require('qs-stringify');
     * @memberOf Campaign
  */
 
-/**
+  /**
  * Java Script Proxy handler for an XTK object. An XTK object is one constructed with the following syntax:
  *
  * <code>
@@ -82,43 +81,44 @@ const qsStringify = require('qs-stringify');
  * @private
  * @memberof Campaign
  */
-const xtkObjectHandler = {
+  const xtkObjectHandler = {
     set: function(callContext, prop, value) {
-        const object = callContext.object;
-        object[prop] = value;
+      const object = callContext.object;
+      object[prop] = value;
+      return true;
     },
 
     get: function(callContext, methodName) {
-        if (methodName == ".") 
-            return callContext;
-        if (methodName === "__xtkProxy")
-            return true;
-        if (methodName === "save") {
-            return async () => {
-                return callContext.client.NLWS.xtkSession.write(callContext.object);
-            };
-        }
-        if (methodName === "entity") {
-            return callContext.object;
-        }
-
-        const caller = function(thisArg, argumentsList) {
-            const callContext = thisArg["."];
-            if (methodName == "inspect") return callContext.object;
-            methodName = methodName.substr(0, 1).toUpperCase() + methodName.substr(1);
-            return callContext.client._callMethod(methodName, callContext, argumentsList);
+      if (methodName == ".") 
+        return callContext;
+      if (methodName === "__xtkProxy")
+        return true;
+      if (methodName === "save") {
+        return async () => {
+          return callContext.client.NLWS.xtkSession.write(callContext.object);
         };
+      }
+      if (methodName === "entity") {
+        return callContext.object;
+      }
 
-        return new Proxy(caller, {
-            apply: function(target, thisArg, argumentsList) {
-                return target(thisArg, argumentsList);
-            }
-        });
+      const caller = function(thisArg, argumentsList) {
+        const callContext = thisArg["."];
+        if (methodName == "inspect") return callContext.object;
+        methodName = methodName.substr(0, 1).toUpperCase() + methodName.substr(1);
+        return callContext.client._callMethod(methodName, callContext, argumentsList);
+      };
+
+      return new Proxy(caller, {
+        apply: function(target, thisArg, argumentsList) {
+          return target(thisArg, argumentsList);
+        }
+      });
 
     }
-};
+  };
 
-/**
+  /**
  * Java Script Proxy handler for NLWS.
  * The proxy resolves constructs such as
  *
@@ -134,106 +134,106 @@ const xtkObjectHandler = {
  * @private
  * @memberof Campaign
  */
-const clientHandler = (representation, headers, pushDownOptions) => {
+  const clientHandler = (representation, headers, pushDownOptions) => {
     return {
-        get: function(client, namespace) {
+      get: function(client, namespace) {
 
-            // Force XML or JSON representation (NLWS.xml or NLWS.json)
-            if (namespace == "xml") return new Proxy(client, clientHandler("xml", headers, pushDownOptions));
-            if (namespace == "json") return new Proxy(client, clientHandler("SimpleJson", headers, pushDownOptions));
+        // Force XML or JSON representation (NLWS.xml or NLWS.json)
+        if (namespace == "xml") return new Proxy(client, clientHandler("xml", headers, pushDownOptions));
+        if (namespace == "json") return new Proxy(client, clientHandler("SimpleJson", headers, pushDownOptions));
 
-            // Override HTTP headers (NLWS.headers({...}))
-            // Unlike NLWS.xml or NLWS.json, NLWS.headers returns a function. This function takes key/value
-            // pairs of headers, and, when called, returns a proxy object which will remember the headers
-            // and be able to pass them to subsequent SOAP call context
-            if (namespace == "headers") return (methodHeaders) => {
-                // Build of copy of the http headers and append new headers in order to accomodate
-                // chained calls, such as NLWS.headers(...).headers(...)
-                const newHeaders = {};
-                if (headers) for (let h in headers) newHeaders[h] = headers[h];
-                if (methodHeaders) for (let h in methodHeaders) newHeaders[h] = methodHeaders[h];
-                return new Proxy(client, clientHandler(representation, newHeaders, pushDownOptions));
+        // Override HTTP headers (NLWS.headers({...}))
+        // Unlike NLWS.xml or NLWS.json, NLWS.headers returns a function. This function takes key/value
+        // pairs of headers, and, when called, returns a proxy object which will remember the headers
+        // and be able to pass them to subsequent SOAP call context
+        if (namespace == "headers") return (methodHeaders) => {
+          // Build of copy of the http headers and append new headers in order to accomodate
+          // chained calls, such as NLWS.headers(...).headers(...)
+          const newHeaders = {};
+          if (headers) for (let h in headers) newHeaders[h] = headers[h];
+          if (methodHeaders) for (let h in methodHeaders) newHeaders[h] = methodHeaders[h];
+          return new Proxy(client, clientHandler(representation, newHeaders, pushDownOptions));
+        };
+
+        // Pushes down addition options to the SOAP and transport layers
+        if (namespace == "pushDown") return (methodPushDownOptions) => {
+          // Build of copy of the pushDownOptions in order to accomodate
+          // chained calls, such as NLWS.pushDown(...).pushDown(...)
+          const newPushDownOptions = {};
+          if (pushDownOptions) for (let h in pushDownOptions) newPushDownOptions[h] = pushDownOptions[h];
+          if (methodPushDownOptions) for (let h in methodPushDownOptions) newPushDownOptions[h] = methodPushDownOptions[h];
+          return new Proxy(client, clientHandler(representation, headers, newPushDownOptions));
+        };
+
+        return new Proxy({ client:client, namespace:namespace}, {
+          get: function(callContext, methodName) {
+            callContext.representation = representation;
+            callContext.headers = callContext.headers || client._connectionParameters._options.extraHttpHeaders;
+            callContext.pushDownOptions = {};
+            if (headers) {
+              for (let h in headers) callContext.headers[h] = headers[h];
+            }
+            if (pushDownOptions) {
+              for (let h in pushDownOptions) callContext.pushDownOptions[h] = pushDownOptions[h];
+            }
+
+            if (methodName == ".") 
+              return callContext;
+
+            // get Schema id from namespace (find first upper case letter)
+            callContext.schemaId = Util.schemaIdFromNamespace(namespace);
+
+            const caller = function(thisArg, argumentsList) {
+              const callContext = thisArg["."];
+              const namespace = callContext.namespace;
+              const methodNameLC = methodName.toLowerCase();
+              methodName = methodName.substr(0, 1).toUpperCase() + methodName.substr(1);
+              if (namespace == "xtkSession" && methodNameLC == "logon")
+                return callContext.client.logon(argumentsList[0]);
+              else if (namespace == "xtkSession" && methodNameLC == "logoff")
+                return callContext.client.logoff();
+              else if (namespace == "xtkSession" && methodNameLC == "getoption") {
+                var promise = callContext.client._callMethod(methodName, callContext, argumentsList);
+                return promise.then(function(optionAndValue) {
+                  const optionName = argumentsList[0];
+                  return client._optionCache.put(optionName, optionAndValue).then(() => optionAndValue);
+                });
+              }
+              // static method
+              var result = callContext.client._callMethod(methodName, callContext, argumentsList);
+              return result;
             };
 
-            // Pushes down addition options to the SOAP and transport layers
-            if (namespace == "pushDown") return (methodPushDownOptions) => {
-                // Build of copy of the pushDownOptions in order to accomodate
-                // chained calls, such as NLWS.pushDown(...).pushDown(...)
-                const newPushDownOptions = {};
-                if (pushDownOptions) for (let h in pushDownOptions) newPushDownOptions[h] = pushDownOptions[h];
-                if (methodPushDownOptions) for (let h in methodPushDownOptions) newPushDownOptions[h] = methodPushDownOptions[h];
-                return new Proxy(client, clientHandler(representation, headers, newPushDownOptions));
-            };
+            if (methodName == "create") {
+              return function(body) {
+                callContext.object = body || {}; // supports empty bodies
+                if (!callContext.object.xtkschema) callContext.object.xtkschema = callContext.schemaId;
+                return new Proxy(callContext, xtkObjectHandler);
+              };
+            }
 
-            return new Proxy({ client:client, namespace:namespace}, {
-                get: function(callContext, methodName) {
-                    callContext.representation = representation;
-                    callContext.headers = callContext.headers || client._connectionParameters._options.extraHttpHeaders;
-                    callContext.pushDownOptions = {};
-                    if (headers) {
-                        for (let h in headers) callContext.headers[h] = headers[h];
-                    }
-                    if (pushDownOptions) {
-                        for (let h in pushDownOptions) callContext.pushDownOptions[h] = pushDownOptions[h];
-                    }
-
-                    if (methodName == ".") 
-                        return callContext;
-
-                    // get Schema id from namespace (find first upper case letter)
-                    callContext.schemaId = Util.schemaIdFromNamespace(namespace);
-
-                    const caller = function(thisArg, argumentsList) {
-                        const callContext = thisArg["."];
-                        const namespace = callContext.namespace;
-                        const methodNameLC = methodName.toLowerCase();
-                        methodName = methodName.substr(0, 1).toUpperCase() + methodName.substr(1);
-                        if (namespace == "xtkSession" && methodNameLC == "logon")
-                            return callContext.client.logon(argumentsList[0]);
-                        else if (namespace == "xtkSession" && methodNameLC == "logoff")
-                            return callContext.client.logoff();
-                        else if (namespace == "xtkSession" && methodNameLC == "getoption") {
-                            var promise = callContext.client._callMethod(methodName, callContext, argumentsList);
-                            return promise.then(function(optionAndValue) {
-                                const optionName = argumentsList[0];
-                                return client._optionCache.put(optionName, optionAndValue).then(() => optionAndValue);
-                            });
-                        }
-                        // static method
-                        var result = callContext.client._callMethod(methodName, callContext, argumentsList);
-                        return result;
-                    };
-
-                    if (methodName == "create") {
-                        return function(body) {
-                            callContext.object = body || {}; // supports empty bodies
-                            if (!callContext.object.xtkschema) callContext.object.xtkschema = callContext.schemaId;
-                            return new Proxy(callContext, xtkObjectHandler);
-                        };
-                    }
-
-                    return new Proxy(caller, {
-                        apply: function(target, thisArg, argumentsList) {
-                            return target(thisArg, argumentsList);
-                        }
-                    });
-                }
+            return new Proxy(caller, {
+              apply: function(target, thisArg, argumentsList) {
+                return target(thisArg, argumentsList);
+              }
             });
-        }
+          }
+        });
+      }
     };
-};
+  };
 
-// ========================================================================================
-// Campaign credentials
-// ========================================================================================
+  // ========================================================================================
+  // Campaign credentials
+  // ========================================================================================
 
-/**
+  /**
  * @class
  * @constructor
  * @private
  * @memberof Campaign
  */
-class Credentials {
+  class Credentials {
 
     /**
      * Credentials to a Campaign instance. Encapsulates the various types of credentials.
@@ -243,16 +243,16 @@ class Credentials {
      * @param {string} securityToken the security token. Will use an empty token if not specified
      */
     constructor(type, sessionToken, securityToken) {
-        if (type != "UserPassword" && type != "ImsServiceToken" && type != "SessionToken" && type != "SessionAndSecurityToken" &&
+      if (type != "UserPassword" && type != "ImsServiceToken" && type != "SessionToken" && type != "SessionAndSecurityToken" &&
             type != "AnonymousUser" && type != "SecurityToken" && type != "BearerToken" && type != "ImsBearerToken")
-            throw CampaignException.INVALID_CREDENTIALS_TYPE(type);
-        this._type = type;
-        this._sessionToken = sessionToken || "";
-        this._securityToken = securityToken || "";
-        if (type == "BearerToken" || type === "ImsBearerToken") {
-            this._bearerToken = sessionToken || "";
-            this._sessionToken = "";
-        }
+        throw CampaignException.INVALID_CREDENTIALS_TYPE(type);
+      this._type = type;
+      this._sessionToken = sessionToken || "";
+      this._securityToken = securityToken || "";
+      if (type == "BearerToken" || type === "ImsBearerToken") {
+        this._bearerToken = sessionToken || "";
+        this._sessionToken = "";
+      }
     }
 
     /**
@@ -262,11 +262,11 @@ class Credentials {
      * @returns {string} the user name
      */
     _getUser() {
-        if (this._type != "UserPassword")
-            throw CampaignException.CANNOT_GET_CREDENTIALS_USER(this._type);
-        const tokens = this._sessionToken.split("/");
-        const user = tokens[0];
-        return user;
+      if (this._type != "UserPassword")
+        throw CampaignException.CANNOT_GET_CREDENTIALS_USER(this._type);
+      const tokens = this._sessionToken.split("/");
+      const user = tokens[0];
+      return user;
     }
 
     /**
@@ -276,20 +276,20 @@ class Credentials {
      * @returns {string} the user password
      */
     _getPassword() {
-        if (this._type != "UserPassword")
-            throw CampaignException.CANNOT_GET_CREDENTIALS_PASSWORD(this._type);
-        const tokens = this._sessionToken.split("/");
-        const password = tokens.length > 1 ? tokens[1] : "";
-        return password;
+      if (this._type != "UserPassword")
+        throw CampaignException.CANNOT_GET_CREDENTIALS_PASSWORD(this._type);
+      const tokens = this._sessionToken.split("/");
+      const password = tokens.length > 1 ? tokens[1] : "";
+      return password;
     }
-}
+  }
 
 
-// ========================================================================================
-// Campaign connection parameters
-// ========================================================================================
+  // ========================================================================================
+  // Campaign connection parameters
+  // ========================================================================================
 
-/**
+  /**
  * @typedef {Object} ConnectionOptions
     * @property {string} representation - the representation to use, i.e. "SimpleJson" (the default), "BadgerFish", or "xml"
     * @property {boolean} rememberMe - The Campaign `rememberMe` attribute which can be used to extend the lifetime of session tokens
@@ -314,12 +314,12 @@ class Credentials {
  */
 
 
-/**
+  /**
  * @class
  * @constructor
  * @memberof Campaign
  */
-class ConnectionParameters {
+  class ConnectionParameters {
 
     /**
      * Creates a connection parameters object which can be used to create a Client object
@@ -329,59 +329,59 @@ class ConnectionParameters {
      * @param {Campaign.ConnectionOptions} options connection options
      */
     constructor(endpoint, credentials, options) {
-        // this._options will be populated with the data from "options" and with
-        // default values. But the "options" parameter will not be modified
-        this._options = Object.assign({}, options);
+      // this._options will be populated with the data from "options" and with
+      // default values. But the "options" parameter will not be modified
+      this._options = Object.assign({}, options);
 
-        // Default value
-        if (options === undefined || options === null)
-            options = { };
+      // Default value
+      if (options === undefined || options === null)
+        options = { };
         // Before version 1.0.0, the 4th parameter could be a boolean for the 'rememberMe' option.
         // Passing a boolean is not supported any more in 1.0.0. The Client constructor takes an
         // option object. The rememberMe parameter can be passed directly to the logon function
-        if (typeof options  != "object")
-            throw CampaignException.INVALID_CONNECTION_OPTIONS(options);
+      if (typeof options  != "object")
+        throw CampaignException.INVALID_CONNECTION_OPTIONS(options);
 
-        this._options.representation = options.representation;
-        if (this._options.representation === undefined || this._options.representation === null)
-            this._options.representation = "SimpleJson";
+      this._options.representation = options.representation;
+      if (this._options.representation === undefined || this._options.representation === null)
+        this._options.representation = "SimpleJson";
 
-        if (this._options.representation != "xml" && this._options.representation != "BadgerFish" && this._options.representation != "SimpleJson")
-            throw CampaignException.INVALID_REPRESENTATION(this._options.representation, "Cannot create Campaign client");
+      if (this._options.representation != "xml" && this._options.representation != "BadgerFish" && this._options.representation != "SimpleJson")
+        throw CampaignException.INVALID_REPRESENTATION(this._options.representation, "Cannot create Campaign client");
 
-        // Defaults for rememberMe
-        this._options.rememberMe = !!options.rememberMe;
+      // Defaults for rememberMe
+      this._options.rememberMe = !!options.rememberMe;
 
-        this._options.entityCacheTTL = options.entityCacheTTL || 1000*300; // 5 mins
-        this._options.methodCacheTTL = options.methodCacheTTL || 1000*300; // 5 mins
-        this._options.optionCacheTTL = options.optionCacheTTL || 1000*300; // 5 mins
-        this._options.traceAPICalls = options.traceAPICalls === null || options.traceAPICalls ? !!options.traceAPICalls : false;
-        this._options.transport = options.transport || request;
+      this._options.entityCacheTTL = options.entityCacheTTL || 1000*300; // 5 mins
+      this._options.methodCacheTTL = options.methodCacheTTL || 1000*300; // 5 mins
+      this._options.optionCacheTTL = options.optionCacheTTL || 1000*300; // 5 mins
+      this._options.traceAPICalls = options.traceAPICalls === null || options.traceAPICalls ? !!options.traceAPICalls : false;
+      this._options.transport = options.transport || request;
 
-        this._endpoint = endpoint;
-        this._credentials = credentials;
+      this._endpoint = endpoint;
+      this._credentials = credentials;
 
-        var storage;
-        if (!options.noStorage) {
-            storage = options.storage;
-            try {
-                if (!storage)
-                    storage = localStorage;
-            } catch (ex) {
-                /* ignore error if localStorage not found */
-            }
+      var storage;
+      if (!options.noStorage) {
+        storage = options.storage;
+        try {
+          if (!storage)
+            storage = localStorage;
+        } catch (ex) {
+          /* ignore error if localStorage not found */
         }
-        this._options._storage = storage;
-        this._options.refreshClient = options.refreshClient;
-        this._options.charset = options.charset === undefined ? "UTF-8": options.charset;
-        this._options.extraHttpHeaders = {};
-        if (options.extraHttpHeaders) {
-            for (let h in options.extraHttpHeaders) this._options.extraHttpHeaders[h] = options.extraHttpHeaders[h];
-        }
-        this._options.clientApp = options.clientApp;
-        this._options.noSDKHeaders = !!options.noSDKHeaders;
-        this._options.noMethodInURL = !!options.noMethodInURL;
-        this._options.cacheRootKey = options.cacheRootKey === undefined ? "default": options.cacheRootKey;
+      }
+      this._options._storage = storage;
+      this._options.refreshClient = options.refreshClient;
+      this._options.charset = options.charset === undefined ? "UTF-8": options.charset;
+      this._options.extraHttpHeaders = {};
+      if (options.extraHttpHeaders) {
+        for (let h in options.extraHttpHeaders) this._options.extraHttpHeaders[h] = options.extraHttpHeaders[h];
+      }
+      this._options.clientApp = options.clientApp;
+      this._options.noSDKHeaders = !!options.noSDKHeaders;
+      this._options.noMethodInURL = !!options.noMethodInURL;
+      this._options.cacheRootKey = options.cacheRootKey === undefined ? "default": options.cacheRootKey;
     }
 
     /**
@@ -394,8 +394,8 @@ class ConnectionParameters {
      * @returns {ConnectionParameters} a ConnectionParameters object which can be used to create a Client
      */
     static ofUserAndPassword(endpoint, user, password, options) {
-        const credentials = new Credentials("UserPassword", `${user}/${password}`, "");
-        return new ConnectionParameters(endpoint, credentials, options);
+      const credentials = new Credentials("UserPassword", `${user}/${password}`, "");
+      return new ConnectionParameters(endpoint, credentials, options);
     }
 
     /**
@@ -412,8 +412,8 @@ class ConnectionParameters {
      * @returns {ConnectionParameters} a ConnectionParameters object which can be used to create a Client
      */
     static ofBearerToken(endpoint, bearerToken, options) {
-        const credentials = new Credentials("BearerToken", bearerToken);
-        return new ConnectionParameters(endpoint, credentials, options);
+      const credentials = new Credentials("BearerToken", bearerToken);
+      return new ConnectionParameters(endpoint, credentials, options);
     }
 
     /**
@@ -428,8 +428,8 @@ class ConnectionParameters {
      * @returns {ConnectionParameters} a ConnectionParameters object which can be used to create a Client
      */
     static ofImsBearerToken(endpoint, bearerToken, options) {
-        const credentials = new Credentials("ImsBearerToken", bearerToken);
-        return new ConnectionParameters(endpoint, credentials, options);
+      const credentials = new Credentials("ImsBearerToken", bearerToken);
+      return new ConnectionParameters(endpoint, credentials, options);
     }
 
     /**
@@ -442,8 +442,8 @@ class ConnectionParameters {
      * @returns {ConnectionParameters} a ConnectionParameters object which can be used to create a Client
      */
     static ofUserAndServiceToken(endpoint, user, serviceToken, options) {
-        const credentials = new Credentials("ImsServiceToken", `_ims_/${user}/${serviceToken}`, "");
-        return new ConnectionParameters(endpoint, credentials, options);
+      const credentials = new Credentials("ImsServiceToken", `_ims_/${user}/${serviceToken}`, "");
+      return new ConnectionParameters(endpoint, credentials, options);
     }
 
     /**
@@ -456,8 +456,8 @@ class ConnectionParameters {
      * @returns {ConnectionParameters} a ConnectionParameters object which can be used to create a Client
      */
     static ofSessionToken(endpoint, sessionToken, options) {
-        const credentials = new Credentials("SessionToken", sessionToken, "");
-        return new ConnectionParameters(endpoint, credentials, options);
+      const credentials = new Credentials("SessionToken", sessionToken, "");
+      return new ConnectionParameters(endpoint, credentials, options);
     }
 
     /**
@@ -471,8 +471,8 @@ class ConnectionParameters {
      * @returns {ConnectionParameters} a ConnectionParameters object which can be used to create a Client
      */
     static ofSessionAndSecurityToken(endpoint, sessionToken, securityToken, options) {
-        const credentials = new Credentials("SessionAndSecurityToken", sessionToken, securityToken);
-        return new ConnectionParameters(endpoint, credentials, options);
+      const credentials = new Credentials("SessionAndSecurityToken", sessionToken, securityToken);
+      return new ConnectionParameters(endpoint, credentials, options);
     }
     
     /**
@@ -488,8 +488,8 @@ class ConnectionParameters {
      * @returns {ConnectionParameters} a ConnectionParameters object which can be used to create a Client
      */
     static ofSecurityToken(endpoint, securityToken, options) {
-        const credentials = new Credentials("SecurityToken", "", securityToken);
-        return new ConnectionParameters(endpoint, credentials, options);
+      const credentials = new Credentials("SecurityToken", "", securityToken);
+      return new ConnectionParameters(endpoint, credentials, options);
     }
 
     /**
@@ -500,8 +500,8 @@ class ConnectionParameters {
      * @returns {ConnectionParameters} a ConnectionParameters object which can be used to create a Client
      */
     static ofAnonymousUser(endpoint, options) {
-        const credentials = new Credentials("AnonymousUser", "", "");
-        return new ConnectionParameters(endpoint, credentials, options);
+      const credentials = new Credentials("AnonymousUser", "", "");
+      return new ConnectionParameters(endpoint, credentials, options);
     }
 
 
@@ -515,58 +515,58 @@ class ConnectionParameters {
      * @returns {ConnectionParameters} a ConnectionParameters object which can be used to create a Client
      */
     static async ofExternalAccount(client, extAccountName) {
-        var queryDef = {
-            "schema": "nms:extAccount",
-            "operation": "get",
-            "select": {
-                "node": [
-                    { "expr": "@id" },
-                    { "expr": "@name" },
-                    { "expr": "@label" },
-                    { "expr": "@type" },
-                    { "expr": "@account" },
-                    { "expr": "@password" },
-                    { "expr": "@server" }
-                ]
-            },
-            "where": {
-                "condition": [
-                    { "expr": client.sdk.escapeXtk`@name=${extAccountName}` },
-                    { "expr": "@type=3" }
-                ]
-            }
-        };
-        // Convert to current representation
-        queryDef = client._convertToRepresentation(queryDef, "SimpleJson");
-        const query = client.NLWS.xtkQueryDef.create(queryDef);
-        const extAccount = await query.executeQuery();
-
-        const cipher = await client._getSecretKeyCipher();
-        const type = EntityAccessor.getAttributeAsLong(extAccount, "type");
-        if (type == 3) {
-            // Mid-souring
-            const endpoint = EntityAccessor.getAttributeAsString(extAccount, "server");
-            const user = EntityAccessor.getAttributeAsString(extAccount, "account");
-            const password = cipher.decryptPassword(EntityAccessor.getAttributeAsString(extAccount, "password"));
-            return ConnectionParameters.ofUserAndPassword(endpoint, user, password, client._connectionParameters._options);
+      var queryDef = {
+        "schema": "nms:extAccount",
+        "operation": "get",
+        "select": {
+          "node": [
+            { "expr": "@id" },
+            { "expr": "@name" },
+            { "expr": "@label" },
+            { "expr": "@type" },
+            { "expr": "@account" },
+            { "expr": "@password" },
+            { "expr": "@server" }
+          ]
+        },
+        "where": {
+          "condition": [
+            { "expr": client.sdk.escapeXtk`@name=${extAccountName}` },
+            { "expr": "@type=3" }
+          ]
         }
-        throw CampaignException.CREDENTIALS_FOR_INVALID_EXT_ACCOUNT(extAccountName, type);
+      };
+        // Convert to current representation
+      queryDef = client._convertToRepresentation(queryDef, "SimpleJson");
+      const query = client.NLWS.xtkQueryDef.create(queryDef);
+      const extAccount = await query.executeQuery();
+
+      const cipher = await client._getSecretKeyCipher();
+      const type = EntityAccessor.getAttributeAsLong(extAccount, "type");
+      if (type == 3) {
+        // Mid-souring
+        const endpoint = EntityAccessor.getAttributeAsString(extAccount, "server");
+        const user = EntityAccessor.getAttributeAsString(extAccount, "account");
+        const password = cipher.decryptPassword(EntityAccessor.getAttributeAsString(extAccount, "password"));
+        return ConnectionParameters.ofUserAndPassword(endpoint, user, password, client._connectionParameters._options);
+      }
+      throw CampaignException.CREDENTIALS_FOR_INVALID_EXT_ACCOUNT(extAccountName, type);
     }
 
-}
+  }
 
-// ========================================================================================
-// File Uploader
-// ========================================================================================
+  // ========================================================================================
+  // File Uploader
+  // ========================================================================================
 
-/**
+  /**
  * @typedef {Object} FileUploadOptions
  * @property {"publishIfNeeded"|"none"|undefined} the post-processing action to execute. Defaults to "publishIfNeeded"
  * @memberOf Campaign
  */
 
 
-/**
+  /**
  * File Uploader API for JS SDK(Currently available only in browsers)
  * @private
  * @ignore
@@ -574,172 +574,174 @@ class ConnectionParameters {
  * @param client
  * @returns {{upload: (function(*=): Promise<{name: string, md5: string, type: string, size: string, url: string}>)}}
  */
-const fileUploader = (client) => {
+  const fileUploader = (client) => {
 
     return {
-        /**
+      /**
          * This is the exposed/public method for fileUploader instance which will do all the processing related to the upload process internally and returns the promise containing all the required data.
          * @ignore
          * @param file, where file is an instance of [File](https://developer.mozilla.org/en-US/docs/Web/API/File)
          * @param {FileUploadOptions|undefined} options
          * @returns {Promise<{name: string, md5: string, type: string, size: string, url: string}>}
          */
-        upload: (file, options, fileResPrefix) => {
-            console.log(`fileuploader.upload is an experimental feature and is not currently fully functional. It is work in progress and will change in the future.`);
-            return new Promise((resolve, reject) => {
-                const action = (options && options.action) ? options.action : "publishIfNeeded";
-                if (action !== "publishIfNeeded" && action !== "none")
-                    reject(CampaignException.BAD_PARAMETER("action", action, "The 'action' parameter of the upload API should be 'publishIfNeeded' or 'none'"));
-                try {
-                    if (!Util.isBrowser()) {
-                        throw 'File uploading is only supported in browser based calls.';
+      upload: (file, options, fileResPrefix) => {
+        if (client._traceAPICalls) {
+          console.warn(`fileuploader.upload is an experimental feature and is not currently fully functional. It is work in progress and will change in the future.`);
+        }
+        return new Promise((resolve, reject) => {
+          const action = (options && options.action) ? options.action : "publishIfNeeded";
+          if (action !== "publishIfNeeded" && action !== "none")
+            reject(CampaignException.BAD_PARAMETER("action", action, "The 'action' parameter of the upload API should be 'publishIfNeeded' or 'none'"));
+          try {
+            if (!Util.isBrowser()) {
+              throw 'File uploading is only supported in browser based calls.';
+            }
+            const data = new FormData();
+            data.append('file_noMd5', file);
+            const headers = client._getAuthHeaders(false);
+            for (let h in client._connectionParameters._options.extraHttpHeaders)
+              headers[h] = client._connectionParameters._options.extraHttpHeaders[h];
+            client._makeHttpCall({
+              url: `${client._connectionParameters._endpoint}/nl/jsp/uploadFile.jsp`,
+              processData: false,
+              method: 'POST',
+              data: data,
+              headers: headers
+            }).then((okay) => {
+              if (!okay.startsWith('Ok')) {
+                throw okay;
+              }
+              const iframe = document.createElement('iframe');
+              iframe.style.display = 'block';
+              iframe.style.border = 'none';
+              iframe.style.height = 0;
+              iframe.style.width = 0;
+              if(options && options.className) {
+                iframe.className = options.className;
+              }
+              document.controller = { // Written to  support https://git.corp.adobe.com/Campaign/ac/blob/v6-master/nl/datakit/nl/jsp/uploadFile.jsp
+                uploadFileCallBack: async (data) => {
+                  if (!data || data.length !== 1) {
+                    // Tried to replicate the logic for file upload functionality written here:
+                    // https://git.corp.adobe.com/Campaign/ac/blob/v6-master/wpp/xtk/web/dce/uploader.js
+                    return reject(CampaignException.FILE_UPLOAD_FAILED(file.name, 'Malformed data:' + data.toString()));
+                  }
+                  const result = {
+                    name: data[0].fileName,
+                    md5: data[0].md5,
+                    type: file.type,
+                    size: file.size,
+                  };
+                  if (action === "publishIfNeeded") {
+                    try {
+                      // Following https://jira.corp.adobe.com/browse/NEO-88828 the fileRes internal name is defined as is:
+                      // If a prefix is not provided, we keep the old behavior which is to use the prefix 'RES' and the xtkResource counter (i.e.'RES1'...)
+                      // If a prefix is provided, we use it with a UUID (i.e. 'customPrefix-123e4567-e89b-12d3-a456-426614174000')
+                      const oldBehaviorPrefix = 'RES';
+                      const prefix = Util.validateFileResPrefix(fileResPrefix, oldBehaviorPrefix);
+                      const getUUIDOrFallback = async() => {
+                        try {
+                          return Util.getUUID();
+                        } catch (error) {
+                          // In case getUUID throws, fall back to increasing the counter
+                          return await client.NLWS.xtkCounter.increaseValue({ name: 'xtkResource' });
+                        }
+                      };
+                      const suffix = (prefix === oldBehaviorPrefix) ? 
+                        await client.NLWS.xtkCounter.increaseValue({ name: 'xtkResource' }) : await getUUIDOrFallback();
+
+                      const internalName = (prefix === oldBehaviorPrefix) ? `${prefix}${suffix}` : `${prefix}_${suffix}`;
+
+                      const fileRes = {
+                        internalName,
+                        md5: data[0].md5,
+                        label: data[0].fileName,
+                        fileName: data[0].fileName,
+                        originalName: data[0].fileName,
+                        useMd5AsFilename: '1',
+                        storageType: 5,
+                        xtkschema: 'xtk:fileRes',
+                      };
+                      await client.NLWS.xtkSession.write(fileRes);
+                      await client.NLWS.xtkFileRes
+                        .create(fileRes)
+                        .publishIfNeeded();
+                      const url = await client.NLWS.xtkFileRes
+                        .create(fileRes)
+                        .getURL();
+                      result.url = url;
+                    } catch (ex) {
+                      reject(
+                        CampaignException.FILE_UPLOAD_FAILED(
+                          file.name,
+                          ex
+                        )
+                      );
                     }
-                    const data = new FormData();
-                    data.append('file_noMd5', file);
-                    const headers = client._getAuthHeaders(false);
-                    for (let h in client._connectionParameters._options.extraHttpHeaders)
-                        headers[h] = client._connectionParameters._options.extraHttpHeaders[h];
-                    client._makeHttpCall({
-                        url: `${client._connectionParameters._endpoint}/nl/jsp/uploadFile.jsp`,
-                        processData: false,
-                        method: 'POST',
-                        data: data,
-                        headers: headers
-                    }).then((okay) => {
-                        if (!okay.startsWith('Ok')) {
-                            throw okay;
-                        }
-                        const iframe = document.createElement('iframe');
-                        iframe.style.display = 'block';
-                        iframe.style.border = 'none';
-                        iframe.style.height = 0;
-                        iframe.style.width = 0;
-                        if(options && options.className) {
-                            iframe.className = options.className;
-                        }
-                        document.controller = { // Written to  support https://git.corp.adobe.com/Campaign/ac/blob/v6-master/nl/datakit/nl/jsp/uploadFile.jsp
-                            uploadFileCallBack: async (data) => {
-                                if (!data || data.length !== 1) {
-                                    // Tried to replicate the logic for file upload functionality written here:
-                                    // https://git.corp.adobe.com/Campaign/ac/blob/v6-master/wpp/xtk/web/dce/uploader.js
-                                    return reject(CampaignException.FILE_UPLOAD_FAILED(file.name, 'Malformed data:' + data.toString()));
-                                }
-                                const result = {
-                                    name: data[0].fileName,
-                                    md5: data[0].md5,
-                                    type: file.type,
-                                    size: file.size,
-                                };
-                                if (action === "publishIfNeeded") {
-                                  try {
-                                    // Following https://jira.corp.adobe.com/browse/NEO-88828 the fileRes internal name is defined as is:
-                                    // If a prefix is not provided, we keep the old behavior which is to use the prefix 'RES' and the xtkResource counter (i.e.'RES1'...)
-                                    // If a prefix is provided, we use it with a UUID (i.e. 'customPrefix-123e4567-e89b-12d3-a456-426614174000')
-                                    const oldBehaviorPrefix = 'RES';
-                                    const prefix = Util.validateFileResPrefix(fileResPrefix, oldBehaviorPrefix);
-                                    const getUUIDOrFallback = async() => {
-                                        try {
-                                            return Util.getUUID();
-                                        } catch (error) {
-                                            // In case getUUID throws, fall back to increasing the counter
-                                            return await client.NLWS.xtkCounter.increaseValue({ name: 'xtkResource' });
-                                        }
-                                    };
-                                    const suffix = (prefix === oldBehaviorPrefix) ? 
-                                      await client.NLWS.xtkCounter.increaseValue({ name: 'xtkResource' }) : await getUUIDOrFallback();
-
-                                    const internalName = (prefix === oldBehaviorPrefix) ? `${prefix}${suffix}` : `${prefix}_${suffix}`;
-
-                                    const fileRes = {
-                                      internalName,
-                                      md5: data[0].md5,
-                                      label: data[0].fileName,
-                                      fileName: data[0].fileName,
-                                      originalName: data[0].fileName,
-                                      useMd5AsFilename: '1',
-                                      storageType: 5,
-                                      xtkschema: 'xtk:fileRes',
-                                    };
-                                    await client.NLWS.xtkSession.write(fileRes);
-                                    await client.NLWS.xtkFileRes
-                                      .create(fileRes)
-                                      .publishIfNeeded();
-                                    const url = await client.NLWS.xtkFileRes
-                                      .create(fileRes)
-                                      .getURL();
-                                    result.url = url;
-                                  } catch (ex) {
-                                    reject(
-                                      CampaignException.FILE_UPLOAD_FAILED(
-                                        file.name,
-                                        ex
-                                      )
-                                    );
-                                  }
-                                }
-                                resolve(result);
-                            }
-                        };
-                        const html = `<body>${okay}</body>`;
-                        document.body.appendChild(iframe);
-                        iframe.contentWindow.document.open();
-                        iframe.contentWindow.document.write(html);
-                        iframe.contentWindow.document.close();
-                    }).catch((ex) => {
-                        reject(CampaignException.FILE_UPLOAD_FAILED(file.name, ex));
-                    });
-                } catch (ex) {
-                    reject(CampaignException.FILE_UPLOAD_FAILED(file.name, ex));
+                  }
+                  resolve(result);
                 }
+              };
+              const html = `<body>${okay}</body>`;
+              document.body.appendChild(iframe);
+              iframe.contentWindow.document.open();
+              iframe.contentWindow.document.write(html);
+              iframe.contentWindow.document.close();
+            }).catch((ex) => {
+              reject(CampaignException.FILE_UPLOAD_FAILED(file.name, ex));
             });
-        },
+          } catch (ex) {
+            reject(CampaignException.FILE_UPLOAD_FAILED(file.name, ex));
+          }
+        });
+      },
 
-        /**
+      /**
          * Exposed method to call aemAssetDownload.jssp which will
          * download the asset from AEM and upload it to Campaign.
          */
-        uploadAemAsset: async (assetDownloadUrl) => {
-            const url = `${client._connectionParameters._endpoint}/nms/aemAssetDownload.jssp`;
-            const headers = client._getAuthHeaders(false);
-            headers['Content-Type'] = 'application/json';
+      uploadAemAsset: async (assetDownloadUrl) => {
+        const url = `${client._connectionParameters._endpoint}/nms/aemAssetDownload.jssp`;
+        const headers = client._getAuthHeaders(false);
+        headers['Content-Type'] = 'application/json';
 
-            try {
-                // We need to pass the Authorization header to AEM to download the asset from AEM
-                // as well as authenticating campaign server.
-                // A user token having access to campaign as well as AEM is required
-                if(headers['Authorization'] === undefined || headers['Authorization'] === '' || headers['Authorization'] === 'null') {
-                    throw 'Bearer token is missing';
-                }
-                // Serialize json data (required for fetch)
-                const jsonData = JSON.stringify({
-                    'assetDownloadUrl': assetDownloadUrl
-                });
-                for (let h in client._connectionParameters._options.extraHttpHeaders)
-                    headers[h] = client._connectionParameters._options.extraHttpHeaders[h];
-                var response = await client._makeHttpCall({
-                    url: url,
-                    method: 'POST',
-                    data: jsonData,
-                    headers: headers
-                });
+        try {
+          // We need to pass the Authorization header to AEM to download the asset from AEM
+          // as well as authenticating campaign server.
+          // A user token having access to campaign as well as AEM is required
+          if(headers['Authorization'] === undefined || headers['Authorization'] === '' || headers['Authorization'] === 'null') {
+            throw 'Bearer token is missing';
+          }
+          // Serialize json data (required for fetch)
+          const jsonData = JSON.stringify({
+            'assetDownloadUrl': assetDownloadUrl
+          });
+          for (let h in client._connectionParameters._options.extraHttpHeaders)
+            headers[h] = client._connectionParameters._options.extraHttpHeaders[h];
+          var response = await client._makeHttpCall({
+            url: url,
+            method: 'POST',
+            data: jsonData,
+            headers: headers
+          });
 
-                // response is returned as string when using fetch(in browser)
-                // & returned as json using axios(nodejs).
-                if(typeof response === 'string')
-                  response = JSON.parse(response);
-                if(response.publishedURL)
-                  return response;
-                else
-                  throw 'Publishing failed';
-            } catch (ex) {
-                if(ex instanceof CampaignException)
-                    throw CampaignException.AEM_ASSET_UPLOAD_FAILED(ex.faultString, ex.statusCode);
-                else
-                  throw CampaignException.AEM_ASSET_UPLOAD_FAILED(ex, ex.statusCode);
-            }
-        },
+          // response is returned as string when using fetch(in browser)
+          // & returned as json using axios(nodejs).
+          if(typeof response === 'string')
+            response = JSON.parse(response);
+          if(response.publishedURL)
+            return response;
+          else
+            throw 'Publishing failed';
+        } catch (ex) {
+          if(ex instanceof CampaignException)
+            throw CampaignException.AEM_ASSET_UPLOAD_FAILED(ex.faultString, ex.statusCode);
+          else
+            throw CampaignException.AEM_ASSET_UPLOAD_FAILED(ex, ex.statusCode);
+        }
+      },
 
-        /**
+      /**
          * Exposed public method of the fileUploader api,
          * specifically designed to download files from the 'upload' folder of the Campaign instance
          * @param {string} md5 md5 of the file content
@@ -751,64 +753,64 @@ const fileUploader = (client) => {
          * handle this file) expl : image/png, text/plain;charset=ISO-8859-1
          * @returns {Promise<File(string)>}
          */
-        download: async (md5, ext, options) => {
-          if (!md5 || typeof md5 !== 'string') {
-            throw CampaignException.BAD_PARAMETER(
-                "md5",
-                md5,
-                "'md5' is mandatory parameter with type as 'string' for download file."
-              );
-          }
-
-          if (!ext || typeof ext !== "string") {
-            throw CampaignException.BAD_PARAMETER(
-                "ext",
-                ext,
-                "'ext' is mandatory parameter with type as 'string' for download file."
-              );
-          }
-
-          try {
-            const fileName =
-              options && options.fileName ? options.fileName : md5;
-            const contentType =
-              options && options.contentType ? options.contentType : "";
-
-            let queryString = `md5=${encodeURIComponent(md5)}&ext=${encodeURIComponent(ext)}&fileName=${encodeURIComponent(fileName)}`;
-
-            if (contentType) {
-              queryString += `&contentType=${encodeURIComponent(contentType)}`;
-            }
-
-            const headers = client._getAuthHeaders(false);
-            for (let h in client._connectionParameters._options.extraHttpHeaders)
-                headers[h] = client._connectionParameters._options.extraHttpHeaders[h];
-            const rawFileResponse = await client._makeHttpCall({
-              url: `${client._connectionParameters._endpoint}/nl/jsp/downloadFile.jsp?${queryString}`,
-              headers: headers,
-            });
-
-            return rawFileResponse;
-          } catch (ex) {
-            throw CampaignException.FILE_DOWNLOAD_FAILED(md5, ex);
-          }
+      download: async (md5, ext, options) => {
+        if (!md5 || typeof md5 !== 'string') {
+          throw CampaignException.BAD_PARAMETER(
+            "md5",
+            md5,
+            "'md5' is mandatory parameter with type as 'string' for download file."
+          );
         }
 
+        if (!ext || typeof ext !== "string") {
+          throw CampaignException.BAD_PARAMETER(
+            "ext",
+            ext,
+            "'ext' is mandatory parameter with type as 'string' for download file."
+          );
+        }
+
+        try {
+          const fileName =
+              options && options.fileName ? options.fileName : md5;
+          const contentType =
+              options && options.contentType ? options.contentType : "";
+
+          let queryString = `md5=${encodeURIComponent(md5)}&ext=${encodeURIComponent(ext)}&fileName=${encodeURIComponent(fileName)}`;
+
+          if (contentType) {
+            queryString += `&contentType=${encodeURIComponent(contentType)}`;
+          }
+
+          const headers = client._getAuthHeaders(false);
+          for (let h in client._connectionParameters._options.extraHttpHeaders)
+            headers[h] = client._connectionParameters._options.extraHttpHeaders[h];
+          const rawFileResponse = await client._makeHttpCall({
+            url: `${client._connectionParameters._endpoint}/nl/jsp/downloadFile.jsp?${queryString}`,
+            headers: headers,
+          });
+
+          return rawFileResponse;
+        } catch (ex) {
+          throw CampaignException.FILE_DOWNLOAD_FAILED(md5, ex);
+        }
+      }
+
     };
-};
+  };
 
 
-// ========================================================================================
-// ACC Client
-// ========================================================================================
+  // ========================================================================================
+  // ACC Client
+  // ========================================================================================
 
-/**
+  /**
  * @private
  * @class
  * @constructor
  * @memberof Campaign
  */
-class Client {
+  class Client {
 
     /**
      * ACC API Client.
@@ -818,11 +820,11 @@ class Client {
      * @param {Campaign.ConnectionParameters} user user name, for instance admin
      */
     constructor(sdk, connectionParameters) {
-        this.sdk = sdk;
-        this.reinit(connectionParameters);
+      this.sdk = sdk;
+      this.reinit(connectionParameters);
 
-        this._observers = [];
-        this._cacheChangeListeners = [];
+      this._observers = [];
+      this._cacheChangeListeners = [];
     }
 
     /**
@@ -833,91 +835,91 @@ class Client {
      * @param {Campaign.ConnectionParameters} user user name, for instance admin
      */
     reinit(connectionParameters) {
-        this._connectionParameters = connectionParameters; // ## TODO security concern (password kept in memory)
-        this._representation = connectionParameters._options.representation;
+      this._connectionParameters = connectionParameters; // ## TODO security concern (password kept in memory)
+      this._representation = connectionParameters._options.representation;
 
-        this._sessionInfo = undefined;
-        this._sessionToken = undefined;
-        this._securityToken = undefined;
-        this._bearerToken = undefined;      // set when using Bearer authentication and "ImsBearer" credential type
-        this._installedPackages = {};       // package set (key and value = package id, ex: "nms:amp")
+      this._sessionInfo = undefined;
+      this._sessionToken = undefined;
+      this._securityToken = undefined;
+      this._bearerToken = undefined;      // set when using Bearer authentication and "ImsBearer" credential type
+      this._installedPackages = {};       // package set (key and value = package id, ex: "nms:amp")
 
-        this._secretKeyCipher = undefined;
+      this._secretKeyCipher = undefined;
 
-        this._storage = connectionParameters._options._storage;
+      this._storage = connectionParameters._options._storage;
 
-        var instanceKey = connectionParameters._options.instanceKey;
-        if (!instanceKey)
-            instanceKey = connectionParameters._endpoint || "";
-        if (instanceKey.startsWith("http://")) instanceKey = instanceKey.substr(7);
-        if (instanceKey.startsWith("https://")) instanceKey = instanceKey.substr(8);
+      var instanceKey = connectionParameters._options.instanceKey;
+      if (!instanceKey)
+        instanceKey = connectionParameters._endpoint || "";
+      if (instanceKey.startsWith("http://")) instanceKey = instanceKey.substr(7);
+      if (instanceKey.startsWith("https://")) instanceKey = instanceKey.substr(8);
 
-        // Determine the cache root key. There are 3 possible values:
-        // * no value or "default" is the default behavior, i.e. all cache keys are prefixed with "acc.js.sdk.${sdk.getSDKVersion().version}.${instanceKey}.cache."
-        // * "none" (or actually anything else for now), where cache keys are not prefixed by anything
-        const rootKeyType = connectionParameters._options.cacheRootKey;
-        let rootKey = "";
-        if (!rootKeyType || rootKeyType === "default")
-            rootKey = `acc.js.sdk.${this.sdk.getSDKVersion().version}.${instanceKey}.cache.`;
+      // Determine the cache root key. There are 3 possible values:
+      // * no value or "default" is the default behavior, i.e. all cache keys are prefixed with "acc.js.sdk.${sdk.getSDKVersion().version}.${instanceKey}.cache."
+      // * "none" (or actually anything else for now), where cache keys are not prefixed by anything
+      const rootKeyType = connectionParameters._options.cacheRootKey;
+      let rootKey = "";
+      if (!rootKeyType || rootKeyType === "default")
+        rootKey = `acc.js.sdk.${this.sdk.getSDKVersion().version}.${instanceKey}.cache.`;
 
-        // Clear storage cache if the sdk versions or the instances are different
-        if (this._storage && typeof this._storage.removeItem === 'function') {
-          for (let key in this._storage) {
-            if (key.startsWith("acc.js.sdk.") && !key.startsWith(rootKey)) {
-              this._storage.removeItem(key);
-            }
+      // Clear storage cache if the sdk versions or the instances are different
+      if (this._storage && typeof this._storage.removeItem === 'function') {
+        for (let key in this._storage) {
+          if (key.startsWith("acc.js.sdk.") && !key.startsWith(rootKey)) {
+            this._storage.removeItem(key);
           }
         }
+      }
 
-        this._entityCache = new XtkEntityCache(this._storage, `${rootKey}XtkEntityCache`, connectionParameters._options.entityCacheTTL);
-        this._entityCacheRefresher = new CacheRefresher(this._entityCache, this, "xtk:schema", `${rootKey}XtkEntityCache`);
-        this._methodCache = new MethodCache(this._storage, `${rootKey}MethodCache`, connectionParameters._options.methodCacheTTL);
-        this._optionCache = new OptionCache(this._storage, `${rootKey}OptionCache`, connectionParameters._options.optionCacheTTL);
-        this._optionCacheRefresher = new CacheRefresher(this._optionCache, this, "xtk:option", `${rootKey}OptionCache`);
-        this.NLWS = new Proxy(this, clientHandler());
+      this._entityCache = new XtkEntityCache(this._storage, `${rootKey}XtkEntityCache`, connectionParameters._options.entityCacheTTL);
+      this._entityCacheRefresher = new CacheRefresher(this._entityCache, this, "xtk:schema", `${rootKey}XtkEntityCache`);
+      this._methodCache = new MethodCache(this._storage, `${rootKey}MethodCache`, connectionParameters._options.methodCacheTTL);
+      this._optionCache = new OptionCache(this._storage, `${rootKey}OptionCache`, connectionParameters._options.optionCacheTTL);
+      this._optionCacheRefresher = new CacheRefresher(this._optionCache, this, "xtk:option", `${rootKey}OptionCache`);
+      this.NLWS = new Proxy(this, clientHandler());
 
-        this._transport = connectionParameters._options.transport;
-        this._traceAPICalls = connectionParameters._options.traceAPICalls;
-        this._refreshClient = connectionParameters._options.refreshClient;
+      this._transport = connectionParameters._options.transport;
+      this._traceAPICalls = connectionParameters._options.traceAPICalls;
+      this._refreshClient = connectionParameters._options.refreshClient;
 
-        // expose utilities
-        /**
+      // expose utilities
+      /**
          * File Uploader API
          * @type {{upload: (function(*=): Promise<{name: string, md5: string, type: string, size: string, url: string}>)}}
          */
-        this.fileUploader = fileUploader(this);
+      this.fileUploader = fileUploader(this);
 
-        /**
+      /**
          * Accessor to DOM helpers
          * @type {XML.DomUtil}
          */
-        this.DomUtil = DomUtil;
-        /**
+      this.DomUtil = DomUtil;
+      /**
          * Accessor to a XtkCaster
          * @type {XtkCaster}
          */
-        this.XtkCaster = XtkCaster;
-        /**
+      this.XtkCaster = XtkCaster;
+      /**
          * The application object. Only valid when logged
          * @type {Campaign.Application}
          */
-        this.application = null;
+      this.application = null;
 
-        // Context for observability. See logon() function which will fill this context
-        this._lastStatsReport = Date.now();
-        this._observabilityContext = {
-            eventId: 0,
-            client: {
-                sdkVersion: this.sdk.getSDKVersion().version,
-                endpoint: this._connectionParameters._endpoint,
-                createdAt: Date.now(),
-                clientApp: this._connectionParameters._options.clientApp,
-                instanceKey: instanceKey
-            }
-        };
-        if  (this._connectionParameters._credentials) {
-            this._observabilityContext.client.type = this._connectionParameters._credentials.type;
+      // Context for observability. See logon() function which will fill this context
+      this._lastStatsReport = Date.now();
+      this._observabilityContext = {
+        eventId: 0,
+        client: {
+          sdkVersion: this.sdk.getSDKVersion().version,
+          endpoint: this._connectionParameters._endpoint,
+          createdAt: Date.now(),
+          clientApp: this._connectionParameters._options.clientApp,
+          instanceKey: instanceKey
         }
+      };
+      if  (this._connectionParameters._credentials) {
+        this._observabilityContext.client.type = this._connectionParameters._credentials.type;
+      }
     }
 
     /**
@@ -926,7 +928,7 @@ class Client {
      * @param {*} transport
      */
     setTransport(transport) {
-        this._transport = transport;
+      this._transport = transport;
     }
 
     /**
@@ -935,8 +937,8 @@ class Client {
      * @returns {string} the user agent string
      */
     _getUserAgentString() {
-        const version = this.sdk.getSDKVersion();
-        return `${version.name}/${version.version} ${version.description}`;
+      const version = this.sdk.getSDKVersion();
+      return `${version.name}/${version.version} ${version.description}`;
     }
 
     /**
@@ -945,18 +947,18 @@ class Client {
      * @returns {Object} the headers
      */
     _getAuthHeaders(setCookie) {
-        const headers = {};
-        if (this._bearerToken) {
-            headers['Authorization'] = `Bearer ${this._bearerToken}`;
+      const headers = {};
+      if (this._bearerToken) {
+        headers['Authorization'] = `Bearer ${this._bearerToken}`;
+      }
+      else {
+        headers['X-Security-Token'] = this._securityToken;
+        headers['X-Session-Token'] = this._sessionToken;
+        if (setCookie) {
+          headers['Cookie'] = '__sessiontoken=' + this._sessionToken;
         }
-        else {
-            headers['X-Security-Token'] = this._securityToken;
-            headers['X-Session-Token'] = this._sessionToken;
-            if (setCookie) {
-                headers['Cookie'] = '__sessiontoken=' + this._sessionToken;
-            }
-        }
-        return headers;
+      }
+      return headers;
     }
 
     /**
@@ -968,12 +970,12 @@ class Client {
      * @returns {XML.XtkObject} the object converted in the requested representation
      */
     _toRepresentation(xml, representation) {
-        representation = representation || this._representation;
-        if (representation == "xml")
-            return xml;
-        if (representation == "BadgerFish" || representation == "SimpleJson")
-            return DomUtil.toJSON(xml, representation);
-        throw CampaignException.INVALID_REPRESENTATION(this._representation, "Cannot convert XML document to this representation");
+      representation = representation || this._representation;
+      if (representation == "xml")
+        return xml;
+      if (representation == "BadgerFish" || representation == "SimpleJson")
+        return DomUtil.toJSON(xml, representation);
+      throw CampaignException.INVALID_REPRESENTATION(this._representation, "Cannot convert XML document to this representation");
     }
 
     /**
@@ -986,14 +988,14 @@ class Client {
      * @returns {DOMElement} the object converted to XML
      */
     _fromRepresentation(rootName, entity, representation) {
-        representation = representation || this._representation;
-        if (representation == "xml")
-            return entity;
-        if (representation == "BadgerFish" || representation == "SimpleJson") {
-            var xml = DomUtil.fromJSON(rootName, entity, representation);
-            return xml;
-        }
-        throw CampaignException.INVALID_REPRESENTATION(this._representation, "Cannot convert to XML from this representation");
+      representation = representation || this._representation;
+      if (representation == "xml")
+        return entity;
+      if (representation == "BadgerFish" || representation == "SimpleJson") {
+        var xml = DomUtil.fromJSON(rootName, entity, representation);
+        return xml;
+      }
+      throw CampaignException.INVALID_REPRESENTATION(this._representation, "Cannot convert to XML from this representation");
     }
 
     /**
@@ -1006,12 +1008,12 @@ class Client {
      * @returns {DOMElement} the converted object
      */
     _convertToRepresentation(entity, fromRepresentation, toRepresentation) {
-        toRepresentation = toRepresentation || this._representation;
-        if (this._isSameRepresentation(fromRepresentation, toRepresentation))
-            return entity;
-        var xml = this._fromRepresentation("root", entity, fromRepresentation);
-        entity = this._toRepresentation(xml, toRepresentation);
+      toRepresentation = toRepresentation || this._representation;
+      if (this._isSameRepresentation(fromRepresentation, toRepresentation))
         return entity;
+      var xml = this._fromRepresentation("root", entity, fromRepresentation);
+      entity = this._toRepresentation(xml, toRepresentation);
+      return entity;
     }
 
     /**
@@ -1023,11 +1025,11 @@ class Client {
      * @returns a boolean indicating if the 2 representations are the same or not
      */
     _isSameRepresentation(rep1, rep2) {
-        if (!rep1 || !rep2) throw CampaignException.INVALID_REPRESENTATION(undefined, "Cannot compare to undefined representation");
-        if (rep1 != "xml" && rep1 != "SimpleJson" && rep1 != "BadgerFish") throw CampaignException.INVALID_REPRESENTATION(rep1, "Cannot compare to invalid representation");
-        if (rep2 != "xml" && rep2 != "SimpleJson" && rep2 != "BadgerFish") throw CampaignException.INVALID_REPRESENTATION(rep2, "Cannot compare to invalid representation");
-        if (rep1 == rep2) return true;
-        return rep1 == rep2;
+      if (!rep1 || !rep2) throw CampaignException.INVALID_REPRESENTATION(undefined, "Cannot compare to undefined representation");
+      if (rep1 != "xml" && rep1 != "SimpleJson" && rep1 != "BadgerFish") throw CampaignException.INVALID_REPRESENTATION(rep1, "Cannot compare to invalid representation");
+      if (rep2 != "xml" && rep2 != "SimpleJson" && rep2 != "BadgerFish") throw CampaignException.INVALID_REPRESENTATION(rep2, "Cannot compare to invalid representation");
+      if (rep1 == rep2) return true;
+      return rep1 == rep2;
     }
 
     /**
@@ -1036,7 +1038,7 @@ class Client {
      * @param {boolean} trace indicates whether to activate tracing or not
      */
     traceAPICalls(trace) {
-        this._traceAPICalls = !!trace;
+      this._traceAPICalls = !!trace;
     }
 
     /**
@@ -1044,7 +1046,7 @@ class Client {
      * @param {Campaign.Observer} observer
      */
     registerObserver(observer) {
-        this._observers.push(observer);
+      this._observers.push(observer);
     }
 
     /**
@@ -1052,81 +1054,81 @@ class Client {
      * @param {Campaign.Observer} observer
      */
     unregisterObserver(observer) {
-        for (var i=0; i<this._observers.length; i++) {
-            if (this._observers[i] == observer) {
-                this._observers.splice(i, 1);
-                break;
-            }
+      for (var i=0; i<this._observers.length; i++) {
+        if (this._observers[i] == observer) {
+          this._observers.splice(i, 1);
+          break;
         }
+      }
     }
 
     unregisterAllObservers() {
-        this._observers = [];
+      this._observers = [];
     }
 
     _notifyObservers(callback) {
-        this._observers.map((observer) => callback(observer));
+      this._observers.map((observer) => callback(observer));
     }
 
     _trackEvent(eventName, parentEvent, payload, pushDownOptions) {
-        try {
-            if (payload && payload.name === 'CampaignException') {
-                payload = {
-                    detail: payload.detail,
-                    errorCode: payload.errorCode,
-                    faultCode: payload.faultCode,
-                    faultString: payload.faultString,
-                    message: payload.message,
-                    statusCode: payload.statusCode,
-                };
-            }
-            this._observabilityContext.eventId = this._observabilityContext.eventId + 1;
-            const now = Date.now();
-            const event = {
-                client: this._observabilityContext.client,
-                session: this._observabilityContext.session,
-                eventId: this._observabilityContext.eventId,
-                eventName: eventName,
-                payload: payload,
-                timestamp: now,
-            };
-            if (pushDownOptions) {
-                event.pushDownOptions = pushDownOptions;
-            }
-            if (parentEvent) event.parentEventId = parentEvent.eventId;
-            this._notifyObservers((observer) => observer.event && observer.event(event, parentEvent));
-
-            // Regularly report internal stats every 5 mins
-            if ((now - this._lastStatsReport) >= 300000) {
-                this._lastStatsReport = now;
-                this._trackInternalStats();
-            }
-
-            return event;
-        } catch (error) {
-            console.info(`Failed to track observability event`, error);
+      try {
+        if (payload && payload.name === 'CampaignException') {
+          payload = {
+            detail: payload.detail,
+            errorCode: payload.errorCode,
+            faultCode: payload.faultCode,
+            faultString: payload.faultString,
+            message: payload.message,
+            statusCode: payload.statusCode,
+          };
         }
+        this._observabilityContext.eventId = this._observabilityContext.eventId + 1;
+        const now = Date.now();
+        const event = {
+          client: this._observabilityContext.client,
+          session: this._observabilityContext.session,
+          eventId: this._observabilityContext.eventId,
+          eventName: eventName,
+          payload: payload,
+          timestamp: now,
+        };
+        if (pushDownOptions) {
+          event.pushDownOptions = pushDownOptions;
+        }
+        if (parentEvent) event.parentEventId = parentEvent.eventId;
+        this._notifyObservers((observer) => observer.event && observer.event(event, parentEvent));
+
+        // Regularly report internal stats every 5 mins
+        if ((now - this._lastStatsReport) >= 300000) {
+          this._lastStatsReport = now;
+          this._trackInternalStats();
+        }
+
+        return event;
+      } catch (error) {
+        console.info(`Failed to track observability event`, error);
+      }
     }
 
     _trackInternalStats() {
-        this._trackCacheStats('entityCache', this._entityCache);
-        this._trackCacheStats('optionCache', this._optionCache);
-        this._trackCacheStats('methodCache', this._methodCache);
+      this._trackCacheStats('entityCache', this._entityCache);
+      this._trackCacheStats('optionCache', this._optionCache);
+      this._trackCacheStats('methodCache', this._methodCache);
     }
 
     _trackCacheStats(name, cache) {
-        if (!cache || !cache._stats) return;
-        this._trackEvent('CACHE//stats', undefined, {
-            name: name,
-            reads: cache._stats.reads,
-            writes: cache._stats.writes,
-            removals: cache._stats.removals,
-            clears: cache._stats.clears,
-            memoryHits: cache._stats.memoryHits,
-            storageHits: cache._stats.storageHits,
-            loads: cache._stats.loads,
-            saves: cache._stats.saves,
-        });
+      if (!cache || !cache._stats) return;
+      this._trackEvent('CACHE//stats', undefined, {
+        name: name,
+        reads: cache._stats.reads,
+        writes: cache._stats.writes,
+        removals: cache._stats.removals,
+        clears: cache._stats.clears,
+        memoryHits: cache._stats.memoryHits,
+        storageHits: cache._stats.storageHits,
+        loads: cache._stats.loads,
+        saves: cache._stats.saves,
+      });
     }
 
     /**
@@ -1135,36 +1137,36 @@ class Client {
      * @returns {boolean} a boolean indicating if the client is logged or not
      */
     isLogged() {
-        if (!this._connectionParameters._credentials)
-            return false;
+      if (!this._connectionParameters._credentials)
+        return false;
 
-        // If using anonymous credentials => always logged
-        const credentialsType = this._connectionParameters._credentials._type;
-        if (credentialsType == "AnonymousUser")
-            return true;
-        else if (credentialsType == "ImsBearerToken") {
-            return !!this._bearerToken;
-        }
+      // If using anonymous credentials => always logged
+      const credentialsType = this._connectionParameters._credentials._type;
+      if (credentialsType == "AnonymousUser")
+        return true;
+      else if (credentialsType == "ImsBearerToken") {
+        return !!this._bearerToken;
+      }
 
-        // When using bearer token authentication we are considered logged only after
-        // the bearer token has been converted into session token and security token
-        // by method xtk:session#BearerTokenLogon
-        if( credentialsType == "BearerToken")
-            return this._sessionToken != undefined &&
+      // When using bearer token authentication we are considered logged only after
+      // the bearer token has been converted into session token and security token
+      // by method xtk:session#BearerTokenLogon
+      if( credentialsType == "BearerToken")
+        return this._sessionToken != undefined &&
                    this._sessionToken != null &&
                    this._sessionToken != "" &&
                    this._securityToken != undefined &&
                    this._securityToken != null &&
                    this._securityToken != "";
 
-        // with session token authentication, we do not expect a security token
-        // with security token authentication, we do not expect a session token
-        const needsSecurityToken = credentialsType != "SessionToken";
-        const hasSecurityToken = this._securityToken !== null && this._securityToken !== undefined && this._securityToken !== "";
-        const needsSessionToken = credentialsType != "SecurityToken";
-        const hasSessionToken = this._sessionToken !== null && this._sessionToken !== undefined && this._sessionToken !== "";
+      // with session token authentication, we do not expect a security token
+      // with security token authentication, we do not expect a session token
+      const needsSecurityToken = credentialsType != "SessionToken";
+      const hasSecurityToken = this._securityToken !== null && this._securityToken !== undefined && this._securityToken !== "";
+      const needsSessionToken = credentialsType != "SecurityToken";
+      const hasSessionToken = this._sessionToken !== null && this._sessionToken !== undefined && this._sessionToken !== "";
 
-        return (!needsSecurityToken || hasSecurityToken) && (!needsSessionToken || hasSessionToken);
+      return (!needsSecurityToken || hasSecurityToken) && (!needsSessionToken || hasSessionToken);
     }
 
     /**
@@ -1180,29 +1182,29 @@ class Client {
      */
     _prepareSoapCall(urn, method, isStatic, internal, extraHttpHeaders, pushDownOptions) {
 
-        // Send request ID header if enableRequestIdHeader flag is set to true
-        const enableRequestIdHeader = this._connectionParameters._options &&
+      // Send request ID header if enableRequestIdHeader flag is set to true
+      const enableRequestIdHeader = this._connectionParameters._options &&
           this._connectionParameters._options.enableRequestIdHeader;
-        let updatedExtraHttpHeaders = extraHttpHeaders;
-        if (enableRequestIdHeader) {
-          try {
-            const requestId = Util.getUUID();
-            updatedExtraHttpHeaders = Object.assign({}, extraHttpHeaders, {
-              "x-request-id": requestId,
-            });
-          } catch (error) {
-            console.error("Failed to generate request ID", error);
-          }
+      let updatedExtraHttpHeaders = extraHttpHeaders;
+      if (enableRequestIdHeader) {
+        try {
+          const requestId = Util.getUUID();
+          updatedExtraHttpHeaders = Object.assign({}, extraHttpHeaders, {
+            "x-request-id": requestId,
+          });
+        } catch (error) {
+          console.error("Failed to generate request ID", error);
         }
-        const soapCall = new SoapMethodCall(this._transport, urn, method,
-                                            this._sessionToken, this._securityToken,
-                                            this._getUserAgentString(),
-                                            Object.assign({}, this._connectionParameters._options, pushDownOptions),
-                                            updatedExtraHttpHeaders,
-                                            this._bearerToken);
-        soapCall.internal = !!internal;
-        soapCall.isStatic = isStatic;
-        return soapCall;
+      }
+      const soapCall = new SoapMethodCall(this._transport, urn, method,
+        this._sessionToken, this._securityToken,
+        this._getUserAgentString(),
+        Object.assign({}, this._connectionParameters._options, pushDownOptions),
+        updatedExtraHttpHeaders,
+        this._bearerToken);
+      soapCall.internal = !!internal;
+      soapCall.isStatic = isStatic;
+      return soapCall;
     }
 
     /**
@@ -1213,35 +1215,35 @@ class Client {
      * parameters should be set
      */
     async _retrySoapCall(soapCall) {
-        soapCall.retry = false;
-        soapCall._retryCount = soapCall._retryCount + 1;
-        var newClient = await this._refreshClient(this);
-        soapCall.finalize(newClient._soapEndPoint(), newClient);
-        const safeCallData = Util.trim(soapCall.request.data);
+      soapCall.retry = false;
+      soapCall._retryCount = soapCall._retryCount + 1;
+      var newClient = await this._refreshClient(this);
+      soapCall.finalize(newClient._soapEndPoint(), newClient);
+      const safeCallData = Util.trim(soapCall.request.data);
+      if (this._traceAPICalls) {
+        console.log(`RETRY SOAP//request ${safeCallData}`);
+      }
+      const pushDownOptions = soapCall._pushDownOptions;
+      const event = this._trackEvent('SOAP//request', undefined, {
+        urn: soapCall.urn,
+        methodName: soapCall.methodName,
+        internal: soapCall.internal,
+        retry: true,
+        retryCount: soapCall._retryCount,
+        safeCallData: safeCallData,
+      }, pushDownOptions);
+      try {
+        await soapCall.execute();
+        const safeCallResponse = Util.trim(soapCall.response);
         if (this._traceAPICalls) {
-            console.log(`RETRY SOAP//request ${safeCallData}`);
+          console.log(`SOAP//response ${safeCallResponse}`);
         }
-        const pushDownOptions = soapCall._pushDownOptions;
-        const event = this._trackEvent('SOAP//request', undefined, {
-            urn: soapCall.urn,
-            methodName: soapCall.methodName,
-            internal: soapCall.internal,
-            retry: true,
-            retryCount: soapCall._retryCount,
-            safeCallData: safeCallData,
-        }, pushDownOptions);
-        try {
-            await soapCall.execute();
-            const safeCallResponse = Util.trim(soapCall.response);
-            if (this._traceAPICalls) {
-                console.log(`SOAP//response ${safeCallResponse}`);
-            }
-            this._trackEvent('SOAP//response', event, { safeCallResponse: safeCallResponse }, pushDownOptions);
-        } catch(error) {
-            this._trackEvent('SOAP//failure', event, error, pushDownOptions);
-            throw error;
-        }
-        return;
+        this._trackEvent('SOAP//response', event, { safeCallResponse: safeCallResponse }, pushDownOptions);
+      } catch(error) {
+        this._trackEvent('SOAP//failure', event, error, pushDownOptions);
+        throw error;
+      }
+      return;
     }
 
     /**
@@ -1251,7 +1253,7 @@ class Client {
      * @return {string} soap call End point
      */
     _soapEndPoint() {
-        return this._connectionParameters._endpoint + "/nl/jsp/soaprouter.jsp";
+      return this._connectionParameters._endpoint + "/nl/jsp/soaprouter.jsp";
     }
 
     // Serializes parameters for a SOAP call
@@ -1259,88 +1261,88 @@ class Client {
     // @param {DOMDocument} schema is the XML schema of the method call
     // @param {SOAP.SoapMethodCall} soapCall is the SOAP call being performed
     // @param {Campaign.XtkMethodParam[]} inputParameters is the list of input parameters. The first paramater in the array is the "this" parameter for non-static method calls
-    // @param {string} representation is the representation to use to interpret the input parameters
+    // @param {string} representation is the representation to use to interpret the input parameters
     async _writeSoapCallParameters(entitySchemaId, schema, soapCall, inputParameters, representation) {
-        const methodName = soapCall.methodName;
-        var isThisParam = !soapCall.isStatic;
+      const methodName = soapCall.methodName;
+      var isThisParam = !soapCall.isStatic;
 
-        for (const ip of inputParameters) {
-            const type = ip.type;
-            const paramName = ip.name;
-            var paramValue = ip.value;
+      for (const ip of inputParameters) {
+        const type = ip.type;
+        const paramName = ip.name;
+        var paramValue = ip.value;
 
-            if (type == "string")
-                soapCall.writeString(ip.name, XtkCaster.asString(ip.value));    
-            else if (type == "primarykey")
-                soapCall.writeString(ip.name, XtkCaster.asString(ip.value));
-            else if (type == "boolean")
-                soapCall.writeBoolean(ip.name, XtkCaster.asBoolean(ip.value));
-            else if (type == "byte")
-                soapCall.writeByte(ip.name, XtkCaster.asByte(ip.value));
-            else if (type == "short")
-                soapCall.writeShort(ip.name, XtkCaster.asShort(ip.value));
-            else if (type == "int")
-                soapCall.writeLong(ip.name, XtkCaster.asLong(ip.value));
-            else if (type == "long")
-                soapCall.writeLong(ip.name, XtkCaster.asLong(ip.value));
-            else if (type == "int64")
-                soapCall.writeInt64(ip.name, XtkCaster.asInt64(ip.value));
-            else if (type == "datetime")
-                soapCall.writeTimestamp(ip.name, XtkCaster.asTimestamp(ip.value));
-            else if (type == "date")
-                soapCall.writeDate(ip.name, XtkCaster.asDate(ip.value));
-            else if (type == "DOMDocument" || type == "DOMElement") {
-                var docName = undefined;    
-                let paramRepresentation = representation;
-                if (paramValue.__xtkProxy) {
-                    // A xtk proxy object is passed as a parameter. The call context contains the schema so we
-                    // can use it to determine the XML document root (docName)
-                    const paramValueContext = paramValue["."];
-                    paramValue = paramValueContext.object;
-                    const xtkschema = paramValueContext.schemaId;
-                    const index = xtkschema.indexOf(":");
-                    docName = xtkschema.substring(index+1);
-                    paramRepresentation = paramValueContext.representation; // xtk proxy may have it's own representation
-                }
-                else {
-                    // Hack for workflow API. The C++ code checks that the name of the XML element is <variables>. When
-                    // using xml representation at the SDK level, it's ok since the SDK caller will set that. But this does
-                    // not work when using "BadgerFish" representation where we do not know the root element name.
-                    if (entitySchemaId == "xtk:workflow" && paramName == "parameters" && (
-                        methodName == "StartWithParameters" || methodName == "PostEvent" || methodName == "SimulateWithParameters" ||
+        if (type == "string")
+          soapCall.writeString(ip.name, XtkCaster.asString(ip.value));    
+        else if (type == "primarykey")
+          soapCall.writeString(ip.name, XtkCaster.asString(ip.value));
+        else if (type == "boolean")
+          soapCall.writeBoolean(ip.name, XtkCaster.asBoolean(ip.value));
+        else if (type == "byte")
+          soapCall.writeByte(ip.name, XtkCaster.asByte(ip.value));
+        else if (type == "short")
+          soapCall.writeShort(ip.name, XtkCaster.asShort(ip.value));
+        else if (type == "int")
+          soapCall.writeLong(ip.name, XtkCaster.asLong(ip.value));
+        else if (type == "long")
+          soapCall.writeLong(ip.name, XtkCaster.asLong(ip.value));
+        else if (type == "int64")
+          soapCall.writeInt64(ip.name, XtkCaster.asInt64(ip.value));
+        else if (type == "datetime")
+          soapCall.writeTimestamp(ip.name, XtkCaster.asTimestamp(ip.value));
+        else if (type == "date")
+          soapCall.writeDate(ip.name, XtkCaster.asDate(ip.value));
+        else if (type == "DOMDocument" || type == "DOMElement") {
+          var docName = undefined;    
+          let paramRepresentation = representation;
+          if (paramValue.__xtkProxy) {
+            // A xtk proxy object is passed as a parameter. The call context contains the schema so we
+            // can use it to determine the XML document root (docName)
+            const paramValueContext = paramValue["."];
+            paramValue = paramValueContext.object;
+            const xtkschema = paramValueContext.schemaId;
+            const index = xtkschema.indexOf(":");
+            docName = xtkschema.substring(index+1);
+            paramRepresentation = paramValueContext.representation; // xtk proxy may have it's own representation
+          }
+          else {
+            // Hack for workflow API. The C++ code checks that the name of the XML element is <variables>. When
+            // using xml representation at the SDK level, it's ok since the SDK caller will set that. But this does
+            // not work when using "BadgerFish" representation where we do not know the root element name.
+            if (entitySchemaId == "xtk:workflow" && paramName == "parameters" && (
+              methodName == "StartWithParameters" || methodName == "PostEvent" || methodName == "SimulateWithParameters" ||
                         methodName == "SpawnWithParameters" || methodName == "SpawnWithParametersEx") )
-                        docName = "variables";
-                    if (entitySchemaId == "nms:rtEvent" && methodName == "PushEvent")
-                        docName = "rtEvent";
-                    // Try to guess the document name. This is usually available in the xtkschema attribute
-                    var xtkschema = EntityAccessor.getAttributeAsString(paramValue, "xtkschema");
-                    if (!xtkschema) xtkschema = paramValue["@xtkschema"];
-                    if (xtkschema) {
-                        const index = xtkschema.indexOf(":");
-                        docName = xtkschema.substring(index+1);
-                    }
-                    if (!docName) docName = paramName; // Use te parameter name as the XML root element
-                }
-                var xmlValue = this._fromRepresentation(docName, paramValue, paramRepresentation || representation);
-                if (type == "DOMDocument") {
-                    if (isThisParam) {
-                        isThisParam = false;
-                        // The xtk:persist#NewInstance requires a xtkschema attribute which we can compute here
-                        // Actually, we're always adding it, for all non-static methods
-                        const xmlRoot = xmlValue.nodeType === 9 ? xmlValue.documentElement : xmlValue;
-                        if (!xmlRoot.hasAttribute("xtkschema"))
-                            xmlRoot.setAttribute("xtkschema", entitySchemaId);
-                        soapCall.writeDocument("document", xmlValue);
-                    }
-                    else
-                        soapCall.writeDocument(paramName, xmlValue);
-                }
-                else
-                    soapCall.writeElement(paramName, xmlValue);
+              docName = "variables";
+            if (entitySchemaId == "nms:rtEvent" && methodName == "PushEvent")
+              docName = "rtEvent";
+            // Try to guess the document name. This is usually available in the xtkschema attribute
+            var xtkschema = EntityAccessor.getAttributeAsString(paramValue, "xtkschema");
+            if (!xtkschema) xtkschema = paramValue["@xtkschema"];
+            if (xtkschema) {
+              const index = xtkschema.indexOf(":");
+              docName = xtkschema.substring(index+1);
+            }
+            if (!docName) docName = paramName; // Use te parameter name as the XML root element
+          }
+          var xmlValue = this._fromRepresentation(docName, paramValue, paramRepresentation || representation);
+          if (type == "DOMDocument") {
+            if (isThisParam) {
+              isThisParam = false;
+              // The xtk:persist#NewInstance requires a xtkschema attribute which we can compute here
+              // Actually, we're always adding it, for all non-static methods
+              const xmlRoot = xmlValue.nodeType === 9 ? xmlValue.documentElement : xmlValue;
+              if (!xmlRoot.hasAttribute("xtkschema"))
+                xmlRoot.setAttribute("xtkschema", entitySchemaId);
+              soapCall.writeDocument("document", xmlValue);
             }
             else
-                throw CampaignException.BAD_SOAP_PARAMETER(soapCall, paramName, paramValue, `Unsupported parameter type '${type}' for parameter '${paramName}' of method '${methodName}' of schema '${entitySchemaId}`);
+              soapCall.writeDocument(paramName, xmlValue);
+          }
+          else
+            soapCall.writeElement(paramName, xmlValue);
         }
+        else
+          throw CampaignException.BAD_SOAP_PARAMETER(soapCall, paramName, paramValue, `Unsupported parameter type '${type}' for parameter '${paramName}' of method '${methodName}' of schema '${entitySchemaId}`);
+      }
     }
 
     // Deserializes results for a SOAP call
@@ -1348,76 +1350,76 @@ class Client {
     // @param {DOMDocument} schema is the XML schema of the method call
     // @param {SOAP.SoapMethodCall} soapCall is the SOAP call being performed
     // @param {Campaign.XtkMethodParam[]}  outputParameters is the list of output parameters. The first paramater in the array is the "this" parameter for non-static method calls
-    // @param {string} representation is the representation to use to interpret the parameters
+    // @param {string} representation is the representation to use to interpret the parameters
     async _readSoapCallResult(entitySchemaId, schema, soapCall, outputParameters, representation) {
-        const methodName = soapCall.methodName;
-        var isThisParam = !soapCall.isStatic;
-        for (const op of outputParameters) {
-            const type = op.type;
-            const paramName = op.name;
-            var returnValue = op.value;
+      const methodName = soapCall.methodName;
+      var isThisParam = !soapCall.isStatic;
+      for (const op of outputParameters) {
+        const type = op.type;
+        const paramName = op.name;
+        var returnValue = op.value;
 
-            if (isThisParam) {
-                isThisParam = false;
-                // Non static methods, such as xtk:query#SelectAll return a element named "entity" which is the object itself on which
-                // the method is called. This is the new version of the object (in XML form)
-                const entity = soapCall.getEntity();
-                if (entity)
-                    returnValue = this._toRepresentation(entity, representation);
-            }
-            else if (type == "string")
-                returnValue = soapCall.getNextString();
-            else if (type == "primarykey")
-                returnValue = soapCall.getNextPrimaryKey();
-            else if (type == "boolean")
-                returnValue = soapCall.getNextBoolean();
-            else if (type == "byte")
-                returnValue = soapCall.getNextByte();
-            else if (type == "short")
-                returnValue = soapCall.getNextShort();
-            else if (type == "long")
-                returnValue = soapCall.getNextLong();
-            else if (type == "int64")
-                // int64 are represented as strings to make sure no precision is lost
-                returnValue = soapCall.getNextInt64();
-            else if (type == "datetime")
-                returnValue = soapCall.getNextDateTime();
-            else if (type == "date")
-                returnValue = soapCall.getNextDate();
-            else if (type == "DOMDocument") {
-                returnValue = soapCall.getNextDocument();
-                returnValue = this._toRepresentation(returnValue, representation);
-            }
-            else if (type == "DOMElement") {
+        if (isThisParam) {
+          isThisParam = false;
+          // Non static methods, such as xtk:query#SelectAll return a element named "entity" which is the object itself on which
+          // the method is called. This is the new version of the object (in XML form)
+          const entity = soapCall.getEntity();
+          if (entity)
+            returnValue = this._toRepresentation(entity, representation);
+        }
+        else if (type == "string")
+          returnValue = soapCall.getNextString();
+        else if (type == "primarykey")
+          returnValue = soapCall.getNextPrimaryKey();
+        else if (type == "boolean")
+          returnValue = soapCall.getNextBoolean();
+        else if (type == "byte")
+          returnValue = soapCall.getNextByte();
+        else if (type == "short")
+          returnValue = soapCall.getNextShort();
+        else if (type == "long")
+          returnValue = soapCall.getNextLong();
+        else if (type == "int64")
+        // int64 are represented as strings to make sure no precision is lost
+          returnValue = soapCall.getNextInt64();
+        else if (type == "datetime")
+          returnValue = soapCall.getNextDateTime();
+        else if (type == "date")
+          returnValue = soapCall.getNextDate();
+        else if (type == "DOMDocument") {
+          returnValue = soapCall.getNextDocument();
+          returnValue = this._toRepresentation(returnValue, representation);
+        }
+        else if (type == "DOMElement") {
+          returnValue = soapCall.getNextElement();
+          returnValue = this._toRepresentation(returnValue, representation);
+        }
+        else {
+          const schemaName = entitySchemaId.substring(entitySchemaId.indexOf(':') + 1);
+          // type can reference a schema element. The naming convension is that the type name
+          // is {schemaName}{elementNameCamelCase}. For instance, the type "sessionUserInfo"
+          // matches the "userInfo" element of the "xtkSession" schema
+          let element;
+          if (type.substr(0, schemaName.length) == schemaName) {
+            const shortTypeName = type.substr(schemaName.length, 1).toLowerCase() + type.substr(schemaName.length + 1);
+            element = DomUtil.getFirstChildElement(schema, "element");
+            while (element) {
+              if (element.getAttribute("name") == shortTypeName) {
+                // Type found in schema: Process as a DOM element
                 returnValue = soapCall.getNextElement();
                 returnValue = this._toRepresentation(returnValue, representation);
+                break;
+              }
+              element = DomUtil.getNextSiblingElement(element, "element");
             }
-            else {
-                const schemaName = entitySchemaId.substring(entitySchemaId.indexOf(':') + 1);
-                // type can reference a schema element. The naming convension is that the type name
-                // is {schemaName}{elementNameCamelCase}. For instance, the type "sessionUserInfo"
-                // matches the "userInfo" element of the "xtkSession" schema
-                let element;
-                if (type.substr(0, schemaName.length) == schemaName) {
-                    const shortTypeName = type.substr(schemaName.length, 1).toLowerCase() + type.substr(schemaName.length + 1);
-                    element = DomUtil.getFirstChildElement(schema, "element");
-                    while (element) {
-                        if (element.getAttribute("name") == shortTypeName) {
-                            // Type found in schema: Process as a DOM element
-                            returnValue = soapCall.getNextElement();
-                            returnValue = this._toRepresentation(returnValue, representation);
-                            break;
-                        }
-                        element = DomUtil.getNextSiblingElement(element, "element");
-                    }
 
-                }
-                if (!element)
-                    throw CampaignException.UNEXPECTED_SOAP_RESPONSE(soapCall, `Unsupported return type '${type}' for parameter '${paramName}' of method '${methodName}' of schema '${entitySchemaId}'`);
-            }
-            op.value = returnValue;
+          }
+          if (!element)
+            throw CampaignException.UNEXPECTED_SOAP_RESPONSE(soapCall, `Unsupported return type '${type}' for parameter '${paramName}' of method '${methodName}' of schema '${entitySchemaId}'`);
         }
-        soapCall.checkNoMoreArgs();
+        op.value = returnValue;
+      }
+      soapCall.checkNoMoreArgs();
     }
 
     /**
@@ -1432,46 +1434,46 @@ class Client {
      * @param {SOAP.SoapMethodCall} soapCall is the SOAP call being performed
      * @param {Campaign.XtkMethodParam[]}  inputParams is the list of input parameters. The first paramater in the array is the "this" parameter for non-static method calls
      * @param {Campaign.XtkMethodParam[]}  outputParams is the list of output parameters. The first paramater in the array is the "this" parameter for non-static method calls
-     * @param {string} representation is the representation to use to interpret the parameters 
+     * @param {string} representation is the representation to use to interpret the parameters 
      */
     async _makeInterceptableSoapCall(entitySchemaId, schema, soapCall, inputParams, outputParams, representation) {
-        // Call observers and give them a chance to modify the parameters before the call is actually made
-        if (!soapCall.internal) {
-            await this._beforeSoapCall({
-                urn: soapCall.urn,
-                name: soapCall.methodName,
-            }, inputParams, representation);
-        }
+      // Call observers and give them a chance to modify the parameters before the call is actually made
+      if (!soapCall.internal) {
+        await this._beforeSoapCall({
+          urn: soapCall.urn,
+          name: soapCall.methodName,
+        }, inputParams, representation);
+      }
 
-        // Make SOAP call
-        await this._writeSoapCallParameters(entitySchemaId, schema, soapCall, inputParams, representation);
-        await this._makeSoapCall(soapCall);
-        await this._readSoapCallResult(entitySchemaId, schema, soapCall, outputParams, representation);
+      // Make SOAP call
+      await this._writeSoapCallParameters(entitySchemaId, schema, soapCall, inputParams, representation);
+      await this._makeSoapCall(soapCall);
+      await this._readSoapCallResult(entitySchemaId, schema, soapCall, outputParams, representation);
         
-        // Specific handling of query results
-        // https://github.com/adobe/acc-js-sdk/issues/3 
-        if (entitySchemaId === "xtk:queryDef" && soapCall.methodName === "ExecuteQuery") {
-            const returnValue = outputParams[1].value; // first parameter is the "this", second one (index 1) is the query result
-            const emptyResult = Object.keys(returnValue).length == 0;
-            const object = inputParams[0].value; // first parmater is the "this"
-            const operation = EntityAccessor.getAttributeAsString(object, "operation");
-            if (operation == "getIfExists" && emptyResult)
-                outputParams[1].value = null;
-            else if (operation == "select" && emptyResult) {
-                const querySchemaId = EntityAccessor.getAttributeAsString(object, "schema");
-                const index = querySchemaId.indexOf(':');
-                const querySchemaName = querySchemaId.substr(index + 1).replace(':', '_');
-                outputParams[1].value[querySchemaName] = [];
-            }
+      // Specific handling of query results
+      // https://github.com/adobe/acc-js-sdk/issues/3 
+      if (entitySchemaId === "xtk:queryDef" && soapCall.methodName === "ExecuteQuery") {
+        const returnValue = outputParams[1].value; // first parameter is the "this", second one (index 1) is the query result
+        const emptyResult = Object.keys(returnValue).length == 0;
+        const object = inputParams[0].value; // first parmater is the "this"
+        const operation = EntityAccessor.getAttributeAsString(object, "operation");
+        if (operation == "getIfExists" && emptyResult)
+          outputParams[1].value = null;
+        else if (operation == "select" && emptyResult) {
+          const querySchemaId = EntityAccessor.getAttributeAsString(object, "schema");
+          const index = querySchemaId.indexOf(':');
+          const querySchemaName = querySchemaId.substr(index + 1).replace(':', '_');
+          outputParams[1].value[querySchemaName] = [];
         }
+      }
 
-        // Call observers and give them a chance to modify the results
-        if (!soapCall.internal) {
-            await this._afterSoapCall({
-                urn: soapCall.urn,
-                name: soapCall.methodName
-            }, inputParams, representation, outputParams);
-        }
+      // Call observers and give them a chance to modify the results
+      if (!soapCall.internal) {
+        await this._afterSoapCall({
+          urn: soapCall.urn,
+          name: soapCall.methodName
+        }, inputParams, representation, outputParams);
+      }
     }
 
     /**
@@ -1482,233 +1484,233 @@ class Client {
      * @param {SOAP.SoapMethodCall} soapCall the SOAP method to call
      */
     _makeSoapCall(soapCall) {
-        const that = this;
-        if (soapCall.requiresLogon() && !that.isLogged())
-            throw CampaignException.NOT_LOGGED_IN(soapCall, `Cannot execute SOAP call ${soapCall.urn}#${soapCall.methodName}: you are not logged in. Use the Logon function first`);
-        soapCall.finalize(this._soapEndPoint());
+      const that = this;
+      if (soapCall.requiresLogon() && !that.isLogged())
+        throw CampaignException.NOT_LOGGED_IN(soapCall, `Cannot execute SOAP call ${soapCall.urn}#${soapCall.methodName}: you are not logged in. Use the Logon function first`);
+      soapCall.finalize(this._soapEndPoint());
 
-        const safeCallData = Util.trim(soapCall.request.data);
-        if (that._traceAPICalls)
-            console.log(`SOAP//request ${safeCallData}`);
-        that._notifyObservers((observer) => observer.onSOAPCall && observer.onSOAPCall(soapCall, safeCallData) );
+      const safeCallData = Util.trim(soapCall.request.data);
+      if (that._traceAPICalls)
+        console.log(`SOAP//request ${safeCallData}`);
+      that._notifyObservers((observer) => observer.onSOAPCall && observer.onSOAPCall(soapCall, safeCallData) );
 
-        const pushDownOptions = soapCall._pushDownOptions;
-        const event = this._trackEvent('SOAP//request', undefined, {
-            urn: soapCall.urn,
-            methodName: soapCall.methodName,
-            internal: soapCall.internal,
-            retry: false,
-            retryCount: soapCall._retryCount,
-            safeCallData: safeCallData,
-        }, pushDownOptions);
-        return soapCall.execute()
-            .then(() => {
-                const safeCallResponse = Util.trim(soapCall.response);
-                if (that._traceAPICalls)
-                    console.log(`SOAP//response ${safeCallResponse}`);
-                that._notifyObservers((observer) => observer.onSOAPCallSuccess && observer.onSOAPCallSuccess(soapCall, safeCallResponse) );
-                this._trackEvent('SOAP//response', event, { safeCallResponse: safeCallResponse }, pushDownOptions);
-                return Promise.resolve();
-            })
-            .catch((ex) => {
-                if (that._traceAPICalls)
-                    console.log(`SOAP//failure ${ex.toString()}`);
-                that._notifyObservers((observer) => observer.onSOAPCallFailure && observer.onSOAPCallFailure(soapCall, ex) );
-                this._trackEvent('SOAP//failure', event, ex, pushDownOptions);
-                // Call session expiration callback in case of 401
-                if (ex.statusCode == 401 && that._refreshClient && soapCall.retry) {
-                    return this._retrySoapCall(soapCall);
-                }
-                else
-                    return Promise.reject(ex);
-            });
+      const pushDownOptions = soapCall._pushDownOptions;
+      const event = this._trackEvent('SOAP//request', undefined, {
+        urn: soapCall.urn,
+        methodName: soapCall.methodName,
+        internal: soapCall.internal,
+        retry: false,
+        retryCount: soapCall._retryCount,
+        safeCallData: safeCallData,
+      }, pushDownOptions);
+      return soapCall.execute()
+        .then(() => {
+          const safeCallResponse = Util.trim(soapCall.response);
+          if (that._traceAPICalls)
+            console.log(`SOAP//response ${safeCallResponse}`);
+          that._notifyObservers((observer) => observer.onSOAPCallSuccess && observer.onSOAPCallSuccess(soapCall, safeCallResponse) );
+          this._trackEvent('SOAP//response', event, { safeCallResponse: safeCallResponse }, pushDownOptions);
+          return Promise.resolve();
+        })
+        .catch((ex) => {
+          if (that._traceAPICalls)
+            console.log(`SOAP//failure ${ex.toString()}`);
+          that._notifyObservers((observer) => observer.onSOAPCallFailure && observer.onSOAPCallFailure(soapCall, ex) );
+          this._trackEvent('SOAP//failure', event, ex, pushDownOptions);
+          // Call session expiration callback in case of 401
+          if (ex.statusCode == 401 && that._refreshClient && soapCall.retry) {
+            return this._retrySoapCall(soapCall);
+          }
+          else
+            return Promise.reject(ex);
+        });
     }
 
     _onLogon() {
-        this.application = new Application(this);
-        this.application._registerCacheChangeListener();
-        this._observabilityContext.instance = {
-            buildNumber: this.application.buildNumber,
-            version: this.application.version,
-            instanceName: this.application.instanceName,
+      this.application = new Application(this);
+      this.application._registerCacheChangeListener();
+      this._observabilityContext.instance = {
+        buildNumber: this.application.buildNumber,
+        version: this.application.version,
+        instanceName: this.application.instanceName,
+      };
+      if (this.application.operator) {
+        this._observabilityContext.instance.operator = {
+          login: this.application.operator.login,
+          id: this.application.operator.id,
+          timezone: this.application.operator.timezone,
+          rights: this.application.operator.rights,
+          packages: this.application.operator.packages,
         };
-        if (this.application.operator) {
-            this._observabilityContext.instance.operator = {
-                login: this.application.operator.login,
-                id: this.application.operator.id,
-                timezone: this.application.operator.timezone,
-                rights: this.application.operator.rights,
-                packages: this.application.operator.packages,
-            };
-        }
-        this._observabilityContext.session = {
-            logonAt: Date.now(),
-        };
+      }
+      this._observabilityContext.session = {
+        logonAt: Date.now(),
+      };
     }
 
     _onLogoff() {
-        delete this._observabilityContext.instance;
-        delete this._observabilityContext.session;
+      delete this._observabilityContext.instance;
+      delete this._observabilityContext.session;
     }
 
     _updateSessionInfo(sessionInfo, soapCall) {
-        this._sessionInfo = sessionInfo;
-        this._installedPackages = {};
-        const userInfo = DomUtil.findElement(sessionInfo, "userInfo");
-        if (!userInfo)
-            throw CampaignException.UNEXPECTED_SOAP_RESPONSE(soapCall, `userInfo structure missing`);
-        let pack = DomUtil.getFirstChildElement(userInfo, "installed-package");
-        while (pack) {
-            const name = `${DomUtil.getAttributeAsString(pack, "namespace")}:${DomUtil.getAttributeAsString(pack, "name")}`;
-            this._installedPackages[name] = name;
-            pack = DomUtil.getNextSiblingElement(pack);
-        }
+      this._sessionInfo = sessionInfo;
+      this._installedPackages = {};
+      const userInfo = DomUtil.findElement(sessionInfo, "userInfo");
+      if (!userInfo)
+        throw CampaignException.UNEXPECTED_SOAP_RESPONSE(soapCall, `userInfo structure missing`);
+      let pack = DomUtil.getFirstChildElement(userInfo, "installed-package");
+      while (pack) {
+        const name = `${DomUtil.getAttributeAsString(pack, "namespace")}:${DomUtil.getAttributeAsString(pack, "name")}`;
+        this._installedPackages[name] = name;
+        pack = DomUtil.getNextSiblingElement(pack);
+      }
     }
 
     async _fetchSessionInfo() {
-        const userInfoPromise = this.NLWS.xml.xtkSession.getUserInfo();
-        const testPromise = this.test();
-        const all = Promise.all([userInfoPromise, testPromise]);
-        const values = await all;
+      const userInfoPromise = this.NLWS.xml.xtkSession.getUserInfo();
+      const testPromise = this.test();
+      const all = Promise.all([userInfoPromise, testPromise]);
+      const values = await all;
 
-        const sessionInfo = DomUtil.newDocument("sessionInfo");
-        const sessionInfoRoot = sessionInfo.documentElement;
-        const userInfo = sessionInfo.importNode(values[0], true);
-        sessionInfoRoot.appendChild(userInfo);
-        const serverInfo = sessionInfo.createElement('serverInfo');
-        sessionInfoRoot.appendChild(serverInfo);
-        const test = values[1];
-        if (test["date"])
-            serverInfo.setAttribute("serverDate", new Date(Date.parse(test["date"])).toISOString());
-        serverInfo.setAttribute("instanceName", test["instance"]);
-        if (test["version"]) {
-            const versionParts = test["version"].split(".");
-            serverInfo.setAttribute("majNumber", versionParts[0]);
-            serverInfo.setAttribute("minNumber", versionParts[1]);
-            serverInfo.setAttribute("servicePack", versionParts[2]);
-        }
-        let buildNumber = test["build"];
-        // Alternative method to get the build number (not available unless server has been upgraded at least once)
-        if (!buildNumber)
-            buildNumber = await this.getOption("NmsServer_LastPostUpgrade", false);
-        if (!buildNumber)
-            throw CampaignException.UNEXPECTED_SOAP_RESPONSE(undefined, `buildNumber structure missing for both /r/test and NmsServer_LastPostUpgrade option`);
-        serverInfo.setAttribute("buildNumber", buildNumber);
-        return sessionInfoRoot;
+      const sessionInfo = DomUtil.newDocument("sessionInfo");
+      const sessionInfoRoot = sessionInfo.documentElement;
+      const userInfo = sessionInfo.importNode(values[0], true);
+      sessionInfoRoot.appendChild(userInfo);
+      const serverInfo = sessionInfo.createElement('serverInfo');
+      sessionInfoRoot.appendChild(serverInfo);
+      const test = values[1];
+      if (test["date"])
+        serverInfo.setAttribute("serverDate", new Date(Date.parse(test["date"])).toISOString());
+      serverInfo.setAttribute("instanceName", test["instance"]);
+      if (test["version"]) {
+        const versionParts = test["version"].split(".");
+        serverInfo.setAttribute("majNumber", versionParts[0]);
+        serverInfo.setAttribute("minNumber", versionParts[1]);
+        serverInfo.setAttribute("servicePack", versionParts[2]);
+      }
+      let buildNumber = test["build"];
+      // Alternative method to get the build number (not available unless server has been upgraded at least once)
+      if (!buildNumber)
+        buildNumber = await this.getOption("NmsServer_LastPostUpgrade", false);
+      if (!buildNumber)
+        throw CampaignException.UNEXPECTED_SOAP_RESPONSE(undefined, `buildNumber structure missing for both /r/test and NmsServer_LastPostUpgrade option`);
+      serverInfo.setAttribute("buildNumber", buildNumber);
+      return sessionInfoRoot;
     }
 
     /**
      * Login to an instance
      */
     logon() {
-        const that = this;
+      const that = this;
 
-        this.application = null;
-        this._sessionToken = "";
-        this._securityToken = "";
-        this._bearerToken = undefined;
-        const credentials = this._connectionParameters._credentials;
+      this.application = null;
+      this._sessionToken = "";
+      this._securityToken = "";
+      this._bearerToken = undefined;
+      const credentials = this._connectionParameters._credentials;
 
-        const sdkVersion = this.sdk.getSDKVersion();
-        const version = `${sdkVersion.name} ${sdkVersion.version}`;
-        const clientApp = this._connectionParameters._options.clientApp;
-        if (!this._connectionParameters._options.noSDKHeaders) {
-            this._connectionParameters._options.extraHttpHeaders["ACC-SDK-Version"] = version;
-            this._connectionParameters._options.extraHttpHeaders["ACC-SDK-Auth"] = `${credentials._type}`;
-            if (clientApp)
-                this._connectionParameters._options.extraHttpHeaders["ACC-SDK-Client-App"] = clientApp;
+      const sdkVersion = this.sdk.getSDKVersion();
+      const version = `${sdkVersion.name} ${sdkVersion.version}`;
+      const clientApp = this._connectionParameters._options.clientApp;
+      if (!this._connectionParameters._options.noSDKHeaders) {
+        this._connectionParameters._options.extraHttpHeaders["ACC-SDK-Version"] = version;
+        this._connectionParameters._options.extraHttpHeaders["ACC-SDK-Auth"] = `${credentials._type}`;
+        if (clientApp)
+          this._connectionParameters._options.extraHttpHeaders["ACC-SDK-Client-App"] = clientApp;
+      }
+      // See NEO-35259
+      this._connectionParameters._options.extraHttpHeaders['X-Query-Source'] = `${version}${clientApp? "," + clientApp : ""}`;
+
+      this._trackEvent('SDK//logon', undefined, {});
+
+      // Clear session token cookie to ensure we're not inheriting an expired cookie. See NEO-26589
+      if (credentials._type != "SecurityToken" && typeof document != "undefined") {
+        document.cookie = '__sessiontoken=;path=/;';
+      }
+      if (credentials._type == "SessionToken" || credentials._type == "AnonymousUser" || credentials._type == "SessionAndSecurityToken") {
+        that._sessionInfo = undefined;
+        that._installedPackages = {};
+        that._sessionToken = credentials._sessionToken;
+        that._securityToken = credentials._type == "SessionAndSecurityToken" ? credentials._securityToken : "";
+        that._bearerToken = undefined;
+        that._onLogon();
+        return Promise.resolve();
+      }
+      else if (credentials._type == "SecurityToken") {
+        that._sessionInfo = undefined;
+        that._installedPackages = {};
+        that._sessionToken = "";
+        that._securityToken = credentials._securityToken;
+        that._bearerToken = undefined;
+        that._onLogon();
+        return Promise.resolve();
+      }
+      else if (credentials._type == "ImsBearerToken") {
+        that._sessionInfo = undefined;
+        that._installedPackages = {};
+        that._sessionToken = "";
+        that._securityToken = "";
+        that._bearerToken = credentials._bearerToken;
+
+        // With IMS Bearer token, we do not call the Logon or BearerTokenLogon method any more. As a consequence,
+        // we do not have the user and server information returned by those methods, so we need to get the corresponding
+        // information by other means
+        if (!this._connectionParameters._options.sessionInfo) {
+          that._onLogon();
+          return Promise.resolve();
         }
-        // See NEO-35259
-        this._connectionParameters._options.extraHttpHeaders['X-Query-Source'] = `${version}${clientApp? "," + clientApp : ""}`;
-
-        this._trackEvent('SDK//logon', undefined, {});
-
-        // Clear session token cookie to ensure we're not inheriting an expired cookie. See NEO-26589
-        if (credentials._type != "SecurityToken" && typeof document != "undefined") {
-            document.cookie = '__sessiontoken=;path=/;';
-        }
-        if (credentials._type == "SessionToken" || credentials._type == "AnonymousUser" || credentials._type == "SessionAndSecurityToken") {
-            that._sessionInfo = undefined;
-            that._installedPackages = {};
-            that._sessionToken = credentials._sessionToken;
-            that._securityToken = credentials._type == "SessionAndSecurityToken" ? credentials._securityToken : "";
-            that._bearerToken = undefined;
-            that._onLogon();
-            return Promise.resolve();
-        }
-        else if (credentials._type == "SecurityToken") {
-            that._sessionInfo = undefined;
-            that._installedPackages = {};
-            that._sessionToken = "";
-            that._securityToken = credentials._securityToken;
-            that._bearerToken = undefined;
-            that._onLogon();
-            return Promise.resolve();
-        }
-        else if (credentials._type == "ImsBearerToken") {
-            that._sessionInfo = undefined;
-            that._installedPackages = {};
-            that._sessionToken = "";
-            that._securityToken = "";
-            that._bearerToken = credentials._bearerToken;
-
-            // With IMS Bearer token, we do not call the Logon or BearerTokenLogon method any more. As a consequence,
-            // we do not have the user and server information returned by those methods, so we need to get the corresponding
-            // information by other means
-            if (!this._connectionParameters._options.sessionInfo) {
-                that._onLogon();
-                return Promise.resolve();
-            }
-            return that._fetchSessionInfo().then((sessionInfo) => {
-                that._updateSessionInfo(sessionInfo, undefined);
-                that._onLogon();
-            });
-        }
-        else if (credentials._type == "UserPassword" || credentials._type == "BearerToken") {
-            const soapCall = that._prepareSoapCall("xtk:session", credentials._type === "UserPassword" ? "Logon" : "BearerTokenLogon", true, false, this._connectionParameters._options.extraHttpHeaders);
-            // No retry for logon SOAP methods
-            soapCall.retry = false;
-            if (credentials._type == "UserPassword") {
-                const user = credentials._getUser();
-                const password = credentials._getPassword();
-                if (!this._connectionParameters._options.noSDKHeaders)
-                    this._connectionParameters._options.extraHttpHeaders["ACC-SDK-Auth"] = `${credentials._type} ${user}`;
-                soapCall.writeString("login", user);
-                soapCall.writeString("password", password);
-                var parameters = null;
-                if (this._connectionParameters._options.rememberMe) {
-                    parameters = soapCall.createElement("parameters");
-                    parameters.setAttribute("rememberMe", "true");
-                }
-                soapCall.writeElement("parameters", parameters);
-            }
-            else {
-                const bearerToken = credentials._bearerToken;
-                soapCall.writeString("bearerToken", bearerToken);
-            }
-            return this._makeSoapCall(soapCall).then(function() {
-                const sessionToken = soapCall.getNextString();
-                const sessionInfo = soapCall.getNextDocument();
-                that._updateSessionInfo(sessionInfo, soapCall);
-                const securityToken = soapCall.getNextString();
-                soapCall.checkNoMoreArgs();
-                // Sanity check: we should have both a session token and a security token.
-                if (!sessionToken)
-                    throw CampaignException.UNEXPECTED_SOAP_RESPONSE(soapCall, `Logon method succeeded, but no session token was returned`);
-                if (!securityToken)
-                    throw CampaignException.UNEXPECTED_SOAP_RESPONSE(soapCall, `Logon method succeeded, but no security token was returned`);
-                // store member variables after all parameters are decode the ensure atomicity
-                that._sessionToken = sessionToken;
-                that._securityToken = securityToken;
-                that._bearerToken = undefined;
-
-                that._onLogon();
-            });
+        return that._fetchSessionInfo().then((sessionInfo) => {
+          that._updateSessionInfo(sessionInfo, undefined);
+          that._onLogon();
+        });
+      }
+      else if (credentials._type == "UserPassword" || credentials._type == "BearerToken") {
+        const soapCall = that._prepareSoapCall("xtk:session", credentials._type === "UserPassword" ? "Logon" : "BearerTokenLogon", true, false, this._connectionParameters._options.extraHttpHeaders);
+        // No retry for logon SOAP methods
+        soapCall.retry = false;
+        if (credentials._type == "UserPassword") {
+          const user = credentials._getUser();
+          const password = credentials._getPassword();
+          if (!this._connectionParameters._options.noSDKHeaders)
+            this._connectionParameters._options.extraHttpHeaders["ACC-SDK-Auth"] = `${credentials._type} ${user}`;
+          soapCall.writeString("login", user);
+          soapCall.writeString("password", password);
+          var parameters = null;
+          if (this._connectionParameters._options.rememberMe) {
+            parameters = soapCall.createElement("parameters");
+            parameters.setAttribute("rememberMe", "true");
+          }
+          soapCall.writeElement("parameters", parameters);
         }
         else {
-            //throw CampaignException.INVALID_CREDENTIALS_TYPE(credentials._type, "Cannot logon");
-            return Promise.reject(CampaignException.INVALID_CREDENTIALS_TYPE(credentials._type, "Cannot logon"));
+          const bearerToken = credentials._bearerToken;
+          soapCall.writeString("bearerToken", bearerToken);
         }
+        return this._makeSoapCall(soapCall).then(function() {
+          const sessionToken = soapCall.getNextString();
+          const sessionInfo = soapCall.getNextDocument();
+          that._updateSessionInfo(sessionInfo, soapCall);
+          const securityToken = soapCall.getNextString();
+          soapCall.checkNoMoreArgs();
+          // Sanity check: we should have both a session token and a security token.
+          if (!sessionToken)
+            throw CampaignException.UNEXPECTED_SOAP_RESPONSE(soapCall, `Logon method succeeded, but no session token was returned`);
+          if (!securityToken)
+            throw CampaignException.UNEXPECTED_SOAP_RESPONSE(soapCall, `Logon method succeeded, but no security token was returned`);
+          // store member variables after all parameters are decode the ensure atomicity
+          that._sessionToken = sessionToken;
+          that._securityToken = securityToken;
+          that._bearerToken = undefined;
+
+          that._onLogon();
+        });
+      }
+      else {
+        //throw CampaignException.INVALID_CREDENTIALS_TYPE(credentials._type, "Cannot logon");
+        return Promise.reject(CampaignException.INVALID_CREDENTIALS_TYPE(credentials._type, "Cannot logon"));
+      }
     }
 
     /**
@@ -1718,41 +1720,41 @@ class Client {
      * @returns {Campaign.SessionInfo} details about the session
      */
     getSessionInfo(representation) {
-        representation = representation || this._representation;
-        return this._toRepresentation(this._sessionInfo, representation);
+      representation = representation || this._representation;
+      return this._toRepresentation(this._sessionInfo, representation);
     }
 
     /**
      * Logs off from an instance to which one previous logged on using the "logon" call
      */
     logoff() {
-        var that = this;
-        try {
-            if (!that.isLogged()) return;
-            that.application._unregisterCacheChangeListener();
-            that._unregisterAllCacheChangeListeners();
-            this.stopRefreshCaches();
-            const credentials = this._connectionParameters._credentials;
-            if (credentials._type != "SessionToken" && credentials._type != "AnonymousUser") {
-                var soapCall = that._prepareSoapCall("xtk:session", "Logoff", true, false, this._connectionParameters._options.extraHttpHeaders);
-                return this._makeSoapCall(soapCall).then(function() {
-                    that._sessionToken = "";
-                    that._securityToken = "";
-                    that._bearerToken = undefined;
-                    that.application = null;
-                    soapCall.checkNoMoreArgs();
-                });
-            }
-            else {
-                that._sessionToken = "";
-                that._securityToken = "";
-                that._bearerToken = undefined;
-                that.application = null;
-            }
-        } finally {
-            this._trackEvent('SDK//logoff', undefined, {});
-            this._onLogoff();
+      var that = this;
+      try {
+        if (!that.isLogged()) return;
+        that.application._unregisterCacheChangeListener();
+        that._unregisterAllCacheChangeListeners();
+        this.stopRefreshCaches();
+        const credentials = this._connectionParameters._credentials;
+        if (credentials._type != "SessionToken" && credentials._type != "AnonymousUser") {
+          var soapCall = that._prepareSoapCall("xtk:session", "Logoff", true, false, this._connectionParameters._options.extraHttpHeaders);
+          return this._makeSoapCall(soapCall).then(function() {
+            that._sessionToken = "";
+            that._securityToken = "";
+            that._bearerToken = undefined;
+            that.application = null;
+            soapCall.checkNoMoreArgs();
+          });
         }
+        else {
+          that._sessionToken = "";
+          that._securityToken = "";
+          that._bearerToken = undefined;
+          that.application = null;
+        }
+      } finally {
+        this._trackEvent('SDK//logoff', undefined, {});
+        this._onLogoff();
+      }
     }
 
     /**
@@ -1783,59 +1785,59 @@ class Client {
      * @param {string} description the optional description of the option
      */
     async setOption(name, rawValue, description) {
-        // First, read the current option value to make sure we have the right type
-        await this.getOption(name, true);
-        const option = await this._optionCache.getOption(name);
-        // Note: option is never null or undefined there: Campaign will return a value of type 0 and value ""
-        var type = option.type;
-        var value = XtkCaster.as(rawValue, type);
+      // First, read the current option value to make sure we have the right type
+      await this.getOption(name, true);
+      const option = await this._optionCache.getOption(name);
+      // Note: option is never null or undefined there: Campaign will return a value of type 0 and value ""
+      var type = option.type;
+      var value = XtkCaster.as(rawValue, type);
 
-        // Document attribute for value depends on value type
-        var attName = XtkCaster._variantStorageAttribute(type);
-        if (!attName) {
-            // could not infer the storage type of the attribute to use to store the value (when option did not exist before) => assume string
-            type = 6;
-            attName = "stringValue";
-        }
-        var doc = { xtkschema: "xtk:option", _operation: "insertOrUpdate", _key: "@name", name: name, dataType: type };
-        if (description != null && description != undefined)
-            doc.description = description;
-        doc[attName] = value;
-        await this.NLWS.xtkSession.write(doc);
-        // Once set, cache the value
-        await this._optionCache.put(name, [value, type]);
+      // Document attribute for value depends on value type
+      var attName = XtkCaster._variantStorageAttribute(type);
+      if (!attName) {
+        // could not infer the storage type of the attribute to use to store the value (when option did not exist before) => assume string
+        type = 6;
+        attName = "stringValue";
+      }
+      var doc = { xtkschema: "xtk:option", _operation: "insertOrUpdate", _key: "@name", name: name, dataType: type };
+      if (description != null && description != undefined)
+        doc.description = description;
+      doc[attName] = value;
+      await this.NLWS.xtkSession.write(doc);
+      // Once set, cache the value
+      await this._optionCache.put(name, [value, type]);
     }
 
     /**
      * Clears the options cache
      */
     async clearOptionCache() {
-        await this._optionCache.clear();
+      await this._optionCache.clear();
     }
 
     /**
      * Clears the method cache
      */
     async clearMethodCache() {
-        await this._methodCache.clear();
+      await this._methodCache.clear();
     }
 
     /**
      * Clears the entity cache
      */
     async clearEntityCache() {
-        await this._entityCache.clear();
+      await this._entityCache.clear();
     }
 
     /**
      * Clears all caches (options, methods, entities)
      */
     async clearAllCaches() {
-        return Promise.all([
-            this.clearEntityCache(),
-            this.clearMethodCache(),
-            this.clearOptionCache(),
-        ]);
+      return Promise.all([
+        this.clearEntityCache(),
+        this.clearMethodCache(),
+        this.clearOptionCache(),
+      ]);
     }
 
     /**
@@ -1843,43 +1845,43 @@ class Client {
      * @param {integer} refreshFrequency refresh frequency in ms. 10000 ms by default.
      */
     startRefreshCaches(refreshFrequency) {
-        if (refreshFrequency === undefined || refreshFrequency === null)
-            refreshFrequency = 10000;
-        this._optionCacheRefresher.startAutoRefresh(refreshFrequency);
-        // Start auto refresh for entityCache a little later
-        setTimeout(() => { this._entityCacheRefresher.startAutoRefresh(refreshFrequency); }, refreshFrequency/2);
+      if (refreshFrequency === undefined || refreshFrequency === null)
+        refreshFrequency = 10000;
+      this._optionCacheRefresher.startAutoRefresh(refreshFrequency);
+      // Start auto refresh for entityCache a little later
+      setTimeout(() => { this._entityCacheRefresher.startAutoRefresh(refreshFrequency); }, refreshFrequency/2);
     }
     /**
      * Stop auto refresh of all caches
      */
     stopRefreshCaches() {
-        this._optionCacheRefresher.stopAutoRefresh();
-        this._entityCacheRefresher.stopAutoRefresh();
+      this._optionCacheRefresher.stopAutoRefresh();
+      this._entityCacheRefresher.stopAutoRefresh();
     }
 
     // Register a callback to be called when a schema has been modified and should be removed
     // from the caches
     _registerCacheChangeListener(listener) {
-        this._cacheChangeListeners.push(listener);
+      this._cacheChangeListeners.push(listener);
     }
 
     // Unregister a cache change listener
     _unregisterCacheChangeListener(listener) {
-        for (var i = 0; i < this._cacheChangeListeners.length; i++) {
-            if (this._cacheChangeListeners[i] == listener) {
-                this._cacheChangeListeners.splice(i, 1);
-                break;
-            }
+      for (var i = 0; i < this._cacheChangeListeners.length; i++) {
+        if (this._cacheChangeListeners[i] == listener) {
+          this._cacheChangeListeners.splice(i, 1);
+          break;
         }
+      }
     }
 
     // Unregister all cache change listener
     _unregisterAllCacheChangeListeners() {
-        this._cacheChangeListeners = [];
+      this._cacheChangeListeners = [];
     }
 
     _notifyCacheChangeListeners(schemaId) {
-        this._cacheChangeListeners.map((listener) => listener.invalidateCacheItem(schemaId));
+      this._cacheChangeListeners.map((listener) => listener.invalidateCacheItem(schemaId));
     }
 
     /**
@@ -1890,11 +1892,11 @@ class Client {
      * @returns {boolean} a boolean indicating if the package is installed or not
      */
     hasPackage(packageId, optionalName) {
-    if (optionalName !== undefined)
+      if (optionalName !== undefined)
         packageId = `${packageId}:${optionalName}`;
-    if (!this.isLogged())
+      if (!this.isLogged())
         throw CampaignException.NOT_LOGGED_IN(undefined, `Cannot call hasPackage: session not connected`);
-    return this._installedPackages[packageId] !== undefined;
+      return this._installedPackages[packageId] !== undefined;
     }
 
     /**
@@ -1905,12 +1907,12 @@ class Client {
      * @deprecated since version 1.0.0
      */
     async _getSecretKeyCipher() {
-        var that = this;
-        if (this._secretKeyCipher) return this._secretKeyCipher;
-        return that.getOption("XtkSecretKey").then(function(secretKey) {
-            that._secretKeyCipher = new Cipher(secretKey);
-            return that._secretKeyCipher;
-        });
+      var that = this;
+      if (this._secretKeyCipher) return this._secretKeyCipher;
+      return that.getOption("XtkSecretKey").then(function(secretKey) {
+        that._secretKeyCipher = new Cipher(secretKey);
+        return that._secretKeyCipher;
+      });
     }
 
     /**
@@ -1926,17 +1928,17 @@ class Client {
      * @return {XML.XtkObject} A DOM or JSON representation of the entity, or null if the entity is not found
      */
     async getEntityIfMoreRecent(entityType, fullName, representation, internal) {
-        const soapCall = this._prepareSoapCall("xtk:persist", "GetEntityIfMoreRecent", true, internal, this._connectionParameters._options.extraHttpHeaders);
-        const inputParams = [
-            { name: "pk", type: "string", value: entityType + "|" + fullName },
-            { name: "md5", type: "string", value: "" },
-            { name: "mustExist", type: "boolean", value: false },
-        ];
-        const outputParams = [
-            { name: "doc", type: "DOMDocument" },
-        ];
-        await this._makeInterceptableSoapCall("xtk:session", undefined, soapCall, inputParams, outputParams, representation);
-        return outputParams[0].value;
+      const soapCall = this._prepareSoapCall("xtk:persist", "GetEntityIfMoreRecent", true, internal, this._connectionParameters._options.extraHttpHeaders);
+      const inputParams = [
+        { name: "pk", type: "string", value: entityType + "|" + fullName },
+        { name: "md5", type: "string", value: "" },
+        { name: "mustExist", type: "boolean", value: false },
+      ];
+      const outputParams = [
+        { name: "doc", type: "DOMDocument" },
+      ];
+      await this._makeInterceptableSoapCall("xtk:session", undefined, soapCall, inputParams, outputParams, representation);
+      return outputParams[0].value;
     }
 
     /**
@@ -1950,7 +1952,7 @@ class Client {
      * @see {@link Campaign.XtkSchema}
      */
     newSchema(xml) {
-        return newSchema(xml, this.application);
+      return newSchema(xml, this.application);
     }
 
     /**
@@ -1963,71 +1965,71 @@ class Client {
      * @returns {XML.XtkObject}  the schema definition, as either a DOM document or a JSON object
      */
     async getSchema(schemaId, representation, internal, withoutCache = false) {
-        // Support for Orchestrated Campaign XDM schemas (do not use cache)
-        const pipeIndex = schemaId.indexOf("|");
-        if( pipeIndex != -1 && schemaId.startsWith("xdm:") ) {
-            const entityType = schemaId.substring(0, pipeIndex);
-            schemaId = schemaId.substring(pipeIndex + 1);
-            const entity = await this.getEntityIfMoreRecent(entityType, schemaId, representation, internal);
-            return entity;
-        }
-        var entity = await this._entityCache.get("xtk:schema", schemaId);
-        if (!entity || withoutCache) {
-              // special case of "temp:group:*" schemas for nms:group
-              // Schema "temp:group:*" is not cached because life cycle of this kind of schema is not the same as the others schemas
-              if (schemaId.startsWith("temp:group:")) {
-                  const parts = schemaId.split(":");
-                  let queryDef = {
-                    "schema": "nms:group",
-                    "operation": "get",
-                    "select": {
-                      "node": [
-                        { "expr": "@id" },
-                        { "expr": "extension" }
-                      ]
-                    },
-                    "where": {
-                      "condition": [
-                        { "expr": "@id=" + XtkCaster.asLong(parts[2]) }
-                      ]
-                    }
-                  };
-                  // Convert to current representation
-                  queryDef = this._convertToRepresentation(queryDef, "SimpleJson", "xml");
-                  const query = this.NLWS.xml.xtkQueryDef.create(queryDef);
-                  try {
-                      const groupSchema = await query.executeQuery();
-                      const extension = DomUtil.findElement(groupSchema, "extension");
-                      if (extension) {
-                          entity = extension;
-                      } else {
-                          entity = null;
-                      }
-                  } catch (ex) {
-                      if (ex.name == 'CampaignException' && ex.errorCode == 'SOP-330011') {
-                          entity = null;
-                      } else {
-                          throw ex;
-                      }
-                  }
-              } else {
-                  entity = await this.getEntityIfMoreRecent("xtk:schema", schemaId, "xml", internal);
-                  if (entity) {
-                      const impls = DomUtil.getAttributeAsString(entity, "implements");
-                      if (impls === "xtk:persist" && schemaId !== "xtk:session" && schemaId !== "xtk:persist") {
-                          // Ensure xtk:persist is present by loading the xtk:session schema
-                          const xtkSession = await this.getSchema("xtk:session", "xml", true);
-                          // it is possible that methodCache content has not be loaded in memory
-                          // so we re-put the methods 
-                          await this._methodCache.put(xtkSession);
-                      }
-                      await this._entityCache.put("xtk:schema", schemaId, entity);
-                      await this._methodCache.put(entity);
-                  }
-            }
-        }
-        entity = this._toRepresentation(entity, representation);
+      // Support for Orchestrated Campaign XDM schemas (do not use cache)
+      const pipeIndex = schemaId.indexOf("|");
+      if( pipeIndex != -1 && schemaId.startsWith("xdm:") ) {
+        const entityType = schemaId.substring(0, pipeIndex);
+        schemaId = schemaId.substring(pipeIndex + 1);
+        const entity = await this.getEntityIfMoreRecent(entityType, schemaId, representation, internal);
         return entity;
+      }
+      var entity = await this._entityCache.get("xtk:schema", schemaId);
+      if (!entity || withoutCache) {
+        // special case of "temp:group:*" schemas for nms:group
+        // Schema "temp:group:*" is not cached because life cycle of this kind of schema is not the same as the others schemas
+        if (schemaId.startsWith("temp:group:")) {
+          const parts = schemaId.split(":");
+          let queryDef = {
+            "schema": "nms:group",
+            "operation": "get",
+            "select": {
+              "node": [
+                { "expr": "@id" },
+                { "expr": "extension" }
+              ]
+            },
+            "where": {
+              "condition": [
+                { "expr": "@id=" + XtkCaster.asLong(parts[2]) }
+              ]
+            }
+          };
+          // Convert to current representation
+          queryDef = this._convertToRepresentation(queryDef, "SimpleJson", "xml");
+          const query = this.NLWS.xml.xtkQueryDef.create(queryDef);
+          try {
+            const groupSchema = await query.executeQuery();
+            const extension = DomUtil.findElement(groupSchema, "extension");
+            if (extension) {
+              entity = extension;
+            } else {
+              entity = null;
+            }
+          } catch (ex) {
+            if (ex.name == 'CampaignException' && ex.errorCode == 'SOP-330011') {
+              entity = null;
+            } else {
+              throw ex;
+            }
+          }
+        } else {
+          entity = await this.getEntityIfMoreRecent("xtk:schema", schemaId, "xml", internal);
+          if (entity) {
+            const impls = DomUtil.getAttributeAsString(entity, "implements");
+            if (impls === "xtk:persist" && schemaId !== "xtk:session" && schemaId !== "xtk:persist") {
+              // Ensure xtk:persist is present by loading the xtk:session schema
+              const xtkSession = await this.getSchema("xtk:session", "xml", true);
+              // it is possible that methodCache content has not be loaded in memory
+              // so we re-put the methods 
+              await this._methodCache.put(xtkSession);
+            }
+            await this._entityCache.put("xtk:schema", schemaId, entity);
+            await this._methodCache.put(entity);
+          }
+        }
+      }
+      entity = this._toRepresentation(entity, representation);
+      return entity;
     }
 
     /**
@@ -2039,37 +2041,37 @@ class Client {
      */
     async getSysEnum(enumName, optionalStartSchemaOrSchemaName) {
 
-        // Called with one parameter: enumName must be the fully qualified enumeration name
-        // as <namespace>:<schema>:<enum>, for instance "nms:extAccount:encryptionType"
-        if (!optionalStartSchemaOrSchemaName) {
-            const index = enumName.lastIndexOf(':');
-            if (index == -1)
-                throw CampaignException.BAD_PARAMETER("enumName", enumName, `getEnum expects a fully qualified enumeration name. '${enumName}' is not a valid name.`);
-            optionalStartSchemaOrSchemaName = enumName.substring(0, index);
-            enumName = enumName.substring(index + 1);
-        }
+      // Called with one parameter: enumName must be the fully qualified enumeration name
+      // as <namespace>:<schema>:<enum>, for instance "nms:extAccount:encryptionType"
+      if (!optionalStartSchemaOrSchemaName) {
+        const index = enumName.lastIndexOf(':');
+        if (index == -1)
+          throw CampaignException.BAD_PARAMETER("enumName", enumName, `getEnum expects a fully qualified enumeration name. '${enumName}' is not a valid name.`);
+        optionalStartSchemaOrSchemaName = enumName.substring(0, index);
+        enumName = enumName.substring(index + 1);
+      }
 
-        if (!optionalStartSchemaOrSchemaName || optionalStartSchemaOrSchemaName == "")
-            throw CampaignException.BAD_PARAMETER("enumName", enumName, `getEnum needs a schema id.`);
+      if (!optionalStartSchemaOrSchemaName || optionalStartSchemaOrSchemaName == "")
+        throw CampaignException.BAD_PARAMETER("enumName", enumName, `getEnum needs a schema id.`);
 
-        // If we have a schema name (and not a schema), then lookup the schema by name
-        if (typeof optionalStartSchemaOrSchemaName == "string") {
-            const index = optionalStartSchemaOrSchemaName.lastIndexOf(':');
-            if (index == -1)
-                throw CampaignException.BAD_PARAMETER("optionalStartSchemaOrSchemaName", optionalStartSchemaOrSchemaName, `getEnum expects a valid schema name. '${optionalStartSchemaOrSchemaName}' is not a valid name.`);
-            optionalStartSchemaOrSchemaName = await this.getSchema(optionalStartSchemaOrSchemaName, undefined, true);
-            if (!optionalStartSchemaOrSchemaName)
-                throw CampaignException.BAD_PARAMETER("optionalStartSchemaOrSchemaName", optionalStartSchemaOrSchemaName, `Schema '${optionalStartSchemaOrSchemaName}' not found.`);
-        }
-        else
-            throw CampaignException.BAD_PARAMETER("optionalStartSchemaOrSchemaName", optionalStartSchemaOrSchemaName, `getEnum expects a valid schema name wich is a string. Given ${typeof optionalStartSchemaOrSchemaName} instead`);
+      // If we have a schema name (and not a schema), then lookup the schema by name
+      if (typeof optionalStartSchemaOrSchemaName == "string") {
+        const index = optionalStartSchemaOrSchemaName.lastIndexOf(':');
+        if (index == -1)
+          throw CampaignException.BAD_PARAMETER("optionalStartSchemaOrSchemaName", optionalStartSchemaOrSchemaName, `getEnum expects a valid schema name. '${optionalStartSchemaOrSchemaName}' is not a valid name.`);
+        optionalStartSchemaOrSchemaName = await this.getSchema(optionalStartSchemaOrSchemaName, undefined, true);
+        if (!optionalStartSchemaOrSchemaName)
+          throw CampaignException.BAD_PARAMETER("optionalStartSchemaOrSchemaName", optionalStartSchemaOrSchemaName, `Schema '${optionalStartSchemaOrSchemaName}' not found.`);
+      }
+      else
+        throw CampaignException.BAD_PARAMETER("optionalStartSchemaOrSchemaName", optionalStartSchemaOrSchemaName, `getEnum expects a valid schema name wich is a string. Given ${typeof optionalStartSchemaOrSchemaName} instead`);
 
-        const schema = optionalStartSchemaOrSchemaName;
-        for (const e of EntityAccessor.getChildElements(schema, "enumeration")) {
-            const n = EntityAccessor.getAttributeAsString(e, "name");
-            if (n == enumName)
-                return e;
-        }
+      const schema = optionalStartSchemaOrSchemaName;
+      for (const e of EntityAccessor.getChildElements(schema, "enumeration")) {
+        const n = EntityAccessor.getAttributeAsString(e, "name");
+        if (n == enumName)
+          return e;
+      }
     }
 
     /**
@@ -2082,127 +2084,127 @@ class Client {
      * @returns {*} the SOAP call result. If there's just one output parameter, the value itself will be returned. If not, an array will be returned
      */
     async _callMethod(methodName, callContext, parameters) {
-        const that = this;
-        const schemaId = callContext.schemaId;
+      const that = this;
+      const schemaId = callContext.schemaId;
 
-        var entitySchemaId = schemaId;
-        if (schemaId === 'xtk:jobInterface')
-            entitySchemaId = callContext.entitySchemaId;
+      var entitySchemaId = schemaId;
+      if (schemaId === 'xtk:jobInterface')
+        entitySchemaId = callContext.entitySchemaId;
 
-        // Get the schema which contains the method call. Methods of the xtk:jobInterface interface are handled specificaaly
-        // because xtk:jobInterface is not actually a schema, but just an interface. In practice, it's used as an xtk template
-        // rather that an xtk inheritance mechanism
-        const methodSchemaId = schemaId === 'xtk:jobInterface' ? 'xtk:job' : schemaId;
-        var schema = await that.getSchema(methodSchemaId, "xml", true);
-        if (!schema)
-            throw CampaignException.SOAP_UNKNOWN_METHOD(schemaId, methodName, `Schema '${schemaId}' not found`);
+      // Get the schema which contains the method call. Methods of the xtk:jobInterface interface are handled specificaaly
+      // because xtk:jobInterface is not actually a schema, but just an interface. In practice, it's used as an xtk template
+      // rather that an xtk inheritance mechanism
+      const methodSchemaId = schemaId === 'xtk:jobInterface' ? 'xtk:job' : schemaId;
+      var schema = await that.getSchema(methodSchemaId, "xml", true);
+      if (!schema)
+        throw CampaignException.SOAP_UNKNOWN_METHOD(schemaId, methodName, `Schema '${schemaId}' not found`);
 
-        // Lookup the method to call
-        var method = await that._methodCache.get(methodSchemaId, methodName);
-        if (!method) {
-            // first char of the method name may be lower case (ex: nms:seedMember.getAsModel) but the methodName 
-            // variable has been capitalized. Make an attempt to lookup method name without capitalisation
-            const methodNameLC = methodName.substring(0, 1).toLowerCase() + methodName.substring(1);
-            method = await that._methodCache.get(schemaId, methodNameLC);
-            if (method) methodName = methodNameLC;
-        }
-        if (!method) {
-            await this._methodCache.put(schema);
-            method = await that._methodCache.get(methodSchemaId, methodName);
-        }
-        if (!method)
-            throw CampaignException.SOAP_UNKNOWN_METHOD(schemaId, methodName, `Method '${methodName}' of schema '${schemaId}' not found`);
+      // Lookup the method to call
+      var method = await that._methodCache.get(methodSchemaId, methodName);
+      if (!method) {
+        // first char of the method name may be lower case (ex: nms:seedMember.getAsModel) but the methodName 
+        // variable has been capitalized. Make an attempt to lookup method name without capitalisation
+        const methodNameLC = methodName.substring(0, 1).toLowerCase() + methodName.substring(1);
+        method = await that._methodCache.get(schemaId, methodNameLC);
+        if (method) methodName = methodNameLC;
+      }
+      if (!method) {
+        await this._methodCache.put(schema);
+        method = await that._methodCache.get(methodSchemaId, methodName);
+      }
+      if (!method)
+        throw CampaignException.SOAP_UNKNOWN_METHOD(schemaId, methodName, `Method '${methodName}' of schema '${schemaId}' not found`);
 
-        // Compute the SOAP URN. Again, specically handle xtk:jobInterface as it's not a real schema. The actual entity schema
-        // would be available as the entitySchemaId property of the callContext
-        var urn = schemaId !== 'xtk:jobInterface' ? await that._methodCache.getSoapUrn(schemaId, methodName)
-            : `xtk:jobInterface|${entitySchemaId}`;
+      // Compute the SOAP URN. Again, specically handle xtk:jobInterface as it's not a real schema. The actual entity schema
+      // would be available as the entitySchemaId property of the callContext
+      var urn = schemaId !== 'xtk:jobInterface' ? await that._methodCache.getSoapUrn(schemaId, methodName)
+        : `xtk:jobInterface|${entitySchemaId}`;
 
-        const isStatic = DomUtil.getAttributeAsBoolean(method, "static");
-        var soapCall = that._prepareSoapCall(urn, methodName, isStatic, false, callContext.headers, callContext.pushDownOptions);
+      const isStatic = DomUtil.getAttributeAsBoolean(method, "static");
+      var soapCall = that._prepareSoapCall(urn, methodName, isStatic, false, callContext.headers, callContext.pushDownOptions);
 
-        // If method is called with one parameter which is a function, then we assume it's a hook: the function will return
-        // the actual list of parameters
-        let isfunc = parameters && typeof parameters === "function";
-        if (!isfunc && parameters && parameters.length >= 1 && typeof parameters[0] === "function")
-            isfunc = true;
-        if (isfunc)
-            parameters = parameters[0](method, callContext);
+      // If method is called with one parameter which is a function, then we assume it's a hook: the function will return
+      // the actual list of parameters
+      let isfunc = parameters && typeof parameters === "function";
+      if (!isfunc && parameters && parameters.length >= 1 && typeof parameters[0] === "function")
+        isfunc = true;
+      if (isfunc)
+        parameters = parameters[0](method, callContext);
 
-        // Create input and output parameters arrays. Each array will contain elements for the corresponding parameter name, type and value
-        const inputParams = [];
-        const outputParams = [];
+      // Create input and output parameters arrays. Each array will contain elements for the corresponding parameter name, type and value
+      const inputParams = [];
+      const outputParams = [];
 
-        // For non static methods 
-        //   in case of persistent job: object represents the entity instance
-        //   in case of non-persistent job: object represents job description 
-        // the first output parameters represent the entity itself. The name of the corresponding
-        // parameter is set the the entity schema name.
-        if (!isStatic) {
-            var schemaName = entitySchemaId.substring(entitySchemaId.indexOf(':') + 1);
-            if (!callContext.object)
-                throw CampaignException.SOAP_UNKNOWN_METHOD(schemaId, methodName, `Cannot call non-static method '${methodName}' of schema '${schemaId}' : no object was specified`);
-            inputParams.push({
-                name: schemaName,
-                type: "DOMDocument",
-                value: callContext.object
-            });
+      // For non static methods 
+      //   in case of persistent job: object represents the entity instance
+      //   in case of non-persistent job: object represents job description 
+      // the first output parameters represent the entity itself. The name of the corresponding
+      // parameter is set the the entity schema name.
+      if (!isStatic) {
+        var schemaName = entitySchemaId.substring(entitySchemaId.indexOf(':') + 1);
+        if (!callContext.object)
+          throw CampaignException.SOAP_UNKNOWN_METHOD(schemaId, methodName, `Cannot call non-static method '${methodName}' of schema '${schemaId}' : no object was specified`);
+        inputParams.push({
+          name: schemaName,
+          type: "DOMDocument",
+          value: callContext.object
+        });
+        outputParams.push({
+          name: schemaName,
+          type: "DOMDocument"
+        });
+      }
+
+      // Traverse the <parameters> object and create the corresponding parameter objects
+      const parametersIsArray = (typeof parameters == "object") && parameters.length;
+      const params = DomUtil.getFirstChildElement(method, "parameters");
+      if (params) {
+        var param = DomUtil.getFirstChildElement(params, "param");
+        var paramIndex = 0;
+        while (param) {
+          const inout = DomUtil.getAttributeAsString(param, "inout");
+          const type = DomUtil.getAttributeAsString(param, "type");
+          const paramName = DomUtil.getAttributeAsString(param, "name");
+          const isIn = !inout || inout=="in" || inout=="inout";
+          const isOut = inout=="out" || inout=="inout";
+          if (isIn) {
+            let paramValue = parametersIsArray ? parameters[paramIndex] : parameters;
+            const inputParam = {
+              name: paramName,
+              type: type,
+              value: paramValue
+            };
+            inputParams.push(inputParam);
+            paramIndex = paramIndex + 1;
+          }
+          if (isOut) {
             outputParams.push({
-                name: schemaName,
-                type: "DOMDocument"
+              name: paramName,
+              type: type,
             });
+          }
+          if( !isIn && !isOut) {
+            throw CampaignException.BAD_PARAMETER("inout", inout, `Parameter '${paramName}' of schema '${entitySchemaId}' is not correctly defined as an input or output parameter`);
+          }
+          param = DomUtil.getNextSiblingElement(param, "param");
         }
+      }
 
-        // Traverse the <parameters> object and create the corresponding parameter objects
-        const parametersIsArray = (typeof parameters == "object") && parameters.length;
-        const params = DomUtil.getFirstChildElement(method, "parameters");
-        if (params) {
-            var param = DomUtil.getFirstChildElement(params, "param");
-            var paramIndex = 0;
-            while (param) {
-                const inout = DomUtil.getAttributeAsString(param, "inout");
-                const type = DomUtil.getAttributeAsString(param, "type");
-                const paramName = DomUtil.getAttributeAsString(param, "name");
-                const isIn = !inout || inout=="in" || inout=="inout";
-                const isOut = inout=="out" || inout=="inout";
-                if (isIn) {
-                    let paramValue = parametersIsArray ? parameters[paramIndex] : parameters;
-                    const inputParam = {
-                        name: paramName,
-                        type: type,
-                        value: paramValue
-                    };
-                    inputParams.push(inputParam);
-                    paramIndex = paramIndex + 1;
-                }
-                if (isOut) {
-                    outputParams.push({
-                        name: paramName,
-                        type: type,
-                    });
-                }
-                if( !isIn && !isOut) {
-                    throw CampaignException.BAD_PARAMETER("inout", inout, `Parameter '${paramName}' of schema '${entitySchemaId}' is not correctly defined as an input or output parameter`);
-                }
-                param = DomUtil.getNextSiblingElement(param, "param");
-            }
-        }
-
-        // Make the SOAP call
-        await this._makeInterceptableSoapCall(entitySchemaId, schema, soapCall, inputParams, outputParams, callContext.representation);
+      // Make the SOAP call
+      await this._makeInterceptableSoapCall(entitySchemaId, schema, soapCall, inputParams, outputParams, callContext.representation);
         
-        // Simplify the result when there's 0 or 1 return value
-        if (!isStatic) {
-            const newObject = outputParams.shift().value;
-            if (newObject) callContext.object = newObject;
-        }
-        if (outputParams.length == 0) return null;
-        if (outputParams.length == 1) return outputParams[0].value;
-        const result = [];
-        for (var i=0; i<outputParams.length; i++) {
-            result.push(outputParams[i].value);
-        }
-        return result;
+      // Simplify the result when there's 0 or 1 return value
+      if (!isStatic) {
+        const newObject = outputParams.shift().value;
+        if (newObject) callContext.object = newObject;
+      }
+      if (outputParams.length == 0) return null;
+      if (outputParams.length == 1) return outputParams[0].value;
+      const result = [];
+      for (var i=0; i<outputParams.length; i++) {
+        result.push(outputParams[i].value);
+      }
+      return result;
     }
 
     /**
@@ -2220,48 +2222,48 @@ class Client {
      * In addition, the outputParams array will be modified, and the "value" property of each output param will be set
      */
     async makeSoapCall(urn, methodName, isStatic, inputParams, outputParams, representation) {
-        const soapCall = this._prepareSoapCall(urn, methodName, isStatic, false, 
-          this._connectionParameters._options.extraHttpHeaders);
+      const soapCall = this._prepareSoapCall(urn, methodName, isStatic, false, 
+        this._connectionParameters._options.extraHttpHeaders);
         // To support anonymous SOAP calls, we need to disable the logon check
-        soapCall.requiresLogon = () => false;
-        await this._makeInterceptableSoapCall(urn, null, soapCall, inputParams, outputParams, representation);
-        const results = outputParams.map((o)=> o.value);
-        return results;
+      soapCall.requiresLogon = () => false;
+      await this._makeInterceptableSoapCall(urn, null, soapCall, inputParams, outputParams, representation);
+      const results = outputParams.map((o)=> o.value);
+      return results;
     }
 
     async _makeHttpCall(request) {
-        request.method = request.method || "GET";
-        request.headers = request.headers || [];
-        if (!request.headers['User-Agent'])
-            request.headers['User-Agent'] = this._getUserAgentString();
-        let event;
-        try {
-            const safeCallData = Util.trim(request.data);
-            if (this._traceAPICalls)
-                console.log(`HTTP//request ${request.method} ${request.url}${safeCallData ? " " + safeCallData : ""}`);
-            this._notifyObservers((observer) => observer.onHTTPCall && observer.onHTTPCall(request, safeCallData) );
-            event = this._trackEvent('HTTP//request', undefined, {
-                url: request.url,
-                method: request.method,
-                headers: request.request,
-                safeCallData: safeCallData,
-            });
-            const body = await this._transport(request);
+      request.method = request.method || "GET";
+      request.headers = request.headers || [];
+      if (!request.headers['User-Agent'])
+        request.headers['User-Agent'] = this._getUserAgentString();
+      let event;
+      try {
+        const safeCallData = Util.trim(request.data);
+        if (this._traceAPICalls)
+          console.log(`HTTP//request ${request.method} ${request.url}${safeCallData ? " " + safeCallData : ""}`);
+        this._notifyObservers((observer) => observer.onHTTPCall && observer.onHTTPCall(request, safeCallData) );
+        event = this._trackEvent('HTTP//request', undefined, {
+          url: request.url,
+          method: request.method,
+          headers: request.request,
+          safeCallData: safeCallData,
+        });
+        const body = await this._transport(request);
 
-            const safeCallResponse = Util.trim(body);
-            if (this._traceAPICalls)
-                console.log(`HTTP//response${safeCallResponse ? " " + safeCallResponse : ""}`);
-            this._notifyObservers((observer) => observer.onHTTPCallSuccess && observer.onHTTPCallSuccess(request, safeCallResponse) );
-            this._trackEvent('HTTP//response', event, { safeCallResponse: safeCallResponse });
-            return body;
-        } catch(err) {
-            if (this._traceAPICalls)
-                console.log("HTTP//failure", err);
-            this._notifyObservers((observer) => observer.onHTTPCallFailure && observer.onHTTPCallFailure(request, err) );
-            const ex = makeCampaignException({ request:request, response:err.response }, err);
-            this._trackEvent('HTTP//failure', event, { }, ex);
-            throw ex;
-        }
+        const safeCallResponse = Util.trim(body);
+        if (this._traceAPICalls)
+          console.log(`HTTP//response${safeCallResponse ? " " + safeCallResponse : ""}`);
+        this._notifyObservers((observer) => observer.onHTTPCallSuccess && observer.onHTTPCallSuccess(request, safeCallResponse) );
+        this._trackEvent('HTTP//response', event, { safeCallResponse: safeCallResponse });
+        return body;
+      } catch(err) {
+        if (this._traceAPICalls)
+          console.log("HTTP//failure", err);
+        this._notifyObservers((observer) => observer.onHTTPCallFailure && observer.onHTTPCallFailure(request, err) );
+        const ex = makeCampaignException({ request:request, response:err.response }, err);
+        this._trackEvent('HTTP//failure', event, { }, ex);
+        throw ex;
+      }
     }
 
     /**
@@ -2271,16 +2273,16 @@ class Client {
      * @returns {Campaign.RedirStatus} an object describing the status of the redirection server
      */
     async test() {
-        const request = {
-            url: `${this._connectionParameters._endpoint}/r/test`,
-            headers: {}
-        };
-        for (let h in this._connectionParameters._options.extraHttpHeaders)
-            request.headers[h] = this._connectionParameters._options.extraHttpHeaders[h];
-        const body = await this._makeHttpCall(request);
-        const xml = DomUtil.parse(body);
-        const result = this._toRepresentation(xml);
-        return result;
+      const request = {
+        url: `${this._connectionParameters._endpoint}/r/test`,
+        headers: {}
+      };
+      for (let h in this._connectionParameters._options.extraHttpHeaders)
+        request.headers[h] = this._connectionParameters._options.extraHttpHeaders[h];
+      const body = await this._makeHttpCall(request);
+      const xml = DomUtil.parse(body);
+      const result = this._toRepresentation(xml);
+      return result;
     }
 
     /**
@@ -2289,26 +2291,26 @@ class Client {
      * @returns {Campaign.PingStatus} an object describing the server status
      */
     async ping() {
-        const headers = this._getAuthHeaders(true);
-        const request = {
-            url: `${this._connectionParameters._endpoint}/nl/jsp/ping.jsp`,
-            headers: headers,
-        };
-        for (let h in this._connectionParameters._options.extraHttpHeaders)
-            request.headers[h] = this._connectionParameters._options.extraHttpHeaders[h];
-        const body = await this._makeHttpCall(request);
-        const lines = body.split('\n');
-        const doc = DomUtil.newDocument("ping");
-        const root = doc.documentElement;
-        const status = lines[0].trim();
-        if (status != "") root.setAttribute("status", status);
+      const headers = this._getAuthHeaders(true);
+      const request = {
+        url: `${this._connectionParameters._endpoint}/nl/jsp/ping.jsp`,
+        headers: headers,
+      };
+      for (let h in this._connectionParameters._options.extraHttpHeaders)
+        request.headers[h] = this._connectionParameters._options.extraHttpHeaders[h];
+      const body = await this._makeHttpCall(request);
+      const lines = body.split('\n');
+      const doc = DomUtil.newDocument("ping");
+      const root = doc.documentElement;
+      const status = lines[0].trim();
+      if (status != "") root.setAttribute("status", status);
 
-        if (lines.length > 1) {
-            const timestamp = lines[1].trim();
-            if (timestamp != "") root.setAttribute("timestamp", timestamp);
-        }
-        const result = this._toRepresentation(doc);
-        return result;
+      if (lines.length > 1) {
+        const timestamp = lines[1].trim();
+        if (timestamp != "") root.setAttribute("timestamp", timestamp);
+      }
+      const result = this._toRepresentation(doc);
+      return result;
     }
 
     /**
@@ -2319,33 +2321,33 @@ class Client {
      * @returns {Campaign.ReportContext} an object containing the context data for a specific report
      */
     async getReportData(callContext, representation) {
-        try {
-            if(callContext.formData && callContext.formData.ctx) {
-                var xmlCtx = this._fromRepresentation('ctx', callContext.formData.ctx);
-                callContext.formData.ctx = DomUtil.toXMLString(xmlCtx);
-            }
-            const selectionCount = callContext.selection.split(',').length;
-            
-            const headers = this._getAuthHeaders(false);
-            headers['Content-Type'] = 'application/x-www-form-urlencoded';
-            const request = {
-                url: `${this._connectionParameters._endpoint}/report/${callContext.reportName}?${encodeURI(`_noRender=true&_schema=${callContext.schema}&_context=${callContext.context}&_selection=${callContext.selection}`)}&_selectionCount=${selectionCount}`,
-                headers: headers,
-                method: 'POST',
-                data : qsStringify(callContext.formData)
-            };
-            
-            for (let h in this._connectionParameters._options.extraHttpHeaders)
-                request.headers[h] = this._connectionParameters._options.extraHttpHeaders[h];
-            const body = await this._makeHttpCall(request);
-            if(!body.startsWith("<ctx"))
-                throw CampaignException.FEATURE_NOT_SUPPORTED("Reports Data");
-            const xml = DomUtil.parse(body);
-            const result = this._toRepresentation(xml, representation);
-            return result;
-        } catch(ex) {
-            throw CampaignException.REPORT_FETCH_FAILED(callContext.reportName, ex);
+      try {
+        if(callContext.formData && callContext.formData.ctx) {
+          var xmlCtx = this._fromRepresentation('ctx', callContext.formData.ctx);
+          callContext.formData.ctx = DomUtil.toXMLString(xmlCtx);
         }
+        const selectionCount = callContext.selection.split(',').length;
+            
+        const headers = this._getAuthHeaders(false);
+        headers['Content-Type'] = 'application/x-www-form-urlencoded';
+        const request = {
+          url: `${this._connectionParameters._endpoint}/report/${callContext.reportName}?${encodeURI(`_noRender=true&_schema=${callContext.schema}&_context=${callContext.context}&_selection=${callContext.selection}`)}&_selectionCount=${selectionCount}`,
+          headers: headers,
+          method: 'POST',
+          data : qsStringify(callContext.formData)
+        };
+            
+        for (let h in this._connectionParameters._options.extraHttpHeaders)
+          request.headers[h] = this._connectionParameters._options.extraHttpHeaders[h];
+        const body = await this._makeHttpCall(request);
+        if(!body.startsWith("<ctx"))
+          throw CampaignException.FEATURE_NOT_SUPPORTED("Reports Data");
+        const xml = DomUtil.parse(body);
+        const result = this._toRepresentation(xml, representation);
+        return result;
+      } catch(ex) {
+        throw CampaignException.REPORT_FETCH_FAILED(callContext.reportName, ex);
+      }
     }
 
     /**
@@ -2355,52 +2357,52 @@ class Client {
      * @returns {Campaign.McPingStatus} an object describing Message Center server status
      */
     async mcPing() {
-        const headers = this._getAuthHeaders(true);
-        const request = {
-            url: `${this._connectionParameters._endpoint}/nl/jsp/mcPing.jsp`,
-            headers: headers
-        };
-        for (let h in this._connectionParameters._options.extraHttpHeaders)
-            request.headers[h] = this._connectionParameters._options.extraHttpHeaders[h];
-        const body = await this._makeHttpCall(request);
-        const lines = body.split('\n');
-        const doc = DomUtil.newDocument("ping");
-        const root = doc.documentElement;
-        var status = lines[0].trim();
-        if (status != "") root.setAttribute("status", status);
+      const headers = this._getAuthHeaders(true);
+      const request = {
+        url: `${this._connectionParameters._endpoint}/nl/jsp/mcPing.jsp`,
+        headers: headers
+      };
+      for (let h in this._connectionParameters._options.extraHttpHeaders)
+        request.headers[h] = this._connectionParameters._options.extraHttpHeaders[h];
+      const body = await this._makeHttpCall(request);
+      const lines = body.split('\n');
+      const doc = DomUtil.newDocument("ping");
+      const root = doc.documentElement;
+      var status = lines[0].trim();
+      if (status != "") root.setAttribute("status", status);
 
-        var rtCount;
-        var threshold;
-        if (status == "Error") {
-            const error = lines.length > 1 ? lines[1] : "";
-            root.setAttribute("error", error);
-            const index1 = error.indexOf('(');
-            const index2 = error.indexOf('/');
-            const index3 = error.indexOf(')');
-            if (index1 != -1 && index2 != -1 && index3 != -1) {
-                rtCount = error.substring(index1+1, index2);
-                threshold = error.substring(index2+1, index3);
-            }
+      var rtCount;
+      var threshold;
+      if (status == "Error") {
+        const error = lines.length > 1 ? lines[1] : "";
+        root.setAttribute("error", error);
+        const index1 = error.indexOf('(');
+        const index2 = error.indexOf('/');
+        const index3 = error.indexOf(')');
+        if (index1 != -1 && index2 != -1 && index3 != -1) {
+          rtCount = error.substring(index1+1, index2);
+          threshold = error.substring(index2+1, index3);
         }
-        else {
-            if (lines.length > 1) {
-                const timestamp = lines[1].trim();
-                if (timestamp != "") root.setAttribute("timestamp", timestamp);
-            }
-            if (lines.length > 2) {
-                const queue = lines[2];
-                const index2 = queue.indexOf('/');
-                const index3 = queue.indexOf(' pending events');
-                if (index2 != -1 && index3 != -1) {
-                    rtCount = queue.substring(0, index2);
-                    threshold = queue.substring(index2+1, index3);
-                }
-            }
+      }
+      else {
+        if (lines.length > 1) {
+          const timestamp = lines[1].trim();
+          if (timestamp != "") root.setAttribute("timestamp", timestamp);
         }
-        if (rtCount !== undefined && rtCount.trim() != "") root.setAttribute("eventQueueSize", rtCount);
-        if (threshold !== undefined && rtCount.trim() != "") root.setAttribute("eventQueueMaxSize", threshold);
-        const result = this._toRepresentation(doc);
-        return result;
+        if (lines.length > 2) {
+          const queue = lines[2];
+          const index2 = queue.indexOf('/');
+          const index3 = queue.indexOf(' pending events');
+          if (index2 != -1 && index3 != -1) {
+            rtCount = queue.substring(0, index2);
+            threshold = queue.substring(index2+1, index3);
+          }
+        }
+      }
+      if (rtCount !== undefined && rtCount.trim() != "") root.setAttribute("eventQueueSize", rtCount);
+      if (threshold !== undefined && rtCount.trim() != "") root.setAttribute("eventQueueMaxSize", threshold);
+      const result = this._toRepresentation(doc);
+      return result;
     }
 
     /**
@@ -2409,7 +2411,7 @@ class Client {
      * @returns {Campaign.XtkJobInterface} a job
      */
     jobInterface(soapCallSpec) {
-        return new XtkJobInterface(this, soapCallSpec);
+      return new XtkJobInterface(this, soapCallSpec);
     }
 
     // Calls the beforeSoapCall method on all observers which have this method. Ignore any exception
@@ -2419,17 +2421,17 @@ class Client {
     // @param {Array<*>} inputParameters is an array containing the method parameters
     // @param {string} representation is the representation (SimpleJson, xml, etc.) used for this method and in which the object and parameters are set
     async _beforeSoapCall(method, inputParameters, representation) {
-        if (!representation) representation = this._representation;
-        for (const observer of this._observers) {
-            if (observer.beforeSoapCall) {
-                try {
-                    await observer.beforeSoapCall(method, inputParameters, representation);
-                }
-                catch (any) {
-                    // Ignore errors occuring in observers
-                }
-            }
+      if (!representation) representation = this._representation;
+      for (const observer of this._observers) {
+        if (observer.beforeSoapCall) {
+          try {
+            await observer.beforeSoapCall(method, inputParameters, representation);
+          }
+          catch (any) {
+            // Ignore errors occuring in observers
+          }
         }
+      }
     }
 
     // Calls the afterSoapCall method on all observers which have this method. Ignore any exception
@@ -2440,25 +2442,25 @@ class Client {
     // @param {string} representation is the representation (SimpleJson, xml, etc.) used for this method and in which the object and parameters are set
     // @param {Array<*>} outputParameters an array (possibly) empty of the values returned by the SOAP call
     async _afterSoapCall(method, inputParameters, representation, outputParameters) {
-        if (!representation) representation = this._representation;
-        for (const observer of this._observers) {
-            if (observer.afterSoapCall) {
-                try {
-                    await observer.afterSoapCall(method, inputParameters, representation, outputParameters);
-                }
-                catch (any) {
-                    // Ignore errors occuring in observers
-                }
-            }
+      if (!representation) representation = this._representation;
+      for (const observer of this._observers) {
+        if (observer.afterSoapCall) {
+          try {
+            await observer.afterSoapCall(method, inputParameters, representation, outputParameters);
+          }
+          catch (any) {
+            // Ignore errors occuring in observers
+          }
         }
+      }
     }
-}
+  }
 
 
-// Public exports
-Client.CampaignException = CampaignException;
-exports.Client = Client;
-exports.Credentials = Credentials;
-exports.ConnectionParameters = ConnectionParameters;
+  // Public exports
+  Client.CampaignException = CampaignException;
+  exports.Client = Client;
+  exports.Credentials = Credentials;
+  exports.ConnectionParameters = ConnectionParameters;
 
 })();

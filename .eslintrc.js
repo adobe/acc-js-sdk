@@ -4,8 +4,7 @@ module.exports = {
         "commonjs": true,
         "es2021": true,
         "node": true,
-        "jest": true,
-        circus: true
+        "jest": true
     },
     "extends": "eslint:recommended",
     "parserOptions": {
@@ -13,5 +12,6 @@ module.exports = {
     },
     "rules": {
         "indent": ["error", 2],
+        "no-unused-vars": ["error", { "argsIgnorePattern": "^_" }],
     }
 };

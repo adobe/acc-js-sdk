@@ -10,25 +10,25 @@ OF ANY KIND, either express or implied. See the License for the specific languag
 governing permissions and limitations under the License.
 */
 (function() {
-"use strict";
+  "use strict";
 
-const DomUtil = require('./domUtil.js').DomUtil;
-const { Cache } = require('./cache.js');
+  const DomUtil = require('./domUtil.js').DomUtil;
+  const { Cache } = require('./cache.js');
 
 
-/**********************************************************************************
+  /**********************************************************************************
  * 
  * Caches Xtk Entities (schemas, etc...) 
  * 
  *********************************************************************************/
 
-/**
+  /**
  * @private
  * @class
  * @constructor
  * @memberof Campaign
  */
-class XtkEntityCache extends Cache {
+  class XtkEntityCache extends Cache {
     
     /**
      * A in-memory cache for xtk entities. Not intended to be used directly,
@@ -42,20 +42,20 @@ class XtkEntityCache extends Cache {
      * @param {string} rootKey is an optional root key to use for the storage object
      * @param {number} ttl is the TTL for objects in ms. Defaults to 5 mins
      */
-     constructor(storage, rootKey, ttl) {
-        super(storage, rootKey, ttl, (entityType, entityFullName) => entityType + "|" + entityFullName, (item, serDeser) => {
-            if (serDeser) {
-                if (!item || !item.value) throw Error(`Cannot serialize falsy cached item`);
-                const value = Object.assign({}, item);
-                value.value = DomUtil.toXMLString(item.value);
-                return JSON.stringify(value);
-            }
-            else {
-                const json = JSON.parse(item);
-                json.value = DomUtil.parse(json.value).documentElement;
-                return json;
-            }
-        });
+    constructor(storage, rootKey, ttl) {
+      super(storage, rootKey, ttl, (entityType, entityFullName) => entityType + "|" + entityFullName, (item, serDeser) => {
+        if (serDeser) {
+          if (!item || !item.value) throw Error(`Cannot serialize falsy cached item`);
+          const value = Object.assign({}, item);
+          value.value = DomUtil.toXMLString(item.value);
+          return JSON.stringify(value);
+        }
+        else {
+          const json = JSON.parse(item);
+          json.value = DomUtil.parse(json.value).documentElement;
+          return json;
+        }
+      });
     }
 
     /**
@@ -65,7 +65,7 @@ class XtkEntityCache extends Cache {
      * @returns {*} the cached entity, or undefined if not found
      */
     async get(entityType, entityFullName) {
-        return await super.get(entityType, entityFullName);
+      return await super.get(entityType, entityFullName);
     }
 
     /**
@@ -75,22 +75,22 @@ class XtkEntityCache extends Cache {
      * @param {*} entity is the entity
      */
     async put(entityType, entityFullName, entity) {
-        await super.put(entityType, entityFullName, entity);
-        // For schemas, cache interfaces
-        if (entityType == "xtk:schema") {
-            const namespace = entity.getAttribute("namespace");
-            var interfaceElement = DomUtil.getFirstChildElement(entity, "interface");
-            while (interfaceElement) {
-                const name = `${namespace}:${interfaceElement.getAttribute("name")}`;
-                await super.put(entityType, name, interfaceElement);
-                interfaceElement = DomUtil.getNextSiblingElement(interfaceElement, "interface");
-            }
+      await super.put(entityType, entityFullName, entity);
+      // For schemas, cache interfaces
+      if (entityType == "xtk:schema") {
+        const namespace = entity.getAttribute("namespace");
+        var interfaceElement = DomUtil.getFirstChildElement(entity, "interface");
+        while (interfaceElement) {
+          const name = `${namespace}:${interfaceElement.getAttribute("name")}`;
+          await super.put(entityType, name, interfaceElement);
+          interfaceElement = DomUtil.getNextSiblingElement(interfaceElement, "interface");
         }
+      }
     }
-}
+  }
 
 
-// Public exports
-exports.XtkEntityCache = XtkEntityCache;
+  // Public exports
+  exports.XtkEntityCache = XtkEntityCache;
 
 })();

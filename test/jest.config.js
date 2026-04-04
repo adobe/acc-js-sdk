@@ -28,6 +28,12 @@ module.exports = {
     'jest-junit'
   ],
   testEnvironment: 'node',
+  transform: {
+    '^.+\\.m?js$': 'babel-jest'
+  },
+  transformIgnorePatterns: [
+    '/node_modules/(?!(@exodus|@asamuzakjp|@bramus|@csstools|css-tree|parse5|tough-cookie|baseline-browser-mapping)/)'
+  ],
   setupFilesAfterEnv: [/*
     '<rootDir>/test/jest/jest.setup.js',
     // remove any of the lines below if you don't want to use any of the mocks

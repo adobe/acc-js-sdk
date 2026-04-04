@@ -3,13 +3,34 @@ layout: page
 title: Change Log
 ---
 
+<section class="changelog"><h1>Version 1.2.0</h1>
+  <h2>2026/04/04</h2>
+  <li>
+    <b>Breaking change</b>: the minimum supported Node.js version is now <b>20</b>
+  </li>
+  <li>
+    Bumped <b>jsdom</b> from 20.x to 29.x to fix vulnerabilities (this is the dependency that requires Node.js 20)
+  </li>
+  <li>
+    Added <b>@babel/core</b> and <b>@babel/preset-env</b> to transpile ES module dependencies used by jsdom 29
+  </li>
+  <li>
+    Removed <b>jshint</b> dependency; linting is now done exclusively with ESLint (<b>npm run lint</b>)
+  </li>
+  <li>
+    Updated ESLint configuration to flag unused variables (with underscore-prefixed exceptions)
+  </li>
+  <li>
+    Fixed all warnings and log noise during test runs
+  </li>
+</section>
+
 <section class="changelog"><h1>Version 1.1.62</h1>
-  <h2>2025/09/16</h2>
+  <h2>2026/04/03</h2>
   <li>
     Add enableRequestId option to connection parameters to pass the x-request-id parameter. This was passed by default and causing the SDK to be incompatible with older campaign instances
   </li>
 </section>
-
 
 <section class="changelog"><h1>Version 1.1.61</h1>
   <h2>2025/09/16</h2>

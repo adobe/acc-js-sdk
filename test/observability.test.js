@@ -85,6 +85,7 @@ describe('ACC Client Observability', function () {
     });
 
     it('Should ignore exceptions throws from observer', async () => {
+        const infoSpy = jest.spyOn(console, 'info').mockImplementation(() => {});
         const [client, assertion] = await makeObservableClient({}, (event, parentEvent) => {
             throw new Error("Simulated failure in observer");
         });
@@ -92,6 +93,7 @@ describe('ACC Client Observability', function () {
         // logon will send an observability event, but the error will be logged and ignored
         await client.NLWS.xtkSession.logon();
         expect(assertion.hasObserved("SDK//logon")).toBe(true);
+        infoSpy.mockRestore();
     });
 
     it('Should send internal stats every 5 minutes', async () => {
@@ -188,8 +190,11 @@ describe('ACC Client Observability', function () {
         const start = assertion.getFirstObserved("CACHE_REFRESHER//start");
         expect(start.event).toMatchObject({ eventName:"CACHE_REFRESHER//start", payload:{ cacheSchemaId: "xtk:option", refreshFrequency: 10000 } });
 
-        // No mock implementation => the API call to get modified entities will fail generating a CACHE_REFRESHER//error event
+        // Simulate a failed API call to get modified entities, generating a CACHE_REFRESHER//error event
+        client._transport.mockReturnValueOnce(Promise.reject(new Error("Simulated GetModifiedEntities failure")));
+        const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
         await client._optionCacheRefresher._safeCallAndRefresh();
+        warnSpy.mockRestore();
         expect(assertion.hasObserved("CACHE_REFRESHER//tick")).toBe(true);
         const tick = assertion.getFirstObserved("CACHE_REFRESHER//tick");
         expect(tick.event).toMatchObject({ eventName:"CACHE_REFRESHER//tick", payload:{ cacheSchemaId: "xtk:option" } });

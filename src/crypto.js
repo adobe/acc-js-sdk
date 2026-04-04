@@ -10,39 +10,39 @@ OF ANY KIND, either express or implied. See the License for the specific languag
 governing permissions and limitations under the License.
 */
 (function() {
-"use strict";    
+  "use strict";    
     
-const { Util } = require('./util.js');
+  const { Util } = require('./util.js');
 
 
-/**********************************************************************************
+  /**********************************************************************************
  * 
  * Browser-side implementation of nodejs crypto module
  * 
  *********************************************************************************/
-exports.crypto = {};
+  exports.crypto = {};
 
-/**********************************************************************************
+  /**********************************************************************************
  * 
  * Encryption / Decryption functions
  * Node implementation
  * 
  *********************************************************************************/
-/* istanbul ignore else */
-if (!Util.isBrowser()) {
+  /* istanbul ignore else */
+  if (!Util.isBrowser()) {
 
-  // Expose browser exports for unit testing
-  exports.__browser = { crypto: exports.crypto };
-  delete exports.crypto;
+    // Expose browser exports for unit testing
+    exports.__browser = { crypto: exports.crypto };
+    delete exports.crypto;
 
-  var crypto = require('crypto');
-  const { CampaignException } = require('./campaign.js');
+    var crypto = require('crypto');
+    const { CampaignException } = require('./campaign.js');
 
-  /**
+    /**
    * @namespace Campaign
    */
 
-  /**
+    /**
    * Creates the encryption/decryption object
    * 
    * @private
@@ -52,12 +52,12 @@ if (!Util.isBrowser()) {
    * @param {string} key is the encryption key, coming from the XtkSecretKey or XtkKey option
    * @memberof Campaign
    */
-  class Cipher {
+    class Cipher {
       
       constructor(key) {
-          // ex: "llL97E5mAvLTxgT1fsAH2kjLqZXKCGHfDyR9q0C6Ivs="
-          this.key = Buffer.from(key, 'base64');
-          this.iv = Buffer.from([ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ]);
+        // ex: "llL97E5mAvLTxgT1fsAH2kjLqZXKCGHfDyR9q0C6Ivs="
+        this.key = Buffer.from(key, 'base64');
+        this.iv = Buffer.from([ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ]);
       }
 
       /**
@@ -69,15 +69,15 @@ if (!Util.isBrowser()) {
        * @returns {string} the encrypted password
        */
       encryptPassword(password) {
-          const cipher = crypto.createCipheriv('aes-256-cbc', this.key, this.iv);
-          var buf = Buffer.from(password, 'utf8');
-          var pad = Buffer.alloc(3);
-          buf = Buffer.concat([buf, pad]);
-          var dec1 = cipher.update(buf);
-          var dec2 = cipher.final();
-          var dec = Buffer.concat([dec1, dec2]);
-          dec = "@" + dec.toString('base64');
-          return dec;
+        const cipher = crypto.createCipheriv('aes-256-cbc', this.key, this.iv);
+        var buf = Buffer.from(password, 'utf8');
+        var pad = Buffer.alloc(3);
+        buf = Buffer.concat([buf, pad]);
+        var dec1 = cipher.update(buf);
+        var dec2 = cipher.final();
+        var dec = Buffer.concat([dec1, dec2]);
+        dec = "@" + dec.toString('base64');
+        return dec;
       }
 
 
@@ -98,36 +98,36 @@ if (!Util.isBrowser()) {
       *          {crc} 1 byte
       */
       decryptPassword(password) {
-          if (password === null || password === undefined || password === "")
-              return "";
-          if (password.substr(0, 13) === '__PLAINTEXT__')
-              return password.substr(13);
+        if (password === null || password === undefined || password === "")
+          return "";
+        if (password.substr(0, 13) === '__PLAINTEXT__')
+          return password.substr(13);
           
-          // remove marker
-          if (password[0] !== '@')
-              throw CampaignException.DECRYPT_ERROR();
-          password = password.substr(1);  
+        // remove marker
+        if (password[0] !== '@')
+          throw CampaignException.DECRYPT_ERROR();
+        password = password.substr(1);  
 
-          const decipher = crypto.createDecipheriv('aes-256-cbc', this.key, this.iv);
-          const buf = Buffer.from(password, 'base64');
-          var dec1 = decipher.update(buf);
-          var dec2 = decipher.final(); 
-          var dec = Buffer.concat([dec1, dec2]);
+        const decipher = crypto.createDecipheriv('aes-256-cbc', this.key, this.iv);
+        const buf = Buffer.from(password, 'base64');
+        var dec1 = decipher.update(buf);
+        var dec2 = decipher.final(); 
+        var dec = Buffer.concat([dec1, dec2]);
 
-          // last byte is CRC (check and remove)
-          dec = dec.slice(0, dec.length - 1);
-          // last 2 bytes are salt
-          dec = dec.slice(0, dec.length - 2);
+        // last byte is CRC (check and remove)
+        dec = dec.slice(0, dec.length - 1);
+        // last 2 bytes are salt
+        dec = dec.slice(0, dec.length - 2);
           
-          dec = dec.toString('utf-8');
-          return dec;
+        dec = dec.toString('utf-8');
+        return dec;
       }
 
-  }
+    }
 
-  // Public exports
-  exports.Cipher = Cipher;
-}
+    // Public exports
+    exports.Cipher = Cipher;
+  }
 
 
 })();

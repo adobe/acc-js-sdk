@@ -1,5 +1,15 @@
 # Migration guide
 
+# Version 1.2.0
+
+In version 1.2.0, dependencies have been bumped to their latest versions to fix vulnerabilities. As a consequence, **Node.js version 20 or above is now required** to use the SDK.
+
+The following potentially breaking changes were introduced
+
+* The minimum supported Node.js version is now 20 (previously 14+)
+* Updated `jsdom` to version 29.x which requires Node.js 20+
+* Updated `@babel/core` and `@babel/preset-env` to version 7.29.x
+
 # Version 1.1.0
 
 In version 1.1.0, changes were made in the metadata API. The SDK lets you access schema as JSON objects (method `client.getSchema`) or provides an object model around schemas with typed objects, as in https://experienceleague.adobe.com/developer/campaign-api/api/c-Schema.html, which can be accessed with `application.getSchema`.

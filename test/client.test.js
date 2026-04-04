@@ -150,7 +150,7 @@ describe('ACC Client', function () {
 
         it('Should logon with dummy cookie', async () => {
             /* eslint no-global-assign: "off" */
-            document = {};
+            global.document = {};
             const client = await Mock.makeClient();
             client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
@@ -160,7 +160,7 @@ describe('ACC Client', function () {
             client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
             await client.NLWS.xtkSession.logoff();
             expect(client.isLogged()).toBe(false);
-            document = undefined;
+            global.document = undefined;
         });
 
         it('Should fail if Logon does not return an UserInfo struture', async () => {
@@ -2335,7 +2335,6 @@ describe('ACC Client', function () {
             const connectionParameters = sdk.ConnectionParameters.ofBearerToken("http://acc-sdk:8080",
                                                     "$token$", {refreshClient: refreshClient});
             const client = await sdk.init(connectionParameters);
-            client.traceAPICalls(true);
             client._transport = jest.fn();
             client._transport.mockReturnValueOnce(Mock.BEARER_LOGON_RESPONSE);
             client._transport.mockReturnValueOnce(Promise.resolve(`XSV-350008 Session has expired or is invalid. Please reconnect.`));
@@ -2349,35 +2348,38 @@ describe('ACC Client', function () {
                     </pdomOutput></ExecuteQueryResponse>
                 </SOAP-ENV:Body>
                 </SOAP-ENV:Envelope>`));
-            await client.logon();
-            var queryDef = {
-                "schema": "nms:extAccount",
-                "operation": "select",
-                "select": {
-                    "node": [
-                        { "expr": "@id" },
-                        { "expr": "@name" }
-                    ]
-                }
-            };
-            var query = client.NLWS.xtkQueryDef.create(queryDef);
-            var extAccount = await query.executeQuery();
-            expect(extAccount).toEqual({ extAccount: [] });
-            // Same test as before traceAPICalls = false for code coverage
-            client._transport.mockReturnValueOnce(Promise.resolve(`XSV-350008 Session has expired or is invalid. Please reconnect.`));
-            client._transport.mockReturnValueOnce(Promise.resolve(`<?xml version='1.0'?>
-                <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:xtk:queryDef' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
-                <SOAP-ENV:Body>
-                <ExecuteQueryResponse xmlns='urn:xtk:queryDef' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
-                    <pdomOutput xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
-                    <extAccount-collection/>
-                    </pdomOutput></ExecuteQueryResponse>
-                </SOAP-ENV:Body>
-                </SOAP-ENV:Envelope>`));
-            client.traceAPICalls(false);
-            var query1  = client.NLWS.xtkQueryDef.create(queryDef);
-            const extAccount1 = await query1.executeQuery();
-            expect(extAccount1).toEqual({ extAccount: [] });
+            await Mock.withMockConsole(async () => {
+                client.traceAPICalls(true);
+                await client.logon();
+                var queryDef = {
+                    "schema": "nms:extAccount",
+                    "operation": "select",
+                    "select": {
+                        "node": [
+                            { "expr": "@id" },
+                            { "expr": "@name" }
+                        ]
+                    }
+                };
+                var query = client.NLWS.xtkQueryDef.create(queryDef);
+                var extAccount = await query.executeQuery();
+                expect(extAccount).toEqual({ extAccount: [] });
+                // Same test as before traceAPICalls = false for code coverage
+                client._transport.mockReturnValueOnce(Promise.resolve(`XSV-350008 Session has expired or is invalid. Please reconnect.`));
+                client._transport.mockReturnValueOnce(Promise.resolve(`<?xml version='1.0'?>
+                    <SOAP-ENV:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:ns='urn:xtk:queryDef' xmlns:SOAP-ENV='http://schemas.xmlsoap.org/soap/envelope/'>
+                    <SOAP-ENV:Body>
+                    <ExecuteQueryResponse xmlns='urn:xtk:queryDef' SOAP-ENV:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/'>
+                        <pdomOutput xsi:type='ns:Element' SOAP-ENV:encodingStyle='http://xml.apache.org/xml-soap/literalxml'>
+                        <extAccount-collection/>
+                        </pdomOutput></ExecuteQueryResponse>
+                    </SOAP-ENV:Body>
+                    </SOAP-ENV:Envelope>`));
+                client.traceAPICalls(false);
+                var query1  = client.NLWS.xtkQueryDef.create(queryDef);
+                const extAccount1 = await query1.executeQuery();
+                expect(extAccount1).toEqual({ extAccount: [] });
+            });
         });
 
         it("Expired session refresh client callback for code coverage", async () => {
@@ -2392,7 +2394,6 @@ describe('ACC Client', function () {
             const connectionParameters = sdk.ConnectionParameters.ofBearerToken("http://acc-sdk:8080",
                                                     "$token$", {refreshClient: refreshClient});
             const client = await sdk.init(connectionParameters);
-            client.traceAPICalls(true);
             client._transport = jest.fn();
             client._transport.mockReturnValueOnce(Mock.BEARER_LOGON_RESPONSE);
             client._transport.mockReturnValueOnce(Promise.resolve(`XSV-350008 Session has expired or is invalid. Please reconnect.`));
@@ -2406,20 +2407,23 @@ describe('ACC Client', function () {
                     </pdomOutput></ExecuteQueryResponse>
                 </SOAP-ENV:Body>
                 </SOAP-ENV:Envelope>`));
-            await client.logon();
-            var queryDef = {
-                "schema": "nms:extAccount",
-                "operation": "select",
-                "select": {
-                    "node": [
-                        { "expr": "@id" },
-                        { "expr": "@name" }
-                    ]
-                }
-            };
-            var query = client.NLWS.xtkQueryDef.create(queryDef);
-            var extAccount = await query.executeQuery();
-            expect(extAccount).toEqual({ extAccount: [] });
+            await Mock.withMockConsole(async () => {
+                client.traceAPICalls(true);
+                await client.logon();
+                var queryDef = {
+                    "schema": "nms:extAccount",
+                    "operation": "select",
+                    "select": {
+                        "node": [
+                            { "expr": "@id" },
+                            { "expr": "@name" }
+                        ]
+                    }
+                };
+                var query = client.NLWS.xtkQueryDef.create(queryDef);
+                var extAccount = await query.executeQuery();
+                expect(extAccount).toEqual({ extAccount: [] });
+            });
         });
 
         it("Expired session refresh client callback retry failure", async () => {
@@ -2777,7 +2781,7 @@ describe('ACC Client', function () {
         it("Should support storage key type without version information", async () => {
             // Default has version & instance name
             const version = sdk.getSDKVersion().version; // "${version}" or similar
-            connectionParameters = sdk.ConnectionParameters.ofUserAndPassword("http://acc-sdk:8080", "admin", "admin");
+            let connectionParameters = sdk.ConnectionParameters.ofUserAndPassword("http://acc-sdk:8080", "admin", "admin");
             var client = await sdk.init(connectionParameters);
             expect(client._optionCache._storage._rootKey).toBe(`acc.js.sdk.${version}.acc-sdk:8080.cache.OptionCache$`);
 
@@ -2795,7 +2799,7 @@ describe('ACC Client', function () {
         it("Should support instanceKey", async () => {
             // Default has version & instance name
             const version = sdk.getSDKVersion().version; // "${version}" or similar
-            connectionParameters = sdk.ConnectionParameters.ofUserAndPassword("http://acc-sdk:8080", "admin", "admin");
+            let connectionParameters = sdk.ConnectionParameters.ofUserAndPassword("http://acc-sdk:8080", "admin", "admin");
             connectionParameters = sdk.ConnectionParameters.ofUserAndPassword("http://acc-sdk:8080", "admin", "admin", { instanceKey: "hello" });
             var client = await sdk.init(connectionParameters);
             expect(client._optionCache._storage._rootKey).toBe(`acc.js.sdk.${version}.hello.cache.OptionCache$`);
@@ -2942,7 +2946,6 @@ describe('ACC Client', function () {
             jest.advanceTimersByTime(18000);
             expect(client._entityCacheRefresher._safeCallAndRefresh.mock.calls.length).toBe(1);
             expect(client._optionCacheRefresher._safeCallAndRefresh.mock.calls.length).toBe(1);
-            client.traceAPICalls(true);
             client._transport = jest.fn();
             client._transport.mockReturnValueOnce(Mock.BEARER_LOGON_RESPONSE);
             client._transport.mockReturnValueOnce(Promise.resolve(`XSV-350008 Session has expired or is invalid. Please reconnect.`));
@@ -2956,20 +2959,23 @@ describe('ACC Client', function () {
                     </pdomOutput></ExecuteQueryResponse>
                 </SOAP-ENV:Body>
                 </SOAP-ENV:Envelope>`));
-            await client.logon();
-            var queryDef = {
-                "schema": "nms:extAccount",
-                "operation": "select",
-                "select": {
-                    "node": [
-                        { "expr": "@id" },
-                        { "expr": "@name" }
-                    ]
-                }
-            };
-            var query = client.NLWS.xtkQueryDef.create(queryDef);
-            var extAccount = await query.executeQuery();
-            expect(extAccount).toEqual({ extAccount: [] });
+            await Mock.withMockConsole(async () => {
+                client.traceAPICalls(true);
+                await client.logon();
+                var queryDef = {
+                    "schema": "nms:extAccount",
+                    "operation": "select",
+                    "select": {
+                        "node": [
+                            { "expr": "@id" },
+                            { "expr": "@name" }
+                        ]
+                    }
+                };
+                var query = client.NLWS.xtkQueryDef.create(queryDef);
+                var extAccount = await query.executeQuery();
+                expect(extAccount).toEqual({ extAccount: [] });
+            });
             jest.advanceTimersByTime(10000);
             expect(client._entityCacheRefresher._safeCallAndRefresh.mock.calls.length).toBe(2);
             expect(client._optionCacheRefresher._safeCallAndRefresh.mock.calls.length).toBe(2);
@@ -3294,7 +3300,6 @@ describe('ACC Client', function () {
                     }
                 });
                 await query.executeQuery();
-                console.log(headers);
                 expect(headers).toMatchObject({
                     "SoapAction": "xtk:queryDef#ExecuteQuery",
                     "X-Test": "world",
@@ -3485,6 +3490,7 @@ describe('ACC Client', function () {
             await client.NLWS.xtkSession.logon();
             
             const mockGetUUID = jest.spyOn(Util, 'getUUID').mockImplementation(() => { throw new Error('UUID error'); });
+            const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
             
             client._transport.mockReturnValueOnce(Mock.GET_XTK_QUERY_SCHEMA_RESPONSE);
             client._transport.mockReturnValueOnce(Mock.GET_QUERY_EXECUTE_RESPONSE);
@@ -3504,8 +3510,8 @@ describe('ACC Client', function () {
 
             expect(headers["x-request-id"]).toBeUndefined();
             
-            // Restore the mock
             mockGetUUID.mockRestore();
+            consoleErrorSpy.mockRestore();
         });
 
 
@@ -3714,7 +3720,9 @@ describe('ACC Client', function () {
         describe('upload', () => {
             describe("File uploader - on server", () => {
             it("is not supported", async () => {
+                const warnSpy = jest.spyOn(console, 'warn').mockImplementation();
                 const client = await Mock.makeClient();
+                client.traceAPICalls(true);
                 expect(client.fileUploader).toBeDefined();
                 await expect(
                 client.fileUploader.upload({ name: "abcd.txt" })
@@ -3730,6 +3738,8 @@ describe('ACC Client', function () {
                 name: "CampaignException",
                 statusCode: 500,
                 });
+                expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("experimental"));
+                warnSpy.mockRestore();
             });
             }); // "File uploader - on server"
 
@@ -4927,15 +4937,18 @@ describe('ACC Client', function () {
             const client = await Mock.makeClient();
             client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
             await client.NLWS.xtkSession.logon();
-            client.traceAPICalls(true);
+            await Mock.withMockConsole(async () => {
+                client.traceAPICalls(true);
 
-            client._transport.mockRejectedValueOnce(new HttpError(500, "Error rc=-57"));
-            await expect(client.getReportData({
-                reportName: "throughput",
-                context: "selection",
-                selection: "12133",
-                schema: "nms:delivery"
-            })).rejects.toMatchObject({ statusCode:500, message:"500 - Error 16384: SDK-000014 Failed to fetch report throughput. 500 - Error calling method '/report/throughput?_noRender=true&_schema=nms:delivery&_context=selection&_selection=12133&_selectionCount=1': Error rc=-57" });
+                client._transport.mockRejectedValueOnce(new HttpError(500, "Error rc=-57"));
+                await expect(client.getReportData({
+                    reportName: "throughput",
+                    context: "selection",
+                    selection: "12133",
+                    schema: "nms:delivery"
+                })).rejects.toMatchObject({ statusCode:500, message:"500 - Error 16384: SDK-000014 Failed to fetch report throughput. 500 - Error calling method '/report/throughput?_noRender=true&_schema=nms:delivery&_context=selection&_selection=12133&_selectionCount=1': Error rc=-57" });
+                client.traceAPICalls(false);
+            });
 
             client._transport.mockReturnValueOnce(Mock.LOGOFF_RESPONSE);
             await client.NLWS.xtkSession.logoff();
@@ -5007,8 +5020,7 @@ describe('ACC Client', function () {
             const schema = client.newSchema(xml);
             const jobs = schema.root.children["jobs"];
             expect(jobs.target).toBe("xtk:job");
-            // node 14 throws "Cannot read property 'getSchema' of null"
-            // node 16+ throws "Cannot read properties of null (reading 'getSchema')"
+            // node 20+ throws "Cannot read properties of null (reading 'getSchema')"
             await expect(jobs.linkTarget()).rejects.toThrow(/Cannot read (.*getSchema.*of null)|(.*of null.*getSchema)/);
         });
     });
@@ -5043,13 +5055,13 @@ describe('ACC Client', function () {
             
             client._transport.mockReturnValueOnce(Mock.LOGON_RESPONSE);
 
-            inputParams = [
+            const inputParams = [
                 { name: "login", type: "string", value: "admin" },
                 { name: "password", type: "string", value: "admin" },
                 { name: "parameters", type: "DOMElement", value: { rememberMe: true } },
                 
               ];
-              outputParams = [
+              const outputParams = [
                 { name: "sessionToken", type: "string" },
                 { name: "session", type: "DOMElement" },
                 { name: "securityToken", type: "string" },

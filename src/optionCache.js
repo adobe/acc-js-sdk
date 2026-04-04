@@ -10,18 +10,18 @@ OF ANY KIND, either express or implied. See the License for the specific languag
 governing permissions and limitations under the License.
 */
 (function() {
-"use strict";    
+  "use strict";    
 
-/**********************************************************************************
+  /**********************************************************************************
  * 
  * A cache for option values
  * 
  *********************************************************************************/
-const XtkCaster = require('./xtkCaster.js').XtkCaster;
-const { Cache } = require('./cache.js');
+  const XtkCaster = require('./xtkCaster.js').XtkCaster;
+  const { Cache } = require('./cache.js');
 
 
-/**
+  /**
  * @namespace Campaign
  * 
  * @typedef {Option} XtkOption
@@ -32,13 +32,13 @@ const { Cache } = require('./cache.js');
  */
 
 
-/**
+  /**
  * @private
  * @class
  * @constructor
  * @memberof Campaign
  */
-class OptionCache extends Cache {
+  class OptionCache extends Cache {
     
     /**
      * A in-memory cache for xtk option values. Not intended to be used directly,
@@ -52,8 +52,8 @@ class OptionCache extends Cache {
      * @param {string} rootKey is an optional root key to use for the storage object
      * @param {number} ttl is the TTL for objects in ms. Defaults to 5 mins
      */
-     constructor(storage, rootKey, ttl) {
-        super(storage, rootKey, ttl);
+    constructor(storage, rootKey, ttl) {
+      super(storage, rootKey, ttl);
     }
 
     /**
@@ -66,7 +66,7 @@ class OptionCache extends Cache {
      * is the data type of the option. Such an array is returned by the xtk:session#GetOption method
      */
     async cache(schemaId, methodName) {
-        return this.put(schemaId, methodName);
+      return this.put(schemaId, methodName);
     }
 
     /**
@@ -77,16 +77,16 @@ class OptionCache extends Cache {
      * is the data type of the option. Such an array is returned by the xtk:session#GetOption method
      */
     async put(name, rawValueAndtype) {
-        var value = null;
-        var type = 0;
-        var rawValue;
-        if (rawValueAndtype && rawValueAndtype[1] != 0) {
-            rawValue = rawValueAndtype[0];
-            type = rawValueAndtype[1];
-            value = XtkCaster.as(rawValue, type);
-        }
-        await super.put(name, { value:value, type:type, rawValue:rawValue });
-        return value;
+      var value = null;
+      var type = 0;
+      var rawValue;
+      if (rawValueAndtype && rawValueAndtype[1] != 0) {
+        rawValue = rawValueAndtype[0];
+        type = rawValueAndtype[1];
+        value = XtkCaster.as(rawValue, type);
+      }
+      await super.put(name, { value:value, type:type, rawValue:rawValue });
+      return value;
     }
 
     /**
@@ -96,8 +96,8 @@ class OptionCache extends Cache {
      * @returns {*} the option value
      */
     async get(name) {
-        const option = await super.get(name);
-        return option ? option.value : undefined;
+      const option = await super.get(name);
+      return option ? option.value : undefined;
     }
 
     /**
@@ -107,12 +107,12 @@ class OptionCache extends Cache {
      * @returns {Campaign.XtkOption} the option
      */
     async getOption(name) {
-        return await super.get(name);
+      return await super.get(name);
     }
-}
+  }
 
 
-// Public exports
-exports.OptionCache = OptionCache;
+  // Public exports
+  exports.OptionCache = OptionCache;
 
 })();

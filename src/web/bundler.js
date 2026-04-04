@@ -26,14 +26,14 @@ governing permissions and limitations under the License.
 const modules = {};
 
 function define(name) {
-    modules[name] = { exports: {} };
+  modules[name] = { exports: {} };
 }
 
 function require(name) {
-    const module = modules[name];
-    if (!module) throw new Error(`Module ${name} not found`);
-    if (typeof module.exports != "function" && Object.keys(module.exports).length == 0) throw new Error(`Module ${name} found but not loaded yet`);
-    return module.exports;
+  const module = modules[name];
+  if (!module) throw new Error(`Module ${name} not found`);
+  if (typeof module.exports != "function" && Object.keys(module.exports).length == 0) throw new Error(`Module ${name} found but not loaded yet`);
+  return module.exports;
 }
 
 // Useful for node.js tests
