@@ -224,7 +224,7 @@ governing permissions and limitations under the License.
       return new CampaignException(call, 500, err.code, `DOMException (${err.name})`, err.message, err);
     }
 
-    if (err.statusCode && ctor && ctor.name == "HttpError") {
+    if (err instanceof HttpError) {
       var faultString = err.statusText;
       var details = typeof err.data == 'object' ? JSON.stringify(err.data) : err.data;
       if (!faultString) {
