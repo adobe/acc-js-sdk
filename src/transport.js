@@ -136,6 +136,7 @@ governing permissions and limitations under the License.
     };
 
     module.exports.request = request;
+    module.exports.HttpError = HttpError;
 
   }
 

@@ -27,8 +27,8 @@ console.log("ACC client-side SDK compiler version " + pjson.version);
 var resources = [
     { name: "../package.json" },
     { name: "./util.js" },
-    { name: "./campaign.js" },
     { name: "./transport.js" },
+    { name: "./campaign.js" },
     { name: "./xtkCaster.js" },
     { name: "./domUtil.js" },
     { name: "./xtkJob.js" },

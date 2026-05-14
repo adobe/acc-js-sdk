@@ -13,6 +13,7 @@ governing permissions and limitations under the License.
   "use strict";
 
   const { Util } = require("./util.js");
+  const { HttpError } = require("./transport.js");
 
   /**
  * @namespace Campaign
