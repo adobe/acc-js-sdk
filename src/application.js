@@ -489,6 +489,13 @@ governing permissions and limitations under the License.
       this.isLink = this.type === "link";
 
       /**
+         * Returns a boolean which indicates whether the current node is a map, i.e. a dictionary of
+         * string keys to typed values. The value type is described by the nested "value" node
+         * @type {boolean}
+         */
+      this.isMap = this.type === "map";
+
+      /**
          * Returns a boolean which indicates whether the value of the current node is linked to an enumeration.
          * @type {boolean}
          */
@@ -689,6 +696,18 @@ governing permissions and limitations under the License.
       for (const childNode of childNodes) {
         this.children._push(childNode.name, childNode);
         this.childrenCount = this.childrenCount + 1;
+      }
+
+      /**
+         * For a map node (isMap === true), the type of the map values, as declared by the nested
+         * "value" node (attribute or element). Empty string if the node is not a map or has no
+         * declared value node
+         * @type {string}
+         */
+      this.valueType = "";
+      if (this.isMap) {
+        const valueNode = this.children.get("@value") || this.children.get("value");
+        if (valueNode) this.valueType = valueNode.type;
       }
 
       // Keys (after elements and attributes have been found)

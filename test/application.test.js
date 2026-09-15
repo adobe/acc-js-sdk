@@ -2073,6 +2073,65 @@ describe('Application', () => {
             });
         });
 
+        describe("Type map", () => {
+            it("Should find a map node with a typed value declared as an attribute", async () => {
+                var xml = DomUtil.parse(`<schema namespace='cus' name='runtimeMetadataTest'>
+                    <element name='runtimeMetadataTest'>
+                        <element name="metadata" type="map">
+                            <attribute name="value" type="string"/>
+                        </element>
+                    </element>
+                </schema>`);
+                var schema = newSchema(xml);
+                var root = schema.root;
+                var node = await root.findNode("metadata");
+                expect(node.isMap).toBe(true);
+                expect(node.type).toBe("map");
+                expect(node.valueType).toBe("string");
+            });
+
+            it("Should find a map node with a typed value declared as an element", async () => {
+                var xml = DomUtil.parse(`<schema namespace='cus' name='runtimeMetadataTest'>
+                    <element name='runtimeMetadataTest'>
+                        <element name="counters" type="map">
+                            <element name="value" type="long"/>
+                        </element>
+                    </element>
+                </schema>`);
+                var schema = newSchema(xml);
+                var root = schema.root;
+                var node = await root.findNode("counters");
+                expect(node.isMap).toBe(true);
+                expect(node.valueType).toBe("long");
+            });
+
+            it("Should not consider a regular node as a map", async () => {
+                var xml = DomUtil.parse(`<schema namespace='cus' name='runtimeMetadataTest'>
+                    <element name='runtimeMetadataTest'>
+                        <attribute name="eventId" type="string"/>
+                    </element>
+                </schema>`);
+                var schema = newSchema(xml);
+                var root = schema.root;
+                var node = await root.findNode("@eventId");
+                expect(node.isMap).toBe(false);
+                expect(node.valueType).toBe("");
+            });
+
+            it("Should default to an empty value type when the map has no nested value node", async () => {
+                var xml = DomUtil.parse(`<schema namespace='cus' name='runtimeMetadataTest'>
+                    <element name='runtimeMetadataTest'>
+                        <element name="metadata" type="map"/>
+                    </element>
+                </schema>`);
+                var schema = newSchema(xml);
+                var root = schema.root;
+                var node = await root.findNode("metadata");
+                expect(node.isMap).toBe(true);
+                expect(node.valueType).toBe("");
+            });
+        });
+
         describe("default values", () => {
             
             it("Should extract default", async () => {

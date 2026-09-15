@@ -138,9 +138,10 @@ governing permissions and limitations under the License.
      * 
      * @param {*} value the value to case
      * @param {Campaign.XtkType} type the type to cast to:  "string" = 6, "long" = 3, "double" = 5, "datetime" = 7, "memo" = 12
+     * @param {Campaign.XtkType} [valueType] for the "map" type, the type of the map values. Ignored for other types
      * @returns {*} the value casted to the requested type, following XTK rules
      */
-    static as(value, type) {
+    static as(value, type, valueType) {
       switch(type) {
       case 0:             // FIELD_NONE
       case "": {
@@ -195,6 +196,9 @@ governing permissions and limitations under the License.
       }
       case "array": {
         return this.asArray(value);
+      }
+      case "map": {
+        return this.asMap(value, valueType);
       }
       case 14:            // FIELD_TIMESPAN
       case "timespan": {
@@ -433,6 +437,24 @@ governing permissions and limitations under the License.
       if (value === null || value === undefined) return [];
       if (Util.isArray(value)) return value;
       return [value];
+    }
+
+    /**
+     * Convert a raw value into a map, i.e. a plain JavaScript object whose values are casted
+     * according to the declared value type. Null and undefined are converted into an empty map
+     *
+     * @param {*} value is the raw value to convert
+     * @param {Campaign.XtkType} [valueType] the type of the map values. If not set, values are left as-is
+     * @return {Object} a plain JavaScript object
+     */
+    static asMap(value, valueType) {
+      if (value === null || value === undefined) return {};
+      if ((typeof value) !== "object" || Util.isArray(value)) return {};
+      const map = {};
+      for (const key of Object.keys(value)) {
+        map[key] = valueType ? this.as(value[key], valueType) : value[key];
+      }
+      return map;
     }
 
     /**
