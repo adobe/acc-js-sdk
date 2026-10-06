@@ -915,6 +915,25 @@ describe('DomUtil', function() {
             expect(elements(new XPath("/country/@name"))).toEqual([ "country", "@name" ]);
         })
 
+        it.each([null, undefined, "", " ", "\t\r\n", "[]", "[ \t\r\n ]", "/", " / \t\r\n ", "[ / ]"])(
+            "Should return no elements for an empty or root XPath %p",
+            (path) => {
+                expect(new XPath(path).getElements()).toEqual([]);
+            }
+        )
+
+        it.each(["a/", "/a/", "a//b", "//", "a/ /b", "a/\t/b", "[a/ \t /b]"])(
+            "Should reject an empty element in XPath %p",
+            (path) => {
+                expect(() => new XPath(path).getElements()).toThrow("Invalid empty xpath element");
+            }
+        )
+
+        it("Should preserve whitespace in non-empty XPath elements", () => {
+            const elements = new XPath("country/ @name").getElements();
+            expect(elements.map(element => element.asString())).toEqual(["country", " @name"]);
+        })
+
         it("Should get relative path", () => {
             expect(new XPath("").getRelativePath().asString()).toBe("");
             expect(new XPath(" ").getRelativePath().asString()).toBe("");
@@ -939,6 +958,17 @@ describe('DomUtil', function() {
             expect(new XPathElement("country").asString()).toBe("country");
             expect(new XPathElement("..").asString()).toBe("..");
             expect(new XPathElement(".").asString()).toBe(".");
+        })
+
+        it.each([null, undefined, "", " ", "\t\r\n", " \t \n "])(
+            "Should reject an empty XPathElement %p",
+            (pathElement) => {
+                expect(() => new XPathElement(pathElement)).toThrow("Invalid empty xpath element");
+            }
+        )
+
+        it("Should preserve whitespace in a non-empty XPathElement", () => {
+            expect(new XPathElement(" @name ").asString()).toBe(" @name ");
         })
 
         it("toString", () => {
@@ -978,5 +1008,4 @@ describe('DomUtil', function() {
         expect(json.$source).toBe("<head></head>")
     });
 });
-
 

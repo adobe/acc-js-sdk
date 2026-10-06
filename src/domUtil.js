@@ -559,6 +559,10 @@ governing permissions and limitations under the License.
   // 
   // ========================================================================================
 
+  function isEmptyXPathElement(pathElement) {
+    return pathElement === null || pathElement === undefined || pathElement.trim() === "";
+  }
+
   /**
  * Represents an element of a XPath
  * 
@@ -571,7 +575,7 @@ governing permissions and limitations under the License.
   class XPathElement {
     
     constructor(pathElement) {
-      if (pathElement == null || pathElement == undefined || pathElement.trim() == "")
+      if (isEmptyXPathElement(pathElement))
         throw new DomException(`Invalid empty xpath element`);
       this._pathElement = pathElement;
     }
@@ -675,7 +679,7 @@ governing permissions and limitations under the License.
       const elements = [];
       const first = this.isAbsolute() ? 1 : 0;
       const path = this._path.substr(first);
-      if (path != "") {
+      if (!isEmptyXPathElement(path)) {
         const tokens = path.split('/');
         for (var i=0; i<tokens.length; i++) {
           const element = new XPathElement(tokens[i]);
