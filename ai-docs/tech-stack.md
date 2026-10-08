@@ -31,6 +31,8 @@ version: 1.0
 
 **Dependency policy:** External dependencies are strictly limited. Never add a new dependency without explicit user confirmation. Only 3 runtime dependencies exist.
 
+**Security override:** `package.json` overrides `js-yaml` to `^4.3.2` so Jest's `@istanbuljs/load-nyc-config` uses argparse v2 instead of the vulnerable `sprintf-js` dependency (GHSA-hp3w-g68c-fv3c). Keep this override until the upstream loader updates its dependency to js-yaml v4.
+
 **Categories**: Web, Testing, Quality, Docs
 
 ---
