@@ -32,7 +32,8 @@ module.exports = {
     '^.+\\.m?js$': 'babel-jest'
   },
   transformIgnorePatterns: [
-    '/node_modules/(?!(@exodus|@asamuzakjp|@bramus|@csstools|css-tree|parse5|tough-cookie|baseline-browser-mapping)/)'
+    // Include nested ESM dependencies such as parse5's entities for Node 20.
+    '/node_modules/(?!(@exodus|@asamuzakjp|@bramus|@csstools|css-tree|parse5|entities|tough-cookie|baseline-browser-mapping)/)'
   ],
   setupFilesAfterEnv: [/*
     '<rootDir>/test/jest/jest.setup.js',
