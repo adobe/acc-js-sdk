@@ -748,6 +748,37 @@ describe('XtkCaster', function() {
         });
     });
 
+    describe("Map tests", () => {
+        it("Should return empty map for null or undefined", () => {
+            expect(XtkCaster.asMap(null)).toStrictEqual({});
+            expect(XtkCaster.asMap(undefined)).toStrictEqual({});
+        });
+
+        it("Should return empty map for non-object values", () => {
+            expect(XtkCaster.asMap("Hello")).toStrictEqual({});
+            expect(XtkCaster.asMap(42)).toStrictEqual({});
+            expect(XtkCaster.asMap(false)).toStrictEqual({});
+            expect(XtkCaster.asMap([ "a", "b" ])).toStrictEqual({});
+        });
+
+        it("Should return an empty populated map as-is when no value type is given", () => {
+            expect(XtkCaster.asMap({})).toStrictEqual({});
+            expect(XtkCaster.asMap({ channel: "email", campaign: 3 })).toStrictEqual({ channel: "email", campaign: 3 });
+        });
+
+        it("Should cast map values according to the declared value type", () => {
+            expect(XtkCaster.asMap({ channel: "email", count: "3" }, "string")).toStrictEqual({ channel: "email", count: "3" });
+            expect(XtkCaster.asMap({ count: "3", total: 5 }, "long")).toStrictEqual({ count: 3, total: 5 });
+        });
+
+        it("Should support map type in the 'as' function", () => {
+            expect(XtkCaster.as(null, "map")).toStrictEqual({});
+            expect(XtkCaster.as(undefined, "map")).toStrictEqual({});
+            expect(XtkCaster.as({ channel: "email" }, "map")).toStrictEqual({ channel: "email" });
+            expect(XtkCaster.as({ count: "3" }, "map", "long")).toStrictEqual({ count: 3 });
+        });
+    });
+
     describe("Timespan test", () => {
         it("Should return timespan", () => {
             expect(XtkCaster.asTimespan(null)).toStrictEqual(0);
