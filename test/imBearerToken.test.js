@@ -47,7 +47,7 @@ describe('IMS Bearer Toekn', function () {
         await client.NLWS.xtkSession.logoff();
         expect(client.isLogged()).toBe(false);
 
-        expect(client._transport).toBeCalledTimes(1);
+        expect(client._transport).toHaveBeenCalledTimes(1);
         const calls = client._transport.mock.calls;
         expect(calls[0][0].headers).toMatchObject({
             "ACC-SDK-Auth": "ImsBearerToken",
@@ -68,7 +68,7 @@ describe('IMS Bearer Toekn', function () {
         expect(databaseId).toBe("uFE80000000000000F1FA913DD7CC7C480041161C");
 
         // Check that headers were correctly populated for both calls
-        expect(client._transport).toBeCalledTimes(2);
+        expect(client._transport).toHaveBeenCalledTimes(2);
         const calls = client._transport.mock.calls;
         expect(calls[0][0].headers).toMatchObject({
             "ACC-SDK-Auth": "ImsBearerToken",
