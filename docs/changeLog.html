@@ -2,6 +2,19 @@
 layout: page
 title: Change Log
 ---
+<section class="changelog"><h1>Version 1.2.3</h1>
+  <h2>2026/10/08</h2>
+  <li>
+    Shared XPath empty-element validation between <code>XPath</code> and <code>XPathElement</code>, with expanded tests for empty and root paths, invalid empty segments, and whitespace preservation.
+  </li>
+  <li>
+    Updated dependencies to address security vulnerabilities, including upgrading <b>Jest</b> to 30.x and overriding <code>js-yaml</code> to remove the vulnerable transitive <code>sprintf-js</code> dependency.
+  </li>
+  <li>
+    Updated the test configuration to transpile nested ES module dependencies such as <code>parse5</code>'s <code>entities</code> on Node.js 20, and fixed IMS bearer token tests to use Jest 30-compatible matchers.
+  </li>
+</section>
+
 <section class="changelog"><h1>Version 1.2.2</h1>
   <h2>2026/06/11</h2>
   <li>
