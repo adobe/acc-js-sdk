@@ -489,6 +489,13 @@ governing permissions and limitations under the License.
       this.isLink = this.type === "link";
 
       /**
+         * Returns a boolean which indicates whether the current node is a map, i.e. a dictionary of
+         * string keys to typed values. The value type is described by the nested "value" node
+         * @type {boolean}
+         */
+      this.isMap = this.type === "map";
+
+      /**
          * Returns a boolean which indicates whether the value of the current node is linked to an enumeration.
          * @type {boolean}
          */
@@ -733,6 +740,15 @@ governing permissions and limitations under the License.
       if (!this.parent && this.labelSingular) {
         this.labelSingularLocalizationId = this._localizationId + "__@labelSingular";
       }
+    }
+
+    /**
+     * For a map node, returns the nested "value" node (element or attribute) describing the type of the map values
+     * @returns {Campaign.XtkSchemaNode|undefined} the value node, or undefined if the node is not a map or has no value node
+     */
+    mapValueNode() {
+      if (this.type !== "map") return undefined;
+      return this.children["value"] || this.children["@value"];
     }
 
     /**
